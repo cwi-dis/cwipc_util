@@ -9,8 +9,15 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+class cwipc;
+//typename cwipc_pcl_pointcloud;
+#else
 typedef struct _cwipc {
 } cwipc;
+typedef struct _cwipc_pcl_pointcloud {
+} cwipc_pcl_pointcloud;
+#endif
 
 #ifdef __cplusplus
 extern "C" {

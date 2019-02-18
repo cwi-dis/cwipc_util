@@ -5,6 +5,7 @@
 #else
 #define _CWIPC_UTIL_EXPORT
 #endif
+#include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
 cwipc *
@@ -33,4 +34,11 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
 {
 	if (errorMessage) *errorMessage = (char *)"Not yet implemented";
 	return -1;
+}
+
+cwipc *
+cwipc_from_pcl(cwipc_pcl_pointcloud* pc, char **errorMessage)
+{
+	if (errorMessage) *errorMessage = (char *)"Not yet implemented";
+	return NULL;
 }
