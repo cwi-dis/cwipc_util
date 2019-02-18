@@ -9,7 +9,8 @@
 #include <pcl/point_types.h>
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
-typedef  pcl::PointCloud<pcl::PointXYZRGB> cwipc_pcl_pointcloud;
+typedef  pcl::PointCloud<pcl::PointXYZRGB>* cwipc_pcl_pointcloud;
+inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return new pcl::PointCloud<pcl::PointXYZRGB>; }
 #define _CWIPC_PCL_POINTCLOUD_DEFINED
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
 
@@ -19,7 +20,7 @@ typedef  pcl::PointCloud<pcl::PointXYZRGB> cwipc_pcl_pointcloud;
 
 #include "cwipc_util/api.h"
 
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud* pc, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud pc, char **errorMessage);
 
 
 #endif // _cwipc_util_api_pcl_h_

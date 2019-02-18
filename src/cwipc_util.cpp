@@ -15,13 +15,33 @@
 
 class cwipc_impl : public cwipc {
 protected:
-    cwipc_pcl_pointcloud *m_pc;
+    cwipc_pcl_pointcloud m_pc;
 public:
     cwipc_impl() : m_pc(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud *pc) : m_pc(pc) {}
-    ~cwipc_impl() {};
+    cwipc_impl(cwipc_pcl_pointcloud pc) : m_pc(pc) {}
+
+    ~cwipc_impl() {}
+
+    int from_points(struct cwipc_point *pointData, size_t size, int npoint)
+    {
+        if (npoint * sizeof(struct cwipc_point) != size) {
+            return -1;
+        }
+        cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
+        for (int i=0; i<npoint; i++) {
+            (*pc)[i].x = pointData[i].x;
+            (*pc)[i].y = pointData[i].y;
+            (*pc)[i].z = pointData[i].z;
+            (*pc)[i].r = pointData[i].r;
+            (*pc)[i].g = pointData[i].g;
+            (*pc)[i].b = pointData[i].b;
+        }
+        m_pc = pc;
+        return npoint;
+    }
+
     void free() {
-        delete m_pc;
+        m_pc = NULL;
     }
     
     uint32_t timestamp() {
@@ -48,7 +68,7 @@ public:
         return npoint;
     }
     
-    cwipc_pcl_pointcloud *access_pcl_pointcloud() {
+    cwipc_pcl_pointcloud access_pcl_pointcloud() {
         return m_pc;
     }
 };
@@ -56,7 +76,7 @@ public:
 cwipc *
 cwipc_read(const char *filename, char **errorMessage)
 {
-    pcl::PointCloud<pcl::PointXYZRGB> *pc = new pcl::PointCloud<pcl::PointXYZRGB>;
+    cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
     pcl::PLYReader ply_reader;
     if (ply_reader.read(filename, *pc) < 0) {
         if (errorMessage) *errorMessage = (char *)"Error reading ply pointcloud";
@@ -113,9 +133,22 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
 }
 
 cwipc *
-cwipc_from_pcl(cwipc_pcl_pointcloud* pc, char **errorMessage)
+cwipc_from_pcl(cwipc_pcl_pointcloud pc, char **errorMessage)
 {
     return new cwipc_impl(pc);
+}
+
+
+cwipc *
+cwipc_from_points(cwipc_point* points, size_t size, int npoint, char **errorMessage)
+{
+    cwipc_impl *rv = new cwipc_impl();
+    if (rv->from_points(points, size, npoint) < 0) {
+        if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
+        delete rv;
+        return NULL;
+    }
+    return rv;
 }
 
 void cwipc_free(cwipc *pc)

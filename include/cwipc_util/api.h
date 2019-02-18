@@ -24,7 +24,7 @@ struct cwipc_point {
 #ifdef __cplusplus
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
-class cwipc_pcl_pointcloud;
+typedef void* cwipc_pcl_pointcloud;
 #define _CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
 
@@ -35,13 +35,13 @@ public:
     virtual uint32_t timestamp() = 0;
     virtual size_t get_uncompressed_size() = 0;
     virtual int copy_uncompressed(struct cwipc_point *, size_t size) = 0;
-    virtual cwipc_pcl_pointcloud *access_pcl_pointcloud() = 0;
+    virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
 };
 #else
 typedef struct _cwipc {
 } cwipc;
 typedef struct _cwipc_pcl_pointcloud {
-} cwipc_pcl_pointcloud;
+} *cwipc_pcl_pointcloud;
 #endif
 
 #ifdef __cplusplus
@@ -58,6 +58,7 @@ _CWIPC_UTIL_EXPORT void cwipc_free(cwipc *pc);
 _CWIPC_UTIL_EXPORT uint32_t cwipc_timestamp(cwipc *pc);
 _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, char **errorMessage);
 
 #ifdef __cplusplus
 }
