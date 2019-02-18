@@ -5,6 +5,7 @@ add_library(cwipc_util SHARED cwipc_util.cpp)
 target_sources(cwipc_util
 	PRIVATE
 	"../include/cwipc_util/api.h"
+	"../include/cwipc_util/api_pcl.h"
 )
 
 include_directories(
@@ -27,7 +28,7 @@ set_target_properties(cwipc_util PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/bin/RelWithDebInfo"
 )
 
-target_link_libraries(cwipc_util ${${PROJECT_NAME}_LIBRARIES})
+target_link_libraries(cwipc_util ${PCL_LIBRARIES})
 
 install(TARGETS cwipc_util
     EXPORT cwipcutilTargets

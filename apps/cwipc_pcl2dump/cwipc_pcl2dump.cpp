@@ -5,8 +5,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
 
-#include "cwipc_util/api.h"
 #include "cwipc_util/api_pcl.h"
+#include "cwipc_util/api.h"
 
 int main(int argc, char** argv)
 {
