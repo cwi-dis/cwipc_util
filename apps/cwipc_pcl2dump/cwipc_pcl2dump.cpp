@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     //
     // Read pointcloud file
     //
-    pcl::PointCloud<pcl::PointXYZRGB> *pc = new pcl::PointCloud<pcl::PointXYZRGB>;
+    cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
     pcl::PLYReader ply_reader;
     if (ply_reader.read(argv[1], *pc) < 0) {
         std::cerr << argv[0] << ": Error reading pointcloud from " << argv[1] << std::endl;

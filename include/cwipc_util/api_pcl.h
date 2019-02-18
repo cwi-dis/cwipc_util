@@ -9,8 +9,8 @@
 #include <pcl/point_types.h>
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
-typedef  pcl::PointCloud<pcl::PointXYZRGB>* cwipc_pcl_pointcloud;
-inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return new pcl::PointCloud<pcl::PointXYZRGB>; }
+typedef  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cwipc_pcl_pointcloud;
+inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_pointcloud(new pcl::PointCloud<pcl::PointXYZRGB>); }
 #define _CWIPC_PCL_POINTCLOUD_DEFINED
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
 

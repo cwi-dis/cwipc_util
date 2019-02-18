@@ -88,7 +88,7 @@ cwipc_read(const char *filename, char **errorMessage)
 int 
 cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage)
 {
-    pcl::PointCloud<pcl::PointXYZRGB> *pc = pointcloud->access_pcl_pointcloud();
+    cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
     if (pc == NULL) {
         if (errorMessage) *errorMessage = (char *)"Not yet implemented";
         return -1;
