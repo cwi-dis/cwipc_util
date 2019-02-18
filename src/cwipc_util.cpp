@@ -34,7 +34,8 @@ public:
     
     int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
         if (size < get_uncompressed_size()) return -1;
-        for (int i = 0; i < m_pc->size(); i++)
+        int npoint = m_pc->size();
+        for (int i = 0; i < npoint; i++)
         {
             pointData[i].x = (*m_pc)[i].x;
             pointData[i].y = (*m_pc)[i].y;
@@ -44,7 +45,7 @@ public:
             pointData[i].b = (*m_pc)[i].b;
         }
         // iterate_over_octree();
-        return -1;
+        return npoint;
     }
     
     cwipc_pcl_pointcloud *access_pcl_pointcloud() {
