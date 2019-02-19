@@ -20,7 +20,7 @@ inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_po
 
 #include "cwipc_util/api.h"
 
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud pc, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage);
 
 
 #endif // _cwipc_util_api_pcl_h_

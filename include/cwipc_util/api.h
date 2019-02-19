@@ -20,6 +20,7 @@ struct cwipc_point {
     uint8_t g;
     uint8_t b;
 };
+#define CWIPC_POINT_VERSION 0x20190209
 
 #ifdef __cplusplus
 
@@ -32,8 +33,8 @@ class cwipc {
 public:
     virtual ~cwipc() {};
     virtual void free() = 0;
-    virtual uint32_t timestamp() = 0;
-    virtual size_t get_uncompressed_size() = 0;
+    virtual uint64_t timestamp() = 0;
+    virtual size_t get_uncompressed_size(uint32_t dataVersion) = 0;
     virtual int copy_uncompressed(struct cwipc_point *, size_t size) = 0;
     virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
 };
@@ -48,17 +49,18 @@ typedef struct _cwipc_pcl_pointcloud {
 extern "C" {
 #endif
 
-_CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage);
 _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage);
+
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage);
 
 _CWIPC_UTIL_EXPORT cwipc *cwipc_read_debugdump(const char *filename, char **errorMessage);
 _CWIPC_UTIL_EXPORT int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage);
 
 _CWIPC_UTIL_EXPORT void cwipc_free(cwipc *pc);
 _CWIPC_UTIL_EXPORT uint32_t cwipc_timestamp(cwipc *pc);
-_CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
+_CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVersion);
 _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, char **errorMessage);
 
 #ifdef __cplusplus
 }

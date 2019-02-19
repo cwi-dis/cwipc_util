@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     //
     // Read pointcloud file
     //
-    cwipc *obj = cwipc_read(argv[1], &message);
+    cwipc *obj = cwipc_read(argv[1], 0, &message);
     if (obj == NULL) {
         fprintf(stderr, "%s: Cannot read pointcloud: %s\n", argv[0], message);
         return 1;

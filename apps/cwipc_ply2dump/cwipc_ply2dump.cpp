@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     //
     // Read pointcloud file
     //
-    cwipc *obj = cwipc_read(argv[1], &message);
+    cwipc *obj = cwipc_read(argv[1], 0, &message);
     if (obj == NULL) {
         std::cerr << argv[0] << ": Cannot read pointcloud: " << message << std::endl;
         return 1;

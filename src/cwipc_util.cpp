@@ -13,20 +13,28 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
+struct dump_header {
+    char hdr[4];
+    uint32_t magic;
+    uint64_t timestamp;
+};
+
 class cwipc_impl : public cwipc {
 protected:
+    uint64_t m_timestamp;
     cwipc_pcl_pointcloud m_pc;
 public:
-    cwipc_impl() : m_pc(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc) : m_pc(pc) {}
+    cwipc_impl() : m_timestamp(0), m_pc(NULL) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_pc(pc) {}
 
     ~cwipc_impl() {}
 
-    int from_points(struct cwipc_point *pointData, size_t size, int npoint)
+    int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp)
     {
         if (npoint * sizeof(struct cwipc_point) != size) {
             return -1;
         }
+        m_timestamp = timestamp;
         cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
         for (int i=0; i<npoint; i++) {
             (*pc)[i].x = pointData[i].x;
@@ -44,16 +52,17 @@ public:
         m_pc = NULL;
     }
     
-    uint32_t timestamp() {
-        return 0;
+    uint64_t timestamp() {
+        return m_timestamp;
     }
     
-    size_t get_uncompressed_size() {
+    size_t get_uncompressed_size(uint32_t dataVersion) {
+        if (dataVersion != CWIPC_POINT_VERSION) return 0;
         return m_pc->size() * sizeof(struct cwipc_point);
     }
     
     int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
-        if (size < get_uncompressed_size()) return -1;
+        if (size < m_pc->size() * sizeof(struct cwipc_point)) return -1;
         int npoint = m_pc->size();
         for (int i = 0; i < npoint; i++)
         {
@@ -74,7 +83,7 @@ public:
 };
 
 cwipc *
-cwipc_read(const char *filename, char **errorMessage)
+cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage)
 {
     cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
     pcl::PLYReader ply_reader;
@@ -82,7 +91,7 @@ cwipc_read(const char *filename, char **errorMessage)
         if (errorMessage) *errorMessage = (char *)"Error reading ply pointcloud";
         return NULL;
     }
-    return new cwipc_impl(pc);
+    return new cwipc_impl(pc, timestamp);
 }
 
 int 
@@ -111,7 +120,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage)
 int 
 cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage)
 {
-    int dataSize = pointcloud->get_uncompressed_size();
+    int dataSize = pointcloud->get_uncompressed_size(CWIPC_POINT_VERSION);
     struct cwipc_point *dataBuf = (struct cwipc_point *)malloc(dataSize);
     if (dataBuf == NULL) {
         if (errorMessage) *errorMessage = (char *)"Cannot allocate pointcloud memory";
@@ -127,23 +136,25 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         if (errorMessage) *errorMessage = (char *)"Cannot create output file";
         return -1;
     }
+    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_POINT_VERSION, pointcloud->timestamp()};
+    fwrite(&hdr, sizeof(hdr), 1, fp);
     fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp);
     fclose(fp);
     return 0;
 }
 
 cwipc *
-cwipc_from_pcl(cwipc_pcl_pointcloud pc, char **errorMessage)
+cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage)
 {
-    return new cwipc_impl(pc);
+    return new cwipc_impl(pc, timestamp);
 }
 
 
 cwipc *
-cwipc_from_points(cwipc_point* points, size_t size, int npoint, char **errorMessage)
+cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage)
 {
     cwipc_impl *rv = new cwipc_impl();
-    if (rv->from_points(points, size, npoint) < 0) {
+    if (rv->from_points(points, size, npoint, timestamp) < 0) {
         if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
         delete rv;
         return NULL;
@@ -163,9 +174,9 @@ cwipc_timestamp(cwipc *pc)
 }
 
 size_t
-cwipc_get_uncompressed_size(cwipc *pc)
+cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVersion)
 {
-    return pc->get_uncompressed_size();
+    return pc->get_uncompressed_size(dataVersion);
 }
 
 int
