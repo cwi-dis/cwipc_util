@@ -120,7 +120,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage)
         return NULL;
     }
     struct dump_header hdr;
-    if (fread(&hdr, sizeof(hdr), 1, fp) != sizeof(hdr)) {
+    if (fread(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
         if (errorMessage) *errorMessage = (char *)"Cannot read pointcloud dumpfile header";
         return NULL;
     }
