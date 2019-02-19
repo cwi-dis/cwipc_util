@@ -17,6 +17,7 @@ struct dump_header {
     char hdr[4];
     uint32_t magic;
     uint64_t timestamp;
+    size_t size;
 };
 
 class cwipc_impl : public cwipc {
@@ -113,14 +114,50 @@ cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage)
 cwipc *
 cwipc_read_debugdump(const char *filename, char **errorMessage)
 {
-	if (errorMessage) *errorMessage = (char *)"Not yet implemented";
-	return NULL;
+    FILE *fp = fopen(filename, "rb");
+    if (fp == NULL) {
+        if (errorMessage) *errorMessage = (char *)"Cannot open pointcloud dumpfile";
+        return NULL;
+    }
+    struct dump_header hdr;
+    if (fread(&hdr, sizeof(hdr), 1, fp) != sizeof(hdr)) {
+        if (errorMessage) *errorMessage = (char *)"Cannot read pointcloud dumpfile header";
+        return NULL;
+    }
+    if (hdr.hdr[0] != 'c' || hdr.hdr[1] != 'p' || hdr.hdr[2] != 'c' || hdr.hdr[3] != 'd') {
+        if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile header incorrect";
+        return NULL;
+    }
+    if (hdr.magic != CWIPC_POINT_VERSION) {
+        if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile version incorrect";
+        return NULL;
+    }
+    uint64_t timestamp = hdr.timestamp;
+    size_t dataSize = hdr.size;
+    int npoint = dataSize / sizeof(cwipc_point);
+    if (npoint*sizeof(cwipc_point) != dataSize) {
+        if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile datasize inconsistent";
+        return NULL;
+    }
+    cwipc_point* pointData = (cwipc_point *)malloc(dataSize);
+    if (pointData == NULL) {
+        if (errorMessage) *errorMessage = (char *)"Could not allocate memory for point data";
+        return NULL;
+    }
+    if (fread(pointData, 1, dataSize, fp) != dataSize) {
+        if (errorMessage) *errorMessage = (char *)"Could not read point data of correct size";
+        return NULL;
+    }
+    cwipc_impl *pc = new cwipc_impl();
+    pc->from_points(pointData, dataSize, npoint, timestamp);
+    free(pointData);
+	return pc;
 }
 
 int 
 cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage)
 {
-    int dataSize = pointcloud->get_uncompressed_size(CWIPC_POINT_VERSION);
+    size_t dataSize = pointcloud->get_uncompressed_size(CWIPC_POINT_VERSION);
     struct cwipc_point *dataBuf = (struct cwipc_point *)malloc(dataSize);
     if (dataBuf == NULL) {
         if (errorMessage) *errorMessage = (char *)"Cannot allocate pointcloud memory";
@@ -131,14 +168,17 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         if (errorMessage) *errorMessage = (char *)"Cannot copy points from pointcloud";
         return -1;
     }
-    FILE *fp = fopen(filename, "w");
+    FILE *fp = fopen(filename, "wb");
     if (fp == NULL) {
         if (errorMessage) *errorMessage = (char *)"Cannot create output file";
         return -1;
     }
-    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_POINT_VERSION, pointcloud->timestamp()};
+    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_POINT_VERSION, pointcloud->timestamp(), dataSize};
     fwrite(&hdr, sizeof(hdr), 1, fp);
-    fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp);
+    if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
+        if (errorMessage) *errorMessage = (char *)"Write output file failed";
+        return -1;
+    }
     fclose(fp);
     return 0;
 }
