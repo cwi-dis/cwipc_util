@@ -40,8 +40,10 @@ public:
 };
 #else
 typedef struct _cwipc {
+	int _dummy;
 } cwipc;
 typedef struct _cwipc_pcl_pointcloud {
+	int _dummy;
 } *cwipc_pcl_pointcloud;
 #endif
 
