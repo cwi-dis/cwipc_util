@@ -14,7 +14,34 @@ The library contains utility functions to read and write a `cwipc` object from a
 
 ### OSX
 
-tbd
+- Install XCode
+- Install various dependencies:
+
+  ```
+  brew install cmake
+  brew install pcl
+  ```
+- Building with XCode:
+
+  ```
+  mkdir build-xcode
+  cd build-code
+  cmake .. -G Xcode
+  open cwipc_util.xcodeproj
+  ```
+  
+  and then build it.
+  
+- Building with Makefiles:
+
+  ```
+  mkdir build-makefile
+  cd build-makefile
+  cmake ..
+  make
+  make test # optional
+  make install # optional
+  ```
 
 ### Linux
 
@@ -22,4 +49,24 @@ tbd
 
 ### Windows
 
-tbd
+
+- Install Windows 10-64
+- Install Visual Studio Community Edition
+- Install Notepad++
+- Install Git (checkout as-is, commit as-is for Unix newlines)
+- Install CMake
+- Install PCL 1.8 from <https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.8.1/PCL-1.8.1-AllInOne-msvc2017-win64.exe>
+- Configure the repository using cmake-gui.
+	- Make sure you select the right Visual Studio version and 64bits.
+	- Generate VS projects in a `build` subdirectory.
+	- Alternatively, if you use *git bash*, use the following commands:
+
+	```
+	mkdir build
+	cd build
+	cmake .. -G "Visual Studio 15 Win64"
+	```
+- Open Visual Studio solution, build.
+- To make things run I had to add the following directories to system environment variable PATH:
+	- tbd
+ 
