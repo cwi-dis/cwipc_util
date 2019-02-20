@@ -8,9 +8,13 @@ target_sources(cwipc_util
 	"../include/cwipc_util/api_pcl.h"
 )
 
-include_directories(
-	"../include"
-	${PCL_INCLUDE_DIRS}
+target_include_directories(
+    cwipc_util PUBLIC
+    $<INSTALL_INTERFACE:include> 
+)
+target_include_directories(
+    cwipc_util PRIVATE
+    ${PCL_INCLUDE_DIRS}
 )
 
 set_target_properties(cwipc_util PROPERTIES
@@ -42,6 +46,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cwipc_util
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES ${PROJECT_SOURCE_DIR}/CMakeFiles/cwipc_util-config.cmake DESTINATION lib/cwipc_util)
+install(FILES ${PROJECT_SOURCE_DIR}/CMakeFiles/cwipc_util-config.cmake DESTINATION lib/cmake/cwipc_util)
 
-install(EXPORT cwipc_util DESTINATION lib/cwipc_util)
+install(EXPORT cwipc_util DESTINATION lib/cmake/cwipc_util)
