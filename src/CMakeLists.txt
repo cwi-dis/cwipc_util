@@ -31,7 +31,7 @@ set_target_properties(cwipc_util PROPERTIES
 target_link_libraries(cwipc_util ${PCL_LIBRARIES})
 
 install(TARGETS cwipc_util
-    EXPORT cwipcutilTargets
+    EXPORT cwipc_util
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -42,3 +42,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cwipc_util
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+install(FILES ${PROJECT_SOURCE_DIR}/CMakeFiles/cwipc_util-config.cmake DESTINATION lib/cwipc_util)
+
+install(EXPORT cwipc_util DESTINATION lib/cwipc_util)
