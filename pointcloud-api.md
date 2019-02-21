@@ -14,6 +14,13 @@ In case the library is used from C++ it can also export a PCL (Point Cloud Libra
 
 ## cwipc C++ interface
 
+To use abstract cwipc pointclouds, transfer them to other libraries (modules, languages) and to get access to the external representation of the points:
+
+```
+#include "cwipc_util/api.h"
+```
+
+
 Here are the C++ methods (with all the `virtual` and `= 0;` and such removed for readability):
 
 ```
@@ -21,32 +28,67 @@ class cwipc {
 	void free();
 	uint32_t timestamp();
 	size_t get_uncompressed_size();
-	void copy_uncompressed(struct pointcloud *, size_t size);
+	void copy_uncompressed(struct cwipc_point *, size_t size);
 	pcl_pointcloud *access_pcl_pointcloud();
 };
 ```
 
+The header file is documented in Doxygen, but here is the quick breakdown:
+
+- Call `free()` when you no longer need to access this pointcloud. Failure to call `free()` may lead to memory leaks. Accessing PCL pointcloud data after calling `free()` may lead to crashes.
+- Call `timestamp()` to get a (microsecond) timestamp indicating when the pointcloud was captured.
+- Call `get_uncompressed_size(CWIPC_POINT_VERSION)` to see how many bytes the pointcloud data needs. Allocate a buffer of the correct size. Then call `copy_uncompressed()` to copy the point data into the buffer.
+
+The `cwipc_point` structure is the external representation of a point (and a pointcloud external representation is simly an array of points). Here is the point structure:
+
+```
+struct cwipc_point {
+    float x;
+    float y;
+    float z;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+```
+
+## cwipc C++ PCL interface
+
+Include the PCL-compatible header before you include
+the general *api.h* header:
+
+```
+#include "cwipc_util/api_pcl.h"
+#include "cwipc_util/api.h"
+```
+
+Again, the API is documented using Doxygen. But in short:
+
+- `access_pcl_pointcloud()` returns a reference to the underlying PCL pointcloud. This will remain valid until `free()` is called.
+
 ## cwipc C interface
 
-tbd
+The C interface is contained in the same header as the C++ interface:
+
+```
+#include "cwipc_util/api.h"
+```
+
+The C functions are have the same neames as the C++ methods above, but with `cwipc_` prepended.
+
+These functions take a `cwipc *` first argument, and the rest of their arguments are the same as for their C++ counterparts.
 
 ## Utility function interface
 
-tbd
+Again fully documented in Doxygen, but there are functions to read and write PLY files, convert external representation to cwipc pointclouds and convert PCL pointclouds to cwipc pointclouds.
 
 ## Debug/test function interface
 
-tbd
+There are functions to dump external represnetations to files (and read them back).
 
-## realsense2 interface
-
-tbd
-
-## codec interface
-
-tbd
 
 ## Historic reasons for design of API for pointclouds
+
 We need APIs for capturing compressing and decompressing pointclouds, and while we're at it we might as well add APIs for reading and writing them to files.
 
 There are two libraries involved:
@@ -150,21 +192,3 @@ struct cwipc_pointcloud {
 > Discussion point: are compressed pointclouds represented simply as a byte string (i.e. a `void *` and a `size_t`)? Or should we do a similar thing which `opaque_compressed_pointcloud` to ensure alloc/free is handled by the correct library? Or should we do the `std::stringstream` thing currently used, even though that means there's an issue with C use (as opposed to C++) and we have yet another memory copy...
 
 > To do: the exact structure of the `cwipc` namespace and the `cwpic_` prefix for C use needs to be worked out.
-
-## Capturer API
-
-TBD
-
-## Compressor API
-
-TBD
-
-## Decompressor API
-
-TBD
-
-## File reader API
-
-```
-cwipc_pointcloud *cwipc_from_file(char *filename);
-```
