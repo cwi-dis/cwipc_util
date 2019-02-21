@@ -224,3 +224,15 @@ cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *points, size_t size)
 {
     return pc->copy_uncompressed(points, size);
 }
+
+
+cwipc* cwipc_source_get(cwipc_source *src)
+{
+    return src->get();
+}
+
+void cwipc_source_free(cwipc_source *src)
+{
+    src->free();
+}
+

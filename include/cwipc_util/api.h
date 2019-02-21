@@ -99,6 +99,29 @@ public:
      */
     virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
 };
+
+/** \brief A generator of pointclouds, abstract C++ interface.
+ *
+ * This interface is provided by capturers and decoders and such. It allows the
+ * user of this interface to get cwipc pointcloud data.
+ */
+class cwipc_source {
+public:
+    virtual ~cwipc_source() {};
+    
+    /** \brief Deallocate the pointcloud source.
+     *
+     * Because the pointcloud source may be used in a different implementation
+     * language or DLL than where it is implemented we do not count on refcounting
+     * and such. Call this method if you no longer need the source.
+     */
+    virtual void free() = 0;
+    
+    /** \brief Get a new pointcloud.
+     * \return The new pointcloud.
+     */
+    virtual cwipc* get() = 0;
+};
 #else
 
 /** \brief Abstract interface to a single pointcloud, C-compatible placeholder.
@@ -106,11 +129,18 @@ public:
 typedef struct _cwipc {
 	int _dummy;
 } cwipc;
+
 /** \brief C placeholder for a PCL pointcloud reference.
  */
 typedef struct _cwipc_pcl_pointcloud {
 	int _dummy;
 } *cwipc_pcl_pointcloud;
+
+/** \brief Abstract interface to a cwipc pointcloud source. C-compatible placeholder.
+ */
+typedef struct _cwipc_source {
+    int _dummy;
+} cwipc_source;
 #endif
 
 #ifdef __cplusplus
@@ -221,6 +251,29 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVe
  * allocator).
  */
 _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
+
+/** \brief Deallocate the pointcloud source (C interface).
+ * \param src The cwipc_source object.
+ *
+ * Because the pointcloud source may be used in a different implementation
+ * language or DLL than where it is implemented we do not count on refcounting
+ * and such. Call this method if you no longer need the source.
+ */
+_CWIPC_UTIL_EXPORT cwipc* cwipc_source_get(cwipc_source *src);
+
+/** \brief Get a new pointcloud (C interface).
+ * \param src The cwipc_source object.
+ * \return The new pointcloud.
+ */
+_CWIPC_UTIL_EXPORT void cwipc_source_free(cwipc_source *src);
+
+/** \brief Generate synthetic pointclouds.
+ *
+ * This function returns a cwipc_source that generates a rotating pointcloud
+ * of the object now usually called the "water melon". It is intended for testing
+ * purposes.
+ */
+_CWIPC_UTIL_EXPORT cwipc_source *cwipc_synthetic();
 
 #ifdef __cplusplus
 }
