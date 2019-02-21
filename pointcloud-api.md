@@ -1,4 +1,52 @@
-# Design of API for pointclouds
+# CWI Pointcloud object
+
+The CWI pointcloud object is intended as an abstract object representing a pointcloud.
+
+It is used by the following libraries:
+
+- [CWIPC Util](https://github.com/cwi-dis/cwipc_util), this library.
+- [CWI Codec](https://github.com/cwi-dis/cwi_codec_lib)
+- [Realsense Capturer](https://github.com/cwi-dis/VRTogether-capture)
+
+The library can be used from C and C++. In the latter case it will expose a virtual object API, in the former case an opaque object is passsed as the first argument to many functions.
+
+In case the library is used from C++ it can also export a PCL (Point Cloud Library) API, which allows access to the underlying PCL implementations of the pointclouds.
+
+## cwipc C++ interface
+
+Here are the C++ methods (with all the `virtual` and `= 0;` and such removed for readability):
+
+```
+class cwipc {
+	void free();
+	uint32_t timestamp();
+	size_t get_uncompressed_size();
+	void copy_uncompressed(struct pointcloud *, size_t size);
+	pcl_pointcloud *access_pcl_pointcloud();
+};
+```
+
+## cwipc C interface
+
+tbd
+
+## Utility function interface
+
+tbd
+
+## Debug/test function interface
+
+tbd
+
+## realsense2 interface
+
+tbd
+
+## codec interface
+
+tbd
+
+## Historic reasons for design of API for pointclouds
 We need APIs for capturing compressing and decompressing pointclouds, and while we're at it we might as well add APIs for reading and writing them to files.
 
 There are two libraries involved:
