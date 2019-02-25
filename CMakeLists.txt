@@ -5,6 +5,10 @@ project(cwipc_util)
 include(CTest)
 include(GNUInstallDirs)
 
+set(MYPRJOUTDIR ${PROJECT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${MYPRJOUTDIR})
+
+
 find_package(PCL 1.8 REQUIRED COMPONENTS common io octree)
 
 add_subdirectory("src")
