@@ -42,6 +42,10 @@ The library contains utility functions to read and write a `cwipc` object from a
   make test # optional
   make install # optional
   ```
+- *Note*: for reasons unknown the file `CMakeFiles/cwipc_util-config.cmake` tends to disappear, this will have `make install` fail. Fix by running the following command:
+  ```
+  git checkout -- CMakeFiles/cwipc_util-config.cmake
+  ```
 
 ### Linux
 
@@ -58,6 +62,7 @@ tbd
 - Install PCL 1.8 from <https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.8.1/PCL-1.8.1-AllInOne-msvc2017-win64.exe>
 - Configure the repository using cmake-gui.
 	- Make sure you select the right Visual Studio version and 64bits.
+	- Set the installation directory. Suggested is `.../DIR/installed` where `DIR` is the directory where you have cloned all the repos.
 	- Generate VS projects in a `build` subdirectory.
 	- Alternatively, if you use *git bash*, use the following commands:
 
@@ -66,7 +71,9 @@ tbd
 	cd build
 	cmake .. -G "Visual Studio 15 Win64"
 	```
-- Open Visual Studio solution, build.
-- To make things run I had to add the following directories to system environment variable PATH:
-	- tbd
+- Open Visual Studio solution, build *ALL_BUILD*, then build *RUN_TESTS* then build *INSTALL*.
+- *Note*: for reasons unknown the file `CMakeFiles/cwipc_util-config.cmake` tends to disappear, this will have `make install` fail. Fix by running the following command:
+  ```
+  git checkout -- CMakeFiles/cwipc_util-config.cmake
+  ```
  
