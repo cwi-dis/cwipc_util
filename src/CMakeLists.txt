@@ -33,7 +33,7 @@ set_target_properties(cwipc_util PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/bin/RelWithDebInfo"
 )
 
-target_link_libraries(cwipc_util ${PCL_LIBRARIES})
+target_link_libraries(cwipc_util PRIVATE ${PCL_LIBRARIES})
 
 install(TARGETS cwipc_util
     EXPORT cwipc_util
