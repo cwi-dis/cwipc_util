@@ -72,6 +72,7 @@ tbd
 	cmake .. -G "Visual Studio 15 Win64"
 	```
 - Open Visual Studio solution, build *ALL_BUILD*, then build *RUN_TESTS* then build *INSTALL*.
+- Add the installation bin directory (`.../DIR/installed` from the examples above) to your system-wide environment variable `PATH`. This will allow dependent packages to find all the DLLs and such.
 - *Note*: for reasons unknown the file `CMakeFiles/cwipc_util-config.cmake` tends to disappear, this will have `make install` fail. Fix by running the following command:
   ```
   git checkout -- CMakeFiles/cwipc_util-config.cmake
