@@ -1,6 +1,6 @@
 language: cpp
 matrix:
-    include:
+    exclude:
         - os: linux
           dist: xenial
           before_install:
@@ -23,6 +23,15 @@ matrix:
             - cmake ..
             - make
             - sudo make install
+    include:
+        - os: osx
+          osx_image: xcode10
+          addons:
+            homebrew:
+                update: true
+                packages:
+                - cmake
+                - pcl        
 script:
     - mkdir -p build
     - cd build
