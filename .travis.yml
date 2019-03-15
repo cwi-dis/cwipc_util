@@ -5,7 +5,7 @@ matrix:
           dist: xenial
           before_install:
             - sudo apt-get update
-            - sudo apt-get install libflann1.8 libboost1.58-all-dev
+            - sudo apt-get install libflann1.8 libflann-dev libboost1.58-all-dev
             - wget http://launchpadlibrarian.net/209530212/libeigen3-dev_3.2.5-4_all.deb
             - sudo dpkg -i libeigen3-dev_3.2.5-4_all.deb
             - wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.1.tar.gz
