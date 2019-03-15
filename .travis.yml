@@ -13,8 +13,8 @@ matrix:
             - wget http://launchpadlibrarian.net/209530212/libeigen3-dev_3.2.5-4_all.deb
             - sudo dpkg -i libeigen3-dev_3.2.5-4_all.deb
             - wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.1.tar.gz
-            - tar -xf pcl-1.8.0.tar.gz
-            - cd pcl-pcl-1.8.0 && mkdir build && cd build
+            - tar -xf pcl-1.8.1.tar.gz
+            - cd pcl-pcl-1.8.1 && mkdir build && cd build
             - cmake ..
             - make
             - sudo make install
