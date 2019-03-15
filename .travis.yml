@@ -1,0 +1,16 @@
+language: cpp
+matrix:
+    include:
+        - os: linux
+          dist: xenial
+          addons:
+            apt:
+                update: true
+                packages:
+                    - libpcl-dev
+script:
+    - mkdir -p build
+    - cd build
+    - cmake ..
+    - make
+    - make test
