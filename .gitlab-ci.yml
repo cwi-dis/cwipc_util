@@ -1,0 +1,81 @@
+stages:
+  - build
+  - test
+  - deploy
+ 
+build_linux:
+  stage: build
+  tags:
+  - ubuntu1804
+  before_script:
+    - apt-get update
+    - apt-get install -y tzdata
+    - apt-get install -y cmake
+    - apt-get install -y libpcl-dev
+  script:
+    - mkdir -p build
+    - mkdir -p dist-ubuntu1804
+    - cd build
+    - cmake ..
+    - make
+    - make test
+    - make install DESTDIR=../dist-ubuntu1804
+    - cd ..
+    - tar --directory dist-ubuntu1804 -cvaf cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz .
+  artifacts:
+    paths:
+      - cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz
+      
+build_osx:
+  stage: build
+  tags:
+  - osx1012
+  before_script:
+    - brew install cmake || brew upgrade cmake
+    - brew install pcl || brew upgrade pcl
+  script:
+    - mkdir -p build
+    - mkdir -p dist-osx1012
+    - cd build
+    - cmake ..
+    - make
+    - make test
+    - make install DESTDIR=../dist-osx1012
+    - cd ..
+    - tar --directory dist-osx1012 -z -cvf cwipc_util_osx1012_$CI_BUILD_TAG.tgz .
+  artifacts:
+    paths:
+      - cwipc_util_osx1012_$CI_BUILD_TAG.tgz
+      
+build_win:
+  stage: build
+  tags:
+  - win10
+  allow_failure: true
+  script:
+    - ls -l
+    - pwd
+    - mkdir -p build
+    - mkdir -p /c/dist-win/installed
+    - export ziplocation=$(pwd)/cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - cd build
+    - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX="C:/dist-win/installed"
+    - cmake --build . --config Release
+    - cmake --build . --config Release --target RUN_TESTS
+    - cmake --build . --config Release --target INSTALL
+    - (cd /c/dist-win && zip $ziplocation installed)
+  artifacts:
+    paths:
+      - cwipc_util_win1064_$CI_BUILD_TAG.zip
+      
+deploy_all:
+  stage: deploy
+  image: inetprocess/gitlab-release
+  only: 
+  - tags
+  dependencies: 
+  - build_linux
+  - build_osx
+  - build_win
+  script:
+    - gitlab-release --message 'New release' cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
