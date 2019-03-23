@@ -207,7 +207,7 @@ void cwipc_free(cwipc *pc)
     pc->free();
 }
 
-uint32_t
+uint64_t
 cwipc_timestamp(cwipc *pc)
 {
     return pc->timestamp();

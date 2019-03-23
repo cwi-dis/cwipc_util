@@ -227,7 +227,7 @@ _CWIPC_UTIL_EXPORT void cwipc_free(cwipc *pc);
  * \param pc The cwipc object.
  * \return Time in microseconds, since some unspecified origin.
  */
-_CWIPC_UTIL_EXPORT uint32_t cwipc_timestamp(cwipc *pc);
+_CWIPC_UTIL_EXPORT uint64_t cwipc_timestamp(cwipc *pc);
 
 /** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
  * \param pc The cwipc object.
