@@ -58,14 +58,14 @@ build_win:
     - ls -l
     - pwd
     - mkdir -p build
-    - mkdir -p /c/dist-win/installed
+    - mkdir -p /cygdrive/c/dist-win/installed
     - export ziplocation=$(pwd)/cwipc_util_win1064_$CI_BUILD_TAG.zip
     - cd build
     - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX="C:/dist-win/installed"
     - cmake --build . --config Release
     - cmake --build . --config Release --target RUN_TESTS
     - cmake --build . --config Release --target INSTALL
-    - (cd /c/dist-win && zip $ziplocation installed)
+    - (cd /cygdrive/c/dist-win && zip -r $ziplocation installed)
   artifacts:
     paths:
       - cwipc_util_win1064_$CI_BUILD_TAG.zip
