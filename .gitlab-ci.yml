@@ -12,6 +12,7 @@ build_linux:
     - apt-get install -y tzdata
     - apt-get install -y cmake
     - apt-get install -y libpcl-dev
+    - apt-get install -y python3-pip
   script:
     - mkdir -p build
     - mkdir -p dist-ubuntu1804
@@ -33,6 +34,7 @@ build_osx:
   before_script:
     - brew install cmake || brew upgrade cmake
     - brew install pcl || brew upgrade pcl
+    - brew install python3 || brew upgrade python3
   script:
     - mkdir -p build
     - mkdir -p dist-osx1012
@@ -71,6 +73,8 @@ build_win:
 deploy_all:
   stage: deploy
   image: inetprocess/gitlab-release
+  tags:
+  - linux
   only: 
   - tags
   dependencies: 
