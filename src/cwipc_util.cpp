@@ -26,7 +26,7 @@ protected:
     cwipc_pcl_pointcloud m_pc;
 public:
     cwipc_impl() : m_timestamp(0), m_pc(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_pc(pc) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_pc(pc) {}
 
     ~cwipc_impl() {}
 
@@ -38,12 +38,14 @@ public:
         m_timestamp = timestamp;
         cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
         for (int i=0; i<npoint; i++) {
-            (*pc)[i].x = pointData[i].x;
-            (*pc)[i].y = pointData[i].y;
-            (*pc)[i].z = pointData[i].z;
-            (*pc)[i].r = pointData[i].r;
-            (*pc)[i].g = pointData[i].g;
-            (*pc)[i].b = pointData[i].b;
+            cwipc_pcl_point point;
+            point.x = pointData[i].x;
+            point.y = pointData[i].y;
+            point.z = pointData[i].z;
+            point.r = pointData[i].r;
+            point.g = pointData[i].g;
+            point.b = pointData[i].b;
+            pc->points.push_back(point);
         }
         m_pc = pc;
         return npoint;
