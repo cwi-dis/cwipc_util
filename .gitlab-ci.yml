@@ -82,4 +82,4 @@ deploy_all:
   - build_osx
   - build_win
   script:
-    - gitlab-release --message 'New release' cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - gitlab-release --message 'New release' cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
