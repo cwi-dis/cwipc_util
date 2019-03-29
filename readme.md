@@ -12,13 +12,13 @@ The library contains utility functions to read and write a `cwipc` object from a
 
 ## Installing
 
-For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Linux) from <https://baltig.viaccess-orca.com:8443/VRT/nativeclient-group/cwipc_codec/releases>. Download the most recent release with a normal v_X_._Y_._Z_ name.
+For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Linux) from <https://baltig.viaccess-orca.com:8443/VRT/nativeclient-group/cwipc_util/releases>. Download the most recent release with a normal v_X_._Y_._Z_ name.
 
 ### Windows
 
 - Install PCL 1.8 from <https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.8.1/PCL-1.8.1-AllInOne-msvc2017-win64.exe>. Make sure you select the "add to %PATH% for all users" option.
 - Create a folder where you will install _all_ VRtogether DLLs and EXEs, for example `C:\vrtogether`.
-- Extract the `cwipc_codec_win1064_vX.Y.zip` file into this folder. This will create `bin`, `lib` and `include` folders inside the `C:\vrtogether` folder.
+- Extract the `cwipc_util_win1064_vX.Y.zip` file into this folder. This will create `bin`, `lib` and `include` folders inside the `C:\vrtogether` folder.
 - Add the `c:\vrtogether\bin` folder to the `%PATH%` system environment variable.
 
 ### OSX
@@ -28,7 +28,7 @@ For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Li
 
   ```
   cd /
-  [sudo] tar xfv .../cwipc_codec_osx1012_vX.Y.tgz
+  [sudo] tar xfv .../cwipc_util_osx1012_vX.Y.tgz
   ```
   
 ### Ubuntu 18.04
@@ -38,12 +38,12 @@ For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Li
 
   ```
   cd /
-  [sudo] tar xfv .../cwipc_codec_osx1012_vX.Y.tgz
+  [sudo] tar xfv .../cwipc_util_osx1012_vX.Y.tgz
   ```
 
 ## Building
 
-If you want to build _cwipc_util_ from source follow the next steps:
+If you want to build _cwipc\_util_ from source follow the next steps:
 
 ### OSX
 
