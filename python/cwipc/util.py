@@ -75,6 +75,12 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
     
+    _cwipc_util_dll_reference.cwipc_source_available.argtypes = [cwipc_source_p, ctypes.c_bool]
+    _cwipc_util_dll_reference.cwipc_source_available.restype = ctypes.c_bool
+    
+    _cwipc_util_dll_reference.cwipc_source_eof.argtypes = [cwipc_source_p]
+    _cwipc_util_dll_reference.cwipc_source_eof.restype = ctypes.c_bool
+    
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
@@ -190,12 +196,19 @@ class cwipc_source:
         assert self._cwipc_source
         return self._cwipc_source
             
-        
     def free(self):
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
         if self._cwipc_source:
             _cwipc_util_dll().cwipc_source_free(self._as_cwipc_source_p())
         self._cwipc_source = None
+        
+    def eof(self):
+        """Return True if no more pointclouds will be forthcoming"""
+        return _cwipc_util_dll().cwipc_source_eof(self._as_cwipc_source_p())
+        
+    def available(self, wait):
+        """Return True if a pointcloud is currently available. The wait parameter signals the source may wait a while."""
+        return _cwipc_util_dll().cwipc_source_available(self._as_cwipc_source_p(), wait)
         
     def get(self):
         """Get a cwipc (opaque pointcloud) from this source. Returns None if no more pointcloudes are forthcoming"""

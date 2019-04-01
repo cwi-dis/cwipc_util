@@ -24,14 +24,14 @@ if(Python3_FOUND)
 	# Ensure the cwipc_util dynamic library can be found by the tests
 	
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-		set_tests_properties(run_python_tests PROPERTIES ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
+		set_property(TEST run_python_tests PROPERTY ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-		set_tests_properties(run_python_tests PROPERTIES ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
+		set_property(TEST run_python_tests PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		# Jack doesn't understand why modifying PATH doesn't seem to work on Windows...
 		# Jack doesn't understand why we need the "Release" here, which should already be in CMAKE_RUNTIME_OUTPUT_DIRECTORY...
-		set_tests_properties(run_python_tests PROPERTIES ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
+		set_property(TEST run_python_tests PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
 	endif()
 endif()

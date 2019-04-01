@@ -156,6 +156,9 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic(self):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()
+        self.assertTrue(pcs.available(True))
+        self.assertTrue(pcs.available(False))
+        self.assertFalse(pcs.eof())
         pc = pcs.get()
         self._verify_pointcloud(pc)
         pc.free()
