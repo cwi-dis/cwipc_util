@@ -28,6 +28,14 @@ public:
     void free() {
         m_pointcloud = NULL;
     }
+    
+    bool eof() {
+    	return false;
+    }
+    
+    bool available(bool wait) {
+    	return true;
+    }
 
     cwipc* get() {
         if (m_pointcloud == NULL) return NULL;

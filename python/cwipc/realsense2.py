@@ -20,7 +20,7 @@ def _cwipc_realsense2_dll(libname=None):
     if libname == None:
         libname = ctypes.util.find_library('cwipc_realsense2')
         if not libname:
-            raise RuntimeError('Dynamic library cwipc_util not found')
+            raise RuntimeError('Dynamic library cwipc_realsense2 not found')
     assert libname
     _cwipc_realsense2_dll_reference = ctypes.CDLL(libname)
     

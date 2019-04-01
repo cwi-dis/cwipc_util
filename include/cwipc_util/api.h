@@ -2,6 +2,7 @@
 #define _cwipc_util_api_h_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // For Windows ensure that the symbols are imported from a DLL, unless we're compiling the DLL itself.
 #ifndef _CWIPC_UTIL_EXPORT
@@ -117,6 +118,20 @@ public:
      */
     virtual void free() = 0;
     
+    /** \brief Return true if no more pointclouds are forthcoming.
+     */
+    virtual bool eof() = 0;
+    
+    /** \brief Return true if a pointcloud is currently available.
+     * \param wait Set to true if the caller is willing to wait until a pointcloud is available.
+     * 
+     * If this cwipc_source is not multi-threading capable the wait parameter is ignored.
+     * If it is multi-threaded aware and no pointcloud is currently available 
+     * it may wait a reasonable amount of time (think: about a second) to see whether
+     * one becomes available.
+     */
+    virtual bool available(bool wait) = 0;
+    
     /** \brief Get a new pointcloud.
      * \return The new pointcloud.
      */
@@ -167,7 +182,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, uint64_t timestamp, c
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage);
+_CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **errorMessage);
 
 /** \brief Create cwipc pointcloud from external representation.
  * \param points Pointer to buffer with points.
@@ -207,7 +222,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_read_debugdump(const char *filename, char **erro
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage);
+_CWIPC_UTIL_EXPORT int cwipc_write_debugdump(const char *filename, cwipc *pc, char **errorMessage);
 
 
 /** \brief Deallocate the pointcloud data (C interface).
@@ -266,6 +281,22 @@ _CWIPC_UTIL_EXPORT cwipc* cwipc_source_get(cwipc_source *src);
  * \return The new pointcloud.
  */
 _CWIPC_UTIL_EXPORT void cwipc_source_free(cwipc_source *src);
+
+/** \brief Return true if no more pointclouds are forthcoming.
+ * \param src The cwipc_source object.
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_source_eof(cwipc_source *src);
+
+/** \brief Return true if a pointcloud is currently available.
+ * \param src The cwipc_source object.
+ * \param wait Set to true if the caller is willing to wait until a pointcloud is available.
+ * 
+ * If this cwipc_source is not multi-threading capable the wait parameter is ignored.
+ * If it is multi-threaded aware and no pointcloud is currently available 
+ * it may wait a reasonable amount of time (think: about a second) to see whether
+ * one becomes available.
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source *src, bool wait);
 
 /** \brief Generate synthetic pointclouds.
  *
