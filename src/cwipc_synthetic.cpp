@@ -54,14 +54,19 @@ private:
 		m_pointcloud = new_cwipc_pcl_pointcloud();
 		uint8_t r(255), g(15), b(15);
 		for (float z(-1.0f); z <= 1.0f; z += 0.005f) {
-			for (float angle(0.0); angle <= 360.0; angle += 1.0f) {
+			float angle(0.0);
+			while (angle <= 360.0) {
 				cwipc_pcl_point point;
-                point.x = 0.5f*cosf(pcl::deg2rad(angle))*(1.0f - z*z);
-                point.y = sinf(pcl::deg2rad(angle))*(1.0f - z*z);
+				point.x = 0.5f*cosf(pcl::deg2rad(angle))*(1.0f - z * z);
+				point.y = sinf(pcl::deg2rad(angle))*(1.0f - z * z);
 				point.z = z;
 				uint32_t rgb = (static_cast<uint32_t>(r) << 16 | static_cast<uint32_t>(g) << 8 | static_cast<uint32_t>(b));
 				point.rgb = *reinterpret_cast<float*>(&rgb);
 				m_pointcloud->points.push_back(point);
+				float r = sqrt(point.x*point.x + point.y*point.y);
+				if (r > 0.0)
+					angle += 0.27 / r;
+				else break;
 			}
 			if (z < 0.0) { r -= 1; g += 1; }
 			else { g -= 1; b += 1; }
