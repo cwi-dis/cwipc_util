@@ -86,6 +86,7 @@ deploy_all:
   - mkdir deployment-helpers
   - cd deployment-helpers
   - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@baltig.viaccess-orca.com:8443/VRT/deployment-group/Deployment
+  - cd ..
   script:
     - mkdir deliverables
     - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
