@@ -238,7 +238,7 @@ def cwipc_write(filename, pointcloud):
 def cwipc_from_points(points, timestamp):
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
     if not isinstance(points, ctypes.Array):
-        points = cwipc_point_array(points)
+        points = cwipc_point_array(values=points)
     addr = ctypes.addressof(points)
     nPoint = len(points)
     nBytes = ctypes.sizeof(points)

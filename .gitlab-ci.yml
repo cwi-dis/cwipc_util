@@ -8,6 +8,7 @@ build_linux:
   tags:
   - ubuntu1804
   before_script:
+    - printenv
     - apt-get update
     - apt-get install -y tzdata
     - apt-get install -y cmake
@@ -22,7 +23,7 @@ build_linux:
     - make test
     - make install DESTDIR=../dist-ubuntu1804
     - cd ..
-    - tar --directory dist-ubuntu1804 -cvaf cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz .
+    - tar --directory dist-ubuntu1804/usr/local -cvaf cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz .
   artifacts:
     paths:
       - cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz
@@ -44,7 +45,7 @@ build_osx:
     - make test
     - make install DESTDIR=../dist-osx1012
     - cd ..
-    - tar --directory dist-osx1012 -z -cvf cwipc_util_osx1012_$CI_BUILD_TAG.tgz .
+    - tar --directory dist-osx1012/usr/local -z -cvf cwipc_util_osx1012_$CI_BUILD_TAG.tgz .
   artifacts:
     paths:
       - cwipc_util_osx1012_$CI_BUILD_TAG.tgz
@@ -55,8 +56,6 @@ build_win:
   - win10
   allow_failure: true
   script:
-    - ls -l
-    - pwd
     - mkdir -p build
     - mkdir -p /cygdrive/c/dist-win/installed
     - export ziplocation=$(pwd)/cwipc_util_win1064_$CI_BUILD_TAG.zip
@@ -72,7 +71,6 @@ build_win:
       
 deploy_all:
   stage: deploy
-  image: inetprocess/gitlab-release
   tags:
   - linux
   only: 
@@ -81,5 +79,14 @@ deploy_all:
   - build_linux
   - build_osx
   - build_win
+  before_script:
+  - apt-get update
+  - apt-get install -y python3-pip
+  - python3 -m pip install requests
+  - mkdir deployment-helpers
+  - cd deployment-helpers
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@baltig.viaccess-orca.com:8443/VRT/deployment-group/Deployment
   script:
-    - gitlab-release --message 'New release' cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - mkdir deliverables
+    - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
+    - python3 deployment-helpers/Deployment/addReleaseToGitLab --cicd --notag cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip

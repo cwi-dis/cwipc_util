@@ -14,30 +14,32 @@ The library contains utility functions to read and write a `cwipc` object from a
 
 For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Linux) from <https://baltig.viaccess-orca.com:8443/VRT/nativeclient-group/cwipc_util/releases>. Download the most recent release with a normal v_X_._Y_._Z_ name.
 
+[![pipeline status](https://baltig.viaccess-orca.com:8443/VRT/nativeclient-group/cwipc_util/badges/master/pipeline.svg)](https://baltig.viaccess-orca.com:8443/VRT/nativeclient-group/cwipc_util/commits/master)
+
 ### Windows
 
 - Install PCL 1.8 from <https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.8.1/PCL-1.8.1-AllInOne-msvc2017-win64.exe>. Make sure you select the "add to %PATH% for all users" option.
-- Create a folder where you will install _all_ VRtogether DLLs and EXEs, for example `C:\vrtogether`.
-- Extract the `cwipc_util_win1064_vX.Y.zip` file into this folder. This will create `bin`, `lib` and `include` folders inside the `C:\vrtogether` folder.
-- Add the `c:\vrtogether\bin` folder to the `%PATH%` system environment variable.
+- Create a folder where you will install _all_ VRtogether DLLs and EXEs, for example `C:\vrtogether\installed`.
+- Extract the `cwipc_util_win1064_vX.Y.zip` file into `c:\vrtogether`. This will create `bin`, `lib` and `include` folders inside the `C:\vrtogether\installed` folder.
+- Add the `c:\vrtogether\installed\bin` folder to the `%PATH%` system environment variable.
 
 ### OSX
 
 - Install _brew_, and then `brew install pcl`.
-- Extract the gzip file in the root directory, `/`. This will put the actual contents into `/usr/local`:
+- Extract the gzip file into `/usr/local`:
 
   ```
-  cd /
+  cd /usr/local
   [sudo] tar xfv .../cwipc_util_osx1012_vX.Y.tgz
   ```
   
 ### Ubuntu 18.04
 
 - Install _PCL_ with `apt-get install libpcl-dev`.
-- Extract the gzip file in the root directory, `/`. This will put the actual contents into `/usr/local`:
+- Extract the gzip file into `/usr/local`:
 
   ```
-  cd /
+  cd /usr/local
   [sudo] tar xfv .../cwipc_util_osx1012_vX.Y.tgz
   ```
 
