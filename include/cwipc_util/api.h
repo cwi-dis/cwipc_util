@@ -267,18 +267,18 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVe
  */
 _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
 
+/** \brief Get a new pointcloud (C interface).
+ * \param src The cwipc_source object.
+ * \return The new pointcloud.
+ */
+_CWIPC_UTIL_EXPORT cwipc* cwipc_source_get(cwipc_source *src);
+
 /** \brief Deallocate the pointcloud source (C interface).
  * \param src The cwipc_source object.
  *
  * Because the pointcloud source may be used in a different implementation
  * language or DLL than where it is implemented we do not count on refcounting
  * and such. Call this method if you no longer need the source.
- */
-_CWIPC_UTIL_EXPORT cwipc* cwipc_source_get(cwipc_source *src);
-
-/** \brief Get a new pointcloud (C interface).
- * \param src The cwipc_source object.
- * \return The new pointcloud.
  */
 _CWIPC_UTIL_EXPORT void cwipc_source_free(cwipc_source *src);
 
