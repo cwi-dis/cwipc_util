@@ -67,7 +67,7 @@ public:
     virtual void free() = 0;
     
     /** \brief Time this pointcloud was captured.
-     * \return Time in microseconds, since some unspecified origin.
+     * \return Time in milliseconds, since some unspecified origin.
      */
     virtual uint64_t timestamp() = 0;
     
@@ -240,7 +240,7 @@ _CWIPC_UTIL_EXPORT void cwipc_free(cwipc *pc);
 
 /** \brief Time this pointcloud was captured (C interface).
  * \param pc The cwipc object.
- * \return Time in microseconds, since some unspecified origin.
+ * \return Time in milliseconds, since some unspecified origin.
  */
 _CWIPC_UTIL_EXPORT uint64_t cwipc_timestamp(cwipc *pc);
 
