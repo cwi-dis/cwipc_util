@@ -30,8 +30,6 @@ def _cwipc_codec_dll(libname=None):
     assert libname
     _cwipc_codec_dll_reference = ctypes.CDLL(libname)
     
-    _cwipc_codec_dll_reference.cwipc_decompress.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    _cwipc_codec_dll_reference.cwipc_decompress.restype = cwipc_p
 
     _cwipc_codec_dll_reference.cwipc_new_encoder.argtypes = [ctypes.c_int, ctypes.POINTER(cwipc_encoder_params)]
     _cwipc_codec_dll_reference.cwipc_new_encoder.restype = cwipc_encoder_p
@@ -41,6 +39,8 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_encoder_available.restype = ctypes.c_bool
     _cwipc_codec_dll_reference.cwipc_encoder_eof.argtypes = [cwipc_encoder_p]
     _cwipc_codec_dll_reference.cwipc_encoder_eof.restype = ctypes.c_bool
+    _cwipc_codec_dll_reference.cwipc_encoder_at_gop_boundary.argtypes = [cwipc_encoder_p]
+    _cwipc_codec_dll_reference.cwipc_encoder_at_gop_boundary.restype = ctypes.c_bool
     _cwipc_codec_dll_reference.cwipc_encoder_feed.argtypes = [cwipc_encoder_p, cwipc_p]
     _cwipc_codec_dll_reference.cwipc_encoder_feed.restype = None
     _cwipc_codec_dll_reference.cwipc_encoder_get_encoded_size.argtypes = [cwipc_encoder_p]
@@ -89,6 +89,10 @@ class cwipc_encoder_wrapper:
         rv = _cwipc_codec_dll().cwipc_encoder_eof(self._as_cwipc_encoder_p())
         return rv
         
+    def at_gop_boundary(self):
+        rv = _cwipc_codec_dll().cwipc_encoder_at_gop_boundary(self._as_cwipc_encoder_p())
+        return rv
+        
     def available(self, wait):
         rv = _cwipc_codec_dll().cwipc_encoder_available(self._as_cwipc_encoder_p(), wait)
         return rv
@@ -128,14 +132,6 @@ class cwipc_decoder_wrapper(cwipc_source):
         ptr = ctypes.cast(buffer, ctypes.c_void_p)
         rv = _cwipc_codec_dll().cwipc_decoder_feed(self._as_cwipc_decoder_p(), ptr, length)
         return rv
-        
-def cwipc_decompress(data):
-    """Decompress a compressed pointcloud. Returns cwipc."""
-    length = len(data)
-    rv = _cwipc_codec_dll().cwipc_decompress(ctypes.cast(data, ctypes.c_void_p), length)
-    if rv:
-        return cwipc(rv)
-    return None
     
 def cwipc_new_encoder(version=None, params=None, **kwargs):
     if version == None:
@@ -154,21 +150,4 @@ def cwipc_new_decoder():
     if not obj:
         return None
     return cwipc_decoder_wrapper(obj)
-    
-
-def main():
-    import sys
-    if len(sys.argv) != 2:
-        print('Usage: %s cwipcfile' % sys.argv[0])
-        sys.exit(1)
-    data = open(sys.argv[1], 'rb').read()
-    pc = cwipc_decompress(data)
-    if not pc:
-        print('Could not read pointcloud from %s' % sys.argv[1])
-    points = pc.get_points()
-    print('File contained %d points' % len(points))
-    
-if __name__ == '__main__':
-    main()
-    
     
