@@ -9,9 +9,45 @@
 #include <pcl/point_types.h>
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
+struct EIGEN_ALIGN16 _PointXYZRGBMask
+{
+    PCL_ADD_POINT4D; // This adds the members x,y,z which can also be accessed using the point (which is float[4])
+    PCL_ADD_RGB;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+struct EIGEN_ALIGN16 PointXYZRGBMask : public _PointXYZRGBMask
+{
+    inline PointXYZRGBMask (const _PointXYZRGBMask &p)
+    {
+        x = p.x; y = p.y; z = p.z; data[3] = 1.0f;
+        rgba = p.rgba;
+    }
+    
+    inline PointXYZRGBMask ()
+    {
+        x = y = z = 0.0f;
+        data[3] = 1.0f;
+        r = g = b = 0;
+        a = 0;
+    }
+    
+    friend std::ostream& operator << (std::ostream& os, const PointXYZRGBMask& p);
+};
+
+PCL_EXPORTS std::ostream& operator << (std::ostream& os, const PointXYZRGBMask& p);
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (_PointXYZRGBMask,           // here we assume a XYZ + "test" (as fields)
+                                   (float, x, x)
+                                   (float, y, y)
+                                   (float, z, z)
+                                   (uint32_t, rgba, rgba)
+                                   )
+POINT_CLOUD_REGISTER_POINT_WRAPPER(PointXYZRGBMask, _PointXYZRGBMask)
+
 /** \brief PCL point, as supported by this library.
  */
-typedef pcl::PointXYZRGB cwipc_pcl_point;
+typedef PointXYZRGBMask cwipc_pcl_point;
 
 /** \brief PCL Pointcloud, as supported by this library.
  */
@@ -19,7 +55,7 @@ typedef  boost::shared_ptr<pcl::PointCloud<cwipc_pcl_point>> cwipc_pcl_pointclou
 
 /** \brief Allocate an empty cwipc_pcl_pointcloud.
  */
-inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_pointcloud(new pcl::PointCloud<pcl::PointXYZRGB>); }
+inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_pointcloud(new pcl::PointCloud<cwipc_pcl_point>); }
 #define _CWIPC_PCL_POINTCLOUD_DEFINED
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
 
