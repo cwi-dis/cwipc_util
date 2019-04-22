@@ -5,7 +5,6 @@
 
 int main(int argc, char** argv)
 {
-    char *message = NULL;
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " count directory" << std::endl;
         std::cerr << "Creates COUNT synthetic pointclouds and stores the PLY files in the given DIRECTORY" << std::endl;
