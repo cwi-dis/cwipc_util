@@ -7,12 +7,12 @@ build_linux:
   stage: build
   tags:
   - ubuntu1804
-#  before_script:
-#    - apt-get update
-#    - apt-get install -y tzdata
-#    - apt-get install -y cmake
-#    - apt-get install -y libpcl-dev
-#    - apt-get install -y python3-pip
+  before_script:
+    - apt-get update
+    - apt-get install -y tzdata
+    - apt-get install -y cmake
+    - apt-get install -y libpcl-dev
+    - apt-get install -y python3-pip
   script:
     - mkdir -p build
     - mkdir -p dist-ubuntu1804
