@@ -7,13 +7,12 @@ build_linux:
   stage: build
   tags:
   - ubuntu1804
-  before_script:
-    - printenv
-    - apt-get update
-    - apt-get install -y tzdata
-    - apt-get install -y cmake
-    - apt-get install -y libpcl-dev
-    - apt-get install -y python3-pip
+#  before_script:
+#    - apt-get update
+#    - apt-get install -y tzdata
+#    - apt-get install -y cmake
+#    - apt-get install -y libpcl-dev
+#    - apt-get install -y python3-pip
   script:
     - mkdir -p build
     - mkdir -p dist-ubuntu1804
@@ -32,10 +31,10 @@ build_osx:
   stage: build
   tags:
   - osx1012
-  before_script:
-    - brew install cmake || brew upgrade cmake
-    - brew install pcl || brew upgrade pcl
-    - brew install python3 || brew upgrade python3
+#  before_script:
+#    - brew install cmake || brew upgrade cmake
+#    - brew install pcl || brew upgrade pcl
+#    - brew install python3 || brew upgrade python3
   script:
     - mkdir -p build
     - mkdir -p dist-osx1012
