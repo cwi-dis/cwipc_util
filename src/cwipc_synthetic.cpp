@@ -63,7 +63,7 @@ private:
 				point.r = r;
 				point.g = g;
 				point.b = b;
-				//point.a = z < 0 ? 1 : 2;
+				point.a = z < 0 ? 1 : 2;
 				m_pointcloud->points.push_back(point);
 				float r = sqrt(point.x*point.x + point.y*point.y);
 				if (r > 0.0)
