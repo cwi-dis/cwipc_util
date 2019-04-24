@@ -92,7 +92,7 @@ def _cwipc_util_dll(libname=None):
 # C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_POINT_VERSION helps a bit.
 #
 class cwipc_point(ctypes.Structure):
-    """Point in a pointcloud. Fields ar x,y,z (float coordinates) and r, g, b (color values 0..255)"""
+    """Point in a pointcloud. Fields ar x,y,z (float coordinates) r, g, b (color values 0..255) tile (8 bit number)"""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -100,6 +100,7 @@ class cwipc_point(ctypes.Structure):
         ("r", ctypes.c_ubyte),
         ("g", ctypes.c_ubyte),
         ("b", ctypes.c_ubyte),
+        ("tile", ctypes.c_ubyte),
     ]
     
     def __eq__(self, other):
@@ -114,10 +115,10 @@ class cwipc_point(ctypes.Structure):
                 return True
         return False
             
-CWIPC_POINT_VERSION = 0x20190209
+CWIPC_POINT_VERSION = 0x20190424
 
 def cwipc_point_array(*, count=None, values=()):
-    """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b), or both"""
+    """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
     if count == None:
         count = len(values)
     allocator = cwipc_point * count

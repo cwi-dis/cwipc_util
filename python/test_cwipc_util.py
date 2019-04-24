@@ -41,7 +41,7 @@ class TestApi(unittest.TestCase):
 
     def test_point(self):
         """Can a cwipc_point be created and the values read back?"""
-        p = cwipc.cwipc_point(1, 2, 3, 0x10, 0x20, 0x30)
+        p = cwipc.cwipc_point(1, 2, 3, 0x10, 0x20, 0x30, 0)
         self.assertEqual(p.x, 1)
         self.assertEqual(p.y, 2)
         self.assertEqual(p.z, 3)
@@ -69,7 +69,7 @@ class TestApi(unittest.TestCase):
                     
     def test_pointarray_filled(self):
         """Can a cwipc_point array be created with values and the values read back?"""
-        p = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30), (4, 5, 6, 0x40, 0x50, 0x60)])
+        p = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 0), (4, 5, 6, 0x40, 0x50, 0x60, 0)])
         self.assertEqual(len(p), 2)
         self.assertEqual(p[0].x, 1)
         self.assertEqual(p[0].y, 2)
@@ -98,7 +98,7 @@ class TestApi(unittest.TestCase):
     
     def test_cwipc_from_points(self):
         """Can we create a cwipc object from a list of values"""
-        points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30), (4, 5, 6, 0x40, 0x50, 0x60)])
+        points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 0), (4, 5, 6, 0x40, 0x50, 0x60, 0)])
         pc = cwipc.cwipc_from_points(points, 0)
         newpoints = pc.get_points()
         self.assertEqual(len(points), len(newpoints))
@@ -172,7 +172,7 @@ class TestApi(unittest.TestCase):
         self.assertNotEqual(p0, p1)
     
     def _build_pointcloud(self):
-         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30), (4, 5, 6, 0x40, 0x50, 0x60)])
+         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 0), (4, 5, 6, 0x40, 0x50, 0x60, 0)])
          return cwipc.cwipc_from_points(points, 0)
    
 if __name__ == '__main__':

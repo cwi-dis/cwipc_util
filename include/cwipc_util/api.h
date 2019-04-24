@@ -19,12 +19,13 @@
  *
  */
 struct cwipc_point {
-    float x;	/**< coordinate */
-    float y;	/**< coordinate */
-    float z;	/**< coordinate */
-    uint8_t r;	/**< color */
-    uint8_t g;	/**< color */
-    uint8_t b;	/**< color */
+    float x;		/**< coordinate */
+    float y;		/**< coordinate */
+    float z;		/**< coordinate */
+    uint8_t r;		/**< color */
+    uint8_t g;		/**< color */
+    uint8_t b;		/**< color */
+    uint8_t tile;	/**< tile number (can also be interpreted as mask of contributing cameras) */
 };
 /** \brief Version of cwipc_point structure.
  *
@@ -32,7 +33,7 @@ struct cwipc_point {
  * this library. Therefore when obtaining an external representation you should pass
  * in this constant to ensure that the data is not delivered in an incorrect form.
  */
-#define CWIPC_POINT_VERSION 0x20190209
+#define CWIPC_POINT_VERSION 0x20190424
 
 #ifdef __cplusplus
 
