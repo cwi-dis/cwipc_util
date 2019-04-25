@@ -162,5 +162,5 @@ def cwipc_downsample(pc, voxelsize):
     return cwipc(rv)
     
 def cwipc_tilefilter(pc, tile):
-    rv = _cwipc_codec_dll().cwipc_downsample(pc._as_cwipc_p(), tile)
+    rv = _cwipc_codec_dll().cwipc_tilefilter(pc._as_cwipc_p(), tile)
     return cwipc(rv)
