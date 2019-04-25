@@ -53,6 +53,12 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_decoder_feed.argtypes = [cwipc_decoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_decoder_feed.restype = None
 
+    _cwipc_codec_dll_reference.cwipc_downsample.argtypes = [cwipc_p, ctypes.c_float]
+    _cwipc_codec_dll_reference.cwipc_downsample.restype = cwipc_p
+
+    _cwipc_codec_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
+    _cwipc_codec_dll_reference.cwipc_tilefilter.restype = cwipc_p
+
 
     return _cwipc_codec_dll_reference
 
@@ -151,3 +157,10 @@ def cwipc_new_decoder():
         return None
     return cwipc_decoder_wrapper(obj)
     
+def cwipc_downsample(pc, voxelsize):
+    rv = _cwipc_codec_dll().cwipc_downsample(pc._as_cwipc_p(), voxelsize)
+    return cwipc(rv)
+    
+def cwipc_tilefilter(pc, tile):
+    rv = _cwipc_codec_dll().cwipc_downsample(pc._as_cwipc_p(), tile)
+    return cwipc(rv)
