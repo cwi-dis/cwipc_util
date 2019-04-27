@@ -138,14 +138,21 @@ class cwipc_decoder_wrapper(cwipc_source):
         ptr = ctypes.cast(buffer, ctypes.c_void_p)
         rv = _cwipc_codec_dll().cwipc_decoder_feed(self._as_cwipc_decoder_p(), ptr, length)
         return rv
-    
+
+def cwipc_new_encoder_params(**kwargs):
+    params = cwipc_encoder_params(1, False, 1, 0, 7, 8, 85, 16)
+    for k, v in kwargs.items():
+        assert hasattr(params, k), 'No encoder_param named {}'.format(k)
+        setattr(params, k, v)
+    return params
+
 def cwipc_new_encoder(version=None, params=None, **kwargs):
     if version == None:
         version = CWIPC_ENCODER_PARAM_VERSION
     if isinstance(params, cwipc_encoder_params):
         pass
     else:
-        params = cwipc_encoder_params(1, False, 1, 0, 7, 8, 85, 16, **kwargs)
+        params = cwipc_new_encoder_params(**kwargs)
     obj = _cwipc_codec_dll().cwipc_new_encoder(version, params)
     if not obj:
         return None
