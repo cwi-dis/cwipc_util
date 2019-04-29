@@ -162,7 +162,6 @@ class cwipc:
         """Get the pointcloud data as a cwipc_point_array"""
         if self._points == None:
             self._get_points_and_bytes()
-        assert self._points
         return self._points
         
     def get_bytes(self):
@@ -180,8 +179,6 @@ class cwipc:
         bufferArg = bufferCtypesType.from_buffer(buffer)
         nPoints = _cwipc_util_dll().cwipc_copy_uncompressed(self._as_cwipc_p(), bufferArg, nBytes)
         points = cwipc_point_array(count=nPoints, values=buffer)
-        assert points
-        assert buffer
         self._bytes = buffer
         self._points = points
 
