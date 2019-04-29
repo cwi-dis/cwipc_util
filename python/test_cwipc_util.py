@@ -98,7 +98,7 @@ class TestApi(unittest.TestCase):
     
     def test_cwipc_from_points(self):
         """Can we create a cwipc object from a list of values"""
-        points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 0), (4, 5, 6, 0x40, 0x50, 0x60, 0)])
+        points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
         pc = cwipc.cwipc_from_points(points, 0)
         newpoints = pc.get_points()
         self.assertEqual(len(points), len(newpoints))
@@ -111,6 +111,7 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.r, np.r)
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
+            self.assertEqual(op.tile, np.tile)
     
     def test_cwipc_read(self):
         """Can we read a cwipc from a ply file?"""
@@ -164,15 +165,19 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
-    def _verify_pointcloud(self, pc):
+    def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()
         self.assertGreater(len(points), 1)
         p0 = points[0].x, points[0].y, points[0].z
         p1 = points[len(points)-1].x, points[len(points)-1].y, points[len(points)-1].z
         self.assertNotEqual(p0, p1)
+        if tiled:
+            t0 = points[0].tile
+            t1 = points[len(points)-1].tile
+            self.assertNotEqual(t0, t1)
     
     def _build_pointcloud(self):
-         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 0), (4, 5, 6, 0x40, 0x50, 0x60, 0)])
+         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
          return cwipc.cwipc_from_points(points, 0)
    
 if __name__ == '__main__':

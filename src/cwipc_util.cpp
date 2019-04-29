@@ -45,6 +45,7 @@ public:
             point.r = pointData[i].r;
             point.g = pointData[i].g;
             point.b = pointData[i].b;
+            point.a = pointData[i].tile;
             pc->points.push_back(point);
         }
         m_pc = pc;
@@ -75,6 +76,7 @@ public:
             pointData[i].r = (*m_pc)[i].r;
             pointData[i].g = (*m_pc)[i].g;
             pointData[i].b = (*m_pc)[i].b;
+            pointData[i].tile = (*m_pc)[i].a;
         }
         // iterate_over_octree();
         return npoint;
