@@ -23,10 +23,11 @@ struct dump_header {
 class cwipc_impl : public cwipc {
 protected:
     uint64_t m_timestamp;
+    float m_cellsize;
     cwipc_pcl_pointcloud m_pc;
 public:
-    cwipc_impl() : m_timestamp(0), m_pc(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_pc(pc) {}
+    cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc) {}
 
     ~cwipc_impl() {}
 
@@ -58,6 +59,14 @@ public:
     
     uint64_t timestamp() {
         return m_timestamp;
+    }
+    
+    float cellsize() {
+        return m_cellsize;
+    }
+    
+    void _set_cellsize(float cellsize) {
+        m_cellsize = cellsize;
     }
     
     size_t get_uncompressed_size(uint32_t dataVersion) {
@@ -215,6 +224,18 @@ uint64_t
 cwipc_timestamp(cwipc *pc)
 {
     return pc->timestamp();
+}
+
+float
+cwipc_cellsize(cwipc *pc)
+{
+    return pc->cellsize();
+}
+
+void
+cwipc__set_cellsize(cwipc *pc, float cellsize)
+{
+    pc->_set_cellsize(cellsize);
 }
 
 size_t

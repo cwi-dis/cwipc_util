@@ -123,6 +123,16 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(newpoints), 0)
         pc.free()
     
+    def test_cwipc_timestamp_cellsize(self):
+        """Can we set and retrieve the timestamp and cellsize in a cwipc"""
+        timestamp = 0x11223344556677
+        pc = cwipc.cwipc_from_points([], timestamp)
+        self.assertEqual(pc.timestamp(), timestamp)
+        self.assertEqual(pc.cellsize(), 0)
+        pc._set_cellsize(1.0)
+        self.assertEqual(pc.cellsize(), 1.0)
+        pc.free()
+
     def test_cwipc_read(self):
         """Can we read a cwipc from a ply file?"""
         pc = cwipc.cwipc_read(PLY_FILENAME, 1234)

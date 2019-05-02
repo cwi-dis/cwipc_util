@@ -66,6 +66,14 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_timestamp.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_timestamp.restype = ctypes.c_ulonglong
     
+    if hasattr(_cwipc_util_dll_reference, 'cwipc_cellsize'):
+        _cwipc_util_dll_reference.cwipc_cellsize.argtypes = [cwipc_p]
+        _cwipc_util_dll_reference.cwipc_cellsize.restype = ctypes.c_float
+    
+    if hasattr(_cwipc_util_dll_reference, 'cwipc__set_cellsize'):
+        _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
+        _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
+    
     _cwipc_util_dll_reference.cwipc_get_uncompressed_size.argtypes = [cwipc_p, ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_get_uncompressed_size.restype = ctypes.c_size_t
     
@@ -152,6 +160,15 @@ class cwipc:
         """Returns timestamp (microseconds) when this pointcloud was captured (relative to some unspecified origin)"""
         rv = _cwipc_util_dll().cwipc_timestamp(self._as_cwipc_p())
         return rv
+        
+    def cellsize(self):
+        """Returns the size of the cells this pointcloud represents (0 if unknown)"""
+        rv = _cwipc_util_dll().cwipc_cellsize(self._as_cwipc_p())
+        return rv
+        
+    def _set_cellsize(self, cellsize):
+        """Internal use only: set the size of the cells this pointcloud represents"""
+        _cwipc_util_dll().cwipc__set_cellsize(self._as_cwipc_p(), cellsize)
         
     def get_uncompressed_size(self):
         """Get the size in bytes of the uncompressed pointcloud data"""

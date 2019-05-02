@@ -72,12 +72,25 @@ public:
      */
     virtual uint64_t timestamp() = 0;
     
+    /** \brief Returns the grid cell size at which this pointcloud was created, if known.
+     * \return Either a size (in the same coordinates as x, y and z) or 0 if unknown.
+     *
+     * If the pointcloud is to be displayed the number returned by this call is a good
+     * guess for a pointsize to use to show an obect that doesn't have any holes in it.
+     */
+    virtual float cellsize() = 0;
+    
+    /** \brief Semi-private method to initialize the cellsize. Not for general use.
+     */
+    virtual void _set_cellsize(float cellsize) = 0;
+    
     /** \brief Returns size (in bytes) an external representation of this pointcloud needs.
      * \param dataVersion The type of cwipc_point data you want. Pass in CWIPC_POINT_VERSION
      *   to ensure the data is compatible with your code.
      * \return The number of bytes needed (or zero in case the format does not match
      *   or no points are available).
      */
+    
     virtual size_t get_uncompressed_size(uint32_t dataVersion) = 0;
     
 	/** \brief Get points from pointcloud in external representation format.
@@ -244,6 +257,18 @@ _CWIPC_UTIL_EXPORT void cwipc_free(cwipc *pc);
  * \return Time in milliseconds, since some unspecified origin.
  */
 _CWIPC_UTIL_EXPORT uint64_t cwipc_timestamp(cwipc *pc);
+
+/** \brief Returns the grid cell size at which this pointcloud was created, if known.
+ * \return Either a size (in the same coordinates as x, y and z) or 0 if unknown.
+ *
+ * If the pointcloud is to be displayed the number returned by this call is a good
+ * guess for a pointsize to use to show an obect that doesn't have any holes in it.
+ */
+_CWIPC_UTIL_EXPORT float cwipc_cellsize(cwipc *pc);
+    
+/** \brief Semi-private method to initialize the cellsize. Not for general use.
+ */
+_CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc *pc, float cellsize);
 
 /** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
  * \param pc The cwipc object.
