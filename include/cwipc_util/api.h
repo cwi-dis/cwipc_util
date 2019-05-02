@@ -35,6 +35,23 @@ struct cwipc_point {
  */
 #define CWIPC_POINT_VERSION 0x20190424
 
+/** \brief Information on a tile.
+ *
+ * Information on tiles with a certain tile number, indicating which way the tile is pointing.
+ */
+struct cwipc_tileinfo {
+    float nx;   /**< Normal coordinate of the direction the tile is facing */
+    float ny;   /**< Normal coordinate of the direction the tile is facing */
+    float nz;   /**< Normal coordinate of the direction the tile is facing */
+};
+/** \brief Version of cwipc_tileinfo structure.
+ *
+ * The external representation of a tileinfo structure may change between versions of
+ * this library. Therefore when obtaining an external representation you should pass
+ * in this constant to ensure that the data is not delivered in an incorrect form.
+ */
+#define CWIPC_TILEINFO_VERSION 0x20190502
+
 #ifdef __cplusplus
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
@@ -138,9 +155,9 @@ public:
     
     /** \brief Return true if a pointcloud is currently available.
      * \param wait Set to true if the caller is willing to wait until a pointcloud is available.
-     * 
+     *
      * If this cwipc_source is not multi-threading capable the wait parameter is ignored.
-     * If it is multi-threaded aware and no pointcloud is currently available 
+     * If it is multi-threaded aware and no pointcloud is currently available
      * it may wait a reasonable amount of time (think: about a second) to see whether
      * one becomes available.
      */
@@ -150,6 +167,43 @@ public:
      * \return The new pointcloud.
      */
     virtual cwipc* get() = 0;
+};
+
+/** \brief A generator of tiled pointclouds, abstract C++ interface.
+ *
+ * This interface is provided by capturers and decoders and such that can
+ * return pointclouds with tiling information. It is a subclass of
+ * cwipc_source with extra methods to obtain information on available
+ * tiles in the produced pointclouds.
+ */
+class cwipc_tiledsource : cwipc_source {
+public:
+    virtual ~cwipc_tiledsource() {};
+    
+    virtual void free() = 0;
+    virtual bool eof() = 0;
+    virtual bool available(bool wait) = 0;
+    virtual cwipc* get() = 0;
+    
+    /** \brief Return maximum number of possible tiles returned.
+     *
+     * Pointclouds produced by this source will (even after tile-processing)
+     * never contain more tiles than this.
+     * Note that this number may therefore be higher than the actual number of
+     * tiles ever occurring in a pointcloud: a next tiling step may combine
+     * points into new tiles.
+     */
+    virtual int maxtile() = 0;
+    
+    /** \brief Return information on a tile number.
+     * \param tilenumber The tile on which to obtain information.
+     * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
+     * \param infoVersion Version number for the cwipc_tileinfo structure.
+     * \return A boolean that is true if the tile could ever exist.
+     *
+     * Tile number 0 is a special case, representing the whole pointcloud.
+     */
+    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion) = 0;
 };
 #else
 
@@ -170,6 +224,12 @@ typedef struct _cwipc_pcl_pointcloud {
 typedef struct _cwipc_source {
     int _dummy;
 } cwipc_source;
+
+/** \brief Abstract interface to a cwipc tiled pointcloud source. C-compatible placeholder.
+ */
+typedef struct _cwipc_tiledsource {
+    struct _cwipc_source source;
+} cwipc_tiledsource;
 #endif
 
 #ifdef __cplusplus
@@ -323,6 +383,27 @@ _CWIPC_UTIL_EXPORT bool cwipc_source_eof(cwipc_source *src);
  * one becomes available.
  */
 _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source *src, bool wait);
+
+/** \brief Return maximum number of possible tiles returned.
+ * \param src The cwipc_tiledsource object.
+ *
+ * Pointclouds produced by this source will (even after tile-processing)
+ * never contain more tiles than this.
+ * Note that this number may therefore be higher than the actual number of
+ * tiles ever occurring in a pointcloud: a next tiling step may combine
+ * points into new tiles.
+ */
+_CWIPC_UTIL_EXPORT int cwipc_tiledsource_maxtile(cwipc_tiledsource *src);
+
+/** \brief Return information on a tile number.
+ * \param tilenumber The tile on which to obtain information.
+ * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
+ * \param infoVersion Version number for the cwipc_tileinfo structure.
+ * \return A boolean that is true if the tile could ever exist.
+ *
+ * Tile number 0 is a special case, representing the whole pointcloud.
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion);
 
 /** \brief Generate synthetic pointclouds.
  *
