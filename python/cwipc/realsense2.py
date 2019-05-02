@@ -27,12 +27,19 @@ def _cwipc_realsense2_dll(libname=None):
     _cwipc_realsense2_dll_reference.cwipc_realsense2.argtypes = []
     _cwipc_realsense2_dll_reference.cwipc_realsense2.restype = cwipc_source_p
 
+    if hasattr(_cwipc_realsense2_dll_reference, 'cwipc_realsense2_ex'):
+        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.argtypes = [ctypes.c_char_p]
+        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.restype = cwipc_source_p
+
 
     return _cwipc_realsense2_dll_reference
         
-def cwipc_realsense2():
+def cwipc_realsense2(conffile=None):
     """Returns a cwipc_source object that grabs from a realsense2 camera and returns cwipc object on every get() call."""
-    rv = _cwipc_realsense2_dll().cwipc_realsense2()
+    if conffile:
+        rv = _cwipc_realsense2_dll().cwipc_realsense2_ex(conffile.encode('utf8'))
+    else:
+        rv = _cwipc_realsense2_dll().cwipc_realsense2()
     return cwipc_source(rv)
      
 def main():
