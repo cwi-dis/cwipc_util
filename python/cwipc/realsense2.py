@@ -1,7 +1,7 @@
 import ctypes
 import ctypes.util
-from .util import CwipcError, cwipc_source
-from .util import cwipc_source_p
+from .util import CwipcError, cwipc_tiledsource
+from .util import cwipc_tiledsource_p
 
 __all__ = [
     "cwpic_realsense2"
@@ -25,11 +25,11 @@ def _cwipc_realsense2_dll(libname=None):
     _cwipc_realsense2_dll_reference = ctypes.CDLL(libname)
     
     _cwipc_realsense2_dll_reference.cwipc_realsense2.argtypes = []
-    _cwipc_realsense2_dll_reference.cwipc_realsense2.restype = cwipc_source_p
+    _cwipc_realsense2_dll_reference.cwipc_realsense2.restype = cwipc_tiledsource_p
 
     if hasattr(_cwipc_realsense2_dll_reference, 'cwipc_realsense2_ex'):
         _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.argtypes = [ctypes.c_char_p]
-        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.restype = cwipc_source_p
+        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.restype = cwipc_tiledsource_p
 
 
     return _cwipc_realsense2_dll_reference
@@ -40,7 +40,7 @@ def cwipc_realsense2(conffile=None):
         rv = _cwipc_realsense2_dll().cwipc_realsense2_ex(conffile.encode('utf8'))
     else:
         rv = _cwipc_realsense2_dll().cwipc_realsense2()
-    return cwipc_source(rv)
+    return cwipc_tiledsource(rv)
      
 def main():
     grabber = cwipc_realsense2()
