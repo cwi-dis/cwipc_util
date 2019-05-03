@@ -274,3 +274,15 @@ cwipc_source_available(cwipc_source *src, bool wait)
 	return src->available(wait);
 }
 
+int
+cwipc_tiledsource_maxtile(cwipc_tiledsource *src)
+{
+	return src->maxtile();
+}
+
+bool
+cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion)
+{
+	return src->get_tileinfo(tilenum, tileinfo, infoVersion);
+}
+

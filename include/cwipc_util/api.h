@@ -38,11 +38,16 @@ struct cwipc_point {
 /** \brief Information on a tile.
  *
  * Information on tiles with a certain tile number, indicating which way the tile is pointing.
+ * This information is optimized for the VRTogether use case, where the cameras are
+ * expected to be on a plane that is perpendicular to Y=0, and coordinates are X left-to-right,
+ * Y bottom-to-top and Z front-to-back.
+ * Tiles that face in no particular direction have nx=nz=0 and cwangle=ccwangle=180.
  */
 struct cwipc_tileinfo {
     float nx;   /**< Normal coordinate of the direction the tile is facing */
-    float ny;   /**< Normal coordinate of the direction the tile is facing */
     float nz;   /**< Normal coordinate of the direction the tile is facing */
+    float cwangle; /**< Clockwise extent of pointcloud (degrees) */
+    float ccwangle; /**< Counterclockwise extent of pointcloud (degrees) */
 };
 /** \brief Version of cwipc_tileinfo structure.
  *
