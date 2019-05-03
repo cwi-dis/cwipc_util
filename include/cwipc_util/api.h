@@ -181,7 +181,7 @@ public:
  * cwipc_source with extra methods to obtain information on available
  * tiles in the produced pointclouds.
  */
-class cwipc_tiledsource : cwipc_source {
+class cwipc_tiledsource : public cwipc_source {
 public:
     virtual ~cwipc_tiledsource() {};
     
@@ -416,7 +416,7 @@ _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, i
  * of the object now usually called the "water melon". It is intended for testing
  * purposes.
  */
-_CWIPC_UTIL_EXPORT cwipc_source *cwipc_synthetic();
+_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic();
 
 #ifdef __cplusplus
 }

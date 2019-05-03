@@ -12,7 +12,7 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
-class cwipc_source_synthetic_impl : public cwipc_source {
+class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
     float m_angle;
     cwipc_pcl_pointcloud m_pointcloud;
@@ -47,7 +47,27 @@ public:
 		transformPointCloud(*m_pointcloud, *newPC, transform);
         return cwipc_from_pcl(newPC, timestamp, NULL);
     }
-    
+
+	int maxtile() { return 3; }
+
+    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion) {
+    	static cwipc_tileinfo syntheticInfo[3] = {
+    		{0, 0, 180, 180},
+    		{-1, 0, 90, 90},
+    		{1, 0, 90, 90}
+		};
+    	if (infoVersion != CWIPC_TILEINFO_VERSION)
+    		return false;
+		switch(tilenum) {
+		case 0:
+		case 1:
+		case 2:
+			if (tileinfo) *tileinfo = syntheticInfo[tilenum];
+			return true;
+		}
+		return false;
+	}
+
 private:
 	void generate_pcl()
 	{
@@ -79,7 +99,7 @@ private:
 
 };
 
-cwipc_source *
+cwipc_tiledsource *
 cwipc_synthetic()
 {
 	return new cwipc_source_synthetic_impl();
