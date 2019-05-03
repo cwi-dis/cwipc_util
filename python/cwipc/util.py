@@ -29,7 +29,73 @@ class cwipc_p(ctypes.c_void_p):
     
 class cwipc_source_p(ctypes.c_void_p):
     pass
+
+class cwipc_tiledsource_p(cwipc_source_p):
+    pass
+
+#
+# C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_POINT_VERSION helps a bit.
+#
+class cwipc_point(ctypes.Structure):
+    """Point in a pointcloud. Fields ar x,y,z (float coordinates) r, g, b (color values 0..255) tile (8 bit number)"""
+    _fields_ = [
+        ("x", ctypes.c_float),
+        ("y", ctypes.c_float),
+        ("z", ctypes.c_float),
+        ("r", ctypes.c_ubyte),
+        ("g", ctypes.c_ubyte),
+        ("b", ctypes.c_ubyte),
+        ("tile", ctypes.c_ubyte),
+    ]
     
+    def __eq__(self, other):
+        if not isinstance(other, cwipc_point):
+            return False
+        for fld in self._fields_:
+            if getattr(self, fld[0]) != getattr(other, fld[0]):
+                return False
+        return True
+
+    def __ne__(self, other):
+        if not isinstance(other, cwipc_point):
+            return True
+        for fld in self._fields_:
+            if getattr(self, fld[0]) != getattr(other, fld[0]):
+                return True
+        return False
+            
+CWIPC_POINT_VERSION = 0x20190424
+
+#
+# C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h, but CWIPC_TILEINFO_VERSION helps a bit.
+#
+class cwipc_tileinfo(ctypes.Structure):
+    """Direction of a pointcloud tile. Fields ar nx,nz (float direction vector) cwangle,ccwangle (float field-of-view angles in y=0 plane)"""
+    _fields_ = [
+        ("nx", ctypes.c_float),
+        ("nz", ctypes.c_float),
+        ("cwangle", ctypes.c_float),
+        ("ccwangle", ctypes.c_float),
+    ]
+    
+    def __eq__(self, other):
+        if not isinstance(other, cwipc_tileinfo):
+            return False
+        for fld in self._fields_:
+            if getattr(self, fld[0]) != getattr(other, fld[0]):
+                return False
+        return True
+
+    def __ne__(self, other):
+        if not isinstance(other, cwipc_tileinfo):
+            return True
+        for fld in self._fields_:
+            if getattr(self, fld[0]) != getattr(other, fld[0]):
+                return True
+        return False
+            
+CWIPC_TILEINFO_VERSION = 0x20190502
+
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
@@ -92,38 +158,17 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
+    if hasattr(_cwipc_util_dll_reference, 'cwipc_tiledsource_maxtile'):
+        _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
+        _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
+    
+    if hasattr(_cwipc_util_dll_reference, 'cwipc_tiledsource_get_tileinfo'):
+        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo), ctypes.c_int]
+        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
+    
     _cwipc_util_dll_reference.cwipc_synthetic.argtypes = []
-    _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_source_p
+    _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
     return _cwipc_util_dll_reference
-    
-#
-# C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_POINT_VERSION helps a bit.
-#
-class cwipc_point(ctypes.Structure):
-    """Point in a pointcloud. Fields ar x,y,z (float coordinates) r, g, b (color values 0..255) tile (8 bit number)"""
-    _fields_ = [
-        ("x", ctypes.c_float),
-        ("y", ctypes.c_float),
-        ("z", ctypes.c_float),
-        ("r", ctypes.c_ubyte),
-        ("g", ctypes.c_ubyte),
-        ("b", ctypes.c_ubyte),
-        ("tile", ctypes.c_ubyte),
-    ]
-    
-    def __eq__(self, other):
-        for fld in self._fields_:
-            if getattr(self, fld[0]) != getattr(other, fld[0]):
-                return False
-        return True
-
-    def __ne__(self, other):
-        for fld in self._fields_:
-            if getattr(self, fld[0]) != getattr(other, fld[0]):
-                return True
-        return False
-            
-CWIPC_POINT_VERSION = 0x20190424
 
 def cwipc_point_array(*, count=None, values=()):
     """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
@@ -232,6 +277,33 @@ class cwipc_source:
             return cwipc(rv)
         return None
         
+class cwipc_tiledsource(cwipc_source):
+    """Tiled pointcloud sources as opaque object"""
+    
+    def __init__(self, _cwipc_tiledsource=None):
+        if _cwipc_tiledsource != None:
+            assert isinstance(_cwipc_tiledsource, cwipc_tiledsource_p)
+        self._cwipc_source = _cwipc_tiledsource
+    
+    def maxtile(self):
+        """Return maximum number of tiles creatable from cwipc objects generated by this source"""
+        return _cwipc_util_dll().cwipc_tiledsource_maxtile(self._as_cwipc_source_p())
+
+    def get_tileinfo_raw(self, tilenum):
+        """Return cwipc_tileinfo for tile tilenum, or None"""
+        info = cwipc_tileinfo()
+        rv = _cwipc_util_dll().cwipc_tiledsource_get_tileinfo(self._as_cwipc_source_p(), tilenum, ctypes.byref(info), CWIPC_TILEINFO_VERSION)
+        if not rv:
+            return None
+        return info
+        
+    def get_tileinfo_dict(self, tilenum):
+        """Return tile information for tile tilenum as Python dictionary"""
+        info = self.get_tileinfo_raw(tilenum)
+        if info == None:
+            return info
+        return dict(nx=info.nx, nz=info.nz, cwangle=info.cwangle, ccwangle=info.ccwangle)
+        
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
@@ -286,7 +358,7 @@ def cwipc_write_debugdump(filename, pointcloud):
 def cwipc_synthetic():
     """Returns a cwipc_source object that returns synthetically generated cwipc objects on every get() call."""
     rv = _cwipc_util_dll().cwipc_synthetic()
-    return cwipc_source(rv)
+    return cwipc_tiledsource(rv)
     
 def main():
     generator = cwipc_synthetic()
