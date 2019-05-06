@@ -3,11 +3,11 @@ import ctypes.util
 from .util import CwipcError, cwipc, cwipc_source, cwipc_point, cwipc_point_array
 from .util import cwipc_p, cwipc_source_p
 
-__all__ = [
-    "cwpic_decompress"
-]
     
 class cwipc_encoder_p(ctypes.c_void_p):
+    pass
+    
+class cwipc_encodergroup_p(ctypes.c_void_p):
     pass
     
 class cwipc_decoder_p(cwipc_source_p):
@@ -47,6 +47,13 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_encoder_get_encoded_size.restype = ctypes.c_size_t
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.argtypes = [cwipc_encoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.restype = ctypes.c_bool
+
+    _cwipc_codec_dll_reference.cwipc_new_encodergroup.argtypes = []
+    _cwipc_codec_dll_reference.cwipc_new_encodergroup.restype = cwipc_encodergroup_p
+    _cwipc_codec_dll_reference.cwipc_encodergroup_addencoder.argtypes = [cwipc_encodergroup_p, ctypes.c_int, ctypes.POINTER(cwipc_encoder_params), ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_codec_dll_reference.cwipc_encodergroup_addencoder.restype = cwipc_encoder_p
+    _cwipc_codec_dll_reference.cwipc_encodergroup_feed.argtypes = [cwipc_encodergroup_p, cwipc_p]
+    _cwipc_codec_dll_reference.cwipc_encodergroup_feed.restype = None
 
     _cwipc_codec_dll_reference.cwipc_new_decoder.argtypes = []
     _cwipc_codec_dll_reference.cwipc_new_decoder.restype = cwipc_decoder_p
@@ -120,7 +127,42 @@ class cwipc_encoder_wrapper:
         if not ok:
             return None
         return rv
-    
+        
+class cwipc_encodergroup_wrapper:
+    def __init__(self, _cwipc_encodergroup):
+        if _cwipc_encodergroup != None:
+            assert isinstance(_cwipc_encodergroup, cwipc_encodergroup_p)
+        self._cwipc_encodergroup = _cwipc_encodergroup
+        
+    def _as_cwipc_encodergroup_p(self):
+        assert self._cwipc_encodergroup
+        return self._cwipc_encodergroup
+        
+    def free(self):
+        if self._cwipc_encodergroup:
+            _cwipc_codec_dll().cwipc_encodergroup_free(self._as_cwipc_encodergroup_p())
+        self._cwipc_encodergroup = None
+
+    def feed(self, pc):
+        rv = _cwipc_codec_dll().cwipc_encodergroup_feed(self._as_cwipc_encodergroup_p(), pc._as_cwipc_p())
+        return rv
+        
+    def addencoder(self, version=None, params=None, **kwargs):
+        if version == None:
+            version = CWIPC_ENCODER_PARAM_VERSION
+        if isinstance(params, cwipc_encoder_params):
+            pass
+        else:
+            params = cwipc_new_encoder_params(**kwargs)
+        errorString = ctypes.c_char_p()
+        obj = _cwipc_codec_dll().cwipc_encodergroup_addencoder(self._as_cwipc_encodergroup_p(), version, params, ctypes.byref(errorString))
+        if errorString:
+            raise CwipcError(errorString.value.decode('utf8'))
+        if not obj:
+            return None
+        return cwipc_encoder_wrapper(obj)
+
+        
 class cwipc_decoder_wrapper(cwipc_source):
     def __init__(self, _cwipc_decoder):
         if _cwipc_decoder != None:
@@ -160,6 +202,12 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
     if not obj:
         return None
     return cwipc_encoder_wrapper(obj)
+    
+def cwipc_new_encodergroup():
+    obj = _cwipc_codec_dll().cwipc_new_encodergroup()
+    if not obj:
+        return None
+    return cwipc_encodergroup_wrapper(obj)
     
 def cwipc_new_decoder():
     obj = _cwipc_codec_dll().cwipc_new_decoder()
