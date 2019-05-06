@@ -31,7 +31,7 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference = ctypes.CDLL(libname)
     
 
-    _cwipc_codec_dll_reference.cwipc_new_encoder.argtypes = [ctypes.c_int, ctypes.POINTER(cwipc_encoder_params)]
+    _cwipc_codec_dll_reference.cwipc_new_encoder.argtypes = [ctypes.c_int, ctypes.POINTER(cwipc_encoder_params), ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_codec_dll_reference.cwipc_new_encoder.restype = cwipc_encoder_p
     _cwipc_codec_dll_reference.cwipc_encoder_free.argtypes = [cwipc_encoder_p]
     _cwipc_codec_dll_reference.cwipc_encoder_free.restype = None
@@ -65,16 +65,16 @@ def _cwipc_codec_dll(libname=None):
 class cwipc_encoder_params(ctypes.Structure):
     """Parameters to control cwipc compression"""
     _fields_ = [
-        ("num_threads", ctypes.c_int),
         ("do_inter_frame", ctypes.c_bool),
         ("gop_size", ctypes.c_int),
-        ("exp_factor", ctypes.c_double),
+        ("exp_factor", ctypes.c_float),
         ("octree_bits", ctypes.c_int),
-        ("color_bits", ctypes.c_int),
         ("jpeg_quality", ctypes.c_int),
-        ("macroblock_size", ctypes.c_int)        
+        ("macroblock_size", ctypes.c_int),
+        ("tilenumber", ctypes.c_int),
+        ("voxelsize", ctypes.c_float),
     ]
-CWIPC_ENCODER_PARAM_VERSION = 0x20190330
+CWIPC_ENCODER_PARAM_VERSION = 0x20190506
 
 class cwipc_encoder_wrapper:
     def __init__(self, _cwipc_encoder):
@@ -140,7 +140,7 @@ class cwipc_decoder_wrapper(cwipc_source):
         return rv
 
 def cwipc_new_encoder_params(**kwargs):
-    params = cwipc_encoder_params(1, False, 1, 0, 7, 8, 85, 16)
+    params = cwipc_encoder_params(False, 1, 1, 9, 85, 16, 0, 0)
     for k, v in kwargs.items():
         assert hasattr(params, k), 'No encoder_param named {}'.format(k)
         setattr(params, k, v)
@@ -153,7 +153,10 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
         pass
     else:
         params = cwipc_new_encoder_params(**kwargs)
-    obj = _cwipc_codec_dll().cwipc_new_encoder(version, params)
+    errorString = ctypes.c_char_p()
+    obj = _cwipc_codec_dll().cwipc_new_encoder(version, params, ctypes.byref(errorString))
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_encoder_wrapper(obj)
