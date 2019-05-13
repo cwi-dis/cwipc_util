@@ -49,8 +49,8 @@ struct cwipc_point {
 
 /** \brief Information on a tile.
  *
- * Information on tiles with a certain tile number, a vector of lenght 1 indicating which way the tile is pointing.
- * Tiles that face in no particular direction have lenght 0.
+ * Information on tiles with a certain tile number, a vector of length 1 indicating which way the tile is pointing.
+ * Tiles that face in no particular direction have length 0.
  */
 struct cwipc_tileinfo {
 	struct cwipc_vector normal;	/**< Normal indicating the direction the tile is facing */
@@ -62,7 +62,7 @@ struct cwipc_tileinfo {
  * this library. Therefore when obtaining an external representation you should pass
  * in this constant to ensure that the data is not delivered in an incorrect form.
  */
-#define CWIPC_TILEINFO_VERSION 0x20190502
+#define CWIPC_TILEINFO_VERSION 0x20190513
 
 #ifdef __cplusplus
 
