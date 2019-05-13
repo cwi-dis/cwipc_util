@@ -13,20 +13,32 @@
 #endif
 #endif
 
+/** \brief Single 3D vector.
+ *
+ * Coordinates of a single 3D point.
+ *
+ */
+struct cwipc_vector {
+	double x;		/**< coordinate */
+	double y;		/**< coordinate */
+	double z;		/**< coordinate */
+};
+
 /** \brief Single point structure.
  * 
  * All data pertaining to a single point (in the external representation).
  *
  */
 struct cwipc_point {
-    float x;		/**< coordinate */
-    float y;		/**< coordinate */
-    float z;		/**< coordinate */
-    uint8_t r;		/**< color */
-    uint8_t g;		/**< color */
-    uint8_t b;		/**< color */
-    uint8_t tile;	/**< tile number (can also be interpreted as mask of contributing cameras) */
+	float x;		/**< coordinate */
+	float y;		/**< coordinate */
+	float z;		/**< coordinate */
+	uint8_t r;		/**< color */
+	uint8_t g;		/**< color */
+	uint8_t b;		/**< color */
+	uint8_t tile;	/**< tile number (can also be interpreted as mask of contributing cameras) */
 };
+
 /** \brief Version of cwipc_point structure.
  *
  * The external representation of a single point may change between versions of
@@ -37,18 +49,13 @@ struct cwipc_point {
 
 /** \brief Information on a tile.
  *
- * Information on tiles with a certain tile number, indicating which way the tile is pointing.
- * This information is optimized for the VRTogether use case, where the cameras are
- * expected to be on a plane that is perpendicular to Y=0, and coordinates are X left-to-right,
- * Y bottom-to-top and Z front-to-back.
- * Tiles that face in no particular direction have nx=nz=0 and cwangle=ccwangle=180.
+ * Information on tiles with a certain tile number, a vector of lenght 1 indicating which way the tile is pointing.
+ * Tiles that face in no particular direction have lenght 0.
  */
 struct cwipc_tileinfo {
-    float nx;   /**< Normal coordinate of the direction the tile is facing */
-    float nz;   /**< Normal coordinate of the direction the tile is facing */
-    float cwangle; /**< Clockwise extent of pointcloud (degrees) */
-    float ccwangle; /**< Counterclockwise extent of pointcloud (degrees) */
+	struct cwipc_vector normal;	/**< Normal indicating the direction the tile is facing */
 };
+
 /** \brief Version of cwipc_tileinfo structure.
  *
  * The external representation of a tileinfo structure may change between versions of
