@@ -70,12 +70,11 @@ CWIPC_POINT_VERSION = 0x20190424
 # C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h, but CWIPC_TILEINFO_VERSION helps a bit.
 #
 class cwipc_tileinfo(ctypes.Structure):
-    """Direction of a pointcloud tile. Fields ar nx,nz (float direction vector) cwangle,ccwangle (float field-of-view angles in y=0 plane)"""
+    """Direction of a pointcloud tile. Fields are vector pointing in the direction the tile is pointing (relative to (0,0,0))"""
     _fields_ = [
-        ("nx", ctypes.c_float),
-        ("nz", ctypes.c_float),
-        ("cwangle", ctypes.c_float),
-        ("ccwangle", ctypes.c_float),
+        ("x", ctypes.c_double),
+        ("y", ctypes.c_double),
+        ("z", ctypes.c_double),
     ]
     
     def __eq__(self, other):
@@ -94,7 +93,7 @@ class cwipc_tileinfo(ctypes.Structure):
                 return True
         return False
             
-CWIPC_TILEINFO_VERSION = 0x20190502
+CWIPC_TILEINFO_VERSION = 0x20190513
 
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
@@ -302,7 +301,7 @@ class cwipc_tiledsource(cwipc_source):
         info = self.get_tileinfo_raw(tilenum)
         if info == None:
             return info
-        return dict(nx=info.nx, nz=info.nz, cwangle=info.cwangle, ccwangle=info.ccwangle)
+        return dict(x=info.x, y=info.y, z=info.z)
         
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""

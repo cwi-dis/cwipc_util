@@ -189,9 +189,9 @@ class TestApi(unittest.TestCase):
         """Is a synthetic pointcloud generator providing the correct tiling interface?"""
         pcs = cwipc.cwipc_synthetic()
         self.assertEqual(pcs.maxtile(), 3)
-        self.assertEqual(pcs.get_tileinfo_dict(0), {'nx':0, 'nz':0, 'cwangle':180, 'ccwangle':180})
-        self.assertEqual(pcs.get_tileinfo_dict(1), {'nx':-1, 'nz':0, 'cwangle':90, 'ccwangle':90})
-        self.assertEqual(pcs.get_tileinfo_dict(2), {'nx':1, 'nz':0, 'cwangle':90, 'ccwangle':90})
+        self.assertEqual(pcs.get_tileinfo_dict(0), {'x':0, 'y':0, 'z':0})
+        self.assertEqual(pcs.get_tileinfo_dict(1), {'x':0, 'y':0, 'z':-1})
+        self.assertEqual(pcs.get_tileinfo_dict(2), {'x':0, 'y':0, 'z':1})
         pcs.free()
         
     def _verify_pointcloud(self, pc, tiled=False):
