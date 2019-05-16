@@ -52,9 +52,9 @@ public:
 
     bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion) {
     	static cwipc_tileinfo syntheticInfo[3] = {
-    		{0, 0, 0},
-    		{0, 0, -1},
-    		{0, 0, 1}
+    		{{0, 0, 0}, NULL, 0},
+    		{{0, 0, -1}, NULL, 0},
+    		{{0, 0, 1}, NULL, 0},
 		};
     	if (infoVersion != CWIPC_TILEINFO_VERSION)
     		return false;

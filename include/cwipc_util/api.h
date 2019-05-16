@@ -51,9 +51,13 @@ struct cwipc_point {
  *
  * Information on tiles with a certain tile number, a vector of length 1 indicating which way the tile is pointing.
  * Tiles that face in no particular direction have length 0.
+ * The structure also has information on how many cameras contribute to this tile, and for single-camera
+ * tiles a pointer to a unique ID of the camera (static string).
  */
 struct cwipc_tileinfo {
 	struct cwipc_vector normal;	/**< Normal indicating the direction the tile is facing */
+	char *camera; 				/**< Identifier of the camera (static string) or NULL */
+	uint8_t ncamera; 			/**< Number of cameras that potentially contribute to this tile */
 };
 
 /** \brief Version of cwipc_tileinfo structure.
@@ -62,7 +66,7 @@ struct cwipc_tileinfo {
  * this library. Therefore when obtaining an external representation you should pass
  * in this constant to ensure that the data is not delivered in an incorrect form.
  */
-#define CWIPC_TILEINFO_VERSION 0x20190513
+#define CWIPC_TILEINFO_VERSION 0x20190516
 
 #ifdef __cplusplus
 

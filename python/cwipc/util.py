@@ -67,10 +67,10 @@ class cwipc_point(ctypes.Structure):
 CWIPC_POINT_VERSION = 0x20190424
 
 #
-# C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h, but CWIPC_TILEINFO_VERSION helps a bit.
+# C/Python cwipc_vector (x/y/z).
 #
-class cwipc_tileinfo(ctypes.Structure):
-    """Direction of a pointcloud tile. Fields are vector pointing in the direction the tile is pointing (relative to (0,0,0))"""
+class cwipc_vector(ctypes.Structure):
+    """A vector"""
     _fields_ = [
         ("x", ctypes.c_double),
         ("y", ctypes.c_double),
@@ -78,7 +78,7 @@ class cwipc_tileinfo(ctypes.Structure):
     ]
     
     def __eq__(self, other):
-        if not isinstance(other, cwipc_tileinfo):
+        if not isinstance(other, cwipc_vector):
             return False
         for fld in self._fields_:
             if getattr(self, fld[0]) != getattr(other, fld[0]):
@@ -86,14 +86,25 @@ class cwipc_tileinfo(ctypes.Structure):
         return True
 
     def __ne__(self, other):
-        if not isinstance(other, cwipc_tileinfo):
+        if not isinstance(other, cwipc_vector):
             return True
         for fld in self._fields_:
             if getattr(self, fld[0]) != getattr(other, fld[0]):
                 return True
         return False
             
-CWIPC_TILEINFO_VERSION = 0x20190513
+#
+# C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h, but CWIPC_TILEINFO_VERSION helps a bit.
+#
+class cwipc_tileinfo(ctypes.Structure):
+    """Direction of a pointcloud tile. Fields are vector pointing in the direction the tile is pointing (relative to (0,0,0))"""
+    _fields_ = [
+        ("normal", cwipc_vector),
+        ("camera", ctypes.c_char_p),
+        ("ncamera", ctypes.c_uint8),
+    ]
+
+CWIPC_TILEINFO_VERSION = 0x20190516
 
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
@@ -301,7 +312,8 @@ class cwipc_tiledsource(cwipc_source):
         info = self.get_tileinfo_raw(tilenum)
         if info == None:
             return info
-        return dict(x=info.x, y=info.y, z=info.z)
+        normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
+        return dict(normal=normal, camera=info.camera, ncamera=info.ncamera)
         
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
