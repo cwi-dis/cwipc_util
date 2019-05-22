@@ -100,7 +100,7 @@ cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+			*errorMessage = (char *)"cwipc_read: incorrect apiVersion";
 		}
 		return NULL;
 	}
@@ -134,7 +134,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+			*errorMessage = (char *)"cwipc_read_debugdump: incorrect apiVersion";
 		}
 		return NULL;
 	}
@@ -212,7 +212,7 @@ cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage,
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+			*errorMessage = (char *)"cwipc_from_pcl: incorrect apiVersion";
 		}
 		return NULL;
 	}
@@ -225,7 +225,7 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+			*errorMessage = (char *)"cwipc_from_points: incorrect apiVersion";
 		}
 		return NULL;
 	}
