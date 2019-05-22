@@ -16,7 +16,7 @@ int main(int argc, char** argv)
     //
     // Read pointcloud file
     //
-    cwipc *obj = cwipc_read_debugdump(argv[1], &message);
+    cwipc *obj = cwipc_read_debugdump(argv[1], &message, CWIPC_API_VERSION);
     if (obj == NULL) {
         std::cerr << argv[0] << ": Cannot read pointcloud from dump: " << message << std::endl;
         return 1;

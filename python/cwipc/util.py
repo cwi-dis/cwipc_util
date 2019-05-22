@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 
 __all__ = [
+    'CWIPC_API_VERSION',
     'CwipcError',
     
     'cwipc',
@@ -19,6 +20,8 @@ __all__ = [
     'cwipc_synthetic',
 ]
 
+CWIPC_API_VERSION = 0x20190522
+
 class CwipcError(RuntimeError):
     pass
     
@@ -34,7 +37,7 @@ class cwipc_tiledsource_p(cwipc_source_p):
     pass
 
 #
-# C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_POINT_VERSION helps a bit.
+# C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_API_VERSION helps a bit.
 #
 class cwipc_point(ctypes.Structure):
     """Point in a pointcloud. Fields ar x,y,z (float coordinates) r, g, b (color values 0..255) tile (8 bit number)"""
@@ -63,8 +66,6 @@ class cwipc_point(ctypes.Structure):
             if getattr(self, fld[0]) != getattr(other, fld[0]):
                 return True
         return False
-            
-CWIPC_POINT_VERSION = 0x20190424
 
 #
 # C/Python cwipc_vector (x/y/z).
@@ -121,16 +122,16 @@ def _cwipc_util_dll(libname=None):
     assert libname
     _cwipc_util_dll_reference = ctypes.CDLL(libname)
     
-    _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
     
     _cwipc_util_dll_reference.cwipc_write.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_util_dll_reference.cwipc_write.restype = int
     
-    _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
     
-    _cwipc_util_dll_reference.cwipc_read_debugdump.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_read_debugdump.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read_debugdump.restype = cwipc_p
     
     _cwipc_util_dll_reference.cwipc_write_debugdump.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.POINTER(ctypes.c_char_p)]
@@ -150,7 +151,7 @@ def _cwipc_util_dll(libname=None):
         _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
         _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
     
-    _cwipc_util_dll_reference.cwipc_get_uncompressed_size.argtypes = [cwipc_p, ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_get_uncompressed_size.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_get_uncompressed_size.restype = ctypes.c_size_t
     
     _cwipc_util_dll_reference.cwipc_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
@@ -173,10 +174,10 @@ def _cwipc_util_dll(libname=None):
         _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
     
     if hasattr(_cwipc_util_dll_reference, 'cwipc_tiledsource_get_tileinfo'):
-        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo), ctypes.c_int]
+        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
         _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_synthetic.argtypes = []
+    _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
     return _cwipc_util_dll_reference
 
@@ -245,7 +246,7 @@ class cwipc:
         
     def _get_points_and_bytes(self):
         assert self._cwipc
-        nBytes = _cwipc_util_dll().cwipc_get_uncompressed_size(self._as_cwipc_p(), CWIPC_POINT_VERSION)
+        nBytes = _cwipc_util_dll().cwipc_get_uncompressed_size(self._as_cwipc_p())
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
@@ -302,7 +303,7 @@ class cwipc_tiledsource(cwipc_source):
     def get_tileinfo_raw(self, tilenum):
         """Return cwipc_tileinfo for tile tilenum, or None"""
         info = cwipc_tileinfo()
-        rv = _cwipc_util_dll().cwipc_tiledsource_get_tileinfo(self._as_cwipc_source_p(), tilenum, ctypes.byref(info), CWIPC_TILEINFO_VERSION)
+        rv = _cwipc_util_dll().cwipc_tiledsource_get_tileinfo(self._as_cwipc_source_p(), tilenum, ctypes.byref(info))
         if not rv:
             return None
         return info
@@ -318,7 +319,7 @@ class cwipc_tiledsource(cwipc_source):
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString))
+    rv = _cwipc_util_dll().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -341,7 +342,7 @@ def cwipc_from_points(points, timestamp):
     nPoint = len(points)
     nBytes = ctypes.sizeof(points)
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString))
+    rv = _cwipc_util_dll().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -351,7 +352,7 @@ def cwipc_from_points(points, timestamp):
 def cwipc_read_debugdump(filename):
     """Return a cwipc object read from a .cwipcdump file."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_read_debugdump(filename.encode('utf8'), ctypes.byref(errorString))
+    rv = _cwipc_util_dll().cwipc_read_debugdump(filename.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -368,8 +369,13 @@ def cwipc_write_debugdump(filename, pointcloud):
     
 def cwipc_synthetic():
     """Returns a cwipc_source object that returns synthetically generated cwipc objects on every get() call."""
-    rv = _cwipc_util_dll().cwipc_synthetic()
-    return cwipc_tiledsource(rv)
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_synthetic(ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_tiledsource(rv)
+    return None
     
 def main():
     generator = cwipc_synthetic()

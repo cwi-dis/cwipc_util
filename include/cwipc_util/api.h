@@ -13,6 +13,20 @@
 #endif
 #endif
 
+/** \brief Version of cwipc API.
+ *
+ * Version of the current API of cwipc. Pass to constructors to ensure library
+ * compatibility.
+ */
+#define CWIPC_API_VERSION 0x20190522
+
+/** \brief Version of oldest compatible cwipc API.
+ *
+ * Version of the oldest API of cwipc to which this set of libraries is compatible.
+ */
+#define CWIPC_API_VERSION_OLD 0x20190522
+
+
 /** \brief Single 3D vector.
  *
  * Coordinates of a single 3D point.
@@ -39,14 +53,6 @@ struct cwipc_point {
 	uint8_t tile;	/**< tile number (can also be interpreted as mask of contributing cameras) */
 };
 
-/** \brief Version of cwipc_point structure.
- *
- * The external representation of a single point may change between versions of
- * this library. Therefore when obtaining an external representation you should pass
- * in this constant to ensure that the data is not delivered in an incorrect form.
- */
-#define CWIPC_POINT_VERSION 0x20190424
-
 /** \brief Information on a tile.
  *
  * Information on tiles with a certain tile number, a vector of length 1 indicating which way the tile is pointing.
@@ -59,14 +65,6 @@ struct cwipc_tileinfo {
 	char *camera; 				/**< Identifier of the camera (static string) or NULL */
 	uint8_t ncamera; 			/**< Number of cameras that potentially contribute to this tile */
 };
-
-/** \brief Version of cwipc_tileinfo structure.
- *
- * The external representation of a tileinfo structure may change between versions of
- * this library. Therefore when obtaining an external representation you should pass
- * in this constant to ensure that the data is not delivered in an incorrect form.
- */
-#define CWIPC_TILEINFO_VERSION 0x20190516
 
 #ifdef __cplusplus
 
@@ -118,13 +116,11 @@ public:
     virtual void _set_cellsize(float cellsize) = 0;
     
     /** \brief Returns size (in bytes) an external representation of this pointcloud needs.
-     * \param dataVersion The type of cwipc_point data you want. Pass in CWIPC_POINT_VERSION
-     *   to ensure the data is compatible with your code.
      * \return The number of bytes needed (or zero in case the format does not match
      *   or no points are available).
      */
     
-    virtual size_t get_uncompressed_size(uint32_t dataVersion) = 0;
+    virtual size_t get_uncompressed_size() = 0;
     
 	/** \brief Get points from pointcloud in external representation format.
 	 * \param pc A databuffer pointer.
@@ -214,12 +210,11 @@ public:
     /** \brief Return information on a tile number.
      * \param tilenumber The tile on which to obtain information.
      * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
-     * \param infoVersion Version number for the cwipc_tileinfo structure.
      * \return A boolean that is true if the tile could ever exist.
      *
      * Tile number 0 is a special case, representing the whole pointcloud.
      */
-    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion) = 0;
+    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) = 0;
 };
 #else
 
@@ -256,12 +251,13 @@ extern "C" {
  * \param filename The ply file to read.
  * \param timestamp The timestamp to record in the cwipc object.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  * \return the abstract point cloud, or NULL in case of errors.
  *
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Write pointcloud to .ply file.
  * \param filename The ply file to frite.
@@ -280,16 +276,18 @@ _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **error
  * \param npoint Number of points (must match size).
  * \param timestamp The timestamp to record in the cwipc object.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  * \return the abstract point cloud, or NULL in case of errors.
  *
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */ 
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Read pointcloud from pointclouddump file.
  * \param filename The dump file to read.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  * \return the abstract point cloud, or NULL in case of errors.
  *
  * The dump file format is unspecified and machine dependent. It is mainly
@@ -298,7 +296,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t s
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT cwipc *cwipc_read_debugdump(const char *filename, char **errorMessage);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Write pointcloud to pointclouddump file.
  * \param filename The dump file to frite.
@@ -348,12 +346,10 @@ _CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc *pc, float cellsize);
 
 /** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
  * \param pc The cwipc object.
- * \param dataVersion The type of cwipc_point data you want. Pass in CWIPC_POINT_VERSION
- *   to ensure the data is compatible with your code.
  * \return The number of bytes needed (or zero in case the format does not match
  *   or no points are available).
  */
-_CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVersion);
+_CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 
 /** \brief Get points from pointcloud in external representation format (C interface).
  * \param pc The cwipc object.
@@ -414,20 +410,21 @@ _CWIPC_UTIL_EXPORT int cwipc_tiledsource_maxtile(cwipc_tiledsource *src);
 /** \brief Return information on a tile number.
  * \param tilenumber The tile on which to obtain information.
  * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
- * \param infoVersion Version number for the cwipc_tileinfo structure.
  * \return A boolean that is true if the tile could ever exist.
  *
  * Tile number 0 is a special case, representing the whole pointcloud.
  */
-_CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion);
+_CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo);
 
 /** \brief Generate synthetic pointclouds.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  *
  * This function returns a cwipc_source that generates a rotating pointcloud
  * of the object now usually called the "water melon". It is intended for testing
  * purposes.
  */
-_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic();
+_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(char **errorMessage, uint64_t apiVersion);
 
 #ifdef __cplusplus
 }

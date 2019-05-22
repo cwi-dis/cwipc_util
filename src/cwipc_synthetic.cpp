@@ -45,19 +45,17 @@ public:
 		transform.rotate(Eigen::AngleAxisf(m_angle, Eigen::Vector3f::UnitY()));
 		cwipc_pcl_pointcloud newPC = new_cwipc_pcl_pointcloud();
 		transformPointCloud(*m_pointcloud, *newPC, transform);
-        return cwipc_from_pcl(newPC, timestamp, NULL);
+        return cwipc_from_pcl(newPC, timestamp, NULL, CWIPC_API_VERSION);
     }
 
 	int maxtile() { return 3; }
 
-    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion) {
+    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
     	static cwipc_tileinfo syntheticInfo[3] = {
     		{{0, 0, 0}, NULL, 0},
     		{{0, 0, -1}, NULL, 0},
     		{{0, 0, 1}, NULL, 0},
 		};
-    	if (infoVersion != CWIPC_TILEINFO_VERSION)
-    		return false;
 		switch(tilenum) {
 		case 0:
 		case 1:
@@ -100,7 +98,13 @@ private:
 };
 
 cwipc_tiledsource *
-cwipc_synthetic()
+cwipc_synthetic(char **errorMessage, uint64_t apiVersion)
 {
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+		}
+		return NULL;
+	}
 	return new cwipc_source_synthetic_impl();
 }

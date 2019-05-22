@@ -69,8 +69,7 @@ public:
         m_cellsize = cellsize;
     }
     
-    size_t get_uncompressed_size(uint32_t dataVersion) {
-        if (dataVersion != CWIPC_POINT_VERSION) return 0;
+    size_t get_uncompressed_size() {
         return m_pc->size() * sizeof(struct cwipc_point);
     }
     
@@ -97,8 +96,14 @@ public:
 };
 
 cwipc *
-cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage)
+cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+		}
+		return NULL;
+	}
     cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
     pcl::PLYReader ply_reader;
     if (ply_reader.read(filename, *pc) < 0) {
@@ -125,8 +130,14 @@ cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage)
 }
 
 cwipc *
-cwipc_read_debugdump(const char *filename, char **errorMessage)
+cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion)
 {
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+		}
+		return NULL;
+	}
     FILE *fp = fopen(filename, "rb");
     if (fp == NULL) {
         if (errorMessage) *errorMessage = (char *)"Cannot open pointcloud dumpfile";
@@ -141,7 +152,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage)
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile header incorrect";
         return NULL;
     }
-    if (hdr.magic != CWIPC_POINT_VERSION) {
+    if (hdr.magic < CWIPC_API_VERSION_OLD || hdr.magic > CWIPC_API_VERSION) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile version incorrect";
         return NULL;
     }
@@ -170,7 +181,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage)
 int 
 cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage)
 {
-    size_t dataSize = pointcloud->get_uncompressed_size(CWIPC_POINT_VERSION);
+    size_t dataSize = pointcloud->get_uncompressed_size();
     struct cwipc_point *dataBuf = (struct cwipc_point *)malloc(dataSize);
     if (dataBuf == NULL) {
         if (errorMessage) *errorMessage = (char *)"Cannot allocate pointcloud memory";
@@ -186,7 +197,7 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         if (errorMessage) *errorMessage = (char *)"Cannot create output file";
         return -1;
     }
-    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_POINT_VERSION, pointcloud->timestamp(), dataSize};
+    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_API_VERSION, pointcloud->timestamp(), dataSize};
     fwrite(&hdr, sizeof(hdr), 1, fp);
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
         if (errorMessage) *errorMessage = (char *)"Write output file failed";
@@ -197,15 +208,27 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
 }
 
 cwipc *
-cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage)
+cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+		}
+		return NULL;
+	}
     return new cwipc_impl(pc, timestamp);
 }
 
 
 cwipc *
-cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage)
+cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
+		}
+		return NULL;
+	}
     cwipc_impl *rv = new cwipc_impl();
     if (rv->from_points(points, size, npoint, timestamp) < 0) {
         if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
@@ -239,9 +262,9 @@ cwipc__set_cellsize(cwipc *pc, float cellsize)
 }
 
 size_t
-cwipc_get_uncompressed_size(cwipc *pc, uint32_t dataVersion)
+cwipc_get_uncompressed_size(cwipc *pc)
 {
-    return pc->get_uncompressed_size(dataVersion);
+    return pc->get_uncompressed_size();
 }
 
 int
@@ -281,8 +304,8 @@ cwipc_tiledsource_maxtile(cwipc_tiledsource *src)
 }
 
 bool
-cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo, int infoVersion)
+cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo)
 {
-	return src->get_tileinfo(tilenum, tileinfo, infoVersion);
+	return src->get_tileinfo(tilenum, tileinfo);
 }
 

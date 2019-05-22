@@ -1,6 +1,6 @@
 import ctypes
 import ctypes.util
-from .util import CwipcError, cwipc, cwipc_source, cwipc_point, cwipc_point_array
+from .util import CwipcError, CWIPC_API_VERSION, cwipc, cwipc_source, cwipc_point, cwipc_point_array
 from .util import cwipc_p, cwipc_source_p
 
     
@@ -31,7 +31,7 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference = ctypes.CDLL(libname)
     
 
-    _cwipc_codec_dll_reference.cwipc_new_encoder.argtypes = [ctypes.c_int, ctypes.POINTER(cwipc_encoder_params), ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_codec_dll_reference.cwipc_new_encoder.argtypes = [ctypes.c_int, ctypes.POINTER(cwipc_encoder_params), ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_codec_dll_reference.cwipc_new_encoder.restype = cwipc_encoder_p
     _cwipc_codec_dll_reference.cwipc_encoder_free.argtypes = [cwipc_encoder_p]
     _cwipc_codec_dll_reference.cwipc_encoder_free.restype = None
@@ -48,14 +48,14 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.argtypes = [cwipc_encoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.restype = ctypes.c_bool
 
-    _cwipc_codec_dll_reference.cwipc_new_encodergroup.argtypes = []
+    _cwipc_codec_dll_reference.cwipc_new_encodergroup.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_codec_dll_reference.cwipc_new_encodergroup.restype = cwipc_encodergroup_p
     _cwipc_codec_dll_reference.cwipc_encodergroup_addencoder.argtypes = [cwipc_encodergroup_p, ctypes.c_int, ctypes.POINTER(cwipc_encoder_params), ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_codec_dll_reference.cwipc_encodergroup_addencoder.restype = cwipc_encoder_p
     _cwipc_codec_dll_reference.cwipc_encodergroup_feed.argtypes = [cwipc_encodergroup_p, cwipc_p]
     _cwipc_codec_dll_reference.cwipc_encodergroup_feed.restype = None
 
-    _cwipc_codec_dll_reference.cwipc_new_decoder.argtypes = []
+    _cwipc_codec_dll_reference.cwipc_new_decoder.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_codec_dll_reference.cwipc_new_decoder.restype = cwipc_decoder_p
     _cwipc_codec_dll_reference.cwipc_decoder_feed.argtypes = [cwipc_decoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_decoder_feed.restype = None
@@ -196,7 +196,7 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
     else:
         params = cwipc_new_encoder_params(**kwargs)
     errorString = ctypes.c_char_p()
-    obj = _cwipc_codec_dll().cwipc_new_encoder(version, params, ctypes.byref(errorString))
+    obj = _cwipc_codec_dll().cwipc_new_encoder(version, params, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if not obj:
@@ -204,13 +204,19 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
     return cwipc_encoder_wrapper(obj)
     
 def cwipc_new_encodergroup():
-    obj = _cwipc_codec_dll().cwipc_new_encodergroup()
+    errorString = ctypes.c_char_p()
+    obj = _cwipc_codec_dll().cwipc_new_encodergroup(ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_encodergroup_wrapper(obj)
     
 def cwipc_new_decoder():
-    obj = _cwipc_codec_dll().cwipc_new_decoder()
+    errorString = ctypes.c_char_p()
+    obj = _cwipc_codec_dll().cwipc_new_decoder(ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_decoder_wrapper(obj)

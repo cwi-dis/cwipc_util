@@ -1,6 +1,6 @@
 import ctypes
 import ctypes.util
-from .util import CwipcError, cwipc_tiledsource
+from .util import CwipcError, CWIPC_API_VERSION, cwipc_tiledsource
 from .util import cwipc_tiledsource_p
 
 __all__ = [
@@ -24,23 +24,24 @@ def _cwipc_realsense2_dll(libname=None):
     assert libname
     _cwipc_realsense2_dll_reference = ctypes.CDLL(libname)
     
-    _cwipc_realsense2_dll_reference.cwipc_realsense2.argtypes = []
+    _cwipc_realsense2_dll_reference.cwipc_realsense2.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_realsense2_dll_reference.cwipc_realsense2.restype = cwipc_tiledsource_p
-
-    if hasattr(_cwipc_realsense2_dll_reference, 'cwipc_realsense2_ex'):
-        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.argtypes = [ctypes.c_char_p]
-        _cwipc_realsense2_dll_reference.cwipc_realsense2_ex.restype = cwipc_tiledsource_p
-
 
     return _cwipc_realsense2_dll_reference
         
 def cwipc_realsense2(conffile=None):
     """Returns a cwipc_source object that grabs from a realsense2 camera and returns cwipc object on every get() call."""
+    errorString = ctypes.c_char_p()
     if conffile:
-        rv = _cwipc_realsense2_dll().cwipc_realsense2_ex(conffile.encode('utf8'))
+        conffile = conffile.encode('utf8')
     else:
-        rv = _cwipc_realsense2_dll().cwipc_realsense2()
-    return cwipc_tiledsource(rv)
+        conffile = None
+    rv = _cwipc_realsense2_dll().cwipc_realsense2(conffile, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_tiledsource(rv)
+    return None
      
 def main():
     grabber = cwipc_realsense2()
