@@ -56,10 +56,10 @@ def _cwipc_realsense2_dll(libname=None):
     return _cwipc_realsense2_dll_reference
 
 def RS2_FORMAT_RGB8():
-    return ctypes.c_int.in_dll(_cwipc_realsense2_dll_reference, "CWIPC_RS2_FORMAT_RGB8")
+    return ctypes.c_int.in_dll(_cwipc_realsense2_dll(), "CWIPC_RS2_FORMAT_RGB8")
     
 def RS2_FORMAT_Z16():
-    return ctypes.c_int.in_dll(_cwipc_realsense2_dll_reference, "CWIPC_RS2_FORMAT_Z16")
+    return ctypes.c_int.in_dll(_cwipc_realsense2_dll(), "CWIPC_RS2_FORMAT_Z16")
     
 class cwipc_offline_wrapper:
     def __init__(self, _cwipc_offline):
