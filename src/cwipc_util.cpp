@@ -68,7 +68,11 @@ public:
     void _set_cellsize(float cellsize) {
         m_cellsize = cellsize;
     }
-    
+
+    int count() {
+		return m_pc->size();
+	}
+
     size_t get_uncompressed_size() {
         return m_pc->size() * sizeof(struct cwipc_point);
     }
@@ -259,6 +263,12 @@ void
 cwipc__set_cellsize(cwipc *pc, float cellsize)
 {
     pc->_set_cellsize(cellsize);
+}
+
+int
+cwipc_count(cwipc *pc)
+{
+    return pc->count();
 }
 
 size_t

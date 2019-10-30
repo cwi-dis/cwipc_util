@@ -115,11 +115,16 @@ public:
      */
     virtual void _set_cellsize(float cellsize) = 0;
     
+    /** \brief Returns the number of points in the pointcloud.
+	 *  \return the point count
+	 */
+    virtual int count() = 0;
+
     /** \brief Returns size (in bytes) an external representation of this pointcloud needs.
      * \return The number of bytes needed (or zero in case the format does not match
      *   or no points are available).
      */
-    
+
     virtual size_t get_uncompressed_size() = 0;
     
 	/** \brief Get points from pointcloud in external representation format.
@@ -344,11 +349,16 @@ _CWIPC_UTIL_EXPORT float cwipc_cellsize(cwipc *pc);
  */
 _CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc *pc, float cellsize);
 
-/** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
- * \param pc The cwipc object.
- * \return The number of bytes needed (or zero in case the format does not match
- *   or no points are available).
+/** \brief Returns number of points in the pointcloud.
+ * \return The number of points.
  */
+_CWIPC_UTIL_EXPORT int cwipc_count(cwipc *pc);
+
+/** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
+* \param pc The cwipc object.
+* \return The number of bytes needed (or zero in case the format does not match
+*   or no points are available).
+*/
 _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 
 /** \brief Get points from pointcloud in external representation format (C interface).

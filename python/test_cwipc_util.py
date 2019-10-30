@@ -100,6 +100,7 @@ class TestApi(unittest.TestCase):
         """Can we create a cwipc object from a list of values"""
         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
         pc = cwipc.cwipc_from_points(points, 0)
+        self.assertEqual(pc.count(), len(points))
         newpoints = pc.get_points()
         self.assertEqual(len(points), len(newpoints))
         for i in range(len(points)):
