@@ -213,7 +213,7 @@ public:
     virtual int maxtile() = 0;
     
     /** \brief Return information on a tile number.
-     * \param tilenumber The tile on which to obtain information.
+     * \param tilenum The tile on which to obtain information.
      * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
      * \return A boolean that is true if the tile could ever exist.
      *
@@ -418,7 +418,8 @@ _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source *src, bool wait);
 _CWIPC_UTIL_EXPORT int cwipc_tiledsource_maxtile(cwipc_tiledsource *src);
 
 /** \brief Return information on a tile number.
- * \param tilenumber The tile on which to obtain information.
+ * \param src The cwipc_source object.
+ * \param tilenum The tile on which to obtain information.
  * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
  * \return A boolean that is true if the tile could ever exist.
  *
