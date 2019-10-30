@@ -4,11 +4,11 @@ The CWI pointcloud object is intended as an abstract object representing a point
 
 It is used by the following libraries:
 
-- [CWIPC Util](https://github.com/cwi-dis/cwipc_util), this library.
-- [CWI Codec](https://github.com/cwi-dis/cwi_codec_lib)
-- [Realsense Capturer](https://github.com/cwi-dis/VRTogether-capture)
+- [cwipc_util](https://github.com/cwi-dis/cwipc_util), this library.
+- [cwipc_codec](https://github.com/cwi-dis/cwi_codec_lib), the pointcloud compression library.
+- [cwipc_realsense2](https://github.com/cwi-dis/VRTogether-capture), the realsense2 capture library.
 
-The library can be used from C and C++. In the latter case it will expose a virtual object API, in the former case an opaque object is passsed as the first argument to many functions.
+The library can be used from C and C++. In the latter case it will expose a virtual object API, in the former case an opaque object is passsed as the first argument to many functions. Interfaces for Python and C# are also available, and mimick the C++ interface.
 
 In case the library is used from C++ it can also export a PCL (Point Cloud Library) API, which allows access to the underlying PCL implementations of the pointclouds.
 
@@ -21,7 +21,7 @@ To use abstract cwipc pointclouds, transfer them to other libraries (modules, la
 ```
 
 
-Here are the C++ methods (with all the `virtual` and `= 0;` and such removed for readability):
+Here are the main C++ methods (with all the `virtual` and `= 0;` and such removed for readability):
 
 ```
 class cwipc {
@@ -33,7 +33,7 @@ class cwipc {
 };
 ```
 
-The header file is documented in Doxygen, but here is the quick breakdown:
+The header file is fully documented in Doxygen, but here is the quick breakdown:
 
 - Call `free()` when you no longer need to access this pointcloud. Failure to call `free()` may lead to memory leaks. Accessing PCL pointcloud data after calling `free()` may lead to crashes.
 - Call `timestamp()` to get a (microsecond) timestamp indicating when the pointcloud was captured.
