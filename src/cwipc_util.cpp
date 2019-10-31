@@ -77,8 +77,10 @@ public:
 				float distance = pcl::geometry::distance(*it, *prevPoint);
 				if (distance < minDistance) {
 					minDistance = distance;
+#if 0
 				} else if (distance == minDistance) {
 					break;
+#endif
 				} /* else continue */
 			}
 			if (minDistance == std::numeric_limits<float>::infinity()) minDistance = 0;
