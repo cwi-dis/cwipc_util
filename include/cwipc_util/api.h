@@ -112,6 +112,8 @@ public:
     virtual float cellsize() = 0;
     
     /** \brief Semi-private method to initialize the cellsize. Not for general use.
+	 * Passing a negative number will use a heuristic to determine a reasonable value for
+	 * the cellsize.
      */
     virtual void _set_cellsize(float cellsize) = 0;
     

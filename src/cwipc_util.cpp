@@ -3,6 +3,7 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/common/geometry.h>
 
 
 #ifdef WIN32
@@ -66,6 +67,23 @@ public:
     }
     
     void _set_cellsize(float cellsize) {
+		if (cellsize < 0 && m_pc) {
+			// Guess cellsize by traversing over adjacent points
+			// util we find 2 sets with minimum distance.
+			float minDistance = std::numeric_limits<float>::infinity();
+			auto prevPoint = m_pc->begin();
+			for(auto it=m_pc->begin(); it != m_pc->end(); ++it) {
+				if (it == prevPoint) continue;
+				float distance = pcl::geometry::distance(*it, *prevPoint);
+				if (distance < minDistance) {
+					minDistance = distance;
+				} else if (distance == minDistance) {
+					break;
+				} /* else continue */
+			}
+			if (minDistance == std::numeric_limits<float>::infinity()) minDistance = 0;
+			cellsize = minDistance;
+		}
         m_cellsize = cellsize;
     }
 
