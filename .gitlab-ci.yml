@@ -63,6 +63,8 @@ build_win:
     - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX="C:/dist-win/installed"
     - cmake --build . --config Release
     - cmake --build . --config Release --target RUN_TESTS
+    - rm -rf /cygdrive/c/dist-win
+    - mkdir -p /cygdrive/c/dist-win/installed
     - cmake --build . --config Release --target INSTALL
     - (cd /cygdrive/c/dist-win && zip -r $ziplocation installed)
   artifacts:
