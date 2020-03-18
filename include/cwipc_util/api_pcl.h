@@ -41,7 +41,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (_PointXYZRGBMask,           // here we assume
                                    (float, x, x)
                                    (float, y, y)
                                    (float, z, z)
-                                   (uint32_t, rgba, rgba)
+                                   (std::uint32_t, rgba, rgba)
                                    )
 POINT_CLOUD_REGISTER_POINT_WRAPPER(PointXYZRGBMask, _PointXYZRGBMask)
 
@@ -75,7 +75,7 @@ inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_po
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */ 
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_pcl(cwipc_pcl_pointcloud pc, std::uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
 
 
 #endif // _cwipc_util_api_pcl_h_

@@ -16,8 +16,8 @@
 
 struct dump_header {
     char hdr[4];
-    uint32_t magic;
-    uint64_t timestamp;
+    std::uint32_t magic;
+    std::uint64_t timestamp;
     size_t size;
 };
 
@@ -32,7 +32,7 @@ public:
 
     ~cwipc_impl() {}
 
-    int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp)
+    int from_points(struct cwipc_point *pointData, size_t size, int npoint, std::uint64_t timestamp)
     {
         if (npoint * sizeof(struct cwipc_point) != size) {
             return -1;
@@ -58,7 +58,7 @@ public:
         m_pc = NULL;
     }
     
-    uint64_t timestamp() {
+    std::uint64_t timestamp() {
         return m_timestamp;
     }
     
@@ -120,7 +120,7 @@ public:
 };
 
 cwipc *
-cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
+cwipc_read(const char *filename, std::uint64_t timestamp, char **errorMessage, std::uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -154,7 +154,7 @@ cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage)
 }
 
 cwipc *
-cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion)
+cwipc_read_debugdump(const char *filename, char **errorMessage, std::uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -180,7 +180,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile version incorrect";
         return NULL;
     }
-    uint64_t timestamp = hdr.timestamp;
+    std::uint64_t timestamp = hdr.timestamp;
     size_t dataSize = hdr.size;
     int npoint = dataSize / sizeof(cwipc_point);
     if (npoint*sizeof(cwipc_point) != dataSize) {
@@ -232,7 +232,7 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
 }
 
 cwipc *
-cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
+cwipc_from_pcl(cwipc_pcl_pointcloud pc, std::uint64_t timestamp, char **errorMessage, std::uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -245,7 +245,7 @@ cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage,
 
 
 cwipc *
-cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
+cwipc_from_points(cwipc_point* points, size_t size, int npoint, std::uint64_t timestamp, char **errorMessage, std::uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -267,7 +267,7 @@ void cwipc_free(cwipc *pc)
     pc->free();
 }
 
-uint64_t
+std::uint64_t
 cwipc_timestamp(cwipc *pc)
 {
     return pc->timestamp();

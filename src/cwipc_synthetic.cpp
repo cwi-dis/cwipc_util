@@ -39,7 +39,7 @@ public:
 
     cwipc* get() {
         if (m_pointcloud == NULL) return NULL;
-		uint64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		std::uint64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		m_angle += 0.031415;
 		Eigen::Affine3f transform = Eigen::Affine3f::Identity();
 		transform.rotate(Eigen::AngleAxisf(m_angle, Eigen::Vector3f::UnitY()));
