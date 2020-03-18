@@ -26,7 +26,7 @@ Here are the main C++ methods (with all the `virtual` and `= 0;` and such remove
 ```
 class cwipc {
 	void free();
-	uint32_t timestamp();
+	std::uint32_t timestamp();
 	size_t get_uncompressed_size();
 	void copy_uncompressed(struct cwipc_point *, size_t size);
 	pcl_pointcloud *access_pcl_pointcloud();
@@ -142,7 +142,7 @@ class pcl_pointcloud;
 
 class opaque_pointcloud {
 	void free();
-	uint32_t timestamp();
+	std::uint32_t timestamp();
 	size_t get_uncompressed_size();
 	void copy_uncompressed(struct pointcloud *, size_t size);
 	pcl_pointcloud *access_pcl_pointcloud();
@@ -165,7 +165,7 @@ struct cwipc_opaque_pointcloud;
 struct cwipc_pointcloud;
 
 void cwipc_free(struct cwipc_opaque_pointcloud *);
-uint32_t cwipc_timestamp(struct cwipc_opaque_pointcloud *);
+std::uint32_t cwipc_timestamp(struct cwipc_opaque_pointcloud *);
 size_t cwipc_get_uncompressed_size(struct cwipc_opaque_pointcloud *);
 void cwipc_copy_uncompressed(struct cwipc_opaque_pointcloud *, struct pointcloud *, size_t size);
 
@@ -175,12 +175,12 @@ Uncompressed pointclouds usable by consumers are represented as simple structs:
 
 ```
 struct cwpipc_point {
-	int32_t x, y, z;
+	std::int32_t x, y, z;
 	uint8_t r, g, b;
 };
 
 struct cwipc_pointcloud {
-	uint32_t npoints;
+	std::uint32_t npoints;
 	struct cwipc_point points[1];
 };
 ```
