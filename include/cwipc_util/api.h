@@ -223,6 +223,57 @@ public:
      */
     virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) = 0;
 };
+
+/** \brief A consumer of pointclouds, abstract C++ interface.
+ *
+ * This interface is provided by renderers and such. It allows the
+ * user of this interface to send cwipc pointcloud data somewhere.
+ *
+ */
+class cwipc_sink {
+public:
+    virtual ~cwipc_sink() {};
+    
+    /** \brief Deallocate the pointcloud sink.
+     *
+     * Because the pointcloud sink may be used in a different implementation
+     * language or DLL than where it is implemented we do not count on refcounting
+     * and such. Call this method if you no longer need the source.
+     */
+    virtual void free() = 0;
+    
+    /** \brief Feed a pointcloud to the sink.
+     * \param pc The pointcloud
+     * \param clear If true a display window will clear any previous pointclouds
+     * \return True if the operation was successful.
+     *
+     * A display sink will likely show the pointcloud in a window and give the
+     * user some interaction commands to inspect it.
+     *
+     * Note that if the sink needs to keep the pointcloud data it will make a
+     * copy, so after feed() returns the caller can safely call pc.free().
+     */
+    virtual bool feed(cwipc *pc, bool clear) = 0;
+
+    /** \brief Set a caption or title on the window.
+     * \param caption The UTF8 caption string.
+     * \return True if this sink could present the caption to the user.
+     *
+     * If the sink is a display window this will set some sort of caption
+     * on the window.
+     */
+    virtual bool caption(const char *caption) = 0;
+    
+    /** \brief User interaction.
+     * \param prompt A prompt message to show to the user, explaining what the program wants.
+     * \param reponses A string with all characters that can be typed by the user.
+     * \param millis The number of milliseconds to wait for interaction, 0 for no wait or -1 for forever.
+     * \return The character typed by the user, or '\0' if this sink does not support user interaction.
+     */
+    virtual char interact(const char *prompt, const char *responses, int32_t millis) = 0;
+};
+
+
 #else
 
 /** \brief Abstract interface to a single pointcloud, C-compatible placeholder.
@@ -248,6 +299,13 @@ typedef struct _cwipc_source {
 typedef struct _cwipc_tiledsource {
     struct _cwipc_source source;
 } cwipc_tiledsource;
+
+/** \brief Abstract interface to a cwipc pointcloud sink. C-compatible placeholder.
+ */
+typedef struct _cwipc_sink {
+    int _dummy;
+} cwipc_sink;
+
 #endif
 
 #ifdef __cplusplus
@@ -429,6 +487,45 @@ _CWIPC_UTIL_EXPORT int cwipc_tiledsource_maxtile(cwipc_tiledsource *src);
  */
 _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo);
 
+/** \brief Deallocate the pointcloud sink.
+ *
+ * Because the pointcloud sink may be used in a different implementation
+ * language or DLL than where it is implemented we do not count on refcounting
+ * and such. Call this method if you no longer need the source.
+ */
+_CWIPC_UTIL_EXPORT void cwipc_sink_free(cwipc_sink *sink);
+
+/** \brief Feed a pointcloud to the sink.
+ * \param pc The pointcloud
+ * \param clear If true a display window will clear any previous pointclouds
+ * \return True if the operation was successful.
+ *
+ * A display sink will likely show the pointcloud in a window and give the
+ * user some interaction commands to inspect it.
+ *
+ * Note that if the sink needs to keep the pointcloud data it will make a
+ * copy, so after feed() returns the caller can safely call pc.free().
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_sink_feed(cwipc_sink *sink, cwipc *pc, bool clear);
+
+/** \brief Set a caption or title on the window.
+ * \param caption The UTF8 caption string.
+ * \return True if this sink could present the caption to the user.
+ *
+ * If the sink is a display window this will set some sort of caption
+ * on the window.
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink *sink, const char *caption);
+
+/** \brief User interaction.
+ * \param prompt A prompt message to show to the user, explaining what the program wants.
+ * \param reponses A string with all characters that can be typed by the user.
+ * \param millis The number of milliseconds to wait for interaction, 0 for no wait or -1 for forever.
+ * \return The character typed by the user, or '\0' if the user did not type anything,
+ * or if this sink does not support user interaction.
+ */
+_CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis);
+    
 /** \brief Generate synthetic pointclouds.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
  * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
@@ -438,6 +535,21 @@ _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, i
  * purposes.
  */
 _CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(char **errorMessage, uint64_t apiVersion);
+
+/** \brief Display a window to show pointclouds.
+ * \param Title The title string, to be shown in the title bar of the window.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
+ *
+ * This function will open a window and returns a cwipc_sink. When the program
+ * feeds pointclouds into the sink these will be displayed in the window.
+ * The user has some interaction commands to inspect the pointcloud.
+ *
+ * Note that it may be necessary (depending on the operating system) to call this
+ * function only from the main thread, and to call the methods on the cwipc_sink
+ * returned also only from the main thread.
+ */
+_CWIPC_UTIL_EXPORT cwipc_sink *cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion);
 
 #ifdef __cplusplus
 }

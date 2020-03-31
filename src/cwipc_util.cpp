@@ -339,3 +339,18 @@ cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc
 	return src->get_tileinfo(tilenum, tileinfo);
 }
 
+void cwipc_sink_free(cwipc_sink *sink) {
+    sink->free();
+}
+
+bool cwipc_sink_feed(cwipc_sink *sink, cwipc *pc, bool clear) {
+    return sink->feed(pc, clear);
+}
+
+bool cwipc_sink_caption(cwipc_sink *sink, const char *caption) {
+    return sink->caption(caption);
+}
+
+char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis) {
+    return sink->interact(prompt, responses, millis);
+}

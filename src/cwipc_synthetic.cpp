@@ -15,18 +15,17 @@
 class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
     float m_angle;
-    cwipc_pcl_pointcloud m_pointcloud;
+    static const int H_STEPS = 400;
+    static const int A_STEPS = 400;
+    cwipc_point m_points[H_STEPS*A_STEPS];
 public:
-    cwipc_source_synthetic_impl() : m_angle(0), m_pointcloud(0) {
-    	generate_pcl();
+    cwipc_source_synthetic_impl() : m_angle(0) {
     }
 
     ~cwipc_source_synthetic_impl() {
-        m_pointcloud = NULL;
     }
 
     void free() {
-        m_pointcloud = NULL;
     }
     
     bool eof() {
@@ -38,14 +37,12 @@ public:
     }
 
     cwipc* get() {
-        if (m_pointcloud == NULL) return NULL;
 		uint64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		m_angle += 0.031415;
-		Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-		transform.rotate(Eigen::AngleAxisf(m_angle, Eigen::Vector3f::UnitY()));
-		cwipc_pcl_pointcloud newPC = new_cwipc_pcl_pointcloud();
-		transformPointCloud(*m_pointcloud, *newPC, transform);
-        return cwipc_from_pcl(newPC, timestamp, NULL, CWIPC_API_VERSION);
+        generate_points();
+        cwipc *rv = cwipc_from_points(m_points, sizeof(m_points), H_STEPS*A_STEPS, timestamp, NULL, CWIPC_API_VERSION);
+        rv->_set_cellsize(0.01);
+        return rv;
     }
 
 	int maxtile() { return 3; }
@@ -67,32 +64,42 @@ public:
 	}
 
 private:
-	void generate_pcl()
+	void generate_points()
 	{
-		m_pointcloud = new_cwipc_pcl_pointcloud();
-		uint8_t r(255), g(15), b(15);
-		for (float z(-1.0f); z <= 1.0f; z += 0.005f) {
-			float angle(0.0);
-			while (angle <= 360.0) {
-				cwipc_pcl_point point;
-				point.x = 0.5f*cosf(pcl::deg2rad(angle))*(1.0f - z * z);
-				point.y = sinf(pcl::deg2rad(angle))*(1.0f - z * z);
-				point.z = z;
-				point.r = r;
-				point.g = g;
-				point.b = b;
-				point.a = z < 0 ? 1 : 2;
-				m_pointcloud->points.push_back(point);
-				float r = sqrt(point.x*point.x + point.y*point.y);
-				if (r > 0.0)
-					angle += 0.27 / r;
-				else break;
-			}
-			if (z < 0.0) { r -= 1; g += 1; }
-			else { g -= 1; b += 1; }
-		}
-		m_pointcloud->width = (int)m_pointcloud->points.size();
-		m_pointcloud->height = 1;
+        const float  pi=3.14159265358979f;
+        const float max_height = 2.0;
+        const float delta_h = max_height / H_STEPS;
+        const float delta_a = 2*pi / A_STEPS;
+        cwipc_point *pptr = m_points;
+        for (int height_i=0; height_i < H_STEPS; height_i++) {
+            float height = height_i * delta_h;
+            for (int angle_i=0; angle_i < A_STEPS; angle_i++) {
+                float angle = angle_i * delta_a;
+                float radius = 0.5* sqrt(cos(height*pi/4));
+                float x = radius*sin(angle);
+                float y = radius*cos(angle);
+                float r = (1+sin(2*pi*height+m_angle+angle))/2;
+                float g = (1+sin(3*pi*height+m_angle+angle))/2;
+                float b = (1+sin(4*pi*height+m_angle+angle))/2;
+                int rr = (int)(r*255.0);
+                int gg = (int)(g*255.0);
+                int bb = (int)(b*255.0);
+                // Eyes
+                if (height > 1.7 && height < 1.8 && ((angle > pi*0.083 && angle < pi*0.1667) || (angle > pi*1.833 && angle < pi*1.917))) {
+                    if (fmod(m_angle, pi/2) > 0.08) {
+                        rr = gg = bb = 255;
+                    }
+                }
+                pptr->x = x;
+                pptr->y = height;
+                pptr->z = y;
+                pptr->r = rr;
+                pptr->g = gg;
+                pptr->b = bb;
+                pptr->tile = y < 0 ? 1 : 2;
+                pptr++;
+            }
+        }
 	}
 
 };
