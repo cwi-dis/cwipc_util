@@ -15,11 +15,15 @@
 class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
     float m_angle;
+    std::chrono::system_clock::time_point m_start;
     static const int H_STEPS = 400;
     static const int A_STEPS = 400;
     cwipc_point m_points[H_STEPS*A_STEPS];
 public:
-    cwipc_source_synthetic_impl() : m_angle(0) {
+    cwipc_source_synthetic_impl()
+    : m_angle(0),
+      m_start(std::chrono::system_clock::now())
+    {
     }
 
     ~cwipc_source_synthetic_impl() {
@@ -38,7 +42,9 @@ public:
 
     cwipc* get() {
 		uint64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		m_angle += 0.031415;
+        std::chrono::duration<float, std::ratio<1>> runtime = std::chrono::system_clock::now() - m_start;
+        
+        m_angle = runtime.count();
         generate_points();
         cwipc *rv = cwipc_from_points(m_points, sizeof(m_points), H_STEPS*A_STEPS, timestamp, NULL, CWIPC_API_VERSION);
         rv->_set_cellsize(0.01);

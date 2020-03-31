@@ -104,6 +104,7 @@ void window_util::cleanup_gl()
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glPopAttrib();
+    glfwSwapBuffers(win);
 	glPushMatrix();
 }
 
@@ -118,7 +119,6 @@ window_util::operator GLFWwindow*() { return win; }
 window_util::operator bool()
 {
 	glPopMatrix();
-	glfwSwapBuffers(win);
 
 	auto res = !glfwWindowShouldClose(win);
 

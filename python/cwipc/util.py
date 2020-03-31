@@ -18,6 +18,7 @@ __all__ = [
     'cwipc_from_points',
     
     'cwipc_synthetic',
+    'cwipc_window'
 ]
 
 CWIPC_API_VERSION = 0x20190522
@@ -189,7 +190,7 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_sink_caption.argtypes = [cwipc_sink_p, ctypes.c_char_p]
     _cwipc_util_dll_reference.cwipc_sink_caption.restype = ctypes.c_bool
     
-    _cwipc_util_dll_reference.cwipc_sink_interact.argtypes = [cwipc_sink_p, ctypes.c_char_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_sink_interact.argtypes = [cwipc_sink_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
     _cwipc_util_dll_reference.cwipc_sink_interact.restype = ctypes.c_char
     
     _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
@@ -359,13 +360,18 @@ class cwipc_sink:
         self._cwipc_source = None
         
     def feed(self, pc, clear):
+        if pc != None:
+            pc = pc._as_cwipc_p()
         return _cwipc_util_dll().cwipc_sink_feed(self._as_cwipc_sink_p(), pc, clear)
         
     def caption(self, caption):
         return _cwipc_util_dll().cwipc_sink_caption(self._as_cwipc_sink_p(), caption.encode('utf8'))
         
-    def interact(self, prompt, responses):
-        return _cwipc_util_dll().cwipc_sink_interact(self._as_cwipc_sink_p(), prompt.encode('utf8'), responses.encode('utf8'))
+    def interact(self, prompt, responses, millis):
+        if prompt != None: prompt = prompt.encode('utf8')
+        if responses != None: responses = responses.encode('utf8')
+        rv = _cwipc_util_dll().cwipc_sink_interact(self._as_cwipc_sink_p(), prompt, responses, millis)
+        return rv.decode('utf8')
         
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
