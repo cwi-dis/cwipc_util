@@ -36,6 +36,10 @@ class cwipc_source_p(ctypes.c_void_p):
 class cwipc_tiledsource_p(cwipc_source_p):
     pass
 
+class cwipc_sink_p(ctypes.c_void_p):
+    pass
+
+
 #
 # C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_API_VERSION helps a bit.
 #
@@ -143,13 +147,11 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_timestamp.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_timestamp.restype = ctypes.c_ulonglong
     
-    if hasattr(_cwipc_util_dll_reference, 'cwipc_cellsize'):
-        _cwipc_util_dll_reference.cwipc_cellsize.argtypes = [cwipc_p]
-        _cwipc_util_dll_reference.cwipc_cellsize.restype = ctypes.c_float
+    _cwipc_util_dll_reference.cwipc_cellsize.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_cellsize.restype = ctypes.c_float
     
-    if hasattr(_cwipc_util_dll_reference, 'cwipc__set_cellsize'):
-        _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
-        _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
+    _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
     
     _cwipc_util_dll_reference.cwipc_count.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_count.restype = ctypes.c_int
@@ -172,16 +174,30 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
-    if hasattr(_cwipc_util_dll_reference, 'cwipc_tiledsource_maxtile'):
-        _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
-        _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
+    _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
     
-    if hasattr(_cwipc_util_dll_reference, 'cwipc_tiledsource_get_tileinfo'):
-        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
-        _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
+    _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
+    
+    _cwipc_util_dll_reference.cwipc_sink_free.argtypes = [cwipc_sink_p]
+    _cwipc_util_dll_reference.cwipc_sink_free.restype = None
+    
+    _cwipc_util_dll_reference.cwipc_sink_feed.argtypes = [cwipc_sink_p, cwipc_p, ctypes.c_bool]
+    _cwipc_util_dll_reference.cwipc_sink_feed.restype = ctypes.c_bool
+    
+    _cwipc_util_dll_reference.cwipc_sink_caption.argtypes = [cwipc_sink_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_sink_caption.restype = ctypes.c_bool
+    
+    _cwipc_util_dll_reference.cwipc_sink_interact.argtypes = [cwipc_sink_p, ctypes.c_char_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_sink_interact.restype = ctypes.c_char
     
     _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
+
+    _cwipc_util_dll_reference.cwipc_window.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_window.restype = cwipc_sink_p
+
     return _cwipc_util_dll_reference
 
 def cwipc_point_array(*, count=None, values=()):
@@ -324,6 +340,33 @@ class cwipc_tiledsource(cwipc_source):
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
         return dict(normal=normal, camera=info.camera, ncamera=info.ncamera)
         
+class cwipc_sink:
+    """Pointcloud sink as an opaque object"""
+    
+    def __init__(self, _cwipc_sink=None):
+        if _cwipc_sink != None:
+            assert isinstance(_cwipc_sink, cwipc_sink_p)
+        self._cwipc_sink = _cwipc_sink
+
+    def _as_cwipc_sink_p(self):
+        assert self._cwipc_sink
+        return self._cwipc_sink
+            
+    def free(self):
+        """Delete the opaque pointcloud sink object (by asking the original creator to do so)"""
+        if self._cwipc_sink:
+            _cwipc_util_dll().cwipc_sink_free(self._as_cwipc_sink_p())
+        self._cwipc_source = None
+        
+    def feed(self, pc, clear):
+        return _cwipc_util_dll().cwipc_sink_feed(self._as_cwipc_sink_p(), pc, clear)
+        
+    def caption(self, caption):
+        return _cwipc_util_dll().cwipc_sink_caption(self._as_cwipc_sink_p(), caption.encode('utf8'))
+        
+    def interact(self, prompt, responses):
+        return _cwipc_util_dll().cwipc_sink_interact(self._as_cwipc_sink_p(), prompt.encode('utf8'), responses.encode('utf8'))
+        
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
@@ -383,6 +426,16 @@ def cwipc_synthetic():
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
         return cwipc_tiledsource(rv)
+    return None
+    
+def cwipc_window(title):
+    """Returns a cwipc_sink object that displays pointclouds in a window"""
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_window(title.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_sink(rv)
     return None
     
 def main():
