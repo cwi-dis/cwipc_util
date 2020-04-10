@@ -16,6 +16,7 @@ __all__ = [
     'cwipc_write',
     'cwipc_write_debugdump',
     'cwipc_from_points',
+    'cwipc_from_certh',
     
     'cwipc_synthetic',
     'cwipc_window'
@@ -135,6 +136,9 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
+    
+    _cwipc_util_dll_reference.cwipc_from_certh.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_from_certh.restype = cwipc_p
     
     _cwipc_util_dll_reference.cwipc_read_debugdump.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read_debugdump.restype = cwipc_p
@@ -400,6 +404,18 @@ def cwipc_from_points(points, timestamp):
     nBytes = ctypes.sizeof(points)
     errorString = ctypes.c_char_p()
     rv = _cwipc_util_dll().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc(rv)
+    return None
+    
+def cwipc_from_certh(certhPC, timestamp):
+    """Create a cwipc from a CERTH PointCloud structure (address passed as ctypes.c_void_p)"""
+    if not isinstance(certhPC, ctypes.c_void_p):
+        certhPC = ctypes.cast(certhPC, ctypes.c_void_p)
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_from_certh(certhPC, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:

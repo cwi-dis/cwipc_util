@@ -346,9 +346,21 @@ _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **error
  *
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
- */ 
+ */
 _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
 
+/** \brief Create cwipc pointcloud from CERTH pointcloud representation.
+ * \param points Pointer to CERTH PointCloud structure.
+ * \param timestamp The timestamp to record in the cwipc object.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
+ * \return the abstract point cloud, or NULL in case of errors.
+ *
+ * If an error occurs and errorMessage is non-NULL it will receive a pointer to
+ * a string with the message.
+ */
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_certh(void* certhPC, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
+    
 /** \brief Read pointcloud from pointclouddump file.
  * \param filename The dump file to read.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
