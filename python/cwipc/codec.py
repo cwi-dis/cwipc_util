@@ -47,6 +47,9 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_encoder_get_encoded_size.restype = ctypes.c_size_t
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.argtypes = [cwipc_encoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_encoder_copy_data.restype = ctypes.c_bool
+    if hasattr(_cwipc_codec_dll_reference, 'cwipc_encoder_close'):
+        _cwipc_codec_dll_reference.cwipc_encoder_close.argtypes = [cwipc_encoder_p]
+        _cwipc_codec_dll_reference.cwipc_encoder_close.restype = None
 
     _cwipc_codec_dll_reference.cwipc_new_encodergroup.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_codec_dll_reference.cwipc_new_encodergroup.restype = cwipc_encodergroup_p
@@ -54,11 +57,17 @@ def _cwipc_codec_dll(libname=None):
     _cwipc_codec_dll_reference.cwipc_encodergroup_addencoder.restype = cwipc_encoder_p
     _cwipc_codec_dll_reference.cwipc_encodergroup_feed.argtypes = [cwipc_encodergroup_p, cwipc_p]
     _cwipc_codec_dll_reference.cwipc_encodergroup_feed.restype = None
+    if hasattr(_cwipc_codec_dll_reference, 'cwipc_encodergroup_close'):
+        _cwipc_codec_dll_reference.cwipc_encodergroup_close.argtypes = [cwipc_encodergroup_p]
+        _cwipc_codec_dll_reference.cwipc_encodergroup_close.restype = None
 
     _cwipc_codec_dll_reference.cwipc_new_decoder.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_codec_dll_reference.cwipc_new_decoder.restype = cwipc_decoder_p
     _cwipc_codec_dll_reference.cwipc_decoder_feed.argtypes = [cwipc_decoder_p, ctypes.c_void_p, ctypes.c_size_t]
     _cwipc_codec_dll_reference.cwipc_decoder_feed.restype = None
+    if hasattr(_cwipc_codec_dll_reference, 'cwipc_decoder_close'):
+        _cwipc_codec_dll_reference.cwipc_decoder_close.argtypes = [cwipc_decoder_p]
+        _cwipc_codec_dll_reference.cwipc_decoder_close.restype = None
 
     _cwipc_codec_dll_reference.cwipc_downsample.argtypes = [cwipc_p, ctypes.c_float]
     _cwipc_codec_dll_reference.cwipc_downsample.restype = cwipc_p
