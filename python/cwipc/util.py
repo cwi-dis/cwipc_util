@@ -22,7 +22,7 @@ __all__ = [
     'cwipc_window'
 ]
 
-CWIPC_API_VERSION = 0x20190522
+CWIPC_API_VERSION = 0x20200512
 
 class CwipcError(RuntimeError):
     pass

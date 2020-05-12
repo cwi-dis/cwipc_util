@@ -97,6 +97,10 @@ class cwipc_encoder_wrapper:
         if self._cwipc_encoder:
             _cwipc_codec_dll().cwipc_encoder_free(self._as_cwipc_encoder_p())
         self._cwipc_encoder = None
+
+    def close(self):
+        if self._cwipc_encoder:
+            _cwipc_codec_dll().cwipc_encoder_close(self._as_cwipc_encoder_p())
         
     def eof(self):
         rv = _cwipc_codec_dll().cwipc_encoder_eof(self._as_cwipc_encoder_p())
@@ -143,6 +147,10 @@ class cwipc_encodergroup_wrapper:
             _cwipc_codec_dll().cwipc_encodergroup_free(self._as_cwipc_encodergroup_p())
         self._cwipc_encodergroup = None
 
+    def close(self):
+        if self._cwipc_encodergroup:
+            _cwipc_codec_dll().cwipc_encodergroup_close(self._as_cwipc_encodergroup_p())
+
     def feed(self, pc):
         rv = _cwipc_codec_dll().cwipc_encodergroup_feed(self._as_cwipc_encodergroup_p(), pc._as_cwipc_p())
         return rv
@@ -180,6 +188,10 @@ class cwipc_decoder_wrapper(cwipc_source):
         ptr = ctypes.cast(buffer, ctypes.c_void_p)
         rv = _cwipc_codec_dll().cwipc_decoder_feed(self._as_cwipc_decoder_p(), ptr, length)
         return rv
+
+    def close(self):
+        if self._cwipc_source:
+            _cwipc_codec_dll().cwipc_decoder_close(self._as_cwipc_decoder_p())
 
 def cwipc_new_encoder_params(**kwargs):
     params = cwipc_encoder_params(False, 1, 1, 9, 85, 16, 0, 0)
