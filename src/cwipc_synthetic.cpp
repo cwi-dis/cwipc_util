@@ -81,7 +81,7 @@ private:
             float height = height_i * delta_h;
             for (int angle_i=0; angle_i < A_STEPS; angle_i++) {
                 float angle = angle_i * delta_a;
-                float radius = 0.5* sqrt(cos(height*pi/4));
+                float radius = 0.3* pow(cos(height*pi/3-pi/6), 0.71);
                 float x = radius*sin(angle);
                 float y = radius*cos(angle);
                 float r = (1+sin(2*pi*height+m_angle+angle))/2;
