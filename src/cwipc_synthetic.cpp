@@ -56,8 +56,8 @@ public:
     bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
     	static cwipc_tileinfo syntheticInfo[3] = {
     		{{0, 0, 0}, NULL, 0},
-    		{{0, 0, -1}, NULL, 0},
     		{{0, 0, 1}, NULL, 0},
+    		{{0, 0, -1}, NULL, 0},
 		};
 		switch(tilenum) {
 		case 0:
@@ -98,7 +98,7 @@ private:
                 }
                 pptr->x = x;
                 pptr->y = height;
-                pptr->z = y;
+                pptr->z = -y;
                 pptr->r = rr;
                 pptr->g = gg;
                 pptr->b = bb;
