@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import warnings
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -381,8 +382,10 @@ def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
     rv = _cwipc_util_dll().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if rv:
         return cwipc(rv)
     return None

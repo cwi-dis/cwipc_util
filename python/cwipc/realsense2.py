@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import warnings
 from .util import CwipcError, CWIPC_API_VERSION, cwipc_tiledsource
 from .util import cwipc_tiledsource_p
 
@@ -100,8 +101,10 @@ def cwipc_realsense2(conffile=None):
     else:
         conffile = None
     rv = _cwipc_realsense2_dll().cwipc_realsense2(conffile, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if rv:
         return cwipc_tiledsource(rv)
     return None
@@ -114,8 +117,10 @@ def cwipc_rs2offline(settings, conffile):
     else:
         conffile = None
     rv = _cwipc_realsense2_dll().cwipc_rs2offline(settings, conffile, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if rv:
         return cwipc_offline_wrapper(rv)
     return None

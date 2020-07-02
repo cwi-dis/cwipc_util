@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import warnings
 from .util import CwipcError, CWIPC_API_VERSION, cwipc, cwipc_source, cwipc_point, cwipc_point_array
 from .util import cwipc_p, cwipc_source_p
 
@@ -173,8 +174,10 @@ class cwipc_encodergroup_wrapper:
             params = cwipc_new_encoder_params(**kwargs)
         errorString = ctypes.c_char_p()
         obj = _cwipc_codec_dll().cwipc_encodergroup_addencoder(self._as_cwipc_encodergroup_p(), version, params, ctypes.byref(errorString))
-        if errorString:
+        if errorString and not rv:
             raise CwipcError(errorString.value.decode('utf8'))
+        if errorString:
+            warnings.warn(errorString.value.decode('utf8'))
         if not obj:
             return None
         return cwipc_encoder_wrapper(obj)
@@ -218,8 +221,10 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
         params = cwipc_new_encoder_params(**kwargs)
     errorString = ctypes.c_char_p()
     obj = _cwipc_codec_dll().cwipc_new_encoder(version, params, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_encoder_wrapper(obj)
@@ -227,8 +232,10 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
 def cwipc_new_encodergroup():
     errorString = ctypes.c_char_p()
     obj = _cwipc_codec_dll().cwipc_new_encodergroup(ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_encodergroup_wrapper(obj)
@@ -236,8 +243,10 @@ def cwipc_new_encodergroup():
 def cwipc_new_decoder():
     errorString = ctypes.c_char_p()
     obj = _cwipc_codec_dll().cwipc_new_decoder(ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString:
+    if errorString and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
     if not obj:
         return None
     return cwipc_decoder_wrapper(obj)
