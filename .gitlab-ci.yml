@@ -93,3 +93,26 @@ deploy_all:
     - mkdir deliverables
     - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
     - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --notag cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
+      
+deploy_all_untagged:
+  stage: deploy
+  tags:
+  - linux
+  except: 
+  - tags
+  dependencies: 
+  - build_linux
+  - build_osx
+  - build_win
+  before_script:
+  - apt-get update
+  - apt-get install -y python3-pip
+  - python3 -m pip install requests
+  - mkdir deployment-helpers
+  - cd deployment-helpers
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@baltig.viaccess-orca.com:8443/VRT/deployment-group/Deployment
+  - cd ..
+  script:
+    - mkdir deliverables
+    - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
+    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
