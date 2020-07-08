@@ -8,6 +8,7 @@ build_linux:
   tags:
   - ubuntu1804
   before_script:
+    - echo ref $GIT_BUILD_REF_NAME
     - apt-get update
     - apt-get install -y tzdata
     - apt-get install -y cmake
@@ -36,6 +37,7 @@ build_osx:
 #    - brew install pcl || brew upgrade pcl
 #    - brew install python3 || brew upgrade python3
   script:
+    - echo ref $GIT_BUILD_REF_NAME
     - mkdir -p build
     - mkdir -p dist-osx1012
     - cd build
@@ -55,6 +57,7 @@ build_win:
   - win10
   allow_failure: true
   script:
+    - echo ref $GIT_BUILD_REF_NAME
     - mkdir -p build
     - rm -rf /cygdrive/c/dist-win
     - mkdir -p /cygdrive/c/dist-win/installed
@@ -82,6 +85,7 @@ deploy_all:
   - build_osx
   - build_win
   before_script:
+  - echo ref $GIT_BUILD_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
@@ -105,6 +109,7 @@ deploy_all_untagged:
   - build_osx
   - build_win
   before_script:
+  - echo ref $GIT_BUILD_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
