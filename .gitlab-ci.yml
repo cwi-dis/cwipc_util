@@ -5,10 +5,11 @@ stages:
  
 build_linux:
   stage: build
+  except: 
+  - /latest/
   tags:
   - ubuntu1804
   before_script:
-    - echo ref $CI_COMMIT_REF_NAME
     - apt-get update
     - apt-get install -y tzdata
     - apt-get install -y cmake
@@ -30,6 +31,8 @@ build_linux:
       
 build_osx:
   stage: build
+  except: 
+  - /latest/
   tags:
   - osx1014
 #  before_script:
@@ -37,7 +40,6 @@ build_osx:
 #    - brew install pcl || brew upgrade pcl
 #    - brew install python3 || brew upgrade python3
   script:
-    - echo ref $CI_COMMIT_REF_NAME
     - mkdir -p build
     - mkdir -p dist-osx1014
     - cd build
@@ -53,11 +55,12 @@ build_osx:
       
 build_win:
   stage: build
+  except: 
+  - /latest/
   tags:
   - win10
   allow_failure: true
   script:
-    - echo ref $CI_COMMIT_REF_NAME
     - mkdir -p build
     - rm -rf /cygdrive/c/dist-win
     - mkdir -p /cygdrive/c/dist-win/installed
@@ -80,12 +83,13 @@ deploy_all:
   - linux
   only: 
   - tags
+  except: 
+  - /latest/
   dependencies: 
   - build_linux
   - build_osx
   - build_win
   before_script:
-  - echo ref $CI_COMMIT_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
@@ -104,12 +108,12 @@ deploy_all_untagged:
   - linux
   except: 
   - tags
+  - /latest/
   dependencies: 
   - build_linux
   - build_osx
   - build_win
   before_script:
-  - echo ref $CI_COMMIT_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
