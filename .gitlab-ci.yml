@@ -8,7 +8,7 @@ build_linux:
   tags:
   - ubuntu1804
   before_script:
-    - echo ref $GIT_BUILD_REF_NAME
+    - echo ref $CI_COMMIT_REF_NAME
     - apt-get update
     - apt-get install -y tzdata
     - apt-get install -y cmake
@@ -23,33 +23,33 @@ build_linux:
     - make test
     - make install DESTDIR=../dist-ubuntu1804
     - cd ..
-    - tar --directory dist-ubuntu1804/usr/local -cvaf cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz .
+    - tar --directory dist-ubuntu1804/usr/local -cvaf cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz .
   artifacts:
     paths:
-      - cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz
+      - cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz
       
 build_osx:
   stage: build
   tags:
-  - osx1012
+  - osx1014
 #  before_script:
 #    - brew install cmake || brew upgrade cmake
 #    - brew install pcl || brew upgrade pcl
 #    - brew install python3 || brew upgrade python3
   script:
-    - echo ref $GIT_BUILD_REF_NAME
+    - echo ref $CI_COMMIT_REF_NAME
     - mkdir -p build
-    - mkdir -p dist-osx1012
+    - mkdir -p dist-osx1014
     - cd build
     - cmake ..
     - make
     - make test
-    - make install DESTDIR=../dist-osx1012
+    - make install DESTDIR=../dist-osx1014
     - cd ..
-    - tar --directory dist-osx1012/usr/local -z -cvf cwipc_util_osx1012_$CI_BUILD_TAG.tgz .
+    - tar --directory dist-osx1014/usr/local -z -cvf cwipc_util_osx1014_$CI_COMMIT_TAG.tgz .
   artifacts:
     paths:
-      - cwipc_util_osx1012_$CI_BUILD_TAG.tgz
+      - cwipc_util_osx1014_$CI_COMMIT_TAG.tgz
       
 build_win:
   stage: build
@@ -57,11 +57,11 @@ build_win:
   - win10
   allow_failure: true
   script:
-    - echo ref $GIT_BUILD_REF_NAME
+    - echo ref $CI_COMMIT_REF_NAME
     - mkdir -p build
     - rm -rf /cygdrive/c/dist-win
     - mkdir -p /cygdrive/c/dist-win/installed
-    - export ziplocation=$(pwd)/cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - export ziplocation=$(pwd)/cwipc_util_win1064_$CI_COMMIT_TAG.zip
     - cd build
     - cmake .. -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX="C:/dist-win/installed"
     - cmake --build . --config Release
@@ -72,7 +72,7 @@ build_win:
     - (cd /cygdrive/c/dist-win && zip -r $ziplocation installed)
   artifacts:
     paths:
-      - cwipc_util_win1064_$CI_BUILD_TAG.zip
+      - cwipc_util_win1064_$CI_COMMIT_TAG.zip
       
 deploy_all:
   stage: deploy
@@ -85,7 +85,7 @@ deploy_all:
   - build_osx
   - build_win
   before_script:
-  - echo ref $GIT_BUILD_REF_NAME
+  - echo ref $CI_COMMIT_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
@@ -95,8 +95,8 @@ deploy_all:
   - cd ..
   script:
     - mkdir deliverables
-    - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
-    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --notag cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - mv cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip deliverables
+    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --notag cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
       
 deploy_all_untagged:
   stage: deploy
@@ -109,7 +109,7 @@ deploy_all_untagged:
   - build_osx
   - build_win
   before_script:
-  - echo ref $GIT_BUILD_REF_NAME
+  - echo ref $CI_COMMIT_REF_NAME
   - apt-get update
   - apt-get install -y python3-pip
   - python3 -m pip install requests
@@ -119,7 +119,7 @@ deploy_all_untagged:
   - cd ..
   script:
     - mkdir deliverables
-    - mv cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip deliverables
+    - mv cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip deliverables
     - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --deleterelease || true
     - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --deletetag || true
-    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --branch_to_tag "$CI_COMMIT_REF_NAME" cwipc_util_ubuntu1804_$CI_BUILD_TAG.tgz cwipc_util_osx1012_$CI_BUILD_TAG.tgz cwipc_util_win1064_$CI_BUILD_TAG.zip
+    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --branch_to_tag "$CI_COMMIT_REF_NAME" cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
