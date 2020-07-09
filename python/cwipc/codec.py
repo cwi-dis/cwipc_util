@@ -221,7 +221,7 @@ def cwipc_new_encoder(version=None, params=None, **kwargs):
         params = cwipc_new_encoder_params(**kwargs)
     errorString = ctypes.c_char_p()
     obj = _cwipc_codec_dll().cwipc_new_encoder(version, params, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString and not rv:
+    if errorString and not obj:
         raise CwipcError(errorString.value.decode('utf8'))
     if errorString:
         warnings.warn(errorString.value.decode('utf8'))
