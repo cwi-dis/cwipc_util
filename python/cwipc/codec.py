@@ -1,8 +1,8 @@
 import ctypes
 import ctypes.util
 import warnings
-from .util import CwipcError, CWIPC_API_VERSION, cwipc, cwipc_source, cwipc_point, cwipc_point_array
-from .util import cwipc_p, cwipc_source_p
+from cwipc.util import CwipcError, CWIPC_API_VERSION, cwipc, cwipc_source, cwipc_point, cwipc_point_array
+from cwipc.util import cwipc_p, cwipc_source_p
 
     
 class cwipc_encoder_p(ctypes.c_void_p):

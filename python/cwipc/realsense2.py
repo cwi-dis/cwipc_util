@@ -1,8 +1,8 @@
 import ctypes
 import ctypes.util
 import warnings
-from .util import CwipcError, CWIPC_API_VERSION, cwipc_tiledsource
-from .util import cwipc_tiledsource_p
+from cwipc.util import CwipcError, CWIPC_API_VERSION, cwipc_tiledsource
+from cwipc.util import cwipc_tiledsource_p
 
 __all__ = [
     "cwpic_realsense2"
