@@ -101,7 +101,7 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=['cwipc'],
+    packages=find_packages(),
 
     # Specify which Python versions you support. In contrast to the
     # 'Programming Language' classifiers above, 'pip install' will check this
@@ -154,11 +154,11 @@ setup(
     #
     # For example, the following would provide a command called `sample` which
     # executes the function `main` from this package when invoked:
-    #entry_points={  # Optional
-    #    'console_scripts': [
-    #        'sample=sample:main',
-    #    ],
-    #},
+    entry_points={  # Optional
+        'console_scripts': [
+            'cwipc_view=cwipc.scripts.cwipc_view:main',
+        ],
+    },
 
     # List additional URLs that are relevant to your project as a dict.
     #

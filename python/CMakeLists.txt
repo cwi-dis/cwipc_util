@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.10.0)
 
 set(INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/cwipc_util/python)
 
-install(FILES test_cwipc_util.py setup.py DESTINATION ${INSTALL_PATH})
-install(DIRECTORY cwipc DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
+install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
+install(DIRECTORY cwipc cwipc_util.egg-info DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
 
 find_package(Python3 COMPONENTS Interpreter)
 
