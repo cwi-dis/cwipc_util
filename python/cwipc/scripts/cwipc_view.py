@@ -61,7 +61,7 @@ class Visualizer:
         self.visualiser.feed(None, True)
 
     def draw_pc(self, pc):
-        """Draw open3d pointcloud"""
+        """Draw pointcloud"""
         if pc:
             ok = self.visualiser.feed(pc, True)
             pc.free()
