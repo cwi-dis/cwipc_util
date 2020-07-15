@@ -1,10 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-set(INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/cwipc_util/python)
-
-install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
-install(DIRECTORY cwipc cwipc_util.egg-info DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
-
 find_package(Python3 COMPONENTS Interpreter)
 
 # Unfortunately Ubuntu 18.04 doesn't have the Python3 package (introduced in cmake 3.12 or so). Work around it.
@@ -15,6 +10,20 @@ if(NOT Python3_FOUND)
         set(Python3_FOUND TRUE)
     endif()
 endif()
+
+set(INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/cwipc_util/python)
+set(DEST_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/${INSTALL_PATH})
+
+install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
+install(DIRECTORY cwipc DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
+if(Python3_FOUND)
+	install(CODE "MESSAGE(\"Installing Python modules with ${DEST_INSTALL_PATH}/setup.py\")")
+	install(CODE "execute_process(COMMAND ${Python3_EXECUTABLE} setup.py install WORKING_DIRECTORY ${DEST_INSTALL_PATH} )")
+else()
+	MESSAGE("Python3 not found. Install python modules manually from ${INSTALL_PATH}")
+endif()
+
+
 if(Python3_FOUND)
 	add_test(NAME run_python_tests
 		COMMAND ${Python3_EXECUTABLE} setup.py test
