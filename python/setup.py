@@ -39,7 +39,7 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0',  # Required
+    version='2.0.0',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -101,7 +101,7 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=['cwipc'],
+    packages=find_packages(),
 
     # Specify which Python versions you support. In contrast to the
     # 'Programming Language' classifiers above, 'pip install' will check this
@@ -154,11 +154,11 @@ setup(
     #
     # For example, the following would provide a command called `sample` which
     # executes the function `main` from this package when invoked:
-    #entry_points={  # Optional
-    #    'console_scripts': [
-    #        'sample=sample:main',
-    #    ],
-    #},
+    entry_points={  # Optional
+        'console_scripts': [
+            'cwipc_view=cwipc.scripts.cwipc_view:main',
+        ],
+    },
 
     # List additional URLs that are relevant to your project as a dict.
     #
