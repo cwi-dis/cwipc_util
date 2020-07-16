@@ -56,7 +56,7 @@ class Visualizer:
             pc.free()
             
     def start_window(self):
-        self.visualiser = cwipc.cwipc_window("pc_echo")
+        self.visualiser = cwipc.cwipc_window("cwipc_view")
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
@@ -155,7 +155,7 @@ def main():
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
-    parser.add_argument("--display", action="store_true", help="Display each pointcloud after it has been received")
+    parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
     parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
     args = parser.parse_args()
@@ -172,7 +172,7 @@ def main():
     else:
         source = cwipc.realsense2.cwipc_realsense2()
 
-    if args.display:
+    if not args.nodisplay:
         visualizer = Visualizer(args.verbose)
     else:
         visualizer = None
