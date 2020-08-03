@@ -19,10 +19,12 @@ target_include_directories(
     ${PCL_INCLUDE_DIRS}
     ${glfw_INCLUDE_DIRS}
 )
-target_link_directories(
-	cwipc_util PUBLIC
-	${PCL_LIBRARY_DIRS}
-)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	target_link_directories(
+		cwipc_util PUBLIC
+		${PCL_LIBRARY_DIRS}
+	)
+endif()
 target_compile_definitions(
 	cwipc_util PRIVATE
 	${PCL_DEFINITIONS}
