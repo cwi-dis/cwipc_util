@@ -9,12 +9,19 @@
 #define _CWIPC_UTIL_EXPORT
 #endif
 
+#define PCL_NO_PRECOMPILE
+
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
 #include <pcl/point_cloud.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/exceptions.h>
+
+#include <pcl/filters/voxel_grid.h>
+
+namespace pcl {
+template class VoxelGrid<cwipc_pcl_point>;
+}
 
 cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 {
