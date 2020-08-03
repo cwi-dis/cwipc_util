@@ -11,9 +11,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE})
 
 
-find_package(PCL 1.9 COMPONENTS common io octree)
+find_package(PCL 1.9 COMPONENTS common io octree filters)
 if(NOT PCL_FOUND)
-	find_package(PCL 1.8 REQUIRED COMPONENTS common io octree)
+	find_package(PCL 1.8 REQUIRED COMPONENTS common io octree filters)
 endif()
 find_package(glfw3 3.2)
 if(NOT glfw3_FOUND)

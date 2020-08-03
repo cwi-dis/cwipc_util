@@ -4,9 +4,9 @@
 #include <chrono>
 #include <sstream>
 #ifdef WIN32
-#define _CWIPC_CODEC_EXPORT __declspec(dllexport)
+#define _CWIPC_UTIL_EXPORT __declspec(dllexport)
 #else
-#define _CWIPC_CODEC_EXPORT
+#define _CWIPC_UTIL_EXPORT
 #endif
 
 #include "cwipc_util/api_pcl.h"

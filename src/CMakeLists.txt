@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-add_library(cwipc_util SHARED cwipc_util.cpp cwipc_synthetic.cpp cwipc_window.cpp window_util.cpp cwipc_certh.cpp)
+add_library(cwipc_util SHARED cwipc_util.cpp cwipc_synthetic.cpp cwipc_filters.cpp cwipc_window.cpp window_util.cpp cwipc_certh.cpp)
 
 target_sources(cwipc_util
 	PRIVATE
