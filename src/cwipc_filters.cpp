@@ -10,7 +10,7 @@
 #endif
 
 #include "cwipc_util/api_pcl.h"
-#include "cwipc_codec/api.h"
+#include "cwipc_util/api.h"
 
 #include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
