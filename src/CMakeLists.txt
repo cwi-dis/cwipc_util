@@ -24,11 +24,11 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		cwipc_util PUBLIC
 		${PCL_LIBRARY_DIRS}
 	)
+	target_compile_definitions(
+		cwipc_util PRIVATE
+		${PCL_DEFINITIONS}
+	)
 endif()
-target_compile_definitions(
-	cwipc_util PRIVATE
-	${PCL_DEFINITIONS}
-)
 target_link_libraries(cwipc_util PRIVATE ${PCL_LIBRARIES} glfw OpenGL::GL)
 
 install(TARGETS cwipc_util
