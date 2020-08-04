@@ -1,4 +1,5 @@
 #include <chrono>
+#include <thread>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/common/transforms.h>
@@ -16,6 +17,7 @@ class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
     float m_angle;
     std::chrono::system_clock::time_point m_start;
+    std::chrono::system_clock::time_point m_earliest_next_pointcloud;
     int m_hsteps;
     int m_asteps;
     int m_fps;
@@ -25,6 +27,7 @@ public:
     cwipc_source_synthetic_impl(int fps=0, int npoints=0)
     : m_angle(0),
       m_start(std::chrono::system_clock::now()),
+      m_earliest_next_pointcloud(),
       m_hsteps(0),
       m_asteps(0),
       m_fps(fps),
@@ -56,9 +59,14 @@ public:
     }
 
     cwipc* get() {
+        if (m_fps != 0 && m_earliest_next_pointcloud.time_since_epoch() != std::chrono::milliseconds(0)) {
+            std::this_thread::sleep_until(m_earliest_next_pointcloud);
+        }
 		uint64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         std::chrono::duration<float, std::ratio<1>> runtime = std::chrono::system_clock::now() - m_start;
-        
+        if (m_fps != 0) {
+            m_earliest_next_pointcloud = std::chrono::system_clock::now() + std::chrono::milliseconds(1000 / m_fps);
+        }
         m_angle = runtime.count();
         generate_points();
         cwipc *rv = cwipc_from_points(m_points, m_points_size, m_hsteps*m_asteps, timestamp, NULL, CWIPC_API_VERSION);
