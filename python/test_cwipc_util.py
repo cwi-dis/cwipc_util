@@ -188,6 +188,17 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
+    def test_cwipc_synthetic_args(self):
+        """Can we create a synthetic pointcloud with fps and npoints arguments?"""
+        pcs = cwipc.cwipc_synthetic(10, 1000)
+        self.assertTrue(pcs.available(True))
+        self.assertTrue(pcs.available(False))
+        self.assertFalse(pcs.eof())
+        pc = pcs.get()
+        self._verify_pointcloud(pc)
+        pc.free()
+        pcs.free()
+        
     def test_cwipc_synthetic_tiled(self):
         """Is a synthetic pointcloud generator providing the correct tiling interface?"""
         pcs = cwipc.cwipc_synthetic()
