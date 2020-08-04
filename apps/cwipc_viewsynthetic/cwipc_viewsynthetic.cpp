@@ -5,14 +5,18 @@
 
 int main(int argc, char** argv)
 {
-    if (argc != 1) {
-        std::cerr << "Usage: " << argv[0]  << std::endl;
+	int fps = 0;
+	int npoints = 0;
+	if (argc >= 2) fps = atoi(argv[1]);
+	if (argc >= 3) npoints = atoi(argv[2]);
+    if (argc >= 4 || fps < 0 || npoints < 0) {
+        std::cerr << "Usage: " << argv[0]  << " [fps [npoints]]" <<  std::endl;
         std::cerr << "Create synthetic pointclouds and show them in a window" << std::endl;
         return 2;
     }
     char *error;
     
-    cwipc_source *generator = cwipc_synthetic(&error, CWIPC_API_VERSION);
+    cwipc_source *generator = cwipc_synthetic(fps, npoints, &error, CWIPC_API_VERSION);
     if (generator == NULL) {
     	std::cerr << "Error: " << error << std::endl;
     	return 1;
@@ -24,6 +28,10 @@ int main(int argc, char** argv)
     }
     while (true) {
     	cwipc *pc = generator->get();
+        if (pc == NULL) {
+            std::cerr << "Error: generator->get() returned NULL" << std::endl;
+            return 1;
+        }
         bool ok = window->feed(pc, true);
         if (!ok) {
             std::cerr << "Error: window->feed() returned false" << std::endl;

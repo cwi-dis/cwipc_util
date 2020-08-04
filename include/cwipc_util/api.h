@@ -540,6 +540,8 @@ _CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink *sink, const char *caption
 _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis);
     
 /** \brief Generate synthetic pointclouds.
+ * \param fps Maximum frames-per-second produced (0 for unlimited)
+ * \param npoints Approximate number of points in pointcloud (0 for default 160Kpoint)
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
  * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  *
@@ -547,7 +549,7 @@ _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt
  * of the object now usually called the "water melon". It is intended for testing
  * purposes.
  */
-_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(char **errorMessage, uint64_t apiVersion);
+_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Display a window to show pointclouds.
  * \param Title The title string, to be shown in the title bar of the window.

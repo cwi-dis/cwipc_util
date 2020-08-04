@@ -16,20 +16,35 @@ class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
     float m_angle;
     std::chrono::system_clock::time_point m_start;
-    static const int H_STEPS = 400;
-    static const int A_STEPS = 400;
-    cwipc_point m_points[H_STEPS*A_STEPS];
+    int m_hsteps;
+    int m_asteps;
+    int m_fps;
+    cwipc_point *m_points;
+    size_t m_points_size;
 public:
-    cwipc_source_synthetic_impl()
+    cwipc_source_synthetic_impl(int fps=0, int npoints=0)
     : m_angle(0),
-      m_start(std::chrono::system_clock::now())
+      m_start(std::chrono::system_clock::now()),
+      m_hsteps(0),
+      m_asteps(0),
+      m_fps(fps),
+      m_points(NULL),
+      m_points_size(0)
     {
+    	if (npoints == 0) npoints = 160000;
+    	m_hsteps = m_asteps = int(sqrt(npoints));
+        npoints = m_hsteps * m_asteps;
+        m_points_size = npoints*sizeof(cwipc_point);
+    	m_points = (cwipc_point *)malloc(m_points_size);
     }
 
     ~cwipc_source_synthetic_impl() {
+    	free();
     }
 
     void free() {
+    	if (m_points) ::free(m_points);
+    	m_points = NULL;
     }
     
     bool eof() {
@@ -46,8 +61,8 @@ public:
         
         m_angle = runtime.count();
         generate_points();
-        cwipc *rv = cwipc_from_points(m_points, sizeof(m_points), H_STEPS*A_STEPS, timestamp, NULL, CWIPC_API_VERSION);
-        rv->_set_cellsize(0.01);
+        cwipc *rv = cwipc_from_points(m_points, m_points_size, m_hsteps*m_asteps, timestamp, NULL, CWIPC_API_VERSION);
+        if (rv) rv->_set_cellsize(2.0 / m_hsteps);
         return rv;
     }
 
@@ -74,12 +89,12 @@ private:
 	{
         const float  pi=3.14159265358979f;
         const float max_height = 2.0;
-        const float delta_h = max_height / H_STEPS;
-        const float delta_a = 2*pi / A_STEPS;
+        const float delta_h = max_height / m_hsteps;
+        const float delta_a = 2*pi / m_asteps;
         cwipc_point *pptr = m_points;
-        for (int height_i=0; height_i < H_STEPS; height_i++) {
+        for (int height_i=0; height_i < m_hsteps; height_i++) {
             float height = height_i * delta_h;
-            for (int angle_i=0; angle_i < A_STEPS; angle_i++) {
+            for (int angle_i=0; angle_i < m_asteps; angle_i++) {
                 float angle = angle_i * delta_a;
                 float radius = 0.3* pow(cos(height*pi/3-pi/6), 0.71);
                 float x = radius*sin(angle);
@@ -111,7 +126,7 @@ private:
 };
 
 cwipc_tiledsource *
-cwipc_synthetic(char **errorMessage, uint64_t apiVersion)
+cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -119,5 +134,5 @@ cwipc_synthetic(char **errorMessage, uint64_t apiVersion)
 		}
 		return NULL;
 	}
-	return new cwipc_source_synthetic_impl();
+	return new cwipc_source_synthetic_impl(fps, npoints);
 }
