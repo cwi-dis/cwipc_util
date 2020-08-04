@@ -28,7 +28,7 @@ struct CerthPointCloud {
 };
 
 cwipc *
-cwipc_from_certh(void* certhPC, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
+cwipc_from_certh(void* certhPC, float *origin, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
@@ -46,6 +46,11 @@ cwipc_from_certh(void* certhPC, float *bbox, uint64_t timestamp, char **errorMes
             float x = vertices[4*vertexNum+0];
             float y = vertices[4*vertexNum+1];
             float z = vertices[4*vertexNum+2];
+            if (origin) {
+            	x -= origin[0];
+            	y -= origin[1];
+            	z -= origin[2];
+            }
             // Fourth coordinate is W which is weight, which is currently unused.
             uint8_t r = colors[3*vertexNum+2];
             uint8_t g = colors[3*vertexNum+1];

@@ -351,6 +351,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t s
 
 /** \brief Create cwipc pointcloud from CERTH pointcloud representation.
  * \param points Pointer to CERTH PointCloud structure.
+ * \param origin Optional point to coordinates of point (3 floats x, y, z) that needs to be moved to (0, 0, 0)
  * \param bbox Optional pointer to bounding box (6 floats: minx, maxx, miny, maxy, minz, maxz)
  * \param timestamp The timestamp to record in the cwipc object.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
@@ -360,7 +361,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t s
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_certh(void* certhPC, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_certh(void* certhPC, float *origin, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
     
 /** \brief Read pointcloud from pointclouddump file.
  * \param filename The dump file to read.
