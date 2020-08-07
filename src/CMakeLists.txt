@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-add_library(cwipc_util SHARED cwipc_util.cpp cwipc_synthetic.cpp cwipc_window.cpp window_util.cpp cwipc_certh.cpp)
+add_library(cwipc_util SHARED cwipc_util.cpp cwipc_synthetic.cpp cwipc_filters.cpp cwipc_window.cpp window_util.cpp cwipc_certh.cpp)
 
 target_sources(cwipc_util
 	PRIVATE
@@ -19,7 +19,16 @@ target_include_directories(
     ${PCL_INCLUDE_DIRS}
     ${glfw_INCLUDE_DIRS}
 )
-
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	target_link_directories(
+		cwipc_util PUBLIC
+		${PCL_LIBRARY_DIRS}
+	)
+	target_compile_definitions(
+		cwipc_util PRIVATE
+		${PCL_DEFINITIONS}
+	)
+endif()
 target_link_libraries(cwipc_util PRIVATE ${PCL_LIBRARIES} glfw OpenGL::GL)
 
 install(TARGETS cwipc_util

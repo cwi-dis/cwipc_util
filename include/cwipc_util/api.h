@@ -18,13 +18,13 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20200512
+#define CWIPC_API_VERSION 0x20200703
 
 /** \brief Version of oldest compatible cwipc API.
  *
  * Version of the oldest API of cwipc to which this set of libraries is compatible.
  */
-#define CWIPC_API_VERSION_OLD 0x20190522
+#define CWIPC_API_VERSION_OLD 0x20200703
 
 
 /** \brief Single 3D vector.
@@ -351,6 +351,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t s
 
 /** \brief Create cwipc pointcloud from CERTH pointcloud representation.
  * \param points Pointer to CERTH PointCloud structure.
+ * \param origin Optional point to coordinates of point (3 floats x, y, z) that needs to be moved to (0, 0, 0)
  * \param bbox Optional pointer to bounding box (6 floats: minx, maxx, miny, maxy, minz, maxz)
  * \param timestamp The timestamp to record in the cwipc object.
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
@@ -360,7 +361,7 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t s
  * If an error occurs and errorMessage is non-NULL it will receive a pointer to
  * a string with the message.
  */
-_CWIPC_UTIL_EXPORT cwipc *cwipc_from_certh(void* certhPC, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_certh(void* certhPC, float *origin, float *bbox, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
     
 /** \brief Read pointcloud from pointclouddump file.
  * \param filename The dump file to read.
@@ -540,6 +541,8 @@ _CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink *sink, const char *caption
 _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis);
     
 /** \brief Generate synthetic pointclouds.
+ * \param fps Maximum frames-per-second produced (0 for unlimited)
+ * \param npoints Approximate number of points in pointcloud (0 for default 160Kpoint)
  * \param errorMessage Address of a char* where any error message is saved (or NULL).
  * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
  *
@@ -547,7 +550,7 @@ _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt
  * of the object now usually called the "water melon". It is intended for testing
  * purposes.
  */
-_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(char **errorMessage, uint64_t apiVersion);
+_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Display a window to show pointclouds.
  * \param Title The title string, to be shown in the title bar of the window.
@@ -564,6 +567,28 @@ _CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_synthetic(char **errorMessage, uint6
  */
 _CWIPC_UTIL_EXPORT cwipc_sink *cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion);
 
+
+/** \brief Downsample a cwipc pointcloud.
+ * \param pc The source pointcloud
+ * \param voxelsize Wanted resolution for returned pointcloud.
+ * \return a new pointcloud
+ *
+ * A grid of voxelsize*voxelsize*voxelsize is overlaid over the pointcloud. All
+ * points within each cube are combined into the new point, with coordinates and colors
+ * of that new point being a smart average of the original points in the cell.
+ * The tile of the new point is the OR of the tiles of the contributing points.
+ */
+_CWIPC_UTIL_EXPORT cwipc *cwipc_downsample(cwipc *pc, float voxelsize);
+
+/** \brief Filter a pointcloud by tile.
+ * \param pc The source pointcloud.
+ * \param tile The tile number.
+ *
+ * Returns a new pointcloud (possibly empty) that only consists only of the points
+ * with the given tile number.
+ */
+_CWIPC_UTIL_EXPORT cwipc *cwipc_tilefilter(cwipc *pc, int tile);
+ 
 #ifdef __cplusplus
 }
 #endif

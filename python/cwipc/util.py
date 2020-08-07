@@ -20,10 +20,13 @@ __all__ = [
     'cwipc_from_certh',
     
     'cwipc_synthetic',
-    'cwipc_window'
+    'cwipc_window',
+    
+    'cwipc_downsample',
+    'cwipc_tilefilter'
 ]
 
-CWIPC_API_VERSION = 0x20200512
+CWIPC_API_VERSION = 0x20200703
 
 class CwipcError(RuntimeError):
     pass
@@ -198,11 +201,17 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_sink_interact.argtypes = [cwipc_sink_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
     _cwipc_util_dll_reference.cwipc_sink_interact.restype = ctypes.c_char
     
-    _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
 
     _cwipc_util_dll_reference.cwipc_window.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_window.restype = cwipc_sink_p
+
+    _cwipc_util_dll_reference.cwipc_downsample.argtypes = [cwipc_p, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc_downsample.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_tilefilter.restype = cwipc_p
 
     return _cwipc_util_dll_reference
 
@@ -446,10 +455,10 @@ def cwipc_write_debugdump(filename, pointcloud):
         raise CwipcError(errorString.value.decode('utf8'))
     return rv
     
-def cwipc_synthetic():
+def cwipc_synthetic(fps=0, npoints=0):
     """Returns a cwipc_source object that returns synthetically generated cwipc objects on every get() call."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_synthetic(ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = _cwipc_util_dll().cwipc_synthetic(fps, npoints, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -465,6 +474,14 @@ def cwipc_window(title):
     if rv:
         return cwipc_sink(rv)
     return None
+    
+def cwipc_downsample(pc, voxelsize):
+    rv = _cwipc_util_dll().cwipc_downsample(pc._as_cwipc_p(), voxelsize)
+    return cwipc(rv)
+    
+def cwipc_tilefilter(pc, tile):
+    rv = _cwipc_util_dll().cwipc_tilefilter(pc._as_cwipc_p(), tile)
+    return cwipc(rv)
     
 def main():
     generator = cwipc_synthetic()

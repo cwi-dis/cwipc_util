@@ -188,6 +188,17 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
+    def test_cwipc_synthetic_args(self):
+        """Can we create a synthetic pointcloud with fps and npoints arguments?"""
+        pcs = cwipc.cwipc_synthetic(10, 1000)
+        self.assertTrue(pcs.available(True))
+        self.assertTrue(pcs.available(False))
+        self.assertFalse(pcs.eof())
+        pc = pcs.get()
+        self._verify_pointcloud(pc)
+        pc.free()
+        pcs.free()
+        
     def test_cwipc_synthetic_tiled(self):
         """Is a synthetic pointcloud generator providing the correct tiling interface?"""
         pcs = cwipc.cwipc_synthetic()
@@ -196,6 +207,62 @@ class TestApi(unittest.TestCase):
         self.assertEqual(pcs.get_tileinfo_dict(1), {'normal':{'x':0, 'y':0, 'z':1},'camera':b'synthetic', 'ncamera':1})
         self.assertEqual(pcs.get_tileinfo_dict(2), {'normal':{'x':0, 'y':0, 'z':-1},'camera':b'synthetic', 'ncamera':2})
         pcs.free()
+
+    def test_tilefilter(self):
+        """Check that the tilefilter returns the same number of points if not filtering, and correct number if filtering"""
+        gen = cwipc.cwipc_synthetic()
+        pc_orig = gen.get()
+        pc_filtered = cwipc.cwipc_tilefilter(pc_orig, 0)
+        self.assertEqual(len(pc_orig.get_points()), len(pc_filtered.get_points()))
+        pc_filtered_1 = cwipc.cwipc_tilefilter(pc_orig, 1)
+        pc_filtered_2 = cwipc.cwipc_tilefilter(pc_orig, 2)
+        self.assertEqual(len(pc_orig.get_points()), len(pc_filtered_1.get_points()) + len(pc_filtered_2.get_points()))
+        self.assertEqual(pc_orig.timestamp(), pc_filtered_1.timestamp())
+        self.assertEqual(pc_orig.timestamp(), pc_filtered_2.timestamp())
+        gen.free()
+        pc_orig.free()
+        pc_filtered.free()
+        pc_filtered_1.free()
+        pc_filtered_2.free()
+        
+    def test_tilefilter_empty(self):
+        """Check that the tilefilter returns an empty pointcloud when passed an empty pointcloud"""
+        pc_orig = cwipc.cwipc_from_points([], 0)
+        pc_filtered = cwipc.cwipc_tilefilter(pc_orig, 0)
+        self.assertEqual(len(pc_orig.get_points()), 0)
+        self.assertEqual(len(pc_filtered.get_points()), 0)
+        pc_orig.free()
+        pc_filtered.free()
+        
+    def test_downsample(self):
+        """Check that the downsampler returns at most the same number of points and eventually returns 1"""
+        gen = cwipc.cwipc_synthetic()
+        pc_orig = gen.get()
+        count_orig = len(pc_orig.get_points())
+        count_prev = count_orig
+        factor = 1024
+        while factor > 0.0001:
+            pc_filtered = cwipc.cwipc_downsample(pc_orig, factor)
+            count_filtered = len(pc_filtered.get_points())
+            self.assertGreaterEqual(count_filtered, 1)
+            self.assertLessEqual(count_filtered, count_orig)
+            self.assertEqual(pc_orig.timestamp(), pc_filtered.timestamp())
+            count_prev = count_filtered
+            pc_filtered.free()
+            if count_filtered > count_orig/2:
+                break
+            factor = factor / 2
+        gen.free()
+        pc_orig.free()
+        
+    def test_downsample_empty(self):
+        """Check that the downsample returns an empty pointcloud when passed an empty pointcloud"""
+        pc_orig = cwipc.cwipc_from_points([], 0)
+        pc_filtered = cwipc.cwipc_downsample(pc_orig, 1)
+        self.assertEqual(len(pc_orig.get_points()), 0)
+        self.assertEqual(len(pc_filtered.get_points()), 0)
+        pc_orig.free()
+        pc_filtered.free()
         
     def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()
