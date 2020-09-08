@@ -51,7 +51,7 @@ class Visualizer:
         
     def feed(self, pc):
         try:
-            self.queue.put(pc)
+            self.queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
