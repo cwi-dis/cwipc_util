@@ -37,6 +37,7 @@ class Visualizer:
         self.verbose = verbose
         self.cur_pc = None
         self.paused = False
+        self.tilefilter = None
         self.start_window()
         
     def set_producer(self, producer):
@@ -74,11 +75,16 @@ class Visualizer:
     def draw_pc(self, pc):
         """Draw pointcloud"""
         if pc:
-            ok = self.visualiser.feed(pc, True)
+            pc_to_show = pc
+            if self.tilefilter:
+                pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
+            ok = self.visualiser.feed(pc_to_show, True)
+            if pc_to_show != pc:
+                pc_to_show.free()
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "q w", 30) 
+        cmd = self.visualiser.interact(None, "?q wa012345678", 30) 
         if cmd == "q":
             return False
         elif cmd == "w" and self.cur_pc:
@@ -87,6 +93,20 @@ class Visualizer:
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
+        elif cmd == 'a':
+            self.tilefilter = None
+        elif cmd in '012345678':
+            self.tilefilter = int(cmd)
+        elif cmd == '\0':
+            pass
+        else:
+            print(
+                "q      Quit\n"+
+                "space  Pause/resume\n"+
+                "w      Write PLY file\n"+
+                "012... Select single tile to view\n"+
+                "a      Show all tiles"
+            )
         return True
 
 class SourceServer:
