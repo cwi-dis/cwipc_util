@@ -35,6 +35,8 @@ class Visualizer:
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
+        self.cur_pc = None
+        self.paused = False
         self.start_window()
         
     def set_producer(self, producer):
@@ -44,7 +46,14 @@ class Visualizer:
         while self.producer and self.producer.is_alive():
             try:
                 pc = self.queue.get(timeout=0.033)
+                if self.paused:
+                    if pc: pc.free()
+                    pc = None
                 ok = self.draw_pc(pc)
+                if not self.paused:
+                    if self.cur_pc:
+                        self.cur_pc.free()
+                    self.cur_pc = pc
                 if not ok: break
             except queue.Empty:
                 pass
@@ -56,7 +65,9 @@ class Visualizer:
             pc.free()
             
     def start_window(self):
+        cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
         self.visualiser = cwipc.cwipc_window("cwipc_view")
+        os.chdir(cwd)
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
@@ -64,12 +75,18 @@ class Visualizer:
         """Draw pointcloud"""
         if pc:
             ok = self.visualiser.feed(pc, True)
-            pc.free()
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        if self.visualiser.interact(None, "q", 30) == "q":
+        cmd = self.visualiser.interact(None, "q w", 30) 
+        if cmd == "q":
             return False
+        elif cmd == "w" and self.cur_pc:
+            filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
+            cwipc.cwipc_write(filename, self.cur_pc)
+            print(f'Saved as {filename} in {os.getcwd()}')
+        elif cmd == " ":
+            self.paused = not self.paused
         return True
 
 class SourceServer:
