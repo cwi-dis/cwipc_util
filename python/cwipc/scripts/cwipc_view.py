@@ -88,15 +88,11 @@ class SourceServer:
         self.stopped = True
         if self.grabber:
             self.grabber.free()
-        del self.grabber
 
     def stop(self):
         if self.stopped: return
         if self.verbose: print("grab: stopping", flush=True)
         self.stopped = True
-        if self.grabber:
-            self.grabber.free()
-            self.grabber = None
         
     def grab_pc(self):
         if self.lastGrabTime and self.fps:
