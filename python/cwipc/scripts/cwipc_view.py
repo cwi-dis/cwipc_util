@@ -29,7 +29,27 @@ def _dump_app_stacks(*args):
         traceback.print_stack(stack, file=sys.stderr)
         print(file=sys.stderr)
 
+class Filesource:
+    def __init__(self, filenames):
+        self.filenames = list(filenames)
+        
+    def free(self):
+        pass
+        
+    def get(self):
+        fn = self.filenames.pop(0)
+        self.filenames.append(fn)
+        return cwipc.cwipc_read(fn, int(time.time()))
+        
 class Visualizer:
+    HELP="""
+q      Quit
+space  Pause/resume
+w      Write PLY file
+012... Select single tile to view
+a      Show all tiles
+    """
+    
     def __init__(self, verbose=False):
         self.visualiser = None
         self.producer = None
@@ -100,13 +120,7 @@ class Visualizer:
         elif cmd == '\0':
             pass
         else:
-            print(
-                "q      Quit\n"+
-                "space  Pause/resume\n"+
-                "w      Write PLY file\n"+
-                "012... Select single tile to view\n"+
-                "a      Show all tiles"
-            )
+            print(HELP)
         return True
 
 class SourceServer:
@@ -182,11 +196,13 @@ def main():
     global ISSUE_20
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
-    parser = argparse.ArgumentParser(description="View pointcloud streams")
+    parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
+    parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
+    parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
@@ -202,6 +218,13 @@ def main():
             print("certhsource module not on PYUTHONPATH")
             return
         source = certhsource.cwipc_certh(args.certh, args.data, args.metadata)
+    elif args.dir:
+        filenames = filter(lambda fn : fn.lower().endswith(".ply"), os.listdir(args.dir))
+        if not filenames:
+            print(f"No .ply files in {args.dir}")
+        source = Filesource(filenames)
+    elif args.file:
+        source = Filesource([args.file])
     else:
         source = cwipc.realsense2.cwipc_realsense2()
 
