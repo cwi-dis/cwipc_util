@@ -427,7 +427,7 @@ def cwipc_from_certh(certhPC, timestamp, origin=None, bbox=None):
     if not isinstance(certhPC, ctypes.c_void_p):
         certhPC = ctypes.cast(certhPC, ctypes.c_void_p)
     if origin:
-        origin = (ctypes.c_float*2)(*origin)
+        origin = (ctypes.c_float*3)(*origin)
         origin = ctypes.cast(origin, ctypes.c_void_p)
     if bbox:
         bbox = (ctypes.c_float*6)(*bbox)

@@ -9,6 +9,7 @@ import queue
 import cwipc
 import cwipc.codec
 import cwipc.realsense2
+import cwipc.certh
 
 # Convoluted code warning: adding ../python directory to path so we can import subsource
 _sourcedir = os.path.dirname(__file__)
@@ -16,11 +17,6 @@ _sourcedir = os.path.realpath(_sourcedir)
 _pardir = os.path.dirname(_sourcedir)
 _pythondir = os.path.join(_pardir, 'python')
 sys.path.append(_pythondir)
-
-try:
-    import certhsource
-except ImportError:
-    certhsource = None
 
 def _dump_app_stacks(*args):
     print("pc_echo: QUIT received, dumping all stacks, %d threads:" % len(sys._current_frames()), file=sys.stderr)
@@ -214,10 +210,7 @@ def main():
     if args.synthetic:
         source = cwipc.cwipc_synthetic()
     elif args.certh:
-        if not certhsource:
-            print("certhsource module not on PYUTHONPATH")
-            return
-        source = certhsource.cwipc_certh(args.certh, args.data, args.metadata)
+        source = cwipc.certh.cwipc_certh(args.certh, args.data, args.metadata)
     elif args.dir:
         filenames = filter(lambda fn : fn.lower().endswith(".ply"), os.listdir(args.dir))
         if not filenames:
