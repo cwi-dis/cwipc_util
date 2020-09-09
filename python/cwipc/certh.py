@@ -149,7 +149,8 @@ class cwipc_certh:
         self.pcl_id = 0
         self.receivedMetaData = False
         self.receivedMetaDataBuffer = None
-        self.bbox = (-1.0, 1.0, -1.0, 0.5, -3.0, 1.0) # Random bounding box that works for camera on Jack's desk at home.
+        self.bbox = (-1.0, 1.0, 0, 2.2, -1.0, 1.0) # Random bounding box that works for camera on Jack's desk at home.
+        self.origin = (0, 0.8, 0) # Origin that seems to sort-of work well
         self.queue = queue.Queue()
         # Load DLL early, so we get exceptions early
         _ = _native_pcloud_receiver_dll()
@@ -215,5 +216,5 @@ class cwipc_certh:
             print(f"cwipc_certh: Exception in callColorizedPCloudFrameDLL: {e}", flush=True, file=sys.stderr)
             return None
         if DEBUG: print(f"cwipc_certh: got certPC")
-        return cwipc.util.cwipc_from_certh(certhPC, 0, self.bbox)
+        return cwipc.util.cwipc_from_certh(certhPC, 0, self.bbox, self.origin)
 
