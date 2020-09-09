@@ -215,6 +215,8 @@ def main():
         filenames = filter(lambda fn : fn.lower().endswith(".ply"), os.listdir(args.dir))
         if not filenames:
             print(f"No .ply files in {args.dir}")
+        filenames = list(filenames)
+        filenames.sort()
         source = Filesource(filenames)
     elif args.file:
         source = Filesource([args.file])
