@@ -10,10 +10,8 @@ import cwipc.util
 
 _native_pcloud_receiver_dll_reference = None
 
-DEBUG=True
+DEBUG=False
 DEBUG_MESSAGES=False
-DEBUG_SAVE_FIRST_DATA='DEBUG_SAVE_FIRST_DATA' in os.environ and os.environ['DEBUG_SAVE_FIRST_DATA']
-XXXJACK_KEEPIT=[]
 
 def _native_pcloud_receiver_dll(libname=None):
     global _native_pcloud_receiver_dll_reference
@@ -73,8 +71,6 @@ class _RabbitmqReceiver:
         self.connection = None
         self.channel = None
         self.thread = None
-        if DEBUG_SAVE_FIRST_DATA:
-            self.did_save = False
         self._init_rabbitmq()
         self._start_rabbitmq()
 
@@ -142,10 +138,6 @@ class _RabbitmqReceiver:
             print(body, flush=True, file=sys.stderr)
             print("", flush=True, file=sys.stderr)
         channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-        if DEBUG_SAVE_FIRST_DATA and not self.did_save:
-            open(self.exchangeName + '.data', 'wb').write(body)
-            print(f"cwipc_certh: saved message body to {self.exchangeName}.data", flush=True, file=sys.stderr)
-            self.did_save = True
         self.callback(body)
              
 class cwipc_certh:
