@@ -10,6 +10,7 @@ import cwipc
 import cwipc.codec
 import cwipc.realsense2
 import cwipc.certh
+import cwipc.playback
 
 # Convoluted code warning: adding ../python directory to path so we can import subsource
 _sourcedir = os.path.dirname(__file__)
@@ -25,25 +26,6 @@ def _dump_app_stacks(*args):
         traceback.print_stack(stack, file=sys.stderr)
         print(file=sys.stderr)
 
-class Filesource:
-    def __init__(self, filenames):
-        self.filenames = list(filenames)
-        
-    def free(self):
-        pass
-        
-    def get(self):
-        fn = self.filenames.pop(0)
-        self.filenames.append(fn)
-        return self._get(fn)
-        
-    def _get(self, fn):
-        return cwipc.cwipc_read(fn, int(time.time()))        
-        
-class DumpFilesource(Filesource):
-    def _get(self, fn):
-        return cwipc.cwipc_read_debugdump(fn)        
-    
 class Visualizer:
     HELP="""
 q      Quit
@@ -206,7 +188,8 @@ def main():
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
     parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
-    parser.add_argument("--ddir", action="store", metavar="DIR", help="Continually show pointclouds from cwipcdump files in DIR in alphabetical order")
+    parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dump")
+    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS")
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
@@ -220,25 +203,9 @@ def main():
     elif args.certh:
         source = cwipc.certh.cwipc_certh(args.certh, args.data, args.metadata)
     elif args.file:
-        source = Filesource([args.file])
+        source = cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=True)
     elif args.dir:
-        filenames = filter(lambda fn : fn.lower().endswith(".ply"), os.listdir(args.dir))
-        if not filenames:
-            print(f"No .ply files in {args.dir}")
-        filenames = list(filenames)
-        filenames.sort()
-        filenames = map(lambda fn: os.path.join(args.dir, fn), filenames)
-        filenames = list(filenames)
-        source = Filesource(filenames)
-    elif args.ddir:
-        filenames = filter(lambda fn : fn.lower().endswith(".cwipcdump"), os.listdir(args.ddir))
-        if not filenames:
-            print(f"No .cwipcdump files in {args.dir}")
-        filenames = list(filenames)
-        filenames.sort()
-        filenames = map(lambda fn: os.path.join(args.ddir, fn), filenames)
-        filenames = list(filenames)
-        source = DumpFilesource(filenames)
+        source = cwipc.playback.cwipc_playback(args.dir, ply=not args.dump, fps=args.fps, loop=True)
     else:
         source = cwipc.realsense2.cwipc_realsense2()
 

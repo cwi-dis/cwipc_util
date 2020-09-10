@@ -1,5 +1,6 @@
 import unittest
 import cwipc
+import cwipc.playback
 import os
 import sys
 import tempfile
@@ -35,7 +36,8 @@ else:
     TEST_OUTPUT_DIR=os.path.join(TEST_FIXTURES_DIR, "output")
     if not os.access(TEST_OUTPUT_DIR, os.W_OK):
         TEST_OUTPUT_DIR=tempfile.mkdtemp('cwipc_util_test')
-PLY_FILENAME=os.path.join(TEST_FIXTURES_DIR, "input", "pcl_frame1.ply")
+PLY_DIRNAME=os.path.join(TEST_FIXTURES_DIR, "input")
+PLY_FILENAME=os.path.join(PLY_DIRNAME, "pcl_frame1.ply")
 
 class TestApi(unittest.TestCase):
 
@@ -264,6 +266,23 @@ class TestApi(unittest.TestCase):
         pc_orig.free()
         pc_filtered.free()
         
+    def test_playback_file(self):
+        src = cwipc.playback.cwipc_playback([PLY_FILENAME], ply=True, loop=False)
+        self.assertFalse(src.eof())
+        pc = src.get()
+        self._verify_pointcloud(pc)
+        pc.free()
+        self.assertTrue(src.eof())
+        src.free()
+
+    def test_playback_dir(self):
+        src = cwipc.playback.cwipc_playback(PLY_DIRNAME, ply=True, loop=False)
+        self.assertFalse(src.eof())
+        pc = src.get()
+        self._verify_pointcloud(pc)
+        pc.free()
+        src.free()
+
     def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()
         self.assertGreater(len(points), 1)
