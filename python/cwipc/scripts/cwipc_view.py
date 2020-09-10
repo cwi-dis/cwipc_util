@@ -35,8 +35,16 @@ class Filesource:
     def get(self):
         fn = self.filenames.pop(0)
         self.filenames.append(fn)
-        return cwipc.cwipc_read(fn, int(time.time()))
+        return self._get(fn)
         
+    def _get(self, fn):
+        return cwipc.cwipc_read(fn, int(time.time()))        
+        
+class DumpFilesource(Filesource):
+    def _get(self, fn):
+        print(f'xxxjack fn={fn}')
+        return cwipc.cwipc_read_debugdump(fn)        
+    
 class Visualizer:
     HELP="""
 q      Quit
@@ -199,6 +207,7 @@ def main():
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
     parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
+    parser.add_argument("--ddir", action="store", metavar="DIR", help="Continually show pointclouds from cwipcdump files in DIR in alphabetical order")
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
@@ -211,15 +220,26 @@ def main():
         source = cwipc.cwipc_synthetic()
     elif args.certh:
         source = cwipc.certh.cwipc_certh(args.certh, args.data, args.metadata)
+    elif args.file:
+        source = Filesource([args.file])
     elif args.dir:
         filenames = filter(lambda fn : fn.lower().endswith(".ply"), os.listdir(args.dir))
         if not filenames:
             print(f"No .ply files in {args.dir}")
         filenames = list(filenames)
         filenames.sort()
+        filenames = map(lambda fn: os.path.join(args.dir, fn), filenames)
+        filenames = list(filenames)
         source = Filesource(filenames)
-    elif args.file:
-        source = Filesource([args.file])
+    elif args.ddir:
+        filenames = filter(lambda fn : fn.lower().endswith(".cwipcdump"), os.listdir(args.ddir))
+        if not filenames:
+            print(f"No .cwipcdump files in {args.dir}")
+        filenames = list(filenames)
+        filenames.sort()
+        filenames = map(lambda fn: os.path.join(args.ddir, fn), filenames)
+        filenames = list(filenames)
+        source = DumpFilesource(filenames)
     else:
         source = cwipc.realsense2.cwipc_realsense2()
 
