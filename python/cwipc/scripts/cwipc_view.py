@@ -42,7 +42,6 @@ class Filesource:
         
 class DumpFilesource(Filesource):
     def _get(self, fn):
-        print(f'xxxjack fn={fn}')
         return cwipc.cwipc_read_debugdump(fn)        
     
 class Visualizer:

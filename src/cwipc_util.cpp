@@ -170,14 +170,17 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
     struct dump_header hdr;
     if (fread(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
         if (errorMessage) *errorMessage = (char *)"Cannot read pointcloud dumpfile header";
+        fclose(fp);
         return NULL;
     }
     if (hdr.hdr[0] != 'c' || hdr.hdr[1] != 'p' || hdr.hdr[2] != 'c' || hdr.hdr[3] != 'd') {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile header incorrect";
+        fclose(fp);
         return NULL;
     }
     if (hdr.magic < CWIPC_API_VERSION_OLD || hdr.magic > CWIPC_API_VERSION) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile version incorrect";
+        fclose(fp);
         return NULL;
     }
     uint64_t timestamp = hdr.timestamp;
@@ -185,17 +188,21 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
     int npoint = dataSize / sizeof(cwipc_point);
     if (npoint*sizeof(cwipc_point) != dataSize) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile datasize inconsistent";
+        fclose(fp);
         return NULL;
     }
     cwipc_point* pointData = (cwipc_point *)malloc(dataSize);
     if (pointData == NULL) {
         if (errorMessage) *errorMessage = (char *)"Could not allocate memory for point data";
+        fclose(fp);
         return NULL;
     }
     if (fread(pointData, 1, dataSize, fp) != dataSize) {
         if (errorMessage) *errorMessage = (char *)"Could not read point data of correct size";
+        fclose(fp);
         return NULL;
     }
+    fclose(fp);
     cwipc_impl *pc = new cwipc_impl();
     pc->from_points(pointData, dataSize, npoint, timestamp);
     free(pointData);
@@ -225,6 +232,7 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
     fwrite(&hdr, sizeof(hdr), 1, fp);
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
         if (errorMessage) *errorMessage = (char *)"Write output file failed";
+        fclose(fp);
         return -1;
     }
     fclose(fp);
