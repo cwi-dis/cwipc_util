@@ -10,6 +10,10 @@ import cwipc
 import cwipc.codec
 import cwipc.realsense2
 import cwipc.certh
+try:
+    import cwipc.kinect
+except ModuleNotFoundError:
+    cwipc.kinect = None
 import cwipc.playback
 
 # Convoluted code warning: adding ../python directory to path so we can import subsource
@@ -182,6 +186,7 @@ def main():
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
     parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
@@ -198,6 +203,11 @@ def main():
     #
     # Create source
     #
+    if args.kinect:
+        if cwipc.kinect == None:
+            print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
+            sys.exit(-1)
+        source = cwipc.kinect.cwipc_kinect()
     if args.synthetic:
         source = cwipc.cwipc_synthetic()
     elif args.certh:
