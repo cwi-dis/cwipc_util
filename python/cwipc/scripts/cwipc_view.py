@@ -214,7 +214,7 @@ def main():
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         source = cwipc.kinect.cwipc_kinect()
-    if args.synthetic:
+    elif args.synthetic:
         source = cwipc.cwipc_synthetic()
     elif args.certh:
         if cwipc.certh == None:
