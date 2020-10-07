@@ -8,8 +8,14 @@ import traceback
 import queue
 import cwipc
 import cwipc.codec
-import cwipc.realsense2
-import cwipc.certh
+try:
+    import cwipc.realsense2
+except ModuleNotFoundError:
+    cwipc.realsense2 = None
+try:
+    import cwipc.certh
+except ModuleNotFoundError:
+    cwipc.certh = None
 try:
     import cwipc.kinect
 except ModuleNotFoundError:
@@ -211,12 +217,18 @@ def main():
     if args.synthetic:
         source = cwipc.cwipc_synthetic()
     elif args.certh:
+        if cwipc.certh == None:
+            print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
+            sys.exit(-1)
         source = cwipc.certh.cwipc_certh(args.certh, args.data, args.metadata)
     elif args.file:
         source = cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=True)
     elif args.dir:
         source = cwipc.playback.cwipc_playback(args.dir, ply=not args.dump, fps=args.fps, loop=True)
     else:
+        if cwipc.realsense2 == None:
+            print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
+            sys.exit(-1)
         source = cwipc.realsense2.cwipc_realsense2()
 
     if not args.nodisplay:
