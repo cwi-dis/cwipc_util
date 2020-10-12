@@ -157,7 +157,7 @@ class Calibrator:
         self.ui.show_prompt('Inspect the resultant merged pointclouds of all cameras')
         joined = Pointcloud.from_join(self.coarse_calibrated_pointclouds)
         os.chdir(self.workdir)
-        joined.save('cwipc_rs2calibrate_coarse.ply')
+        joined.save('cwipc_calibrate_coarse.ply')
         self.ui.show_points('Inspect manual calibration result', joined)
         
     def skip_coarse(self):
@@ -299,8 +299,8 @@ class Calibrator:
             if retry == 'n':
                 compute_align_fine = False
         
-        joined.save('cwipc_rs2calibrate_calibrated.ply')
-        print("Result saved as cwipc_rs2calibrate_calibrated.ply")
+        joined.save('cwipc_calibrate_calibrated.ply')
+        print("Result saved as cwipc_calibrate_calibrated.ply")
         
     def skip_fine(self):
         for i in range(len(self.cameraserial)):
@@ -343,7 +343,7 @@ class Calibrator:
         # Save captured pointcloud (for possible use later)
         #
         joined = Pointcloud.from_join(self.pointclouds)
-        joined.save('cwipc_rs2scalibrate_captured.ply')
+        joined.save('cwipc_calibrate_captured.ply')
     
     def writeconfig(self):
         allcaminfo = ""
