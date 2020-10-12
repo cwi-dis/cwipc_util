@@ -16,9 +16,8 @@ set(DEST_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/${INSTALL_PATH})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(PROGRAMS cwipc_pymodules_install_win.bat DESTINATION bin)
-else()
-	install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
 endif()
+install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
 
 install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
 install(DIRECTORY cwipc DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)

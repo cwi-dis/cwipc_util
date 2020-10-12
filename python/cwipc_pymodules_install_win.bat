@@ -5,8 +5,18 @@ cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) &&
 set bindir=%~dp0
 pushd %bindir%..\share\cwipc_util\python
 python setup.py install
-pushd %bindir%..\share\cwipc_realsense2\python
-python setup.py install
+if exist %bindir%..\share\cwipc_realsense2\python\setup.py (
+	pushd %bindir%..\share\cwipc_realsense2\python
+	python setup.py install
+)
+if exist %bindir%..\share\cwipc_kinect\python\setup.py (
+	pushd %bindir%..\share\cwipc_kinect\python
+	python setup.py install
+)
+if exist %bindir%..\share\cwipc_bla\python\setup.py (
+	pushd %bindir%..\share\cwipc_bla\python
+	python setup.py install
+)
 pushd %bindir%..\share\cwipc_codec\python
 python setup.py install
 
