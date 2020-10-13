@@ -1,16 +1,14 @@
 import copy
 import xml.etree.ElementTree as ET
 
-DEFAULT_FILENAME="cameraconfig.xml"
-
 CONFIGFILE="""<?xml version="1.0" ?>
 <file>
     <CameraConfig>
-        <system usb2width="640" usb2height="480" usb2fps="15" usb3width="1280" usb3height="720" usb3fps="30" />
-        <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" backgroundremoval="0" greenscreenremoval="0" cloudresolution="0" tiling="0" tilingresolution="0.01" tilingmethod="camera">
-            <depthfilterparameters threshold_near="0.2" threshold_far="4" do_decimation="0" decimation_value="1" spatial_iterations="1" spatial_alpha="0.5" spatial_delta="20" spatial_filling="1" do_temporal="0" temporal_alpha="0.4" temporal_delta="20" temporal_percistency="3" />
+        <system usb2width="640" usb2height="480" usb2fps="15" usb3width="1280" usb3height="720" usb3fps="30" usb2allowed="0" />
+        <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0" cloudresolution="0">
+            <depthfilterparameters  />
         </postprocessing>
-        <camera serial="0" backgroundx="0" backgroundy="0" backgroundz="0">
+        <camera serial="0" type="">
             <trafo>
                 <values v00="1" v01="0" v02="0" v03="0" v10="0" v11="1" v12="0" v13="0" v20="0" v21="0" v22="1" v23="0" v30="0" v31="0" v32="0" v33="1"  />
             </trafo>
@@ -18,6 +16,28 @@ CONFIGFILE="""<?xml version="1.0" ?>
     </CameraConfig>
 </file>
 """
+FILTER_PARAMS_REALSENSE=dict(
+    threshold_near="0.2",
+    threshold_far="4",
+    do_decimation="0",
+    decimation_value="1",
+    spatial_iterations="1",
+    spatial_alpha="0.5",
+    spatial_delta="20",
+    spatial_filling="1",
+    do_temporal="0",
+    temporal_alpha="0.4",
+    temporal_delta="20",
+    temporal_percistency="3",
+)
+FILTER_PARAMS_KINECT=dict(
+    threshold_near="0.2",
+    threshold_far="4",
+)
+
+DEFAULT_FILENAME="cameraconfig.xml"
+DEFAULT_TYPE="realsense"
+DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
 
 class CameraConfig:
 
@@ -39,7 +59,11 @@ class CameraConfig:
         
     def fillDefault(self):
         root = ET.fromstring(CONFIGFILE)
+        paramElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
+        for k, v in DEFAULT_FILTER_PARAMS.items():
+            paramElt.set(k, v)
         self.tree = ET.ElementTree(root)
+        
         self._parseConf()
         
     def _parseConf(self):
@@ -76,6 +100,7 @@ class CameraConfig:
         firstCamElt = root.find('CameraConfig/camera')
         newCamElt = copy.deepcopy(firstCamElt)
         newCamElt.set('serial', serial)
+        newCamElt.set('type', DEFAULT_TYPE)
         ccElt = root.find('CameraConfig')
         ccElt.append(newCamElt)
         
