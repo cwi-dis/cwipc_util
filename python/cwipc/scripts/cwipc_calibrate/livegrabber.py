@@ -1,14 +1,10 @@
 import sys
 import os
 import cwipc
-import cwipc.realsense2
 from .cameraconfig import DEFAULT_FILENAME
 #
 # Windows search path is horrible. Work around it for testing with an environment variable
 #
-if 'CWIPC_TEST_DLL' in os.environ:
-    filename = os.environ['CWIPC_TEST_DLL']
-    dllobj = cwipc.realsense2._cwipc_realsense2_dll(filename)
 
 from .pointcloud import Pointcloud
 import os.path
@@ -19,9 +15,10 @@ DEBUG=False
 SKIP_FIRST_GRABS=10 # Skip this many grabs before using one. Needed for D435, it seems.
 
 class LiveGrabber:
-    def __init__(self):
+    def __init__(self, captureCreator):
         self.cameraconfig = None
         self.grabber = None
+        self.captureCreator = captureCreator
         
     def open(self):
         if os.path.exists(DEFAULT_FILENAME):
@@ -30,7 +27,7 @@ class LiveGrabber:
             self.cameraconfig = CameraConfig('', read=False)
             self.cameraconfig.fillDefault()
         try:
-            self.grabber = cwipc.realsense2.cwipc_realsense2()
+            self.grabber = self.captureCreator()
         except cwipc.CwipcError as exc:
             print(f'Error opening camera: {exc}', file=sys.stderr)
             return False

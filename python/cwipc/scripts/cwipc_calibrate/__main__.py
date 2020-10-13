@@ -1,17 +1,28 @@
 import sys
 import argparse
 
+try:
+    import cwipc.realsense2
+except ModuleNotFoundError:
+    cwipc.realsense2 = None
+try:
+    import cwipc.kinect
+except ModuleNotFoundError:
+    cwipc.kinect = None
+
 from .calibrator import Calibrator
 from .filegrabber import FileGrabber
 from .livegrabber import LiveGrabber
+from . import cameraconfig
 from .cameraconfig import DEFAULT_FILENAME
 from .targets import targets
-      
+
 def main():
-    parser = argparse.ArgumentParser(description="Calibrate cwipc_realsense2 capturer")
+    parser = argparse.ArgumentParser(description="Calibrate cwipc_realsense2 or cwipc_kinect capturer")
     def twofloats(s):
         f1, f2 = s.split(',')
         return float(f1), float(f2)
+    parser.add_argument("--kinect", action="store_true", help=f"Use Azure Kinect capturer (default: realsense2 capturer)")
     parser.add_argument("--auto", action="store_true", help=f"Attempt to auto-install {DEFAULT_FILENAME}, if needed")
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--reuse", action="store_true", help=f"Reuse existing {DEFAULT_FILENAME}")
@@ -32,6 +43,19 @@ def main():
         for name, target in targets.items():
             print(f'{name}\n\t{target["description"]}')
         sys.exit(0)
+    capturer = None
+    if args.kinect:
+        if cwipc.kinect == None:
+            print("Kinect capturer not supported on this system")
+            sys.exit(1)
+        capturer = cwipc.kinect.cwipc_kinect
+        cameraconfig.DEFAULT_TYPE = "kinect"
+        cameraconfig.DEFAULT_FILTER_PARAMS = cameraconfig.FILTER_PARAMS_KINECT
+    else:
+        if cwipc.realsense2 == None:
+            print("Realsense capturer not supported on this system")
+            sys.exit(1)
+        capturer = cwipc.realsense2.cwipc_realsense2
     if args.bbox:
         bbox = args.bbox
         assert len(bbox) == 6
@@ -45,7 +69,7 @@ def main():
     if args.nograb:
         grabber = FileGrabber(args.nograb)
     else:
-        grabber = LiveGrabber()
+        grabber = LiveGrabber(capturer)
     try:
     
         ok = prog.open(grabber, clean=args.clean, reuse=(args.reuse or args.auto))
