@@ -40,7 +40,7 @@ targets=OrderedDict(
             (-0.105, 1.7+0.297, 0, 0, 0, 255),  # topleft, blue
             (+0.105, 1.7+0.297, 0, 255, 0, 0),  # topright, red
             (-0.105, 1.7, 0, 255, 0, 255),  # botleft, pink
-            (+0.105, 1.7, 0, 0, 255, 255),  # botright, yellow
+            (+0.105, 1.7, 0, 255, 255, 0),  # botright, yellow
         ]
     ),    
     a41m = dict(
@@ -49,7 +49,7 @@ targets=OrderedDict(
             (-0.105, 1+0.297, 0, 0, 0, 255),  # topleft, blue
             (+0.105, 1+0.297, 0, 255, 0, 0),  # topright, red
             (-0.105, 1, 0, 255, 0, 255),  # botleft, pink
-            (+0.105, 1, 0, 0, 255, 255),  # botright, yellow
+            (+0.105, 1, 0, 255, 255, 0),  # botright, yellow
         ]
     ),
     rubik = dict(
