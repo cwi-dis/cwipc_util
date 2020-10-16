@@ -59,7 +59,6 @@ build_win:
   - /latest/
   tags:
   - win10
-  allow_failure: true
   script:
     - mkdir -p build
     - rm -rf /cygdrive/c/dist-win
