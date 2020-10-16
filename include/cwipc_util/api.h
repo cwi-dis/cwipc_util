@@ -53,6 +53,19 @@ struct cwipc_point {
 	uint8_t tile;	/**< tile number (can also be interpreted as mask of contributing cameras) */
 };
 
+/** \brief header for transferring cwipc_point data over a network connection
+ */
+struct cwipc_point_packetheader {
+    uint32_t magic; /**< magic number */
+    uint32_t dataCount; /**< Number of bytes following this header */
+    uint64_t timestamp; /**< Timestamp of the pointcloud */
+    float cellsize; /**< Size of a single point */
+};
+
+/** \brief magic number for use in cwipc_point_packetheader
+ */
+#define CWIPC_POINT_PACKETHEADER_MAGIC 0x20201016
+
 /** \brief Information on a tile.
  *
  * Information on tiles with a certain tile number, a vector of length 1 indicating which way the tile is pointing.
@@ -589,6 +602,18 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_downsample(cwipc *pc, float voxelsize);
  */
 _CWIPC_UTIL_EXPORT cwipc *cwipc_tilefilter(cwipc *pc, int tile);
  
+/** \brief Receive pointclouds over a socket connection.
+ * \param host Local hostname or IP address to bind socket to (default: 0.0.0.0)
+ * \param port Local port number to bind socket to.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
+ *
+ * This function creates a server (in a separate thread) that listens on the given port
+ * for an incoming pointcloud stream. Those pointclouds are then returned similar as to
+ * synthetic or normal grabbed pointclouds.
+ */
+_CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion);
+
 #ifdef __cplusplus
 }
 #endif
