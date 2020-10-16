@@ -194,6 +194,7 @@ def main():
     parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
+    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
@@ -216,6 +217,8 @@ def main():
         source = cwipc.kinect.cwipc_kinect()
     elif args.synthetic:
         source = cwipc.cwipc_synthetic()
+    elif args.proxy:
+        source = cwipc.cwipc_proxy('', args.proxy)
     elif args.certh:
         if cwipc.certh == None:
             print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
