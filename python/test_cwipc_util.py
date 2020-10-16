@@ -289,14 +289,14 @@ class TestApi(unittest.TestCase):
         src.free()
         
     def test_proxy_badhost(self):
-        src = cwipc.cwipc_proxy('8.8.8.8', 8887)
-        self.assertFalse(src.available(False))
-        src.free()
+        with self.assertRaises(cwipc.CwipcError):
+            src = cwipc.cwipc_proxy('8.8.8.8', 8887)
+            src.free()
         
     def test_proxy_unknownhost(self):
-        src = cwipc.cwipc_proxy('unknown.host.name', 8887)
-        self.assertFalse(src.available(False))
-        src.free()
+        with self.assertRaises(cwipc.CwipcError):
+            src = cwipc.cwipc_proxy('unknown.host.name', 8887)
+            src.free()
         
     def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()
