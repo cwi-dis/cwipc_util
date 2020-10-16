@@ -9,6 +9,7 @@
 #else
 #include <sys/socket.h>
 #include <netdb.h>
+#define closesocket(x) close(x)
 #endif
 
 #ifdef WIN32
