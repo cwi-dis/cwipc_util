@@ -86,8 +86,8 @@ cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion
     char portbuf[32];
     snprintf(portbuf, 32, "%d", port);
     int status = getaddrinfo(host, portbuf, &hints, &result);
-    if (status < 0) {
-        *errorMessage = strerror(errno);
+    if (status != 0) {
+        *errorMessage = (char *)gai_strerror(status);
         return NULL;
     }
     int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
