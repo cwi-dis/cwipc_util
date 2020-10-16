@@ -1,13 +1,15 @@
 #include <chrono>
 #include <thread>
 #include <sys/types.h>
+#include <string.h>
+
+#ifdef WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <sys/socket.h>
 #include <netdb.h>
-#include <string.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/common/transforms.h>
-#include <pcl/common/common_headers.h>
+#endif
 
 #ifdef WIN32
 #define _CWIPC_UTIL_EXPORT __declspec(dllexport)
@@ -35,9 +37,9 @@ public:
 
     void free() {
         // xxxjack stop thread
-        if (m_listen_socket >= 0) close(m_listen_socket);
+        if (m_listen_socket >= 0) closesocket(m_listen_socket);
         m_listen_socket = -1;
-        if (m_socket >= 0) close(m_socket);
+        if (m_socket >= 0) closesocket(m_socket);
         m_socket = -1;
     }
     
@@ -95,7 +97,7 @@ cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion
     status = bind(sock, result->ai_addr, result->ai_addrlen);
     if (status < 0) {
         *errorMessage = strerror(errno);
-        close(sock);
+        closesocket(sock);
         return NULL;
     }
 	return new cwipc_source_proxy_impl(sock);
