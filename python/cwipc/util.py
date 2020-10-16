@@ -4,6 +4,7 @@ import warnings
 
 __all__ = [
     'CWIPC_API_VERSION',
+    'CWIPC_POINT_PACKETHEADER_MAGIC',
     'CwipcError',
     
     'cwipc',
@@ -11,6 +12,8 @@ __all__ = [
     
     'cwipc_point',
     'cwipc_point_array',
+    
+    'cwipc_point_packetheader',
     
     'cwipc_read',
     'cwipc_read_debugdump',
@@ -21,6 +24,7 @@ __all__ = [
     
     'cwipc_synthetic',
     'cwipc_window',
+    'cwipc_proxy',
     
     'cwipc_downsample',
     'cwipc_tilefilter'
@@ -118,6 +122,19 @@ class cwipc_tileinfo(ctypes.Structure):
 CWIPC_TILEINFO_VERSION = 0x20190516
 
 #
+# C/Python cwipc_point_packetheader structure
+#
+class cwipc_point_packetheader(ctypes.Structure):
+    """Packet header for talking to cwipc_proxy server"""
+    _fields_ = [
+        ("magic", ctypes.c_uint32),
+        ("dataCount", ctypes.c_uint32),
+        ("timestamp", ctypes.c_uint64),
+        ("cellsize", ctypes.c_float),
+    ]
+    
+CWIPC_POINT_PACKETHEADER_MAGIC = 0x20201016
+#
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
 def _cwipc_util_dll(libname=None):
@@ -212,6 +229,10 @@ def _cwipc_util_dll(libname=None):
 
     _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
     _cwipc_util_dll_reference.cwipc_tilefilter.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
+
 
     return _cwipc_util_dll_reference
 
@@ -485,7 +506,18 @@ def cwipc_downsample(pc, voxelsize):
 def cwipc_tilefilter(pc, tile):
     rv = _cwipc_util_dll().cwipc_tilefilter(pc._as_cwipc_p(), tile)
     return cwipc(rv)
+  
+def cwipc_proxy(host, port):
+    """Returns a cwipc_source object that starts a server and receives pointclouds over a socket connection"""
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_proxy(host.encode('utf8'), port, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_tiledsource(rv)
+    return None
     
+  
 def main():
     generator = cwipc_synthetic()
     pc = generator.get()

@@ -46,7 +46,7 @@ public:
     }
     
     bool available(bool wait) {
-    	return true;
+    	return false;
     }
 
     cwipc* get() {
