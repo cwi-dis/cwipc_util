@@ -107,7 +107,7 @@ class SourceServer:
         
     def run(self):
         if self.verbose: print('grab: started', flush=True)
-        while not self.stopped:
+        while not self.stopped and not self.grabber.eof():
             t0 = time.time()
             pc = self.grab_pc()
             if not pc:
