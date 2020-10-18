@@ -82,6 +82,7 @@ public:
             if (!_recvall((void *)points, header.dataCount)) break;
             char *errorMessage = NULL;
             cwipc *pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
+            ::free(points);
             if (pc == NULL) {
                 std::cerr << "cwipc_proxy: cwipc_from_points: " << errorMessage << std::endl;
                 break;
