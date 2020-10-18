@@ -137,6 +137,7 @@ public:
         std::unique_lock<std::mutex> mylock(m_pc_mutex);
         m_pc_fresh.wait(mylock, [this]{return m_pc != NULL || !m_running; });
         cwipc *rv = m_pc;
+        m_pc = NULL;
         return rv;
     }
 
