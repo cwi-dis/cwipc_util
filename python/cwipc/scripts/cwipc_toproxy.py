@@ -69,9 +69,9 @@ class Sender:
         data = pc.get_bytes()
         cellsize = pc.cellsize()
         timestamp = pc.timestamp()
-        header = struct.pack("<iiqf", cwipc.CWIPC_POINT_PACKETHEADER_MAGIC, len(data), timestamp, cellsize)
-        self.socket.send(header)
-        self.socket.send(data)
+        header = struct.pack("<iiqfi", cwipc.CWIPC_POINT_PACKETHEADER_MAGIC, len(data), timestamp, cellsize, 0)
+        x = self.socket.send(header)
+        y = self.socket.send(data)
 
         
 class SourceServer:

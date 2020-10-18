@@ -60,6 +60,7 @@ struct cwipc_point_packetheader {
     uint32_t dataCount; /**< Number of bytes following this header */
     uint64_t timestamp; /**< Timestamp of the pointcloud */
     float cellsize; /**< Size of a single point */
+    uint32_t unused;    /**< extra field to fill out structure to 24 bytes (multiple of 8) */
 };
 
 /** \brief magic number for use in cwipc_point_packetheader
