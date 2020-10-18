@@ -99,10 +99,10 @@ public:
             m_pc = pc;
             m_pc_fresh.notify_all();
             //
-            // Send acknowledgement
+            // Send acknowledgement (if connection still open)
             //
             if (send(m_socket, (void *)&header.timestamp, sizeof(header.timestamp), 0) < 0) {
-                perror("cwipc_proxy: send");
+                if (m_socket >= 0) perror("cwipc_proxy: send");
                 break;
             }
         }
