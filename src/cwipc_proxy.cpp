@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <mutex>
 #include <sys/types.h>
 #include <string.h>
 
@@ -101,7 +102,7 @@ public:
             //
             // Send acknowledgement (if connection still open)
             //
-            if (send(m_socket, (void *)&header.timestamp, sizeof(header.timestamp), 0) < 0) {
+            if (send(m_socket, (const char *)&header.timestamp, sizeof(header.timestamp), 0) < 0) {
                 if (m_socket >= 0) perror("cwipc_proxy: send");
                 break;
             }
@@ -114,7 +115,7 @@ public:
     }
     
     bool _recvall(void *buffer, size_t size) {
-        int status = recv(m_socket,buffer, size, MSG_WAITALL);
+        int status = recv(m_socket, (char *)buffer, size, MSG_WAITALL);
         if (status < 0) {
             perror("cwipc_proxy: recv");
         }
