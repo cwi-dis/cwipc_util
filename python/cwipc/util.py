@@ -30,7 +30,7 @@ __all__ = [
     'cwipc_tilefilter'
 ]
 
-CWIPC_API_VERSION = 0x20200703
+CWIPC_API_VERSION = 0x20201022
 
 class CwipcError(RuntimeError):
     pass
