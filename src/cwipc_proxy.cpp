@@ -111,7 +111,9 @@ public:
             closesocket(m_socket);
             m_socket = -1;
         }
+        std::unique_lock<std::mutex> mylock(m_pc_mutex);
         m_running = false;
+        m_pc_fresh.notify_all();
     }
     
     bool _recvall(void *buffer, size_t size) {
