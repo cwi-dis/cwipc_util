@@ -28,8 +28,9 @@ inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
     SetThreadDescription(threadHandle, name);
 }
 #else
-inline void _cwpic_setThreadName(std::thread* thr, const wchar_t* name) {}
+inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {}
 #endif
+
 class cwipc_source_proxy_impl : public cwipc_tiledsource {
 private:
     int m_listen_socket;
