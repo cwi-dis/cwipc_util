@@ -188,6 +188,7 @@ cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion
     hints.ai_flags = AI_PASSIVE;
     char portbuf[32];
     snprintf(portbuf, 32, "%d", port);
+    if (host != NULL && *host == '\0') host = NULL;
     int status = getaddrinfo(host, portbuf, &hints, &result);
     if (status != 0) {
         *errorMessage = (char *)gai_strerror(status);
