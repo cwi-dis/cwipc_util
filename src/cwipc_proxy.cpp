@@ -44,7 +44,9 @@ private:
 public:
     cwipc_source_proxy_impl(int _socket)
     :   m_listen_socket(_socket),
-        m_socket(-1)
+        m_socket(-1),
+        m_running(false),
+        m_pc(NULL)
     {
         m_running = true;
         m_server_thread = new std::thread(&cwipc_source_proxy_impl::_server_main, this);
