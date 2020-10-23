@@ -21,6 +21,15 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
+    HANDLE threadHandle = static_cast<HANDLE>(thr->native_handle());
+    SetThreadDescription(threadHandle, name);
+}
+#else
+inline void _cwpic_setThreadName(std::thread* thr, const wchar_t* name) {}
+#endif
 class cwipc_source_proxy_impl : public cwipc_tiledsource {
 private:
     int m_listen_socket;
@@ -37,6 +46,7 @@ public:
     {
         m_running = true;
         m_server_thread = new std::thread(&cwipc_source_proxy_impl::_server_main, this);
+        _cwipc_setThreadName(m_server_thread, L"cwipc_proxy::server_thread");
     }
 
     ~cwipc_source_proxy_impl() {
