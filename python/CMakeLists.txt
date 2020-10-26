@@ -18,6 +18,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(PROGRAMS cwipc_pymodules_install_win.bat DESTINATION bin)
 endif()
 install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
+install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 
 install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
 install(DIRECTORY cwipc DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)

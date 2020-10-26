@@ -158,6 +158,7 @@ setup(
         'console_scripts': [
             'cwipc_view=cwipc.scripts.cwipc_view:main',
             'cwipc_calibrate=cwipc.scripts.cwipc_calibrate:main',
+            'cwipc_toproxy=cwipc.scripts.cwipc_toproxy:main',
         ],
     },
 

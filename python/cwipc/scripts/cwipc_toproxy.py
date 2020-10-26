@@ -6,6 +6,8 @@ import time
 import argparse
 import traceback
 import queue
+import socket
+import struct
 import cwipc
 import cwipc.codec
 try:
@@ -36,24 +38,14 @@ def _dump_app_stacks(*args):
         traceback.print_stack(stack, file=sys.stderr)
         print(file=sys.stderr)
 
-class Visualizer:
-    HELP="""
-q      Quit
-space  Pause/resume
-w      Write PLY file
-012... Select single tile to view
-a      Show all tiles
-    """
+class Sender:
     
-    def __init__(self, verbose=False):
-        self.visualiser = None
+    def __init__(self, host, port, verbose=False):
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
-        self.cur_pc = None
-        self.paused = False
-        self.tilefilter = None
-        self.start_window()
+        self.socket = socket.socket()
+        self.socket.connect((host, port))
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -62,15 +54,8 @@ a      Show all tiles
         while self.producer and self.producer.is_alive():
             try:
                 pc = self.queue.get(timeout=0.033)
-                if self.paused:
-                    if pc: pc.free()
-                    pc = None
-                ok = self.draw_pc(pc)
-                if not self.paused:
-                    if self.cur_pc:
-                        self.cur_pc.free()
-                    self.cur_pc = pc
-                if not ok: break
+                ok = self.send_pc(pc)
+                pc.free()
             except queue.Empty:
                 pass
         
@@ -80,44 +65,15 @@ a      Show all tiles
         except queue.Full:
             pc.free()
             
-    def start_window(self):
-        cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
-        self.visualiser = cwipc.cwipc_window("cwipc_view")
-        os.chdir(cwd)
-        if self.verbose: print('display: started', flush=True)
-        self.visualiser.feed(None, True)
+    def send_pc(self, pc):
+        data = pc.get_bytes()
+        cellsize = pc.cellsize()
+        timestamp = pc.timestamp()
+        header = struct.pack("<iiqfi", cwipc.CWIPC_POINT_PACKETHEADER_MAGIC, len(data), timestamp, cellsize, 0)
+        x = self.socket.send(header)
+        y = self.socket.send(data)
 
-    def draw_pc(self, pc):
-        """Draw pointcloud"""
-        if pc:
-            pc_to_show = pc
-            if self.tilefilter:
-                pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
-            ok = self.visualiser.feed(pc_to_show, True)
-            if pc_to_show != pc:
-                pc_to_show.free()
-            if not ok: 
-                print('display: window.feed() returned False')
-                return False
-        cmd = self.visualiser.interact(None, "?q wa012345678", 30) 
-        if cmd == "q":
-            return False
-        elif cmd == "w" and self.cur_pc:
-            filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-            cwipc.cwipc_write(filename, self.cur_pc)
-            print(f'Saved as {filename} in {os.getcwd()}')
-        elif cmd == " ":
-            self.paused = not self.paused
-        elif cmd == 'a':
-            self.tilefilter = None
-        elif cmd in '012345678':
-            self.tilefilter = int(cmd)
-        elif cmd == '\0':
-            pass
-        else:
-            print(HELP)
-        return True
-
+        
 class SourceServer:
     def __init__(self, grabber, viewer=None, count=None, verbose=False):
         self.verbose = verbose
@@ -191,21 +147,21 @@ def main():
     global ISSUE_20
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
-    parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
-    parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
-    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
-    parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
+    parser = argparse.ArgumentParser(description="Send pointcloud stream to cwipc_proxy")
+    parser.add_argument("--kinect", action="store_true", help="Send Azure Kinect camera in stead of realsense2 camera")
+    parser.add_argument("--synthetic", action="store_true", help="Send synthetic pointcloud in stead of realsense2 camera")
+    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Send proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
+    parser.add_argument("--certh", action="store", metavar="URL", help="Send Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
-    parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
-    parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
+    parser.add_argument("--file", action="store", metavar="FILE", help="Continually send pointcloud from ply file FILE ")
+    parser.add_argument("--dir", action="store", metavar="DIR", help="Continually send pointclouds from ply files in DIR in alphabetical order")
     parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dump")
     parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS")
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
-    parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
-    parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
     parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
+    parser.add_argument("host", action="store", help="Hostname where cwipc_proxy server is running")
+    parser.add_argument("port", type=int, action="store", help="Port where cwipc_proxy server is running")
     args = parser.parse_args()
     #
     # Create source
@@ -234,15 +190,11 @@ def main():
             sys.exit(-1)
         source = cwipc.realsense2.cwipc_realsense2()
 
-    if not args.nodisplay:
-        visualizer = Visualizer(args.verbose)
-    else:
-        visualizer = None
-
-    sourceServer = SourceServer(source, visualizer, count=args.count, verbose=args.verbose)
+    sender = Sender(args.host, args.port)
+    sourceServer = SourceServer(source, sender, count=args.count, verbose=args.verbose)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
-    if visualizer:
-        visualizer.set_producer(sourceThread)
+    if sender:
+        sender.set_producer(sourceThread)
 
     #
     # Run everything
@@ -250,8 +202,8 @@ def main():
     try:
         sourceThread.start()
 
-        if visualizer:
-            visualizer.run()
+        if sender:
+            sender.run()
             sourceServer.stop()
             
         sourceThread.join()
