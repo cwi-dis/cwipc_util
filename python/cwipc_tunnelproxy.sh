@@ -9,7 +9,7 @@ x)
 	exit 1
 	;;
 esac
-innercmd="netcat --verbose --close $remotehost $remoteport"
+innercmd="netcat --close $remotehost $remoteport"
 trap exit SIGINT
 set -x
 while true; do
