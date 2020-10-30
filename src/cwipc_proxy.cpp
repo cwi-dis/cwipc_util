@@ -67,21 +67,30 @@ public:
     }
     
     void _server_main() {
-        m_socket = accept(m_listen_socket, NULL, 0);
-        closesocket(m_listen_socket);
-        m_listen_socket = -1;
-        if (m_socket < 0) {
-            perror("cwipc_proxy: accept");
-            closesocket(m_listen_socket);
-            m_running = false;
-            return;
-        }
         while(m_running) {
+            //
+            // accept on the socket, if not connected yet
+            //
+            if (m_socket < 0) {
+                std::cerr << "cwipc_proxy: wait for connection" << std::endl;
+                m_socket = accept(m_listen_socket, NULL, 0);
+                if (m_socket < 0) {
+                    perror("cwipc_proxy: accept");
+                    closesocket(m_listen_socket);
+                    m_running = false;
+                    break;
+                }
+                std::cerr << "cwipc_proxy: connection accepted" << std::endl;
+            }
             //
             // Get the header and check it
             //
             struct cwipc_point_packetheader header;
-            if (!_recvall((void *)&header, sizeof(header))) break;
+            if (!_recvall((void *)&header, sizeof(header))) {
+                closesocket(m_socket);
+                m_socket = -1;
+                continue;
+            };
             if (header.magic != CWIPC_POINT_PACKETHEADER_MAGIC) {
                 std::cerr << "cwpic_proxy: bad magic number: " << header.magic << std::endl;
                 break;
@@ -94,7 +103,11 @@ public:
                 std::cerr << "cwpic_proxy: malloc failed" << std::endl;
                 break;
             }
-            if (!_recvall((void *)points, header.dataCount)) break;
+            if (!_recvall((void *)points, header.dataCount)) {
+                closesocket(m_socket);
+                m_socket = -1;
+                continue;
+            }
             char *errorMessage = NULL;
             cwipc *pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
             ::free(points);
@@ -117,8 +130,15 @@ public:
             // Send acknowledgement (if connection still open)
             //
             if (send(m_socket, (const char *)&header.timestamp, sizeof(header.timestamp), 0) < 0) {
-                if (m_socket >= 0) perror("cwipc_proxy: send");
-                break;
+                if (m_socket >= 0) {
+                    //
+                    // Assume closed from remote. Close this connection socket and accept again.
+                    //
+                    perror("cwipc_proxy: send");
+                    closesocket(m_socket);
+                    m_socket = -1;
+                    continue;
+                }
             }
         }
         if (m_socket >= 0) {
