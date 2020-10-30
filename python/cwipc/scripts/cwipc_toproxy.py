@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import signal
 import threading
 import time
@@ -101,6 +102,10 @@ class SourceServer:
             nextGrabTime = self.lastGrabTime + 1/self.fps
             if time.time() < nextGrabTime:
                 time.sleep(nextGrabTime - time.time())
+        if not self.grabber.available(True):
+                print('grab: no pointcloud available')
+                time.sleep(1)
+                return None
         pc = self.grabber.get()
         self.lastGrabTime = time.time()
         return pc
@@ -111,7 +116,6 @@ class SourceServer:
             t0 = time.time()
             pc = self.grab_pc()
             if not pc:
-                print('grab: pointcloud==None')
                 continue
             else:
                 self.pointcounts_grab.append(pc.count())
