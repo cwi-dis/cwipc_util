@@ -16,6 +16,9 @@ class _Filesource:
         
     def eof(self):
         return not self.filenames
+    
+    def available(self, wait=False):
+        return not not self.filenames
         
     def get(self):
         if not self.filenames:
