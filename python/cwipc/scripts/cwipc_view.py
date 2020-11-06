@@ -198,6 +198,7 @@ def main():
     parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
+    parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
@@ -205,7 +206,7 @@ def main():
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
     parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
     parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dump")
-    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS")
+    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS", default=0)
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
@@ -220,7 +221,7 @@ def main():
             sys.exit(-1)
         source = cwipc.kinect.cwipc_kinect()
     elif args.synthetic:
-        source = cwipc.cwipc_synthetic()
+        source = cwipc.cwipc_synthetic(fps=args.fps, npoints=args.npoints)
     elif args.proxy:
         source = cwipc.cwipc_proxy('', args.proxy)
     elif args.certh:

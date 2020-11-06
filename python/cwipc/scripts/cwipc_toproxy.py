@@ -154,6 +154,7 @@ def main():
     parser = argparse.ArgumentParser(description="Send pointcloud stream to cwipc_proxy")
     parser.add_argument("--kinect", action="store_true", help="Send Azure Kinect camera in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="Send synthetic pointcloud in stead of realsense2 camera")
+    parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Send proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--certh", action="store", metavar="URL", help="Send Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
@@ -176,7 +177,7 @@ def main():
             sys.exit(-1)
         source = cwipc.kinect.cwipc_kinect()
     elif args.synthetic:
-        source = cwipc.cwipc_synthetic()
+        source = cwipc.cwipc_synthetic(fps=args.fps, npoints=args.npoints)
     elif args.proxy:
         source = cwipc.cwipc_proxy('', args.proxy)
     elif args.certh:
