@@ -5,6 +5,7 @@
 //
 
 #include "window_util.hpp"
+#include <math.h>
 
 window_util::window_util(int width, int height, const char* title) : _width(width), _height(height)
 {
@@ -49,6 +50,7 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
     glClearColor(0.2, 0.4, 0.6, 1);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
+
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	gluPerspective(60, (double(_width)) / (double(_height)), 0.01, 10.0);
@@ -62,11 +64,41 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
 	//glRotated(_appstate.yaw, 0, 1, 0);
 	//glTranslatef(x, y, z);
 	glPushMatrix();
+
+#if 1
+    GLint    viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    GLdouble projMatrix[16];
+    glGetDoublev(GL_PROJECTION_MATRIX, projMatrix);
+    GLdouble modelMatrix[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
+    int mid_screen_x = viewport[0] + viewport[2]/2;
+    int mid_screen_y = viewport[1] + viewport[3]/2;
+    int mid1_screen_x = mid_screen_x + 1;
+    int mid1_screen_y = mid_screen_y + 1;
+    GLdouble mid_world_x, mid_world_y, mid_world_z;
+    GLdouble mid1_world_x, mid1_world_y, mid1_world_z;
+    double dist0 = sqrt(x*x+y*y+z*z);
+    int ok = gluUnProject(mid_screen_x, mid_screen_y, dist0, modelMatrix, projMatrix, viewport, &mid_world_x, &mid_world_y, &mid_world_z);
+    int ok1 = gluUnProject(mid1_screen_x, mid1_screen_y, dist0+pointSize, modelMatrix, projMatrix, viewport, &mid1_world_x, &mid1_world_y, &mid1_world_z);
+    if (ok && ok1) {
+        double dx = mid_world_x - mid1_world_x;
+        double dy = mid_world_y - mid1_world_y;
+        double dz = mid_world_z - mid1_world_z;
+        double d = sqrt(dx*dx + dy*dy + dz*dz);
+        if (d != 0) {
+            // Jack has _absolutely_ no idea where the square root comes from, but it "seems to work"....
+            pointSize = sqrt(2*d)*viewport[2];
+        }
+    }
+
+#endif
 	if (pointSize > 0) {
 		glPointSize(pointSize);
 	} else {
 		glPointSize(float(_width) / float(640));
 	}
+    
 	glEnable(GL_DEPTH_TEST);
     // Draw floor
     glBegin(GL_LINES);
