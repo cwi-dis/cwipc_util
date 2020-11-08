@@ -25,6 +25,9 @@ build_linux:
     - make install DESTDIR=../dist-ubuntu1804
     - cd ..
     - tar --directory dist-ubuntu1804/usr/local -cvaf cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz .
+    - touch successful.tmp
+  after_script:
+    - if [ ! -e successful.tmp -a -e build/Testing/Temporary/LastTest.log ]; then cat build/Testing/Temporary/LastTest.log; fi
   artifacts:
     paths:
       - cwipc_util_ubuntu1804_$CI_COMMIT_TAG.tgz
@@ -49,6 +52,9 @@ build_osx:
     - make install DESTDIR=../dist-osx1014
     - cd ..
     - tar --directory dist-osx1014/usr/local -z -cvf cwipc_util_osx1014_$CI_COMMIT_TAG.tgz .
+    - touch successful.tmp
+  after_script:
+    - if [ ! -e successful.tmp -a -e build/Testing/Temporary/LastTest.log ]; then cat build/Testing/Temporary/LastTest.log; fi
   artifacts:
     paths:
       - cwipc_util_osx1014_$CI_COMMIT_TAG.tgz
@@ -72,6 +78,9 @@ build_win:
     - mkdir -p /cygdrive/c/dist-win/installed
     - cmake --build . --config Release --target INSTALL
     - (cd /cygdrive/c/dist-win && zip -r $ziplocation installed)
+    - touch successful.tmp
+  after_script:
+    - if [ ! -e successful.tmp -a -e build/Testing/Temporary/LastTest.log ]; then cat build/Testing/Temporary/LastTest.log; fi
   artifacts:
     paths:
       - cwipc_util_win1064_$CI_COMMIT_TAG.zip
