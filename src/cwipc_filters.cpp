@@ -28,6 +28,8 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 	if (pc == NULL) return NULL;
 	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 	if (src == NULL) return NULL;
+	float oldvoxelsize = pc->cellsize();
+	if (oldvoxelsize >= voxelsize) voxelsize = oldvoxelsize;
 	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 	// Step 1 - Voxelize
 	try {
