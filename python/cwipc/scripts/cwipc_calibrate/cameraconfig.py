@@ -20,7 +20,7 @@ CONFIGFILE_REALSENSE2="""<?xml version="1.0" ?>
 CONFIGFILE_KINECT="""<?xml version="1.0" ?>
 <file>
     <CameraConfig>
-        <system color_height="720" depth_height="576" fps="15" colormaster="1" color_exposure_time="-1" color_whitebalance="-1" color_backlight_compensation="-1" color_brightness="-1" color_contrast="-1" color_saturation="-1" color_sharpness="-1" color_gain="-1" color_powerline_frequency="-1"/>
+        <system color_height="720" depth_height="576" fps="15" sync_master_serial="" colormaster="1" color_exposure_time="-1" color_whitebalance="-1" color_backlight_compensation="-1" color_brightness="-1" color_contrast="-1" color_saturation="-1" color_sharpness="-1" color_gain="-1" color_powerline_frequency="-1"/>
         <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0" cloudresolution="0">
             <depthfilterparameters  />
         </postprocessing>
