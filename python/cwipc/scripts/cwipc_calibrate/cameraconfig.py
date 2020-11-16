@@ -1,7 +1,7 @@
 import copy
 import xml.etree.ElementTree as ET
 
-CONFIGFILE="""<?xml version="1.0" ?>
+CONFIGFILE_REALSENSE2="""<?xml version="1.0" ?>
 <file>
     <CameraConfig>
         <system usb2width="640" usb2height="480" usb2fps="15" usb3width="1280" usb3height="720" usb3fps="30" usb2allowed="0" />
@@ -16,7 +16,24 @@ CONFIGFILE="""<?xml version="1.0" ?>
     </CameraConfig>
 </file>
 """
-FILTER_PARAMS_REALSENSE=dict(
+
+CONFIGFILE_KINECT="""<?xml version="1.0" ?>
+<file>
+    <CameraConfig>
+        <system color_height="720" depth_height="576" fps="15" colormaster="1" color_exposure_time="-1" color_whitebalance="-1" color_backlight_compensation="-1" color_brightness="-1" color_contrast="-1" color_saturation="-1" color_sharpness="-1" color_gain="-1" color_powerline_frequency="-1"/>
+        <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0" cloudresolution="0">
+            <depthfilterparameters  />
+        </postprocessing>
+        <camera serial="0" type="">
+            <trafo>
+                <values v00="1" v01="0" v02="0" v03="0" v10="0" v11="1" v12="0" v13="0" v20="0" v21="0" v22="1" v23="0" v30="0" v31="0" v32="0" v33="1"  />
+            </trafo>
+        </camera>
+    </CameraConfig>
+</file>
+"""
+
+FILTER_PARAMS_REALSENSE2=dict(
     threshold_near="0.2",
     threshold_far="4",
     do_decimation="0",
@@ -37,8 +54,15 @@ FILTER_PARAMS_KINECT=dict(
 
 DEFAULT_FILENAME="cameraconfig.xml"
 DEFAULT_TYPE="realsense"
-DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
+DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE2
+DEFAULT_CONFIGFILE=CONFIGFILE_REALSENSE2
 
+def selectCameraType(cameraType):
+    global DEFAULT_TYPE, DEFAULT_FILTER_PARAMS, DEFAULT_CONFIGFILE
+    DEFAULT_TYPE = cameraType
+    DEFAULT_FILTER_PARAMS = globals()[f'FILTER_PARAMS_{cameraType.upper()}']
+    DEFAULT_CONFIGFILE = globals()[f'CONFIGFILE_{cameraType.upper()}']
+    
 class CameraConfig:
 
     def __init__(self, confFilename, read=True):
@@ -58,7 +82,7 @@ class CameraConfig:
         self._parseConf()
         
     def fillDefault(self):
-        root = ET.fromstring(CONFIGFILE)
+        root = ET.fromstring(DEFAULT_CONFIGFILE)
         paramElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
         for k, v in DEFAULT_FILTER_PARAMS.items():
             paramElt.set(k, v)
@@ -101,6 +125,7 @@ class CameraConfig:
         newCamElt = copy.deepcopy(firstCamElt)
         newCamElt.set('serial', serial)
         newCamElt.set('type', DEFAULT_TYPE)
+        print(f'xxxjack set type to {DEFAULT_TYPE}')
         ccElt = root.find('CameraConfig')
         ccElt.append(newCamElt)
         
@@ -140,6 +165,7 @@ class CameraConfig:
         root = self.tree.getroot()
         camElt = root.find(f"CameraConfig/camera[@serial='{oldSerial}']")
         camElt.set('serial', serial)
+        camElt.set('type', DEFAULT_TYPE)
         
     def setdistance(self, threshold_near, threshold_far):
         root = self.tree.getroot()

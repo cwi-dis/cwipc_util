@@ -48,13 +48,13 @@ def main():
         if cwipc.kinect == None:
             print("Kinect capturer not supported on this system")
             sys.exit(1)
+        cameraconfig.selectCameraType('kinect')
         capturer = cwipc.kinect.cwipc_kinect
-        cameraconfig.DEFAULT_TYPE = "kinect"
-        cameraconfig.DEFAULT_FILTER_PARAMS = cameraconfig.FILTER_PARAMS_KINECT
     else:
         if cwipc.realsense2 == None:
             print("Realsense capturer not supported on this system")
             sys.exit(1)
+        cameraconfig.selectCameraType('realsense2')
         capturer = cwipc.realsense2.cwipc_realsense2
     if args.bbox:
         bbox = args.bbox
