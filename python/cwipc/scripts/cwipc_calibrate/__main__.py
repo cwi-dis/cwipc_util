@@ -54,7 +54,7 @@ def main():
         if cwipc.realsense2 == None:
             print("Realsense capturer not supported on this system")
             sys.exit(1)
-        cameraconfig.selectCameraType('realsense2')
+        cameraconfig.selectCameraType('realsense')
         capturer = cwipc.realsense2.cwipc_realsense2
     if args.bbox:
         bbox = args.bbox

@@ -1,7 +1,7 @@
 import copy
 import xml.etree.ElementTree as ET
 
-CONFIGFILE_REALSENSE2="""<?xml version="1.0" ?>
+CONFIGFILE_REALSENSE="""<?xml version="1.0" ?>
 <file>
     <CameraConfig>
         <system usb2width="640" usb2height="480" usb2fps="15" usb3width="1280" usb3height="720" usb3fps="30" usb2allowed="0" />
@@ -33,7 +33,7 @@ CONFIGFILE_KINECT="""<?xml version="1.0" ?>
 </file>
 """
 
-FILTER_PARAMS_REALSENSE2=dict(
+FILTER_PARAMS_REALSENSE=dict(
     threshold_near="0.2",
     threshold_far="4",
     do_decimation="0",
@@ -54,8 +54,8 @@ FILTER_PARAMS_KINECT=dict(
 
 DEFAULT_FILENAME="cameraconfig.xml"
 DEFAULT_TYPE="realsense"
-DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE2
-DEFAULT_CONFIGFILE=CONFIGFILE_REALSENSE2
+DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
+DEFAULT_CONFIGFILE=CONFIGFILE_REALSENSE
 
 def selectCameraType(cameraType):
     global DEFAULT_TYPE, DEFAULT_FILTER_PARAMS, DEFAULT_CONFIGFILE
