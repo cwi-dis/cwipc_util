@@ -179,7 +179,7 @@ class Calibrator:
         self.ui.show_prompt('Inspect pointcloud after applying bounding box')
         self.ui.show_points('Inspect bounding box result', joined)
     
-    def run_fine(self, correspondence, inspect):
+    def run_fine(self, correspondance_dist, inspect):
         print("# Starting fine alignment")
         
         camPositions = []
@@ -207,7 +207,7 @@ class Calibrator:
                 self.fine_calibrated_pointclouds = self.coarse_calibrated_pointclouds
                 return
         
-            print("* Select alignment method:\n\t 1 - cumulative\n\t 2 - ICP point2point\n\t 3 - ICP point2plane\n\t 4 - ICP colored")
+            print("* Select alignment method:\n\t 1 - cumulative\n\t 2 - ICP point2point\n\t 3 - ICP point2plane\n\t 4 - recursive colored ICP")
             method = sys.stdin.readline().strip().lower()
             
             if method == '1': #cumulative
@@ -217,7 +217,7 @@ class Calibrator:
                 cc = sys.stdin.readline().strip().lower()
                 if cc == 'n':
                     color_correction = False
-                self.fine_matrix = self.align_fine_cumulative(self.coarse_calibrated_pointclouds,camPositions,color_correction)
+                self.fine_matrix = self.align_fine_cumulative(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist, color_correction)
                 for i in range(len(camPositions)):
                     transformMatrix = self.fine_matrix[i]
                     pc = self.coarse_calibrated_pointclouds[i].clean_background()
@@ -263,13 +263,13 @@ class Calibrator:
                     srcPointcloud = self.coarse_calibrated_pointclouds[src_cam].clean_background()
                     if method == '3':
                         print("## Computing alignment using ICP point2plane:")
-                        initMatrix = self.align_fine_point2plane(refPointcloud,srcPointcloud, correspondence, [camPositions[ref_cam],camPositions[src_cam]], iter)
+                        initMatrix = self.align_fine_point2plane(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
                     elif method == '4':
                         print("## Computing alignment using ICP colored:")
-                        initMatrix = self.align_fine_rcICP(refPointcloud,srcPointcloud, correspondence, [camPositions[ref_cam],camPositions[src_cam]])
+                        initMatrix = self.align_fine_rec_colored_ICP(refPointcloud, srcPointcloud, [camPositions[ref_cam], camPositions[src_cam]])
                     else: #method == '2':
                         print("## Computing alignment using ICP point2point:")
-                        initMatrix = self.align_fine_point2point(refPointcloud,srcPointcloud, correspondence, [camPositions[ref_cam],camPositions[src_cam]], iter)
+                        initMatrix = self.align_fine_point2point(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
                     transformMatrix = initMatrix @ self.fine_matrix[ref_cam]
                     transformPointcloud = srcPointcloud.transform(transformMatrix)
                     self.fine_calibrated_pointclouds.append(transformPointcloud)
@@ -380,7 +380,7 @@ class Calibrator:
         
         return reg_p2p.transformation
     
-    def align_fine_point2point(self, source_pc, target_pc, threshold, cameras, iter):
+    def align_fine_point2point(self, source_pc, target_pc, correspondance_dist, cameras, iter):
         '''ICP alignment based on point2point - at the moment this is giving the best results'''
         print('Align fine:')
         source = source_pc.get_o3d()
@@ -393,12 +393,12 @@ class Calibrator:
         
         print(" 2. Computing ICP point2point")
         trans_init = np.identity(4)
-        reg_p2p = open3d.registration.registration_icp(target_down, source_down, threshold, trans_init,
+        reg_p2p = open3d.registration.registration_icp(target_down, source_down, correspondance_dist, trans_init,
             open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
         
         return reg_p2p.transformation
     
-    def align_fine_point2plane(self, source_pc, target_pc, threshold, cameras, iter):
+    def align_fine_point2plane(self, source_pc, target_pc, correspondance_dist, cameras, iter):
         '''ICP alignment based on point2plane'''
         source = source_pc.get_o3d()
         target = target_pc.get_o3d()
@@ -418,7 +418,7 @@ class Calibrator:
         
         print("3. Computing ICP point2plane")
         trans_init = np.identity(4)
-        reg_point2plane = open3d.registration.registration_icp(target_down, source_down, threshold, trans_init, 
+        reg_point2plane = open3d.registration.registration_icp(target_down, source_down, correspondance_dist, trans_init, 
             open3d.registration.TransformationEstimationPointToPlane(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
         
         return reg_point2plane.transformation
@@ -437,7 +437,7 @@ class Calibrator:
         
         return reg_c.transformation
         
-    def align_fine_rcICP(self, source, target, threshold, cameras):
+    def align_fine_rec_colored_ICP(self, source, target, cameras):
         '''colored ICP recursive with different voxel radius'''
         source = source.get_o3d()
         target = target.get_o3d()
@@ -471,7 +471,7 @@ class Calibrator:
         
         return current_transformation
     
-    def align_fine_cumulative(self, pointclouds,cam_pos,color_correction):
+    def align_fine_cumulative(self, pointclouds, cam_pos, correspondance_dist, color_correction):
         '''Given all the point clouds and its camera positions, it computes the transformations for the fine alignment. If(color_correction) it performs an extra step of colored ICP'''
         cam_order = get_cameras_order(cam_pos)
         pcs = [] #list of ordered pcs
@@ -484,14 +484,16 @@ class Calibrator:
         tpc = pcs[0] #the target pc
         tpc_down = tpc.voxel_down_sample(radius_ds) #downsampled version
         aligned_pc = open3d.geometry.PointCloud()
+       
         
         print("* Choose number of iterations of ICP algorithm (Default 2000) :")
         iter = int(sys.stdin.readline().strip().lower())
         
+        
         for i in range(1,len(pcs)):
             init_transf = np.identity(4)
             src_pc_down = pcs[i].voxel_down_sample(radius_ds)
-            reg_p2p = open3d.registration.registration_icp(src_pc_down, tpc_down, 0.02, init_transf,
+            reg_p2p = open3d.registration.registration_icp(src_pc_down, tpc_down, threshold_distance, init_transf,
                 open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
             transformations[i] = reg_p2p.transformation @ transformations[i]
             tf_pc = pcs[i].transform(reg_p2p.transformation)
@@ -503,7 +505,7 @@ class Calibrator:
         #Extra step to fine align first cam
         aligned_pc_down = aligned_pc.voxel_down_sample(radius_ds)
         init_transf = np.identity(4)
-        reg_p2p = open3d.registration.registration_icp(pcs[0].voxel_down_sample(radius_ds), aligned_pc_down, 0.02, init_transf,
+        reg_p2p = open3d.registration.registration_icp(pcs[0].voxel_down_sample(radius_ds), aligned_pc_down, correspondance_dist, init_transf,
             open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
         transformations[0] = reg_p2p.transformation @ transformations[0]
         tf_pc = pcs[0].transform(reg_p2p.transformation)
@@ -526,7 +528,7 @@ class Calibrator:
                     if j!= i:
                         aux = aux + pcs_down[j]
                 init_transf = np.identity(4)
-                result_icp = open3d.registration.registration_colored_icp(p0, aux, 0.02, init_transf,
+                result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
                     open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
                 pcs_down[i] = p0.transform(result_icp.transformation)
                 transformations[i] = result_icp.transformation @ transformations[i]
