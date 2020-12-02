@@ -1,11 +1,11 @@
 import copy
 import xml.etree.ElementTree as ET
 
-CONFIGFILE_REALSENSE="""<?xml version="1.0" ?>
+DEFAULT_CONFIGFILE="""<?xml version="1.0" ?>
 <file>
-    <CameraConfig>
-        <system usb2width="640" usb2height="480" usb2fps="15" usb3width="1280" usb3height="720" usb3fps="30" usb2allowed="0" />
-        <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0" cloudresolution="0">
+    <CameraConfig version="2">
+        <system  />
+        <postprocessing height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0">
             <depthfilterparameters  />
         </postprocessing>
         <camera serial="0" type="">
@@ -16,52 +16,74 @@ CONFIGFILE_REALSENSE="""<?xml version="1.0" ?>
     </CameraConfig>
 </file>
 """
-
-CONFIGFILE_KINECT="""<?xml version="1.0" ?>
-<file>
-    <CameraConfig>
-        <system color_height="720" depth_height="576" fps="15" sync_master_serial="" colormaster="1" color_exposure_time="-1" color_whitebalance="-1" color_backlight_compensation="-1" color_brightness="-1" color_contrast="-1" color_saturation="-1" color_sharpness="-1" color_gain="-1" color_powerline_frequency="-1"/>
-        <postprocessing density="1" height_min="0" height_max="0" depthfiltering="1" greenscreenremoval="0" cloudresolution="0">
-            <depthfilterparameters  />
-        </postprocessing>
-        <camera serial="0" type="">
-            <trafo>
-                <values v00="1" v01="0" v02="0" v03="0" v10="0" v11="1" v12="0" v13="0" v20="0" v21="0" v22="1" v23="0" v30="0" v31="0" v32="0" v33="1"  />
-            </trafo>
-        </camera>
-    </CameraConfig>
-</file>
-"""
-
 FILTER_PARAMS_REALSENSE=dict(
+    do_threshold="1",
     threshold_near="0.2",
     threshold_far="4",
+    
     do_decimation="0",
     decimation_value="1",
+    
+    do_spatial="1",
     spatial_iterations="1",
     spatial_alpha="0.5",
     spatial_delta="20",
     spatial_filling="1",
+    
     do_temporal="0",
     temporal_alpha="0.4",
     temporal_delta="20",
     temporal_percistency="3",
 )
+
+SYSTEM_PARAMS_REALSENSE=dict(
+    usb2width="640",
+    usb2height="480",
+    usb2fps="15",
+    usb3width="1280",
+    usb3height="720",
+    usb3fps="30",
+    usb2allowed="0",
+    exposure="-1",
+    whitebalance="-1",
+    backlight_compensation="0",
+    laser_power="360",
+    density_preferred="1"
+)
+
 FILTER_PARAMS_KINECT=dict(
+    do_threshold="1",
     threshold_near="0.2",
     threshold_far="4",
+)
+
+SYSTEM_PARAMS_KINECT=dict(
+    color_height="720",
+    depth_height="576",
+    fps="15",
+    sync_master_serial="",
+    colormaster="1",
+    color_exposure_time="-1",
+    color_whitebalance="-1",
+    color_backlight_compensation="-1",
+    color_brightness="-1",
+    color_contrast="-1",
+    color_saturation="-1",
+    color_sharpness="-1",
+    color_gain="-1",
+    color_powerline_frequency="-1"
 )
 
 DEFAULT_FILENAME="cameraconfig.xml"
 DEFAULT_TYPE="realsense"
 DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
-DEFAULT_CONFIGFILE=CONFIGFILE_REALSENSE
+DEFAULT_SYSTEM_PARAMS=SYSTEM_PARAMS_REALSENSE
 
 def selectCameraType(cameraType):
-    global DEFAULT_TYPE, DEFAULT_FILTER_PARAMS, DEFAULT_CONFIGFILE
+    global DEFAULT_TYPE, DEFAULT_FILTER_PARAMS, DEFAULT_SYSTEM_PARAMS
     DEFAULT_TYPE = cameraType
     DEFAULT_FILTER_PARAMS = globals()[f'FILTER_PARAMS_{cameraType.upper()}']
-    DEFAULT_CONFIGFILE = globals()[f'CONFIGFILE_{cameraType.upper()}']
+    DEFAULT_SYSTEM_PARAMS = globals()[f'SYSTEM_PARAMS_{cameraType.upper()}']
     
 class CameraConfig:
 
@@ -85,6 +107,9 @@ class CameraConfig:
         root = ET.fromstring(DEFAULT_CONFIGFILE)
         paramElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
         for k, v in DEFAULT_FILTER_PARAMS.items():
+            paramElt.set(k, v)
+        paramElt = root.find('CameraConfig/system')
+        for k, v in DEFAULT_SYSTEM_PARAMS.items():
             paramElt.set(k, v)
         self.tree = ET.ElementTree(root)
         
@@ -125,7 +150,6 @@ class CameraConfig:
         newCamElt = copy.deepcopy(firstCamElt)
         newCamElt.set('serial', serial)
         newCamElt.set('type', DEFAULT_TYPE)
-        print(f'xxxjack set type to {DEFAULT_TYPE}')
         ccElt = root.find('CameraConfig')
         ccElt.append(newCamElt)
         
@@ -169,8 +193,8 @@ class CameraConfig:
         
     def setdistance(self, threshold_near, threshold_far):
         root = self.tree.getroot()
-        ppElt = root.find('CameraConfig/postprocessing')
-        dfElt = ppElt.find('depthfilterparameters')
+        dfElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
+        dfElt.set('do_threshold', "1")
         dfElt.set('threshold_near', str(threshold_near))
         dfElt.set('threshold_far', str(threshold_far))
         
@@ -179,3 +203,15 @@ class CameraConfig:
         ppElt = root.find('CameraConfig/postprocessing')
         ppElt.set('height_min', str(height_min))
         ppElt.set('height_max', str(height_max))
+        
+    def setsystemparam(self, name, value):
+        root = self.tree.getroot()
+        sysElt = root.find('CameraConfig/system')
+        value = str(value)
+        sysElt.set(name, value)
+        
+    def setfilterparam(self, name, value):
+        root = self.tree.getroot()
+        dfElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
+        value = str(value)
+        dfElt.set(name, value)
