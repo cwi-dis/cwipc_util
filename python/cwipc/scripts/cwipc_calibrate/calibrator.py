@@ -493,7 +493,7 @@ class Calibrator:
         for i in range(1,len(pcs)):
             init_transf = np.identity(4)
             src_pc_down = pcs[i].voxel_down_sample(radius_ds)
-            reg_p2p = open3d.registration.registration_icp(src_pc_down, tpc_down, threshold_distance, init_transf,
+            reg_p2p = open3d.registration.registration_icp(src_pc_down, tpc_down, correspondance_dist, init_transf,
                 open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
             transformations[i] = reg_p2p.transformation @ transformations[i]
             tf_pc = pcs[i].transform(reg_p2p.transformation)
