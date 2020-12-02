@@ -9,16 +9,22 @@ if exist %bindir%..\python37embedded\python.exe (
 )
 pushd %bindir%..\share\cwipc_util\python
 %python% setup.py install
+popd
 if exist %bindir%..\share\cwipc_realsense2\python\setup.py (
 	pushd %bindir%..\share\cwipc_realsense2\python
 	%python% setup.py install
+	popd
 )
 if exist %bindir%..\share\cwipc_kinect\python\setup.py (
 	pushd %bindir%..\share\cwipc_kinect\python
 	%python% setup.py install
+	popd
 )
 pushd %bindir%..\share\cwipc_codec\python
 %python% setup.py install
-
-echo "You should also manually copy cwipc scripts from python37embedded/Scripts into bin directory"
-exit
+popd
+pushd %bindir%..
+if exist %bindir%..\python37embedded\Scripts\ (
+	xcopy /y "%bindir%..\python37embedded\Scripts\cwipc_*" "%bindir%..\bin"
+)
+popd
