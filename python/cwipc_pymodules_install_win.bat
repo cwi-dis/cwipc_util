@@ -20,4 +20,5 @@ if exist %bindir%..\share\cwipc_kinect\python\setup.py (
 pushd %bindir%..\share\cwipc_codec\python
 %python% setup.py install
 
+echo "You should also manually copy cwipc scripts from python37embedded/Scripts into bin directory"
 exit

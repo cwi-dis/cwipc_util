@@ -20,3 +20,7 @@ if [ -d "$sharedir/cwipc_kinect/python" ]; then
 	(cd "$sharedir/cwipc_kinect/python" ; "$python3" setup.py install)
 fi
 (cd "$sharedir/cwipc_codec/python" ; "$python3" setup.py install)
+# Finally, if we have installed into an embedded Python, copy phython-based programs into bin
+if [ -d "$installdir/bin" -a -d "$installdir/python37embedded/Scripts" ]; then
+	ln -f "$installdir/python37embedded/Scripts/cwipc_"* "$installdir/bin/"
+fi
