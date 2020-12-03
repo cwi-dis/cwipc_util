@@ -21,7 +21,8 @@ private:
     float m_eye_angle;
     float m_eye_distance;
     float m_eye_height;
-    bool m_mouse_pressed;
+    bool m_left_mouse_pressed;
+    bool m_right_mouse_pressed;
     float m_mouse_x;
     float m_mouse_y;
     std::string m_chars_wanted;
@@ -35,8 +36,9 @@ public:
         m_points(nullptr),
         m_npoints(0),
         m_pointsize(0),
-        m_eye_angle(0), m_eye_distance(1.8), m_eye_height(2),
-        m_mouse_pressed(false),
+        m_eye_angle(0), m_eye_distance(1.8), m_eye_height(1),
+        m_left_mouse_pressed(false),
+        m_right_mouse_pressed(false),
         m_mouse_x(-1),
         m_mouse_y(-1),
         m_chars_wanted(""),
@@ -125,23 +127,27 @@ public:
     
 private:
     void on_left_mouse(bool pressed) {
-        m_mouse_pressed = pressed;
+        m_left_mouse_pressed = pressed;
     }
     
     void on_right_mouse(bool pressed) {
+        m_right_mouse_pressed = pressed;
     }
     
     void on_mouse_scroll(double deltax, double deltay) {
-        m_eye_height += deltay / 10;
+        m_eye_distance += deltay / 10;
     }
     
     void on_mouse_move(double x, double y) {
-        if (m_mouse_pressed) {
+        if (m_left_mouse_pressed) {
             float delta_x = x - m_mouse_x;
-            float delta_y = y - m_mouse_y;
             m_eye_angle += delta_x / 100;
-            m_eye_distance += delta_y / 100;
         }
+        if (m_right_mouse_pressed) {
+            float delta_y = y - m_mouse_y;
+            m_eye_height += delta_y / 100;
+        }
+        
         m_mouse_x = x;
         m_mouse_y = y;
     }

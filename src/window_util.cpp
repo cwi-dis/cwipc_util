@@ -18,7 +18,7 @@ window_util::window_util(int width, int height, const char* title) : _width(widt
 	glfwSetMouseButtonCallback(win, [](GLFWwindow * win, int button, int action, int mods) {
 		auto s = (window_util*)glfwGetWindowUserPointer(win);
         if (button == GLFW_MOUSE_BUTTON_LEFT) s->on_left_mouse(action == GLFW_PRESS);
-        if (button == GLFW_MOUSE_BUTTON_RIGHT) s->on_left_mouse(action == GLFW_PRESS);
+        if (button == GLFW_MOUSE_BUTTON_RIGHT) s->on_right_mouse(action == GLFW_PRESS);
 	});
 
 	glfwSetScrollCallback(win, [](GLFWwindow * win, double xoffset, double yoffset) {
@@ -57,7 +57,7 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	gluLookAt(x, y, z, 0.0, y, 0.0, 0.0, 1.0, 0.0);
 
 	//glTranslatef(0.0, 0.0, _appstate.offset*0.05f);
 	//glRotated(_appstate.pitch, 1, 0, 0);
@@ -72,7 +72,9 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
     glGetDoublev(GL_PROJECTION_MATRIX, projMatrix);
     GLdouble modelMatrix[16];
     glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
-    int mid_screen_x = viewport[0] + viewport[2]/2;
+
+	// NACHO does not like this code
+    /*int mid_screen_x = viewport[0] + viewport[2]/2;
     int mid_screen_y = viewport[1] + viewport[3]/2;
     int mid1_screen_x = mid_screen_x + 1;
     int mid1_screen_y = mid_screen_y + 1;
@@ -90,13 +92,15 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
             // Jack has _absolutely_ no idea where the square root comes from, but it "seems to work"....
             pointSize = sqrt(2*d)*viewport[2];
         }
-    }
+    }*/
 
 #endif
+	//printf("Point size = %f\n", pointSize);
 	if (pointSize > 0) {
 		glPointSize(pointSize);
 	} else {
-		glPointSize(float(_width) / float(640));
+		//glPointSize(float(_width) / float(640));
+		glPointSize(1.0f);
 	}
     
 	glEnable(GL_DEPTH_TEST);

@@ -39,11 +39,17 @@ def _dump_app_stacks(*args):
 
 class Visualizer:
     HELP="""
-q      Quit
-space  Pause/resume
-w      Write PLY file
-012... Select single tile to view
-a      Show all tiles
+space         Pause/resume
+mouse_left    Rotate viewpoint
+mouse_scroll  Zoom in/out
+mouse_right   Up/down viewpoint
++/-           Increase/decrease point size
+0,1,2,4,8     Select single tile to view ( 0=All )
+a             Show all tiles
+w             Write PLY file
+c             Crash. To print stack trace
+?,h           Help
+q             Quit
     """
     
     def __init__(self, verbose=False):
@@ -55,6 +61,7 @@ a      Show all tiles
         self.paused = False
         self.tilefilter = None
         self.start_window()
+        self.pointSize = 2.0
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -91,6 +98,7 @@ a      Show all tiles
     def draw_pc(self, pc):
         """Draw pointcloud"""
         if pc:
+            pc._set_cellsize(self.pointSize)
             pc_to_show = pc
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
@@ -100,22 +108,31 @@ a      Show all tiles
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?q wa012345678", 30) 
+        cmd = self.visualiser.interact(None, "?hq +-cwa012345678", 30) 
         if cmd == "q":
             return False
+        elif cmd == '?' or cmd == 'h':
+            print(Visualizer.HELP)
         elif cmd == "w" and self.cur_pc:
             filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
             cwipc.cwipc_write(filename, self.cur_pc)
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
+        elif cmd == "+":
+            self.pointSize += 1.0
+            print(f"Point size p = {self.pointSize}")
+        elif cmd == "-":
+            if self.pointSize > 1.0 :
+                self.pointSize -= 1.0
+                print(f"Point size p = {self.pointSize}")
         elif cmd == 'a':
             self.tilefilter = None
         elif cmd in '012345678':
             self.tilefilter = int(cmd)
         elif cmd == '\0':
             pass
-        else:
+        else: #c to crash and print stack trace
             print(HELP)
         return True
 
