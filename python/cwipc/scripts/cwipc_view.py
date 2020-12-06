@@ -61,7 +61,6 @@ q             Quit
         self.paused = False
         self.tilefilter = None
         self.start_window()
-        self.pointSize = 2.0
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -98,7 +97,6 @@ q             Quit
     def draw_pc(self, pc):
         """Draw pointcloud"""
         if pc:
-            pc._set_cellsize(self.pointSize)
             pc_to_show = pc
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
