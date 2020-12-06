@@ -73,29 +73,26 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
     GLdouble modelMatrix[16];
     glGetDoublev(GL_MODELVIEW_MATRIX, modelMatrix);
 
-	// NACHO does not like this code
-    /*int mid_screen_x = viewport[0] + viewport[2]/2;
-    int mid_screen_y = viewport[1] + viewport[3]/2;
-    int mid1_screen_x = mid_screen_x + 1;
-    int mid1_screen_y = mid_screen_y + 1;
-    GLdouble mid_world_x, mid_world_y, mid_world_z;
-    GLdouble mid1_world_x, mid1_world_y, mid1_world_z;
-    double dist0 = sqrt(x*x+y*y+z*z);
-    int ok = gluUnProject(mid_screen_x, mid_screen_y, dist0, modelMatrix, projMatrix, viewport, &mid_world_x, &mid_world_y, &mid_world_z);
-    int ok1 = gluUnProject(mid1_screen_x, mid1_screen_y, dist0+pointSize, modelMatrix, projMatrix, viewport, &mid1_world_x, &mid1_world_y, &mid1_world_z);
+	//
+	// Need to determine how many pixels we should draw for a distance of pointSize.
+	// We first compute the screen coordinates for world point (0,0,0) and (0,pointSize, 0).
+	// This kind-of works because we know that we are alows looking with screen-Y and world-Y being in the same direction.
+	//
+    GLdouble world_origin_screen_x, world_origin_screen_y, world_origin_screen_z;
+    GLdouble world_pointsize_up_screen_x, world_pointsize_up_screen_y, world_pointsize_up_screen_z;
+    double dist0 = sqrt(x*x+z*z);
+    int ok = gluProject(0.0, 0.0, 0.0, modelMatrix, projMatrix, viewport, &world_origin_screen_x, &world_origin_screen_y, &world_origin_screen_z);
+    int ok1 = gluProject(0, pointSize, 0, modelMatrix, projMatrix, viewport, &world_pointsize_up_screen_x, &world_pointsize_up_screen_y, &world_pointsize_up_screen_z);
     if (ok && ok1) {
-        double dx = mid_world_x - mid1_world_x;
-        double dy = mid_world_y - mid1_world_y;
-        double dz = mid_world_z - mid1_world_z;
-        double d = sqrt(dx*dx + dy*dy + dz*dz);
+        double dx = world_origin_screen_x - world_pointsize_up_screen_x;
+        double dy = world_origin_screen_y - world_pointsize_up_screen_y;
+        double d = sqrt(dx*dx + dy*dy);
         if (d != 0) {
-            // Jack has _absolutely_ no idea where the square root comes from, but it "seems to work"....
-            pointSize = sqrt(2*d)*viewport[2];
+			pointSize = d;
         }
-    }*/
+    }
 
 #endif
-	//printf("Point size = %f\n", pointSize);
 	if (pointSize > 0) {
 		glPointSize(pointSize);
 	} else {
