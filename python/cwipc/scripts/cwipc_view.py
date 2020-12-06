@@ -43,11 +43,9 @@ space         Pause/resume
 mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
-+/-           Increase/decrease point size
 0,1,2,4,8     Select single tile to view ( 0=All )
 a             Show all tiles
 w             Write PLY file
-c             Crash. To print stack trace
 ?,h           Help
 q             Quit
     """
@@ -117,13 +115,6 @@ q             Quit
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
-        elif cmd == "+":
-            self.pointSize += 1.0
-            print(f"Point size p = {self.pointSize}")
-        elif cmd == "-":
-            if self.pointSize > 1.0 :
-                self.pointSize -= 1.0
-                print(f"Point size p = {self.pointSize}")
         elif cmd == 'a':
             self.tilefilter = None
         elif cmd in '012345678':
