@@ -88,7 +88,7 @@ void window_util::prepare_gl(float x, float y, float z, float pointSize)
         double dy = world_origin_screen_y - world_pointsize_up_screen_y;
         double d = sqrt(dx*dx + dy*dy);
         if (d != 0) {
-			pointSize = d;
+			pointSize = 1.414 * d;
         }
     }
 
