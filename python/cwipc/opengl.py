@@ -11,11 +11,11 @@ from . import util
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.button = QtWidgets.QPushButton('Test', self)
+        #self.button = QtWidgets.QPushButton('Test', self)
         self.widget = glWidget(self)
         mainLayout = QtWidgets.QHBoxLayout()
         mainLayout.addWidget(self.widget)
-        mainLayout.addWidget(self.button)
+        #mainLayout.addWidget(self.button)
         self.setLayout(mainLayout)
 
 class glViewpointMixin:
@@ -25,15 +25,18 @@ class glViewpointMixin:
         self.eyeDistance = 6
         
     def mousePressEvent(self, event):
+        print('xxxjack mousePress')
         self.origMouseButton = event.button()
         self.origMousePosition = (event.x(), event.y())
         
     def mouseReleaseEvent(self, event):
+        print('xxxjack mouseRelease')
         self.mouseMoveEvent(event)
         self.origMouseButton = None
         self.origMousePosition = None
         
     def mouseMoveEvent(self, event):
+        print('xxxjack mouseMove')
         newMousePosition = (event.x(), event.y())
         dx, dy = newMousePosition[0]-self.origMousePosition[0], newMousePosition[1]-self.origMousePosition[1]
         self.origMousePosition = newMousePosition
@@ -44,6 +47,7 @@ class glViewpointMixin:
         self.camPositionChanged()
         
     def wheelEvent(self, event):
+        print('xxxjack wheel')
         self.eyeDistance += event.delta() / 100
         self.camPositionChanged()
         
@@ -55,12 +59,12 @@ class glViewpointMixin:
         self.setCamPosition((x, y, z))
         self.setCamLookat((0, y, 0))
         
-class glWidget(glViewpointMixin, QtOpenGL.QGLWidget):
+class glWidget(glViewpointMixin, QtWidgets.QOpenGLWidget):
 
     def __init__(self, parent):
         self.objects = []
         glViewpointMixin.__init__(self)
-        QtOpenGL.QGLWidget.__init__(self, parent)
+        QtWidgets.QOpenGLWidget.__init__(self, parent)
         self.setMinimumSize(640, 480)
         self.camPosition = (1, 1.8, 6)
         self.camLookat = (0, 0, 0)
@@ -69,6 +73,17 @@ class glWidget(glViewpointMixin, QtOpenGL.QGLWidget):
         self.perspective = (60, 1.33, 0.01, 10.0)
         self.origMouseButton = None
         self.origMousePosition = None
+        
+    def __del__(self):
+        print('xxxjack gl del called')
+        self.makeCurrent()
+        for o in self.objects:
+            o.delete()
+        del self.objects
+        
+    def resizeGL(self, w, h):
+        print(f'xxxjack perspective {w, h}')
+        self.setPerspective((60, w/h, 0.01, 10.0))
         
     def setCamPosition(self, position):
         self.camPosition = position
@@ -127,6 +142,9 @@ class glObject:
         self.parent = parent
         parent.addObject(self)
         
+    def delete(self):
+        self.parent = None
+        
     def update(self):
         self.parent.update()
         
@@ -177,8 +195,10 @@ class glPositionedObject(glObject):
 
 def tmp_util_cwipc_draw(pc):
     """xxxjack workaround for apparently two different versions of OpenGL being used on Mac by Python code and C++ code"""
+    if not pc: return
     buffer = pc.get_bytes()
     nbytes = len(buffer)
+    if not buffer or nbytes == 0: return
     npoints = nbytes // 16
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_COLOR_ARRAY)
@@ -254,13 +274,18 @@ class cwipc_opengl_window:
         self.window.show()
         
     def feed(self, pc, clear):
+        if not self.pc_object: return
         return self.pc_object.feed(pc, clear)
         
     def caption(self, caption):
         pass
         
     def run(self):
-        return self.app.exec_()
+        rv = self.app.exec_()
+        self.pc_object.delete()
+        self.grid_object.delete()
+        print('xxxjack runlook done')
+        return rv
         
     def stop(self):
         self.app.quit()
