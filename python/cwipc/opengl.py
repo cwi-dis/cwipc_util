@@ -5,6 +5,7 @@ from PySide2 import QtGui
 from PySide2 import QtCore
 from PySide2 import QtWidgets
 from PySide2 import QtOpenGL
+import numpy as np
 from . import util
 
 class MainWindow(QtWidgets.QWidget):
@@ -50,6 +51,7 @@ class glViewpointMixin:
         x = self.eyeDistance * math.sin(self.eyeAngle)
         y = self.eyeHeight
         z = self.eyeDistance * math.cos(self.eyeAngle)
+        print(f'xxxjack camPositionChanged {x, y, z}')
         self.setCamPosition((x, y, z))
         self.setCamLookat((0, y, 0))
         
@@ -174,6 +176,20 @@ class glPositionedObject(glObject):
         glPopMatrix()
 
 def tmp_util_cwipc_draw(pc):
+    """xxxjack workaround for apparently two different versions of OpenGL being used on Mac by Python code and C++ code"""
+    buffer = pc.get_bytes()
+    nbytes = len(buffer)
+    npoints = nbytes // 16
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_COLOR_ARRAY)
+    glVertexPointer(3, GL_FLOAT, 16, buffer)
+    glColorPointer(3, GL_UNSIGNED_BYTE, 16, buffer[12:])
+    
+    glDrawArrays(GL_POINTS, 0, npoints-1)
+    glDisableClientState(GL_VERTEX_ARRAY)
+    glDisableClientState(GL_COLOR_ARRAY)
+    
+def tmp_util_cwipc_draw_slow(pc):
     """xxxjack workaround for apparently two different versions of OpenGL being used on Mac by Python code and C++ code"""
     points = pc.get_points()
     glBegin(GL_POINTS)
