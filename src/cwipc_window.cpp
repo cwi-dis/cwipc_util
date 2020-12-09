@@ -174,3 +174,27 @@ cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion)
     return new cwipc_sink_window_impl(title);
 }
 
+bool cwipc_draw(cwipc *pc) {
+    if (pc == NULL) return false;
+    size_t bufferSize = pc->get_uncompressed_size();
+    if (bufferSize == 0) return false;
+    cwipc_point *newBuffer = (cwipc_point *)malloc(bufferSize);
+    if (newBuffer == nullptr) return false;
+    int nNewPoints = pc->copy_uncompressed(newBuffer, bufferSize);
+#if 0
+    m_pointsize = pc->cellsize();
+    m_window->prepare_gl(m_eye_distance*sin(m_eye_angle), m_eye_height, m_eye_distance*cos(m_eye_angle), m_pointsize);
+#endif
+    glBegin(GL_POINTS);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // xxxjack needed?
+    for (int i=0; i<nNewPoints; i++) {
+        glColor3ub(newBuffer[i].r, newBuffer[i].g, newBuffer[i].b);
+        glVertex3f(newBuffer[i].x, newBuffer[i].y, newBuffer[i].z);
+    }
+    glEnd();
+#if 0
+    m_window->cleanup_gl();
+    if (!*m_window) return false;
+#endif
+    return true;
+}

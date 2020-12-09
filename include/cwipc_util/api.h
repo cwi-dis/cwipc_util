@@ -615,6 +615,17 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_tilefilter(cwipc *pc, int tile);
  */
 _CWIPC_UTIL_EXPORT cwipc_tiledsource *cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion);
 
+    /** \brief Draw a pointcloud to the current OpenGL context.
+     * \param pc The source pointcloud.
+     * \return true if anything was drawn
+     *
+     * The caller is responsible for setting up the OpenGL drawing context (including setting
+     * up matrices, clearing buffers, etc). This method will then draw the points in the pointcloud
+     * within glBegin/glEnd brackets.
+     */
+_CWIPC_UTIL_EXPORT bool cwipc_draw(cwipc *pc);
+    
+
 #ifdef __cplusplus
 }
 #endif

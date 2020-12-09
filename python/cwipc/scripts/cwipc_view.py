@@ -50,15 +50,16 @@ w             Write PLY file
 q             Quit
     """
     
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, opengl=False):
         self.visualiser = None
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
+        self.opengl = opengl
         self.cur_pc = None
         self.paused = False
         self.tilefilter = None
-        self.start_window()
+        self.start_window(opengl)
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -85,10 +86,13 @@ q             Quit
         except queue.Full:
             pc.free()
             
-    def start_window(self):
-        cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
-        self.visualiser = cwipc.cwipc_window("cwipc_view")
-        os.chdir(cwd)
+    def start_window(self, opengl):
+        if self.opengl:
+            self.visualiser = cwipc.cwipc_opengl_window("cwipc_view_opengl")
+        else:
+            cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
+            self.visualiser = cwipc.cwipc_window("cwipc_view")
+            os.chdir(cwd)
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
@@ -215,6 +219,7 @@ def main():
     parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS", default=0)
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
+    parser.add_argument("--opengl", action="store_true", help="Draw pointclouds using QT OpenGL visualizer")
     parser.add_argument("--savecwicpc", action="store", metavar="DIR", help="Save compressed pointclouds to DIR")
     parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
     args = parser.parse_args()
@@ -246,7 +251,7 @@ def main():
         source = cwipc.realsense2.cwipc_realsense2()
 
     if not args.nodisplay:
-        visualizer = Visualizer(args.verbose)
+        visualizer = Visualizer(args.verbose, args.opengl)
     else:
         visualizer = None
 

@@ -27,7 +27,9 @@ __all__ = [
     'cwipc_proxy',
     
     'cwipc_downsample',
-    'cwipc_tilefilter'
+    'cwipc_tilefilter',
+    
+    'cwipc_draw'
 ]
 
 CWIPC_API_VERSION = 0x20201022
@@ -232,6 +234,9 @@ def _cwipc_util_dll(libname=None):
 
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
+
+    _cwipc_util_dll_reference.cwipc_draw.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_tilefilter.restype = ctypes.c_bool
 
 
     return _cwipc_util_dll_reference
@@ -516,6 +521,11 @@ def cwipc_proxy(host, port):
     if rv:
         return cwipc_tiledsource(rv)
     return None
+
+def cwipc_draw(pc):
+    rv = _cwipc_util_dll().cwipc_draw(pc._as_cwipc_p())
+    return rv
+  
     
   
 def main():
