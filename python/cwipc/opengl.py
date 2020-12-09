@@ -1,3 +1,4 @@
+import math
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PySide2 import QtGui
@@ -16,10 +17,47 @@ class MainWindow(QtWidgets.QWidget):
         mainLayout.addWidget(self.button)
         self.setLayout(mainLayout)
 
-class glWidget(QtOpenGL.QGLWidget):
+class glViewpointMixin:
+    def __init__(self):
+        self.eyeAngle = 0
+        self.eyeHeight = 1.8
+        self.eyeDistance = 6
+        
+    def mousePressEvent(self, event):
+        self.origMouseButton = event.button()
+        self.origMousePosition = (event.x(), event.y())
+        
+    def mouseReleaseEvent(self, event):
+        self.mouseMoveEvent(event)
+        self.origMouseButton = None
+        self.origMousePosition = None
+        
+    def mouseMoveEvent(self, event):
+        newMousePosition = (event.x(), event.y())
+        dx, dy = newMousePosition[0]-self.origMousePosition[0], newMousePosition[1]-self.origMousePosition[1]
+        self.origMousePosition = newMousePosition
+        if self.origMouseButton == QtCore.Qt.LeftButton:
+            self.eyeAngle += dx / 100
+        if self.origMouseButton == QtCore.Qt.RightButton:
+            self.eyeHeight += dy / 100
+        self.camPositionChanged()
+        
+    def wheelEvent(self, event):
+        self.eyeDistance += event.delta() / 100
+        self.camPositionChanged()
+        
+    def camPositionChanged(self):
+        x = self.eyeDistance * math.sin(self.eyeAngle)
+        y = self.eyeHeight
+        z = self.eyeDistance * math.cos(self.eyeAngle)
+        self.setCamPosition((x, y, z))
+        self.setCamLookat((0, y, 0))
+        
+class glWidget(glViewpointMixin, QtOpenGL.QGLWidget):
 
     def __init__(self, parent):
         self.objects = []
+        glViewpointMixin.__init__(self)
         QtOpenGL.QGLWidget.__init__(self, parent)
         self.setMinimumSize(640, 480)
         self.camPosition = (1, 1.8, 6)
@@ -27,6 +65,8 @@ class glWidget(QtOpenGL.QGLWidget):
         self.camUp = (0, 1, 0)
         self.clearColor = (0.2, 0.4, 0.6, 1)
         self.perspective = (60, 1.33, 0.01, 10.0)
+        self.origMouseButton = None
+        self.origMousePosition = None
         
     def setCamPosition(self, position):
         self.camPosition = position
@@ -59,7 +99,6 @@ class glWidget(QtOpenGL.QGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         gluLookAt(*self.camPosition, *self.camLookat, *self.camUp)
-        print(f'Changed lookat to {self.camPosition, self.camLookat, self.camUp}')
         
     def postPaintGL(self):
         glFlush()
@@ -149,7 +188,7 @@ class glCwipcObject(glObject):
         self.pc = None
         
     def feed(self, pc, clear):
-        if self.pc: self.pc.free()
+        # if self.pc: self.pc.free()
         self.pc = pc
         self.update()
         return True
@@ -194,7 +233,6 @@ class cwipc_opengl_window:
         self.app = QtWidgets.QApplication([name])
         self.window = MainWindow()
         self.pc_object = glCwipcObject(self.window.widget)
-        #self.pc_object.setTranslation((-2.5, 0.5, -6.0))
         self.grid_object = glGridObject(self.window.widget)
         self.window.show()
         
@@ -204,7 +242,12 @@ class cwipc_opengl_window:
     def caption(self, caption):
         pass
         
-    def interact(self, prompt, response, millis):
-        self.app.processEvents()
-        return '\0'
+    def run(self):
+        return self.app.exec_()
         
+    def stop(self):
+        self.app.quit()
+        
+if __name__ == '__main__':
+    w = cwipc_opengl_window("__main__")
+    w.run()
