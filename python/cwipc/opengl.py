@@ -22,19 +22,56 @@ class glWidget(QtOpenGL.QGLWidget):
         self.objects = []
         QtOpenGL.QGLWidget.__init__(self, parent)
         self.setMinimumSize(640, 480)
+        self.camPosition = (1, 1.8, 6)
+        self.camLookat = (0, 0, 0)
+        self.camUp = (0, 1, 0)
+        self.clearColor = (0.2, 0.4, 0.6, 1)
+        self.perspective = (60, 1.33, 0.01, 10.0)
+        
+    def setCamPosition(self, position):
+        self.camPosition = position
+        self.update()
+        
+    def setCamLookat(self, lookat):
+        self.camLookat = lookat
+        self.update()
+        
+    def setCamUp(self, up):
+        self.camUp = up
+        self.update()
+        
+    def setPerspective(self, perspective):
+        self.perspective = perspective
+        self.updatePerspective()
+        
+    def updatePerspective(self):
+        self.makeCurrent()
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(*self.perspective)
 
     def addObject(self, object):
         self.objects.append(object)
         
-    def paintGL(self):
+    def prePaintGL(self):
+        glClearColor(*self.clearColor)       
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        for o in self.objects:
-            o.paintGL()
+        gluLookAt(*self.camPosition, *self.camLookat, *self.camUp)
+        print(f'Changed lookat to {self.camPosition, self.camLookat, self.camUp}')
+        
+    def postPaintGL(self):
         glFlush()
 
+    def paintGL(self):
+        self.prePaintGL()
+        for o in self.objects:
+            o.paintGL()
+        self.postPaintGL()
+
     def initializeGL(self):
-        glClearDepth(1.0)              
+        glClearDepth(1.0)
         glDepthFunc(GL_LESS)
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_SMOOTH)
@@ -62,6 +99,7 @@ class glObject:
         self.postPaintGL()
 
 class glPositionedObject(glObject):
+    # xxxjack does not seem to work....
 
     def __init__(self, parent):
         super(glPositionedObject, self).__init__(parent)
@@ -84,7 +122,7 @@ class glPositionedObject(glObject):
         
     def prePaintGL(self):
         glPushMatrix()
-        #glLoadIdentity()
+        glLoadIdentity()
         if self.scale:
             glScalef(*self.scale)
         if self.rotation:
@@ -94,8 +132,17 @@ class glPositionedObject(glObject):
         
     def postPaintGL(self):
         glPopMatrix()
-  
-class glCwipcObject(glPositionedObject):
+
+def tmp_util_cwipc_draw(pc):
+    """xxxjack workaround for apparently two different versions of OpenGL being used on Mac by Python code and C++ code"""
+    points = pc.get_points()
+    glBegin(GL_POINTS)
+    for p in points:
+        glColor3ub(p.r, p.g, p.b)
+        glVertex3f(p.x, p.y, p.z)
+    glEnd()
+    
+class glCwipcObject(glObject):
 
     def __init__(self, parent):
         super(glCwipcObject, self).__init__(parent)
@@ -111,11 +158,35 @@ class glCwipcObject(glPositionedObject):
         if not self.pc: return
         self.prePaintGL()
         print('xxxjack paint called')
-#        glTranslatef(-2.5, 0.5, -6.0)
-#        glColor3f( 1.0, 1.5, 0.0 )
-#        glPolygonMode(GL_FRONT, GL_FILL)
-#        glBegin(GL_TRIANGLES)
-        util.cwipc_draw(self.pc)
+        #util.cwipc_draw(self.pc)
+        tmp_util_cwipc_draw(self.pc)
+        self.postPaintGL()
+        
+class glGridObject(glObject):
+
+    def paintGL(self):
+        self.prePaintGL()
+        # draw grid
+        glBegin(GL_LINES)
+        glColor3f(0.5, 0.5, 0.5)
+        for pos in range(-5, 5+2, 2):
+            glVertex3f(-5, 0, pos)
+            glVertex3f(5, 0, pos)
+            glVertex3f(pos, 0, -5)
+            glVertex3f(pos, 0, 5)
+        glEnd()
+        # Draw axes
+        glBegin(GL_LINES)
+        glColor3f(1, 0, 0)
+        glVertex3f(0, 0, 0)
+        glVertex3f(1, 0, 0)
+        glColor3f(0, 1, 0)
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, 1, 0)
+        glColor3f(0, 0, 1)
+        glVertex3f(0, 0, 0)
+        glVertex3f(0, 0, 1)
+        glEnd()
         self.postPaintGL()
         
 class cwipc_opengl_window:
@@ -123,7 +194,8 @@ class cwipc_opengl_window:
         self.app = QtWidgets.QApplication([name])
         self.window = MainWindow()
         self.pc_object = glCwipcObject(self.window.widget)
-        self.pc_object.setTranslation((-2.5, 0.5, -6.0))
+        #self.pc_object.setTranslation((-2.5, 0.5, -6.0))
+        self.grid_object = glGridObject(self.window.widget)
         self.window.show()
         
     def feed(self, pc, clear):
