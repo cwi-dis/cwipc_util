@@ -236,7 +236,7 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
 
     _cwipc_util_dll_reference.cwipc_draw.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_tilefilter.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_draw.restype = ctypes.c_bool
 
 
     return _cwipc_util_dll_reference
