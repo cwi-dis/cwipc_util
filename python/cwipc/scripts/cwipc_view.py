@@ -37,6 +37,9 @@ def _dump_app_stacks(*args):
         traceback.print_stack(stack, file=sys.stderr)
         print(file=sys.stderr)
 
+#print('xxxjack go')
+#sys.stdin.readline()
+
 class Visualizer:
     HELP="""
 space         Pause/resume
@@ -50,16 +53,15 @@ w             Write PLY file
 q             Quit
     """
     
-    def __init__(self, verbose=False, opengl=False):
+    def __init__(self, verbose=False):
         self.visualiser = None
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
-        self.opengl = opengl
         self.cur_pc = None
         self.paused = False
         self.tilefilter = None
-        self.start_window(opengl)
+        self.start_window()
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -79,20 +81,36 @@ q             Quit
                 if not ok: break
             except queue.Empty:
                 pass
-        
+            cmd = self.visualiser.interact(None, "?hq +-cwa012345678", 30) 
+            if cmd == "q":
+                return False
+            elif cmd == '?' or cmd == 'h':
+                print(Visualizer.HELP)
+            elif cmd == "w" and self.cur_pc:
+                filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
+                cwipc.cwipc_write(filename, self.cur_pc)
+                print(f'Saved as {filename} in {os.getcwd()}')
+            elif cmd == " ":
+                self.paused = not self.paused
+            elif cmd == 'a':
+                self.tilefilter = None
+            elif cmd in '012345678':
+                self.tilefilter = int(cmd)
+            elif cmd == '\0':
+                pass
+            else: #c to crash and print stack trace
+                print(HELP)
+                    
     def feed(self, pc):
         try:
             self.queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
-    def start_window(self, opengl):
-        if self.opengl:
-            self.visualiser = cwipc.cwipc_opengl_window("cwipc_view_opengl")
-        else:
-            cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
-            self.visualiser = cwipc.cwipc_window("cwipc_view")
-            os.chdir(cwd)
+    def start_window(self):
+        cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
+        self.visualiser = cwipc.cwipc_window("cwipc_view")
+        os.chdir(cwd)
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
@@ -102,32 +120,57 @@ q             Quit
             pc_to_show = pc
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
+            print('xxxjack feed pc')
             ok = self.visualiser.feed(pc_to_show, True)
             if pc_to_show != pc:
                 pc_to_show.free()
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?hq +-cwa012345678", 30) 
-        if cmd == "q":
-            return False
-        elif cmd == '?' or cmd == 'h':
-            print(Visualizer.HELP)
-        elif cmd == "w" and self.cur_pc:
-            filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-            cwipc.cwipc_write(filename, self.cur_pc)
-            print(f'Saved as {filename} in {os.getcwd()}')
-        elif cmd == " ":
-            self.paused = not self.paused
-        elif cmd == 'a':
-            self.tilefilter = None
-        elif cmd in '012345678':
-            self.tilefilter = int(cmd)
-        elif cmd == '\0':
-            pass
-        else: #c to crash and print stack trace
-            print(HELP)
         return True
+        
+class GLVisualizer:
+    
+    def __init__(self, verbose=False):
+        self.visualiser = None
+        self.producer = None
+        self.queue = queue.Queue(maxsize=2)
+        self.verbose = verbose
+        self.tilefilter = None
+        self.feeder_thread = threading.Thread(target=self.feeder, args=())
+        self.start_window()
+        
+    def set_producer(self, producer):
+        self.producer = producer    
+        
+    def feeder(self):
+        while self.producer and self.producer.is_alive():
+            try:
+                pc = self.queue.get(timeout=0.033)
+                if not pc: continue
+                if self.tilefilter:
+                    pc_tiled = cwipc.cwipc_tilefilter(pc, self.tilefilter)
+                    pc.free()
+                    pc = pc_tiled
+                if not pc: continue
+                ok = self.visualiser.feed(pc, True)
+                if not ok: break
+            except queue.Empty:
+                pass
+        self.visualiser.stop()
+        
+    def run(self):
+        self.feeder_thread.start()
+        self.visualiser.run()
+                    
+    def feed(self, pc):
+        try:
+            self.queue.put(pc, timeout=0.5)
+        except queue.Full:
+            pc.free()
+            
+    def start_window(self):
+        self.visualiser = cwipc.cwipc_opengl_window("cwipc_view_opengl")
 
 class SourceServer:
     def __init__(self, grabber, viewer=None, count=None, verbose=False):
@@ -202,7 +245,6 @@ class SourceServer:
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
 def main():
-    global ISSUE_20
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
     parser = argparse.ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -250,8 +292,10 @@ def main():
             sys.exit(-1)
         source = cwipc.realsense2.cwipc_realsense2()
 
-    if not args.nodisplay:
-        visualizer = Visualizer(args.verbose, args.opengl)
+    if args.opengl:
+        visualizer = GLVisualizer(args.verbose)
+    elif not args.nodisplay:
+        visualizer = Visualizer(args.verbose)
     else:
         visualizer = None
 
