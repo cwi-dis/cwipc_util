@@ -12,7 +12,7 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
         #self.button = QtWidgets.QPushButton('Test', self)
-        self.widget = glWidget(self)
+        self.widget = QOpenGLWidget_cwipc(self)
         mainLayout = QtWidgets.QHBoxLayout()
         mainLayout.addWidget(self.widget)
         #mainLayout.addWidget(self.button)
@@ -59,7 +59,7 @@ class glViewpointMixin:
         self.setCamPosition((x, y, z))
         self.setCamLookat((0, y, 0))
         
-class glWidget(glViewpointMixin, QtWidgets.QOpenGLWidget):
+class QOpenGLWidget_cwipc(glViewpointMixin, QtWidgets.QOpenGLWidget):
 
     def __init__(self, parent):
         self.objects = []
