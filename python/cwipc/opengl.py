@@ -25,18 +25,15 @@ class glViewpointMixin:
         self.eyeDistance = 6
         
     def mousePressEvent(self, event):
-        print('xxxjack mousePress')
         self.origMouseButton = event.button()
         self.origMousePosition = (event.x(), event.y())
         
     def mouseReleaseEvent(self, event):
-        print('xxxjack mouseRelease')
         self.mouseMoveEvent(event)
         self.origMouseButton = None
         self.origMousePosition = None
         
     def mouseMoveEvent(self, event):
-        print('xxxjack mouseMove')
         newMousePosition = (event.x(), event.y())
         dx, dy = newMousePosition[0]-self.origMousePosition[0], newMousePosition[1]-self.origMousePosition[1]
         self.origMousePosition = newMousePosition
@@ -47,7 +44,6 @@ class glViewpointMixin:
         self.camPositionChanged()
         
     def wheelEvent(self, event):
-        print('xxxjack wheel')
         self.eyeDistance += event.delta() / 100
         self.camPositionChanged()
         
@@ -55,7 +51,6 @@ class glViewpointMixin:
         x = self.eyeDistance * math.sin(self.eyeAngle)
         y = self.eyeHeight
         z = self.eyeDistance * math.cos(self.eyeAngle)
-        print(f'xxxjack camPositionChanged {x, y, z}')
         self.setCamPosition((x, y, z))
         self.setCamLookat((0, y, 0))
         
@@ -75,14 +70,12 @@ class QOpenGLWidget_cwipc(glViewpointMixin, QtWidgets.QOpenGLWidget):
         self.origMousePosition = None
         
     def __del__(self):
-        print('xxxjack gl del called')
         self.makeCurrent()
         for o in self.objects:
             o.delete()
         del self.objects
         
     def resizeGL(self, w, h):
-        print(f'xxxjack perspective {w, h}')
         self.setPerspective((60, w/h, 0.01, 10.0))
         
     def setCamPosition(self, position):
@@ -233,7 +226,6 @@ class glCwipcObject(glObject):
     def paintGL(self):
         if not self.pc: return
         self.prePaintGL()
-        print('xxxjack paint called')
         #util.cwipc_draw(self.pc)
         tmp_util_cwipc_draw(self.pc)
         self.postPaintGL()
@@ -283,8 +275,9 @@ class cwipc_opengl_window:
     def run(self):
         rv = self.app.exec_()
         self.pc_object.delete()
+        self.pc_object = None
         self.grid_object.delete()
-        print('xxxjack runlook done')
+        self.grid_object = None
         return rv
         
     def stop(self):
