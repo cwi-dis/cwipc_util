@@ -250,7 +250,7 @@
      <x>0</x>
      <y>0</y>
      <width>977</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menulabel_here">
@@ -284,9 +284,13 @@
   <customwidget>
    <class>QOpenGLWidget_cwipc</class>
    <extends>QOpenGLWidget</extends>
-   <header>qopenglwidget_cwipc.h</header>
+   <header>cwipc.opengl</header>
   </customwidget>
  </customwidgets>
  <resources/>
  <connections/>
+ <slots>
+  <slot>camtype_DoDetect()</slot>
+  <slot>camtype_SelectionChanged()</slot>
+ </slots>
 </ui>
