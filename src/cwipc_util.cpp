@@ -338,8 +338,7 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
 		}
 		return NULL;
 	}
-    // xxxjack or use cwipc_uncompressed_impl?
-    cwipc_impl *rv = new cwipc_impl();
+    cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
     if (rv->from_points(points, size, npoint, timestamp) < 0) {
         if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
         delete rv;
