@@ -119,6 +119,83 @@ public:
     }
 };
 
+//
+// Another implementation of cwipc: by default stores the
+// raw pointcloud data uncompressed, and only copies to a pcl octree
+// if needed. Should be much more efficient in workflows where we only
+// handle uncompressed data (no need to convert to/from octree representation,
+// only do a memcpy).
+//
+class cwipc_uncompressed_impl : public cwipc_impl {
+protected:
+    struct cwipc_point *m_points;
+    size_t m_points_size;
+public:
+    cwipc_uncompressed_impl() : cwipc_impl(), m_points(NULL), m_points_size(0) {}
+    cwipc_uncompressed_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : cwipc_impl(pc, timestamp), m_points(NULL), m_points_size(0) {}
+    
+    ~cwipc_uncompressed_impl() {
+        free();
+    }
+    
+    int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp)
+    {
+        if (npoint * sizeof(struct cwipc_point) != size) {
+            return -1;
+        }
+        m_timestamp = timestamp;
+        m_points = (struct cwipc_point *)malloc(size);
+        if (m_points == NULL) return -1;
+        m_points_size = size;
+        m_pc = nullptr;
+        memcpy(m_points, pointData, size);
+        return npoint;
+    }
+    
+    void free() {
+        m_pc = NULL;
+        if (m_points) ::free(m_points);
+        m_points = NULL;
+        m_points_size = 0;
+    }
+    
+    uint64_t timestamp() {
+        return m_timestamp;
+    }
+    
+    float cellsize() {
+        return m_cellsize;
+    }
+    
+    void _set_cellsize(float cellsize) {
+        // xxxjack or should we enforce the pcl pointcloud?
+        if (cellsize < 0 ) cellsize = 0;
+        m_cellsize = cellsize;
+    }
+    
+    int count() {
+        return m_points_size / sizeof(struct cwipc_point);
+    }
+    
+    size_t get_uncompressed_size() {
+        return m_points_size;
+    }
+    
+    int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
+        if (size != m_points_size) return -1;
+        memcpy(pointData, m_points, size);
+
+        return m_points_size / sizeof(struct cwipc_point);
+    }
+    
+    cwipc_pcl_pointcloud access_pcl_pointcloud() {
+        if (m_pc == nullptr) {
+            cwipc_impl::from_points(m_points, m_points_size, m_points_size / sizeof(struct cwipc_point), m_timestamp);
+        }
+        return m_pc;
+    }
+};
+
 cwipc *
 cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
@@ -203,7 +280,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
         return NULL;
     }
     fclose(fp);
-    cwipc_impl *pc = new cwipc_impl();
+    cwipc_uncompressed_impl *pc = new cwipc_uncompressed_impl();
     pc->from_points(pointData, dataSize, npoint, timestamp);
     free(pointData);
 	return pc;
@@ -261,6 +338,7 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
 		}
 		return NULL;
 	}
+    // xxxjack or use cwipc_uncompressed_impl?
     cwipc_impl *rv = new cwipc_impl();
     if (rv->from_points(points, size, npoint, timestamp) < 0) {
         if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
