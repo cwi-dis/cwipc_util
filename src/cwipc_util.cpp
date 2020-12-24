@@ -168,9 +168,8 @@ public:
     }
     
     void _set_cellsize(float cellsize) {
-        // xxxjack or should we enforce the pcl pointcloud?
-        if (cellsize < 0 ) cellsize = 0;
-        m_cellsize = cellsize;
+        (void)access_pcl_pointcloud();
+        cwipc_impl::_set_cellsize(cellsize);
     }
     
     int count() {
