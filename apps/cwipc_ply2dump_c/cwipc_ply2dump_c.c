@@ -20,12 +20,16 @@ int main(int argc, char** argv)
     //
     // Save
     //
-    int status = cwipc_write_debugdump(argv[2], obj, &message);
-    if (status < 0) {
-        fprintf(stderr, "%s: Cannot save pointcloud to cwipcdump: %s\n", argv[0], message);
-        return 1;
-    }
+    if (strcmp(argv[2], "-") == 0) {
+        fprintf(stderr, "%s: Skipping save\n", argv[0]);
+    } else {
 
+        int status = cwipc_write_debugdump(argv[2], obj, &message);
+        if (status < 0) {
+            fprintf(stderr, "%s: Cannot save pointcloud to cwipcdump: %s\n", argv[0], message);
+            return 1;
+        }
+    }
     return 0;
 }
 

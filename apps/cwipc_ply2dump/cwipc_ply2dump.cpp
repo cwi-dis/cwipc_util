@@ -24,12 +24,15 @@ int main(int argc, char** argv)
     //
     // Save
     //
-    int status = cwipc_write_debugdump(argv[2], obj, &message);
-    if (status < 0) {
-        std::cerr << argv[0] << ": Cannot save pointcloud to cwipcdump: " << message << std::endl;
-        return 1;
+    if (strcmp(argv[2], "-") == 0) {
+        std::cerr << argv[0] << ": Skipping save" << std::endl;
+    } else {
+        int status = cwipc_write_debugdump(argv[2], obj, &message);
+        if (status < 0) {
+            std::cerr << argv[0] << ": Cannot save pointcloud to cwipcdump: " << message << std::endl;
+            return 1;
+        }
     }
-
     return 0;
 }
 
