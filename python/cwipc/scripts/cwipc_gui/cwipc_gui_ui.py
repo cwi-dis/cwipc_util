@@ -57,21 +57,27 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.camType_autodetect, 5, 0, 1, 1)
 
         self.camType_kinect = QRadioButton(self.layoutWidget)
+        self.camTypeButtonGroup = QButtonGroup(MainWindow)
+        self.camTypeButtonGroup.setObjectName(u"camTypeButtonGroup")
+        self.camTypeButtonGroup.addButton(self.camType_kinect)
         self.camType_kinect.setObjectName(u"camType_kinect")
 
         self.gridLayout.addWidget(self.camType_kinect, 3, 0, 1, 1)
 
         self.camType_realsenze = QRadioButton(self.layoutWidget)
+        self.camTypeButtonGroup.addButton(self.camType_realsenze)
         self.camType_realsenze.setObjectName(u"camType_realsenze")
 
         self.gridLayout.addWidget(self.camType_realsenze, 2, 0, 1, 1)
 
         self.camType_none = QRadioButton(self.layoutWidget)
+        self.camTypeButtonGroup.addButton(self.camType_none)
         self.camType_none.setObjectName(u"camType_none")
 
         self.gridLayout.addWidget(self.camType_none, 1, 0, 1, 1)
 
         self.radioButton = QRadioButton(self.layoutWidget)
+        self.camTypeButtonGroup.addButton(self.radioButton)
         self.radioButton.setObjectName(u"radioButton")
 
         self.gridLayout.addWidget(self.radioButton, 4, 0, 1, 1)
@@ -178,7 +184,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 977, 26))
+        self.menubar.setGeometry(QRect(0, 0, 977, 22))
         self.menulabel_here = QMenu(self.menubar)
         self.menulabel_here.setObjectName(u"menulabel_here")
         self.menuSecond_menu = QMenu(self.menubar)
@@ -194,6 +200,11 @@ class Ui_MainWindow(object):
         self.menuSecond_menu.addAction(self.actionsecond_item)
 
         self.retranslateUi(MainWindow)
+        self.camType_autodetect.clicked.connect(MainWindow.camtype_DoDetect)
+        self.radioButton.clicked.connect(MainWindow.camtype_DoSelect)
+        self.camType_kinect.clicked.connect(MainWindow.camtype_DoSelect)
+        self.camType_realsenze.clicked.connect(MainWindow.camtype_DoSelect)
+        self.camType_none.clicked.connect(MainWindow.camtype_DoSelect)
 
         self.tabWidget.setCurrentIndex(0)
 

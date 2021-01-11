@@ -78,6 +78,9 @@
          <property name="text">
           <string>Kinect</string>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">camTypeButtonGroup</string>
+         </attribute>
         </widget>
        </item>
        <item row="2" column="0">
@@ -85,6 +88,9 @@
          <property name="text">
           <string>RealSense</string>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">camTypeButtonGroup</string>
+         </attribute>
         </widget>
        </item>
        <item row="1" column="0">
@@ -92,6 +98,9 @@
          <property name="text">
           <string>none</string>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">camTypeButtonGroup</string>
+         </attribute>
         </widget>
        </item>
        <item row="4" column="0">
@@ -99,6 +108,9 @@
          <property name="text">
           <string>Synthetic</string>
          </property>
+         <attribute name="buttonGroup">
+          <string notr="true">camTypeButtonGroup</string>
+         </attribute>
         </widget>
        </item>
       </layout>
@@ -250,7 +262,7 @@
      <x>0</x>
      <y>0</y>
      <width>977</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menulabel_here">
@@ -288,9 +300,93 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>camType_autodetect</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>camtype_DoDetect()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>73</x>
+     <y>148</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>422</x>
+     <y>578</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>camtype_DoSelect()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>98</x>
+     <y>120</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>605</x>
+     <y>556</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>camType_kinect</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>camtype_DoSelect()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>41</x>
+     <y>105</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>635</x>
+     <y>572</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>camType_realsenze</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>camtype_DoSelect()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>63</x>
+     <y>89</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>663</x>
+     <y>586</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>camType_none</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>camtype_DoSelect()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>88</x>
+     <y>68</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>703</x>
+     <y>604</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
  <slots>
   <slot>camtype_DoDetect()</slot>
-  <slot>camtype_SelectionChanged()</slot>
+  <slot>camtype_DoSelect()</slot>
  </slots>
+ <buttongroups>
+  <buttongroup name="camTypeButtonGroup"/>
+ </buttongroups>
 </ui>

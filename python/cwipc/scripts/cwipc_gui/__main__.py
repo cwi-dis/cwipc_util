@@ -11,6 +11,19 @@ class MainWindow(QMainWindow, cwipc_gui_ui.Ui_MainWindow):
         QMainWindow.__init__(self)
         self.setupUi(self)
 
+    def camtype_DoDetect(self, *args, **kwargs):
+        print(f'camtype_DoDetect: args={args}, kwargs={kwargs}')
+        self.camType_none.setChecked(True)
+        
+    def camtype_DoSelect(self, *args, **kwargs):
+        print(f'camtype_DoSelect: args={args}, kwargs={kwargs}')
+        checkedID = self.camTypeButtonGroup.checkedId()
+        print(f'camtype_DoSelect: buttonID={checkedID}')
+        checkedButton = self.camTypeButtonGroup.checkedButton()
+        print(f'camtype_DoSelect: button={checkedButton}')
+        print(f'camtype_DoSelect: button.text={checkedButton.text()}')
+        
+        
 def load_window_from_ui():
     ui_file_name = "cwipc_gui.ui"
     my_dir = os.path.dirname(__file__)
