@@ -207,17 +207,22 @@ class Calibrator:
                 self.fine_calibrated_pointclouds = self.coarse_calibrated_pointclouds
                 return
         
-            print("* Select alignment method:\n\t 1 - cumulative\n\t 2 - ICP point2point\n\t 3 - ICP point2plane\n\t 4 - recursive colored ICP")
+            print("* Select alignment method:\n\t 1 - cumulative ICP using point2point\n\t 2 - cumulative ICP using point2plane\n\t 3 - ICP point2point\n\t 4 - ICP point2plane\n\t 5 - recursive colored ICP")
             method = sys.stdin.readline().strip().lower()
             
-            if method == '1': #cumulative
-                print("## Computing alignment using cumulative method:")
-                color_correction = True #Enables/disables extra step of alignment based on color
-                print("* Apply color correction? (y, n)")
-                cc = sys.stdin.readline().strip().lower()
-                if cc == 'n':
-                    color_correction = False
-                self.fine_matrix = self.align_fine_cumulative(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist, color_correction)
+            if (method == '1') or (method == '2'): #cumulative
+                #Not giving good results. shoud we remove color correction?
+                #color_correction = True #Enables/disables extra step of alignment based on color
+                # print("* Apply color correction? (y, n)")
+                # cc = sys.stdin.readline().strip().lower()
+                # if cc == 'n':
+                    # color_correction = False
+                if method == '1':
+                    print("## Computing alignment using cumulative ICP point2point:")
+                    self.fine_matrix = self.align_fine_cumulative_point2point(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist)
+                if method == '2':
+                    print("## Computing alignment using cumulative ICP point2plane:")
+                    self.fine_matrix = self.align_fine_cumulative_point2plane(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist)
                 for i in range(len(camPositions)):
                     transformMatrix = self.fine_matrix[i]
                     pc = self.coarse_calibrated_pointclouds[i].clean_background()
@@ -231,10 +236,10 @@ class Calibrator:
                 #First camera is used to initialize
                 camIndex.append(0)
                 
-                if method == '2' or method == '3':
-                    if method == '2':
-                        print("* Choose number of iterations of ICP algorithm (Default 2000) :")
+                if method == '3' or method == '4':
                     if method == '3':
+                        print("* Choose number of iterations of ICP algorithm (Default 2000) :")
+                    if method == '4':
                         print("* Choose number of iterations of ICP algorithm (Default 50) :")
                     iter = int(sys.stdin.readline().strip().lower())
                 
@@ -262,14 +267,14 @@ class Calibrator:
                     refPointcloud = self.coarse_calibrated_pointclouds[ref_cam].clean_background()
                     srcPointcloud = self.coarse_calibrated_pointclouds[src_cam].clean_background()
                     if method == '3':
-                        print("## Computing alignment using ICP point2plane:")
-                        initMatrix = self.align_fine_point2plane(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
-                    elif method == '4':
-                        print("## Computing alignment using ICP colored:")
-                        initMatrix = self.align_fine_rec_colored_ICP(refPointcloud, srcPointcloud, [camPositions[ref_cam], camPositions[src_cam]])
-                    else: #method == '2':
                         print("## Computing alignment using ICP point2point:")
                         initMatrix = self.align_fine_point2point(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
+                    elif method == '4':
+                        print("## Computing alignment using ICP point2plane:")
+                        initMatrix = self.align_fine_point2plane(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
+                    else: #method == '5':
+                        print("## Computing alignment using ICP colored:")
+                        initMatrix = self.align_fine_rec_colored_ICP(refPointcloud, srcPointcloud, [camPositions[ref_cam], camPositions[src_cam]])
                     transformMatrix = initMatrix @ self.fine_matrix[ref_cam]
                     transformPointcloud = srcPointcloud.transform(transformMatrix)
                     self.fine_calibrated_pointclouds.append(transformPointcloud)
@@ -471,8 +476,10 @@ class Calibrator:
         
         return current_transformation
     
-    def align_fine_cumulative(self, pointclouds, cam_pos, correspondance_dist, color_correction):
-        '''Given all the point clouds and its camera positions, it computes the transformations for the fine alignment. If(color_correction) it performs an extra step of colored ICP'''
+    def align_fine_cumulative_point2point(self, pointclouds, cam_pos, correspondance_dist):
+        '''Given all the point clouds and its camera positions, it computes the transformations for the fine alignment'''
+        print("* Choose number of iterations of ICP algorithm (Default 500) :")
+        iter = int(sys.stdin.readline().strip().lower())
         cam_order = get_cameras_order(cam_pos)
         pcs = [] #list of ordered pcs
         transformations = [] #list of ordered transformations
@@ -480,14 +487,13 @@ class Calibrator:
             pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
             #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
             transformations.append(np.identity(4))
+            
+        
+            
         radius_ds = 0.005 #voxel downsampling radius
         tpc = pcs[0] #the target pc
         tpc_down = tpc.voxel_down_sample(radius_ds) #downsampled version
         aligned_pc = open3d.geometry.PointCloud()
-       
-        
-        print("* Choose number of iterations of ICP algorithm (Default 2000) :")
-        iter = int(sys.stdin.readline().strip().lower())
         
         
         for i in range(1,len(pcs)):
@@ -512,26 +518,115 @@ class Calibrator:
         aligned_pc += tf_pc
         print("-Aligned pc",0)
 
-        if(color_correction):
-            print("# Applying correction based on color")
-            pcs_down = [] #list of downsampled point clouds
-            for i in range(len(cam_order)):
-                pc = pcs[i]
-                pc_down = pc.voxel_down_sample(radius_ds)
-                pc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
-                pcs_down.append(correct_normals(pc_down,cam_pos[i]))
+        # if(color_correction): #not working most of the times, should we remove it?
+            # print("# Applying correction based on color")
+            # pcs_down = [] #list of downsampled point clouds
+            # for i in range(len(cam_order)):
+                # pc = pcs[i]
+                # pc_down = pc.voxel_down_sample(radius_ds)
+                # pc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+                # pcs_down.append(correct_normals(pc_down,cam_pos[i]))
 
-            for i in range(len(pcs_down)):
-                p0 = pcs_down[i]
-                aux = open3d.geometry.PointCloud()
-                for j in range(len(pcs_down)):
-                    if j!= i:
-                        aux = aux + pcs_down[j]
-                init_transf = np.identity(4)
-                result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
-                    open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
-                pcs_down[i] = p0.transform(result_icp.transformation)
-                transformations[i] = result_icp.transformation @ transformations[i]
+            # for i in range(len(pcs_down)):
+                # p0 = pcs_down[i]
+                # aux = open3d.geometry.PointCloud()
+                # for j in range(len(pcs_down)):
+                    # if j!= i:
+                        # aux = aux + pcs_down[j]
+                # init_transf = np.identity(4)
+                # result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
+                    # open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
+                # pcs_down[i] = p0.transform(result_icp.transformation)
+                # transformations[i] = result_icp.transformation @ transformations[i]
+
+        final_pc = open3d.geometry.PointCloud()
+        tup = [] #tuple list to recover original order
+        for i in range(len(cam_order)):
+            final_pc += pointclouds[cam_order[i]].clean_background().get_o3d().transform(transformations[i])
+            tup.append((cam_order[i],transformations[i]))
+        #open3d.visualization.draw_geometries([final_pc])
+
+        ordered_tup = sorted(tup, key=lambda x: x[0]) #sort tuple (cam_id,transformation) by cam_id to recover original order
+        return [i[1] for i in ordered_tup] #return transformations in original order
+        
+    def align_fine_cumulative_point2plane(self, pointclouds, cam_pos, correspondance_dist):
+        '''Given all the point clouds and its camera positions, it computes the transformations for the fine alignment'''
+        print("* Choose number of iterations of ICP algorithm (Default 500) :")
+        iter = int(sys.stdin.readline().strip().lower())
+        cam_order = get_cameras_order(cam_pos)
+        pcs = [] #list of ordered pcs
+        transformations = [] #list of ordered transformations
+        for i in range(len(cam_order)):
+            pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
+            #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
+            transformations.append(np.identity(4))
+            
+        radius_ds = 0.005 #voxel downsampling radius
+        tpc = pcs[0] #the target pc
+        tpc_down = tpc.voxel_down_sample(radius_ds) #downsampled version
+        aligned_pc = open3d.geometry.PointCloud()
+        
+        
+        for i in range(1,len(pcs)):
+            init_transf = np.identity(4)
+            src_pc_down = pcs[i].voxel_down_sample(radius_ds)
+            
+            #estimate normals for Point2Plane
+            src_pc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+            tpc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+            
+            reg_p2p = open3d.registration.registration_icp(
+                src_pc_down, 
+                tpc_down,
+                correspondance_dist, init_transf,
+                open3d.registration.TransformationEstimationPointToPlane(), 
+                open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+            transformations[i] = reg_p2p.transformation @ transformations[i]
+            tf_pc = pcs[i].transform(reg_p2p.transformation)
+            tpc += tf_pc
+            tpc_down = tpc.voxel_down_sample(radius_ds)
+            aligned_pc += tf_pc
+            print("-Aligned pc",i)
+
+        #Extra step to fine align first cam
+        aligned_pc_down = aligned_pc.voxel_down_sample(radius_ds)
+        init_transf = np.identity(4)
+        
+        #estimate normals for Point2Plane
+        src = pcs[0].voxel_down_sample(radius_ds)
+        src.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+        tgt = aligned_pc_down
+        tgt.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+        
+        reg_p2p = open3d.registration.registration_icp(
+            src, tgt, 
+            correspondance_dist, init_transf,
+            open3d.registration.TransformationEstimationPointToPlane(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+        transformations[0] = reg_p2p.transformation @ transformations[0]
+        tf_pc = pcs[0].transform(reg_p2p.transformation)
+        aligned_pc += tf_pc
+        print("-Aligned pc",0)
+
+        # if(color_correction): #not working most of the times, should we remove it?
+            # print("# Applying correction based on color")
+            # pcs_down = [] #list of downsampled point clouds
+            # for i in range(len(cam_order)):
+                # pc = pcs[i]
+                # pc_down = pc.voxel_down_sample(radius_ds)
+                # pc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
+                # pcs_down.append(correct_normals(pc_down,cam_pos[i]))
+
+            # for i in range(len(pcs_down)):
+                # p0 = pcs_down[i]
+                # aux = open3d.geometry.PointCloud()
+                # for j in range(len(pcs_down)):
+                    # if j!= i:
+                        # aux = aux + pcs_down[j]
+                # init_transf = np.identity(4)
+                # result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
+                    # open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
+                # pcs_down[i] = p0.transform(result_icp.transformation)
+                # transformations[i] = result_icp.transformation @ transformations[i]
 
         final_pc = open3d.geometry.PointCloud()
         tup = [] #tuple list to recover original order

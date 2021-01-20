@@ -182,8 +182,23 @@ class Pointcloud:
             if (color[1]>color[0]) & (color[1]>color[2]):
                 background_ids.append(id)
         pc_clean = self.get_o3d().select_by_index(background_ids,invert=True)
-        #pc_clean = self.get_o3d()
-        pc_out,l = pc_clean.remove_radius_outlier(44,0.02) #remove_radius_outlier(self, int nb_points, float radius)
+        mean_dist = self.compute_mean_dist_pc()
+        pc_out,l = pc_clean.remove_radius_outlier(int(0.02/mean_dist),0.02) # it removes points that do not have int nb_points in a sphere of float radius
         
         return self.__class__.from_o3d(pc_out)
         
+    def compute_mean_dist_pc(self):
+        """Computes average distance between points in the pointcloud"""
+        pc = self.get_o3d()
+        pcd_tree = open3d.geometry.KDTreeFlann(pc)
+        n_points = len(pc.points)
+        total_dist = 0.0
+        for i in range(0,n_points):
+            p1 = pc.points[i]
+            [k, idx, _] = pcd_tree.search_knn_vector_3d(p1, 2)
+            p2 = pc.points[idx[1]]
+            dist = np.linalg.norm(p2-p1)
+            total_dist += dist
+        mean_dist = total_dist/n_points
+        #print("Mean dist between points:",mean_dist)
+        return mean_dist
