@@ -4,31 +4,31 @@ on: [push]
 
 jobs:
   build:
-    name: ${ { matrix.config.name } }
-    runs-on: ${ { matrix.config.os } }
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-        - {
+    name: ubuntu-only # ${ { matrix.config.name } }
+    runs-on: ubuntu-latest # ${ { matrix.config.os } }
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        config:
+#        - {
 #            name: "Windows Latest MSVC", 
-            os: windows-latest,
+#            os: windows-latest,
 #            build_type: "Release", cc: "cl", cxx: "cl",
 #            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
 #            artifact: "cwipc_util_win1064.zip",
-          }
-        - {
+#          }
+#        - {
 #            name: "Ubuntu Latest GCC", 
-            os: ubuntu-latest,
+#            os: ubuntu-latest,
 #            build_type: "Release", cc: "gcc", cxx: "g++",
 #            artifact: "cwipc_util_ubuntu1804.tgz",
-          }
-        - {
+#          }
+#        - {
 #            name: "macOS Latest Clang",
-            os: macos-latest,
+#            os: macos-latest,
 #            build_type: "Release", cc: "clang", cxx: "clang++"
 #            artifact: "cwipc_util_osx1015",
-          }
+#          }
     steps:
     - name: Build & Test
       uses: ashutoshvarma/action-cmake-build@master
