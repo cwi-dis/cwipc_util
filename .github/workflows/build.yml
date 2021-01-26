@@ -30,6 +30,10 @@ jobs:
 #            artifact: "cwipc_util_osx1015",
 #          }
     steps:
+    - name: See what is there
+      run: |
+        pwd
+        ls -R
     - name: Build & Test
       uses: ashutoshvarma/action-cmake-build@master
       with:
