@@ -35,18 +35,39 @@ if(Python3_FOUND)
 		COMMAND ${Python3_EXECUTABLE} setup.py test
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
+	add_test(NAME cwipc_tilecolor
+		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_tilecolor -i ${CMAKE_SOURCE_DIR}/tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
+	add_test(NAME cwipc_view
+		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_view --nodisplay --synthetic --count 10
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
+	add_test(NAME cwipc_calibrate
+		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_calibrate --help
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
 	
 	# Ensure the cwipc_util dynamic library can be found by the tests
 	
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		set_property(TEST run_python_tests PROPERTY ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
+		set_property(TEST cwipc_tilecolor PROPERTY ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
+		set_property(TEST cwipc_view PROPERTY ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
+		set_property(TEST cwipc_calibrate PROPERTY ENVIRONMENT DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH})
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		set_property(TEST run_python_tests PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
+		set_property(TEST cwipc_tilecolor PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
+		set_property(TEST cwipc_view PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
+		set_property(TEST cwipc_calibrate PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH})
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		# Jack doesn't understand why modifying PATH doesn't seem to work on Windows...
 		# Jack doesn't understand why we need the "Release" here, which should already be in CMAKE_RUNTIME_OUTPUT_DIRECTORY...
 		set_property(TEST run_python_tests PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
+		set_property(TEST cwipc_tilecolor PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
+		set_property(TEST cwipc_view PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
+		set_property(TEST cwipc_calibrate PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
 	endif()
 endif()
