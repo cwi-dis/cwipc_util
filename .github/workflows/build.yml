@@ -30,6 +30,18 @@ jobs:
             artifact: "cwipc_util_osx1015",
           }
     steps:
+    - name: Install pcl (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install -y libpcl-dev
+
+    - name: Install pcl (OSX)
+      if: matrix.os == 'macos-latest'
+      run: brew install pcl
+
+    - name: Install pcl (Windows)
+      if: matrix.os == 'windows-latest'
+      run: vcpkg install pcl
+      
     - name: Checkout code
       uses: actions/checkout@v2
 
