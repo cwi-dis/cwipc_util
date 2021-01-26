@@ -34,9 +34,10 @@ jobs:
       uses: actions/checkout@v2
 
     - name: See what is there
+      shell: bash
       run: |
         pwd
-        ls -R
+        ls -l
 
     - name: Build & Test
       uses: ashutoshvarma/action-cmake-build@master
