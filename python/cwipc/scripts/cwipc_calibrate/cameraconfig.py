@@ -20,6 +20,9 @@ FILTER_PARAMS_REALSENSE=dict(
     do_threshold="1",
     threshold_near="0.2",
     threshold_far="4",
+
+    depth_x_erosion="2",
+    depth_y_erosion="2",
     
     do_decimation="0",
     decimation_value="1",
@@ -55,6 +58,9 @@ FILTER_PARAMS_KINECT=dict(
     do_threshold="1",
     threshold_near="0.2",
     threshold_far="4",
+
+    depth_x_erosion="1",
+    depth_y_erosion="1",
 )
 
 SYSTEM_PARAMS_KINECT=dict(
