@@ -5,7 +5,8 @@ import open3d
 try:
     from open3d import registration
 except ImportError:
-    from open3d.pipelines import registration
+    import open3d
+    registration = open3d.pipelines.registration
 import pprint
 import math
 
