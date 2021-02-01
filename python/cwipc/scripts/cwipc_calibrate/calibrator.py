@@ -2,6 +2,10 @@ import sys
 import os
 import numpy as np
 import open3d
+try:
+    from open3d import registration
+except ImportError:
+    from open3d.pipelines import registration
 import pprint
 import math
 
@@ -372,7 +376,7 @@ class Calibrator:
         corr[:,0] = picked_id_source
         corr[:,1] = picked_id_target
 
-        p2p = open3d.registration.TransformationEstimationPointToPoint()
+        p2p = registration.TransformationEstimationPointToPoint()
         trans_init = p2p.compute_transformation(source.get_o3d(), target.get_o3d(),
             open3d.utility.Vector2iVector(corr))
         
@@ -380,8 +384,8 @@ class Calibrator:
             return trans_init
 
         threshold = 0.01 # 3cm distance threshold
-        reg_p2p = open3d.registration.registration_icp(source.get_o3d(), target.get_o3d(), threshold, trans_init,
-            open3d.registration.TransformationEstimationPointToPoint())
+        reg_p2p = registration.registration_icp(source.get_o3d(), target.get_o3d(), threshold, trans_init,
+            registration.TransformationEstimationPointToPoint())
         
         return reg_p2p.transformation
     
@@ -398,8 +402,8 @@ class Calibrator:
         
         print(" 2. Computing ICP point2point")
         trans_init = np.identity(4)
-        reg_p2p = open3d.registration.registration_icp(target_down, source_down, correspondance_dist, trans_init,
-            open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+        reg_p2p = registration.registration_icp(target_down, source_down, correspondance_dist, trans_init,
+            registration.TransformationEstimationPointToPoint(), registration.ICPConvergenceCriteria(max_iteration = iter))
         
         return reg_p2p.transformation
     
@@ -423,8 +427,8 @@ class Calibrator:
         
         print("3. Computing ICP point2plane")
         trans_init = np.identity(4)
-        reg_point2plane = open3d.registration.registration_icp(target_down, source_down, correspondance_dist, trans_init, 
-            open3d.registration.TransformationEstimationPointToPlane(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+        reg_point2plane = registration.registration_icp(target_down, source_down, correspondance_dist, trans_init, 
+            registration.TransformationEstimationPointToPlane(), registration.ICPConvergenceCriteria(max_iteration = iter))
         
         return reg_point2plane.transformation
         
@@ -437,8 +441,8 @@ class Calibrator:
         target.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius = nn_radius, max_nn=30))
         #XXXShishir ToDo: Check if downsampling is needed
         #Applying colored ICP registration
-        reg_c = open3d.registration.registration_colored_icp(source, target, nn_radius, trans_init, open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6, relative_rmse=1e-6, max_iteration = 50 ))
-        #reg_p2p = open3d.registration.registration_icp(target.get_o3d(), source.get_o3d(), threshold, trans_init, open3d.registration.TransformationEstimationPointToPoint())    
+        reg_c = registration.registration_colored_icp(source, target, nn_radius, trans_init, registration.ICPConvergenceCriteria(relative_fitness=1e-6, relative_rmse=1e-6, max_iteration = 50 ))
+        #reg_p2p = registration.registration_icp(target.get_o3d(), source.get_o3d(), threshold, trans_init, registration.TransformationEstimationPointToPoint())    
         
         return reg_c.transformation
         
@@ -468,9 +472,9 @@ class Calibrator:
             
             #open3d.visualization.draw_geometries([source_down])
             print("3-3. Applying colored point cloud registration")
-            result_icp = open3d.registration.registration_colored_icp(
+            result_icp = registration.registration_colored_icp(
                 target_down, source_down, radius, current_transformation,
-                open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=iter))
+                registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=iter))
             current_transformation = result_icp.transformation
             print("DONE")
         
@@ -499,8 +503,8 @@ class Calibrator:
         for i in range(1,len(pcs)):
             init_transf = np.identity(4)
             src_pc_down = pcs[i].voxel_down_sample(radius_ds)
-            reg_p2p = open3d.registration.registration_icp(src_pc_down, tpc_down, correspondance_dist, init_transf,
-                open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+            reg_p2p = registration.registration_icp(src_pc_down, tpc_down, correspondance_dist, init_transf,
+                registration.TransformationEstimationPointToPoint(), registration.ICPConvergenceCriteria(max_iteration = iter))
             transformations[i] = reg_p2p.transformation @ transformations[i]
             tf_pc = pcs[i].transform(reg_p2p.transformation)
             tpc += tf_pc
@@ -511,8 +515,8 @@ class Calibrator:
         #Extra step to fine align first cam
         aligned_pc_down = aligned_pc.voxel_down_sample(radius_ds)
         init_transf = np.identity(4)
-        reg_p2p = open3d.registration.registration_icp(pcs[0].voxel_down_sample(radius_ds), aligned_pc_down, correspondance_dist, init_transf,
-            open3d.registration.TransformationEstimationPointToPoint(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+        reg_p2p = registration.registration_icp(pcs[0].voxel_down_sample(radius_ds), aligned_pc_down, correspondance_dist, init_transf,
+            registration.TransformationEstimationPointToPoint(), registration.ICPConvergenceCriteria(max_iteration = iter))
         transformations[0] = reg_p2p.transformation @ transformations[0]
         tf_pc = pcs[0].transform(reg_p2p.transformation)
         aligned_pc += tf_pc
@@ -534,8 +538,8 @@ class Calibrator:
                     # if j!= i:
                         # aux = aux + pcs_down[j]
                 # init_transf = np.identity(4)
-                # result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
-                    # open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
+                # result_icp = registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
+                    # registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
                 # pcs_down[i] = p0.transform(result_icp.transformation)
                 # transformations[i] = result_icp.transformation @ transformations[i]
 
@@ -575,12 +579,12 @@ class Calibrator:
             src_pc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
             tpc_down.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
             
-            reg_p2p = open3d.registration.registration_icp(
+            reg_p2p = registration.registration_icp(
                 src_pc_down, 
                 tpc_down,
                 correspondance_dist, init_transf,
-                open3d.registration.TransformationEstimationPointToPlane(), 
-                open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+                registration.TransformationEstimationPointToPlane(), 
+                registration.ICPConvergenceCriteria(max_iteration = iter))
             transformations[i] = reg_p2p.transformation @ transformations[i]
             tf_pc = pcs[i].transform(reg_p2p.transformation)
             tpc += tf_pc
@@ -598,10 +602,10 @@ class Calibrator:
         tgt = aligned_pc_down
         tgt.estimate_normals(open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30))
         
-        reg_p2p = open3d.registration.registration_icp(
+        reg_p2p = registration.registration_icp(
             src, tgt, 
             correspondance_dist, init_transf,
-            open3d.registration.TransformationEstimationPointToPlane(), open3d.registration.ICPConvergenceCriteria(max_iteration = iter))
+            registration.TransformationEstimationPointToPlane(), registration.ICPConvergenceCriteria(max_iteration = iter))
         transformations[0] = reg_p2p.transformation @ transformations[0]
         tf_pc = pcs[0].transform(reg_p2p.transformation)
         aligned_pc += tf_pc
@@ -623,8 +627,8 @@ class Calibrator:
                     # if j!= i:
                         # aux = aux + pcs_down[j]
                 # init_transf = np.identity(4)
-                # result_icp = open3d.registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
-                    # open3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
+                # result_icp = registration.registration_colored_icp(p0, aux, correspondance_dist, init_transf,
+                    # registration.ICPConvergenceCriteria(relative_fitness=1e-6,relative_rmse=1e-6,max_iteration=20))
                 # pcs_down[i] = p0.transform(result_icp.transformation)
                 # transformations[i] = result_icp.transformation @ transformations[i]
 
