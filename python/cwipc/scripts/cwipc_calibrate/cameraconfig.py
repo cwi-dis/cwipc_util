@@ -24,8 +24,8 @@ FILTER_PARAMS_REALSENSE=dict(
     depth_x_erosion="2",
     depth_y_erosion="2",
     
-    do_decimation="0",
-    decimation_value="1",
+    do_decimation="1",
+    decimation_value="2",
     
     do_spatial="1",
     spatial_iterations="1",
@@ -33,7 +33,7 @@ FILTER_PARAMS_REALSENSE=dict(
     spatial_delta="20",
     spatial_filling="1",
     
-    do_temporal="0",
+    do_temporal="1",
     temporal_alpha="0.4",
     temporal_delta="20",
     temporal_percistency="3",
