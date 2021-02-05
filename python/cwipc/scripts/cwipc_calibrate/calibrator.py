@@ -207,7 +207,7 @@ class Calibrator:
                 self.fine_calibrated_pointclouds = self.coarse_calibrated_pointclouds
                 return
         
-            print("* Select alignment method:\n\t 1 - cumulative ICP using point2point\n\t 2 - cumulative ICP using point2plane\n\t 3 - ICP point2point\n\t 4 - ICP point2plane\n\t 5 - recursive colored ICP")
+            print("* Select alignment method:\n\t 1 - cumulative ICP using point2point\n\t 2 - cumulative ICP using point2plane\n\t 3 - pairwise ICP using point2point\n\t 4 - pairwise ICP using point2plane\n\t 5 - pairwise recursive colored ICP")
             method = sys.stdin.readline().strip().lower()
             
             if (method == '1') or (method == '2'): #cumulative
@@ -267,13 +267,13 @@ class Calibrator:
                     refPointcloud = self.coarse_calibrated_pointclouds[ref_cam].clean_background()
                     srcPointcloud = self.coarse_calibrated_pointclouds[src_cam].clean_background()
                     if method == '3':
-                        print("## Computing alignment using ICP point2point:")
+                        print("## Computing alignment using pairwise ICP point2point:")
                         initMatrix = self.align_fine_point2point(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
                     elif method == '4':
-                        print("## Computing alignment using ICP point2plane:")
+                        print("## Computing alignment using pairwise ICP point2plane:")
                         initMatrix = self.align_fine_point2plane(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
                     else: #method == '5':
-                        print("## Computing alignment using ICP colored:")
+                        print("## Computing alignment using pairwise ICP colored:")
                         initMatrix = self.align_fine_rec_colored_ICP(refPointcloud, srcPointcloud, [camPositions[ref_cam], camPositions[src_cam]])
                     transformMatrix = initMatrix @ self.fine_matrix[ref_cam]
                     transformPointcloud = srcPointcloud.transform(transformMatrix)
