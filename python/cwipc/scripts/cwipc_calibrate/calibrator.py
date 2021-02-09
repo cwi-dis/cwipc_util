@@ -207,10 +207,10 @@ class Calibrator:
                 self.fine_calibrated_pointclouds = self.coarse_calibrated_pointclouds
                 return
         
-            print("* Select alignment method:\n\t 1 - cumulative ICP using point2point\n\t 2 - cumulative ICP using point2plane\n\t 3 - pairwise ICP using point2point\n\t 4 - pairwise ICP using point2plane\n\t 5 - pairwise recursive colored ICP")
+            print("* Select alignment algorithm:\n\t1) - cumulative ICP using point2point\n\t2) - cumulative ICP using point2plane\n\t3) - pairwise ICP using point2point\n\t4) - pairwise ICP using point2plane\n\t5) - pairwise recursive colored ICP\n\t6) - cumulative multiscale ICP")
             method = sys.stdin.readline().strip().lower()
             
-            if (method == '1') or (method == '2'): #cumulative
+            if (method == '1') or (method == '2') or (method == '6'): #cumulative
                 #Not giving good results. shoud we remove color correction?
                 #color_correction = True #Enables/disables extra step of alignment based on color
                 # print("* Apply color correction? (y, n)")
@@ -223,6 +223,9 @@ class Calibrator:
                 if method == '2':
                     print("## Computing alignment using cumulative ICP point2plane:")
                     self.fine_matrix = self.align_fine_cumulative_point2plane(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist)
+                if method == '6':
+                    print("## Computing alignment using cumulative multiscale ICP:")
+                    self.fine_matrix = self.align_fine_multiscale_ICP(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist)
                 for i in range(len(camPositions)):
                     transformMatrix = self.fine_matrix[i]
                     pc = self.coarse_calibrated_pointclouds[i].clean_background()
@@ -638,6 +641,100 @@ class Calibrator:
 
         ordered_tup = sorted(tup, key=lambda x: x[0]) #sort tuple (cam_id,transformation) by cam_id to recover original order
         return [i[1] for i in ordered_tup] #return transformations in original order
+        
+    def align_fine_multiscale_ICP(self, pointclouds, cam_pos, correspondance_dist):
+        '''Given all the point clouds and its camera positions, it computes the transformations for the fine alignment    
+            It is based in : http://www.open3d.org/docs/release/tutorial/reconstruction_system/refine_registration.html?highlight=registration_colored_icp#fine-grained-registration but using a cumulative method instead of pairwise.
+        '''
+        
+        print("   Choose ICP method:\n\t1) point2point\n\t2) point2plane\n\t3) color")
+        mode = int(sys.stdin.readline().strip().lower())
+        cam_order = get_cameras_order(cam_pos)
+        pcs = [] #list of ordered pcs
+        transformations = [] #list of ordered transformations
+        for i in range(len(cam_order)):
+            pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
+            #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
+            transformations.append(np.identity(4))
+            
+        radius_ds = 0.005 #voxel downsampling radius
+        tpc = pcs[0] #the target pc
+        aligned_pc = open3d.geometry.PointCloud()
+        
+        for i in range(1,len(pcs)):
+            current_transformation = self.multiscale_icp(pcs[i], tpc, correspondance_dist, mode, np.identity(4))
+            transformations[i] = current_transformation @ transformations[i]
+            tf_pc = pcs[i].transform(current_transformation)
+            tpc += tf_pc
+            aligned_pc += tf_pc
+            print("-Aligned pc",i)
+
+        #Extra step to fine align first cam
+        current_transformation = self.multiscale_icp(pcs[0], aligned_pc, correspondance_dist, mode, np.identity(4))
+        transformations[0] = current_transformation @ transformations[0]
+        tf_pc = pcs[0].transform(current_transformation)
+        aligned_pc += tf_pc
+        print("-Aligned pc",0)
+
+        final_pc = open3d.geometry.PointCloud()
+        tup = [] #tuple list to recover original order
+        for i in range(len(cam_order)):
+            final_pc += pointclouds[cam_order[i]].clean_background().get_o3d().transform(transformations[i])
+            tup.append((cam_order[i],transformations[i]))
+        #open3d.visualization.draw_geometries([final_pc])
+
+        ordered_tup = sorted(tup, key=lambda x: x[0]) #sort tuple (cam_id,transformation) by cam_id to recover original order
+        return [i[1] for i in ordered_tup] #return transformations in original order
+    
+    def multiscale_icp(self, source, target, voxel_size, mode, init_transformation=np.identity(4)):
+        vox_scale = np.asarray([voxel_size, voxel_size/2.0, voxel_size/4.0])
+        if mode == 3:
+            vox_scale *= 2.0 #color mode needs higher values
+        max_iter = [50, 30, 14]
+        current_transformation = init_transformation
+        for i, scale in enumerate(range(len(max_iter))):  # multi-scale approach
+            iter = max_iter[scale]
+            distance_threshold = voxel_size * 1.4
+            print("voxel_size {}".format(vox_scale[scale]), "\t",iter,"iterations")
+            source_down = source.voxel_down_sample(vox_scale[scale])
+            target_down = target.voxel_down_sample(vox_scale[scale])
+            if mode == 1: #"point_to_point"
+                result_icp = open3d.pipelines.registration.registration_icp(
+                    source_down, target_down, distance_threshold,
+                    current_transformation,
+                    open3d.pipelines.registration.TransformationEstimationPointToPoint(),
+                    open3d.pipelines.registration.ICPConvergenceCriteria(
+                        max_iteration=iter))
+            else:
+                source_down.estimate_normals(
+                    open3d.geometry.KDTreeSearchParamHybrid(radius=vox_scale[scale] *
+                                                         2.0,
+                                                         max_nn=30))
+                target_down.estimate_normals(
+                    open3d.geometry.KDTreeSearchParamHybrid(radius=vox_scale[scale] *
+                                                         2.0,
+                                                         max_nn=30))
+                if mode == 2: #"point_to_plane"
+                    result_icp = open3d.pipelines.registration.registration_icp(
+                        source_down, target_down, distance_threshold,
+                        current_transformation,
+                        open3d.pipelines.registration.
+                        TransformationEstimationPointToPlane(),
+                        open3d.pipelines.registration.ICPConvergenceCriteria(
+                            max_iteration=iter))
+                if mode == 3: #"color"
+                    result_icp = open3d.pipelines.registration.registration_colored_icp(
+                        source_down, target_down, vox_scale[scale],
+                        current_transformation,
+                        open3d.pipelines.registration.
+                        TransformationEstimationForColoredICP(),
+                        open3d.pipelines.registration.ICPConvergenceCriteria(
+                            relative_fitness=1e-6,
+                            relative_rmse=1e-6,
+                            max_iteration=iter))
+            current_transformation = result_icp.transformation
+        
+        return current_transformation
     
 def unit_vector(vector):
     ''' Returns the unit vector of the vector.  '''
