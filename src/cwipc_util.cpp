@@ -18,6 +18,7 @@ struct dump_header {
     char hdr[4];
     uint32_t magic;
     uint64_t timestamp;
+    float cellsize;
     size_t size;
 };
 
@@ -261,6 +262,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
     }
     uint64_t timestamp = hdr.timestamp;
     size_t dataSize = hdr.size;
+    float cellsize = hdr.cellsize;
     int npoint = dataSize / sizeof(cwipc_point);
     if (npoint*sizeof(cwipc_point) != dataSize) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile datasize inconsistent";
@@ -281,6 +283,7 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
     fclose(fp);
     cwipc_uncompressed_impl *pc = new cwipc_uncompressed_impl();
     pc->from_points(pointData, dataSize, npoint, timestamp);
+    pc->_set_cellsize(cellsize);
     free(pointData);
 	return pc;
 }
@@ -304,7 +307,7 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         if (errorMessage) *errorMessage = (char *)"Cannot create output file";
         return -1;
     }
-    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_API_VERSION, pointcloud->timestamp(), dataSize};
+    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_API_VERSION, pointcloud->timestamp(), pointcloud->cellsize(), dataSize};
     fwrite(&hdr, sizeof(hdr), 1, fp);
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
         if (errorMessage) *errorMessage = (char *)"Write output file failed";
