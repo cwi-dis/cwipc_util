@@ -41,7 +41,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (_PointXYZRGBMask,           // here we assume
                                    (float, x, x)
                                    (float, y, y)
                                    (float, z, z)
-                                   (uint32_t, rgba, rgba)
+                                   (std::uint32_t, rgba, rgba)
                                    )
 POINT_CLOUD_REGISTER_POINT_WRAPPER(PointXYZRGBMask, _PointXYZRGBMask)
 
@@ -51,7 +51,7 @@ typedef PointXYZRGBMask cwipc_pcl_point;
 
 /** \brief PCL Pointcloud, as supported by this library.
  */
-typedef  boost::shared_ptr<pcl::PointCloud<cwipc_pcl_point>> cwipc_pcl_pointcloud;
+typedef  pcl::shared_ptr<pcl::PointCloud<cwipc_pcl_point>> cwipc_pcl_pointcloud;
 
 /** \brief Allocate an empty cwipc_pcl_pointcloud.
  */
