@@ -31,9 +31,12 @@ endif()
 
 
 if(Python3_FOUND)
+    get_filename_component(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" ABSOLUTE)
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}")
+    set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
+    set(Python3_EXECUTABLE "${VENV_DIR}/bin/python")
 	add_test(NAME run_python_tests
-		COMMAND ${Python3_EXECUTABLE} setup.py test
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
 	)
 	
 	# Ensure the cwipc_util dynamic library can be found by the tests
