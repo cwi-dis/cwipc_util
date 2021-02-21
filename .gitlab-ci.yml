@@ -8,7 +8,7 @@ build_linux:
   except: 
   - /latest/
   tags:
-  - ubuntu1204
+  - ubuntu2004
   before_script:
     - apt-get update
     - apt-get install -y tzdata
