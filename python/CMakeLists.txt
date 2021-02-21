@@ -34,7 +34,11 @@ if(Python3_FOUND)
     get_filename_component(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" ABSOLUTE)
     execute_process(COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}")
     set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
-    set(Python3_EXECUTABLE "${VENV_DIR}/bin/python")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        set(Python3_EXECUTABLE "${VENV_DIR}/Scripts/python.exe")
+    else()
+        set(Python3_EXECUTABLE "${VENV_DIR}/bin/python")
+    endif()
 	add_test(NAME run_python_tests
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
 	)
