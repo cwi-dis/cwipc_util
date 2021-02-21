@@ -32,7 +32,7 @@ endif()
 
 if(Python3_FOUND)
     get_filename_component(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" ABSOLUTE)
-    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}")
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv --system-site-packages "${VENV_DIR}")
     set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
     if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         set(Python3_EXECUTABLE "${VENV_DIR}/Scripts/python.exe")
