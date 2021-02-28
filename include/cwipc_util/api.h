@@ -131,6 +131,10 @@ public:
      */
     virtual void _set_cellsize(float cellsize) = 0;
     
+    /** \brief Semi-private method to initialize the timestamp. Not for general use.
+     */
+    virtual void _set_timestamp(uint64_t timestamp) = 0;
+    
     /** \brief Returns the number of points in the pointcloud.
 	 *  \return the point count
 	 */
@@ -436,6 +440,10 @@ _CWIPC_UTIL_EXPORT float cwipc_cellsize(cwipc *pc);
 /** \brief Semi-private method to initialize the cellsize. Not for general use.
  */
 _CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc *pc, float cellsize);
+
+/** \brief Semi-private method to initialize the timestamp. Not for general use.
+ */
+_CWIPC_UTIL_EXPORT void cwipc__set_timestamp(cwipc *pc, uint64_t timestamp);
 
 /** \brief Returns number of points in the pointcloud.
  * \return The number of points.

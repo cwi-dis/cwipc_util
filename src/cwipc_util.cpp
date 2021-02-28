@@ -173,6 +173,10 @@ public:
         cwipc_impl::_set_cellsize(cellsize);
     }
     
+    void _set_timestamp(uint64_t timestamp) {
+    	m_timestamp = timestamp;
+    }
+    
     int count() {
         return m_points_size / sizeof(struct cwipc_point);
     }
@@ -370,6 +374,12 @@ void
 cwipc__set_cellsize(cwipc *pc, float cellsize)
 {
     pc->_set_cellsize(cellsize);
+}
+
+void
+cwipc__set_timestamp(cwipc *pc, uint64_t timestamp)
+{
+    pc->_set_timestamp(timestamp);
 }
 
 int

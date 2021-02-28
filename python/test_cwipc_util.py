@@ -131,6 +131,8 @@ class TestApi(unittest.TestCase):
         timestamp = 0x11223344556677
         pc = cwipc.cwipc_from_points([(0,0,0,0,0,0,1), (1,0,0,0,0,0,1), (2,0,0,0,0,0,1), (3,0,0,0,0,0,1)], timestamp)
         self.assertEqual(pc.timestamp(), timestamp)
+        pc._set_timestamp(timestamp+1)
+        self.assertEqual(pc.timestamp(), timestamp+1)
         self.assertEqual(pc.cellsize(), 0)
         pc._set_cellsize(0.1)
         self.assertAlmostEqual(pc.cellsize(), 0.1)

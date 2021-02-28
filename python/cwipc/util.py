@@ -179,6 +179,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
     _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
     
+    _cwipc_util_dll_reference.cwipc__set_timestamp.argtypes = [cwipc_p, ctypes.c_ulonglong]
+    _cwipc_util_dll_reference.cwipc__set_timestamp.restype = None
+    
     _cwipc_util_dll_reference.cwipc_count.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_count.restype = ctypes.c_int
     
@@ -280,6 +283,10 @@ class cwipc:
     def _set_cellsize(self, cellsize):
         """Internal use only: set the size of the cells this pointcloud represents"""
         _cwipc_util_dll().cwipc__set_cellsize(self._as_cwipc_p(), cellsize)
+        
+    def _set_timestamp(self, timestamp):
+        """Internal use only: set the size of the cells this pointcloud represents"""
+        _cwipc_util_dll().cwipc__set_timestamp(self._as_cwipc_p(), timestamp)
         
     def count(self):
         """Get the number of points in the pointcloud"""
