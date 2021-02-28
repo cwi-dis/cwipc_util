@@ -89,6 +89,10 @@ public:
 		}
         m_cellsize = cellsize;
     }
+    
+	void _set_timestamp(uint64_t timestamp) {
+    	m_timestamp = timestamp;
+    }
 
     int count() {
 		return m_pc->size();
