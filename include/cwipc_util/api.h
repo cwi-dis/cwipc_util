@@ -18,13 +18,13 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20210208
+#define CWIPC_API_VERSION 0x20210228
 
 /** \brief Version of oldest compatible cwipc API.
  *
  * Version of the oldest API of cwipc to which this set of libraries is compatible.
  */
-#define CWIPC_API_VERSION_OLD 0x20200703
+#define CWIPC_API_VERSION_OLD 0x20210228
 
 
 /** \brief Single 3D vector.
