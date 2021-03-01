@@ -32,7 +32,7 @@
 
 /** \brief Magic number (version) of cwipcdump file format
  */
-#define CWIPC_CWIPCDUMP_VERSION 0x20200703
+#define CWIPC_CWIPCDUMP_VERSION 0x20210208
 
 /** \brief Header of cwipcdump file
  * 
