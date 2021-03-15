@@ -33,7 +33,22 @@ For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Li
 
 ### OSX
 
-- Install _brew_, and then `brew install pcl`.
+> **Note** As of this writing (March 2021) when you use an M1 (Apple Silicon) you must build everything using Rosetta x86 compatibility mode, because not all dependencies have been ported to M1 yet. Installing an x86 `brew` and ensuring it is in `$PATH` before an M1 `brew` should work.
+
+- Install _brew_, and then 
+
+  ```
+  brew install pcl glfw3
+  ```
+  
+- You may have to force Python 3.8 (as opposed to 3.9) because open3d isn't up to date yet. If you have to do this, use the following:
+
+  ```
+  brew install python@3.8
+  # Check where it is installed, use that below in cmake:
+  cmake -DPython3_EXECUTABLE=/usr/local/Cellar/python@3.8/3.8.8_1/bin/python3.8 ..
+  ```
+  
 - Extract the gzip file into `/usr/local`:
 
   ```
@@ -41,6 +56,7 @@ For use within VRtogether you can get pre-built zipfiles (or tgzfiles for Mac/Li
   [sudo] tar xfv .../cwipc_util_osx1012_vX.Y.tgz
   ```
   
+
 ### Ubuntu 20.04
 
 - Install _PCL_ with `apt-get install libpcl-dev`.
