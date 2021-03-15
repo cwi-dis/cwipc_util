@@ -14,14 +14,6 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
-struct dump_header {
-    char hdr[4];
-    uint32_t magic;
-    uint64_t timestamp;
-    float cellsize;
-    size_t size;
-};
-
 class cwipc_impl : public cwipc {
 protected:
     uint64_t m_timestamp;
@@ -252,18 +244,18 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
         if (errorMessage) *errorMessage = (char *)"Cannot open pointcloud dumpfile";
         return NULL;
     }
-    struct dump_header hdr;
+    struct cwipc_cwipcdump_header hdr;
     if (fread(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
         if (errorMessage) *errorMessage = (char *)"Cannot read pointcloud dumpfile header";
         fclose(fp);
         return NULL;
     }
-    if (hdr.hdr[0] != 'c' || hdr.hdr[1] != 'p' || hdr.hdr[2] != 'c' || hdr.hdr[3] != 'd') {
+    if (hdr.hdr[0] != CWIPC_CWIPCDUMP_HEADER[0] || hdr.hdr[1] != CWIPC_CWIPCDUMP_HEADER[1] || hdr.hdr[2] != CWIPC_CWIPCDUMP_HEADER[2] || hdr.hdr[3] != CWIPC_CWIPCDUMP_HEADER[3]) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile header incorrect";
         fclose(fp);
         return NULL;
     }
-    if (hdr.magic < CWIPC_API_VERSION_OLD || hdr.magic > CWIPC_API_VERSION) {
+    if (hdr.magic != CWIPC_CWIPCDUMP_VERSION) {
         if (errorMessage) *errorMessage = (char *)"Pointcloud dumpfile version incorrect";
         fclose(fp);
         return NULL;
@@ -315,7 +307,18 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         if (errorMessage) *errorMessage = (char *)"Cannot create output file";
         return -1;
     }
-    struct dump_header hdr = { {'c', 'p', 'c', 'd'}, CWIPC_API_VERSION, pointcloud->timestamp(), pointcloud->cellsize(), dataSize};
+    struct cwipc_cwipcdump_header hdr = { 
+        {
+            CWIPC_CWIPCDUMP_HEADER[0],
+            CWIPC_CWIPCDUMP_HEADER[1],
+            CWIPC_CWIPCDUMP_HEADER[2],
+            CWIPC_CWIPCDUMP_HEADER[3]
+        }, 
+        CWIPC_CWIPCDUMP_VERSION, 
+        pointcloud->timestamp(), 
+        pointcloud->cellsize(), 
+        dataSize
+    };
     fwrite(&hdr, sizeof(hdr), 1, fp);
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
         if (errorMessage) *errorMessage = (char *)"Write output file failed";

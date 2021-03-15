@@ -26,6 +26,28 @@
  */
 #define CWIPC_API_VERSION_OLD 0x20210228
 
+/** \brief 4 characters that are magic number of cwipcdump file format
+ */
+#define CWIPC_CWIPCDUMP_HEADER "cpcd"
+
+/** \brief Magic number (version) of cwipcdump file format
+ */
+#define CWIPC_CWIPCDUMP_VERSION 0x20210208
+
+/** \brief Header of cwipcdump file
+ * 
+ * The header is followed by `size` bytes of data, which should be an integral number of
+ * of `cwipc_point` structures.
+ */
+
+struct cwipc_cwipcdump_header {
+    char hdr[4];
+    uint32_t magic;
+    uint64_t timestamp;
+    float cellsize;
+    size_t size;
+};
+
 
 /** \brief Single 3D vector.
  *

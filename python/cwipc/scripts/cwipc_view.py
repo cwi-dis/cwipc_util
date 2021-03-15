@@ -117,8 +117,13 @@ q             Quit
             self.paused = not self.paused
         elif cmd == 'a':
             self.tilefilter = None
-        elif cmd in '012345678':
-            self.tilefilter = int(cmd)
+        elif cmd in '0123456789':
+            if int(cmd) == 0:
+                self.tilefilter = 0
+                print("Showing all tiles")
+            else:
+                self.tilefilter = pow(2,int(cmd)-1)
+                print("Showing tile =",self.tilefilter)
         elif cmd == '\0':
             pass
         else: #c to crash and print stack trace
