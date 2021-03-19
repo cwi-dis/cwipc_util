@@ -11,7 +11,7 @@ fi
 if [ -f "$installdir/python37embedded/python.exe" ]; then
 	python3="$installdir/python37embedded/python.exe"
 fi
-
+python3 -m pip install importlib.metadata
 (cd "$sharedir/cwipc_util/python" ; "$python3" setup.py install)
 if [ -d "$sharedir/cwipc_realsense2/python" ]; then
 	(cd "$sharedir/cwipc_realsense2/python" ; "$python3" setup.py install)

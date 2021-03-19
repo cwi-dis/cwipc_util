@@ -7,6 +7,7 @@ set python=python
 if exist %bindir%..\python37embedded\python.exe (
 	set python="%bindir%..\python37embedded\python.exe"
 )
+%python% -m pip install importlib.metadata
 pushd %bindir%..\share\cwipc_util\python
 %python% setup.py install
 popd
