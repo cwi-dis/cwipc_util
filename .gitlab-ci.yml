@@ -9,6 +9,7 @@ build_linux:
   - /latest/
   tags:
   - ubuntu2004
+  - vrtogether
   before_script:
     - apt-get update
     - apt-get install -y tzdata
@@ -38,6 +39,7 @@ build_osx:
   - /latest/
   tags:
   - osx1014
+  - vrtogether
 #  before_script:
 #    - brew install cmake || brew upgrade cmake
 #    - brew install pcl || brew upgrade pcl
@@ -65,6 +67,7 @@ build_win:
   - /latest/
   tags:
   - win10
+  - vrtogether
   script:
     - mkdir -p build
     - rm -rf /cygdrive/c/dist-win
