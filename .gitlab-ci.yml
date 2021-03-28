@@ -92,6 +92,7 @@ deploy_all:
   stage: deploy
   tags:
   - linux
+  - vrtogether
   only: 
   - tags
   except: 
@@ -118,6 +119,7 @@ deploy_all_untagged:
   stage: deploy
   tags:
   - linux
+  - vrtogether
   except: 
   - tags
   - /latest/
