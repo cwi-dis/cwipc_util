@@ -105,7 +105,7 @@ deploy_all:
   - apt-get install -y python3-pip
   - mkdir deployment-helpers
   - cd deployment-helpers
-  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@baltig.viaccess-orca.com:8443/VRT/deployment-group/Deployment
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/VRTogether_EU/Deployment/Deployment.git
   - python3 -m pip install 'scikit-learn>=0.23,!=0.24.0,!=0.24.1'
   - python3 -m pip install -r Deployment/scripts/requirements.txt
   - cd ..
@@ -130,7 +130,7 @@ deploy_all_untagged:
   - apt-get install -y python3-pip
   - mkdir deployment-helpers
   - cd deployment-helpers
-  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@baltig.viaccess-orca.com:8443/VRT/deployment-group/Deployment
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/VRTogether_EU/Deployment/Deployment.git
   - python3 -m pip install 'scikit-learn>=0.23,!=0.24.0,!=0.24.1'
   - python3 -m pip install -r Deployment/scripts/requirements.txt
   - cd ..
