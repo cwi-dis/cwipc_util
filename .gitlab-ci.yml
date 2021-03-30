@@ -113,7 +113,7 @@ deploy_all:
   script:
     - mkdir deliverables
     - mv cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip deliverables
-    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --notag --package_version 0.0.$CI_PIPELINE_IID cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
+    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --notag --package_version `deployment-helpers/Deployment/scripts/mkpackageversion.sh` cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
       
 deploy_all_untagged:
   stage: deploy
@@ -141,4 +141,4 @@ deploy_all_untagged:
     - mv cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip deliverables
     - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --deleterelease || true
     - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --deletetag || true
-    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --branch_to_tag "$CI_COMMIT_REF_NAME" --package_version 0.0.$CI_PIPELINE_IID cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
+    - python3 deployment-helpers/Deployment/scripts/addReleaseToGitLab --cicd --tag_name latest --release_name latest --branch_to_tag "$CI_COMMIT_REF_NAME" --package_version `deployment-helpers/Deployment/scripts/mkpackageversion.sh` cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz cwipc_util_osx1014_$CI_COMMIT_TAG.tgz cwipc_util_win1064_$CI_COMMIT_TAG.zip
