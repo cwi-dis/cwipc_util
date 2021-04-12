@@ -111,6 +111,33 @@ public:
         return npoint;
     }
     
+    size_t copy_packet(uint8_t *packet, size_t size) {
+        size_t dataSize = get_uncompressed_size();
+        size_t sizeNeeded = sizeof(struct cwipc_cwipcdump_header) + dataSize;
+        if (packet == NULL) {
+            return sizeNeeded;
+        }
+        if (size != sizeNeeded) {
+            return 0;
+        }
+        struct cwipc_cwipcdump_header hdr = { 
+            {
+                CWIPC_CWIPCDUMP_HEADER[0],
+                CWIPC_CWIPCDUMP_HEADER[1],
+                CWIPC_CWIPCDUMP_HEADER[2],
+                CWIPC_CWIPCDUMP_HEADER[3]
+            }, 
+            CWIPC_CWIPCDUMP_VERSION, 
+            timestamp(), 
+            cellsize(), 
+            dataSize
+        };
+        memcpy(&hdr, packet, sizeof(struct cwipc_cwipcdump_header));
+        cwipc_point *pointData = (cwipc_point *)(packet + sizeof(struct cwipc_cwipcdump_header));
+        copy_uncompressed(pointData, dataSize);
+        return sizeNeeded;
+    }
+
     cwipc_pcl_pointcloud access_pcl_pointcloud() {
         return m_pc;
     }
@@ -341,7 +368,6 @@ cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage,
     return new cwipc_impl(pc, timestamp);
 }
 
-
 cwipc *
 cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)
 {
@@ -357,6 +383,35 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
         delete rv;
         return NULL;
     }
+    return rv;
+}
+
+cwipc *
+cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t apiVersion)
+{
+	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+		if (errorMessage) {
+			*errorMessage = (char *)"cwipc_from_packet: incorrect apiVersion";
+		}
+		return NULL;
+	}
+    struct cwipc_cwipcdump_header *header = (struct cwipc_cwipcdump_header *) packet;
+    struct cwipc_point *points = (struct cwipc_point *)(packet + sizeof(cwipc_cwipcdump_header));
+    if (
+        memcpy(header->hdr, CWIPC_CWIPCDUMP_HEADER, 4) != 0 || 
+        header->magic != CWIPC_CWIPCDUMP_VERSION ||
+        header->size + sizeof(struct cwipc_cwipcdump_header) != size
+    ) {
+        *errorMessage = (char *)"cwipc_from_packet: bad packet data";
+    }
+    int npoint = header->size / sizeof(cwipc_point);
+    cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
+    if (rv->from_points(points, size, npoint, header->timestamp) < 0) {
+        if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
+        delete rv;
+        return NULL;
+    }
+    rv->_set_cellsize(header->cellsize);
     return rv;
 }
 
@@ -405,6 +460,12 @@ int
 cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *points, size_t size)
 {
     return pc->copy_uncompressed(points, size);
+}
+
+size_t
+cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size)
+{
+    return pc->copy_packet(packet, size);
 }
 
 cwipc* 

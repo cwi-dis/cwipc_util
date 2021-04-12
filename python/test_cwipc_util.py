@@ -181,6 +181,19 @@ class TestApi(unittest.TestCase):
         with self.assertRaises(cwipc.CwipcError):
             cwipc.cwipc_write_debugdump(filename, pc)
 
+    def test_cwipc_packet(self):
+        """Test cwipc_copy_packet and cwipc_from_packet"""
+        pc = self._build_pointcloud()
+        packet = pc.get_packet()
+        pc2 = cwipc.cwipc_from_packet(packet)
+        self.assertEqual(pc.timestamp, pc2.timestamp)
+        self.assertEqual(pc.cellsize, pc2.cellsize)
+        points = pc.get_points()
+        points2 = pc2.get_points()
+        self.assertEqual(points, points2)
+        packet2 = pc2.get_packet()
+        self.assertEqual(packet, packet2)
+
     def test_cwipc_synthetic(self):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()

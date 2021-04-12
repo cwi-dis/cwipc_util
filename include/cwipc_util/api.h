@@ -18,7 +18,7 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20210228
+#define CWIPC_API_VERSION 0x20210412
 
 /** \brief Version of oldest compatible cwipc API.
  *
@@ -170,7 +170,7 @@ public:
     virtual size_t get_uncompressed_size() = 0;
     
 	/** \brief Get points from pointcloud in external representation format.
-	 * \param pc A databuffer pointer.
+	 * \param pointbuf A databuffer pointer.
 	 * \param size The size of the databuffer (in bytes).
 	 * \return The number of points.
 	 *
@@ -180,7 +180,17 @@ public:
 	 * implemented in another language like C# or Python and needs a special
 	 * allocator).
 	 */
-    virtual int copy_uncompressed(struct cwipc_point *pc, size_t size) = 0;
+    virtual int copy_uncompressed(struct cwipc_point *pointbuf, size_t size) = 0;
+    
+    /** \brief Get pointcloud in external representation format.
+	 * \param packet A databuffer pointer.
+	 * \param size The size of the databuffer (in bytes).
+	 * \return The size of the databuffer
+	 *
+	 * Call with packet=NULL to obtain packet buffer size. Then allocate a buffer and
+     * call with buffer and size to copy the packet data.
+	 */
+    virtual size_t copy_packet(uint8_t *packet, size_t size) = 0;
     
     /** \brief Access PCL pointcloud.
      * \return A reference to the PCL pointcloud.
@@ -389,6 +399,18 @@ _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **error
  */
 _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
 
+/** \brief Create cwipc pointcloud from external representation.
+ * \param packet Pointer to packet obtained from cwipc_copy_packet
+ * \param size Size of points in bytes.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
+ * \return the abstract point cloud, or NULL in case of errors.
+ *
+ * If an error occurs and errorMessage is non-NULL it will receive a pointer to
+ * a string with the message.
+ */
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t apiVersion);
+
 /** \brief Create cwipc pointcloud from CERTH pointcloud representation.
  * \param points Pointer to CERTH PointCloud structure.
  * \param origin Optional point to coordinates of point (3 floats x, y, z) that needs to be moved to (0, 0, 0)
@@ -481,7 +503,7 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 
 /** \brief Get points from pointcloud in external representation format (C interface).
  * \param pc The cwipc object.
- * \param pc A databuffer pointer.
+ * \param pointbuf A databuffer pointer.
  * \param size The size of the databuffer (in bytes).
  * \return The number of points.
  *
@@ -491,7 +513,17 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
  * implemented in another language like C# or Python and needs a special
  * allocator).
  */
-_CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
+_CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *pointbuf, size_t size);
+
+/** \brief Get pointcloud in external representation format.
+ * \param packet A databuffer pointer.
+ * \param size The size of the databuffer (in bytes).
+ * \return The size of the databuffer
+ *
+ * Call with packet=NULL to obtain packet buffer size. Then allocate a buffer and
+ * call with buffer and size to copy the packet data.
+ */
+_CWIPC_UTIL_EXPORT size_t cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size);
 
 /** \brief Get a new pointcloud (C interface).
  * \param src The cwipc_source object.

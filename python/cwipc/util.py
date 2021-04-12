@@ -20,6 +20,7 @@ __all__ = [
     'cwipc_write',
     'cwipc_write_debugdump',
     'cwipc_from_points',
+    'cwipc_from_packet',
     'cwipc_from_certh',
     
     'cwipc_synthetic',
@@ -158,6 +159,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
     
+    _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_p
+    
     _cwipc_util_dll_reference.cwipc_from_certh.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_certh.restype = cwipc_p
     
@@ -190,6 +194,9 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_copy_uncompressed.restype = ctypes.c_int
+    
+    _cwipc_util_dll_reference.cwipc_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_copy_packet.restype = ctypes.c_size_t
     
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
@@ -322,6 +329,16 @@ class cwipc:
         self._bytes = buffer
         self._points = points
 
+    def get_packet(self):
+        assert self._cwipc
+        nBytes = _cwipc_util_dll().cwipc_copy_packet(self._as_cwipc_p(), None, 0)
+        buffer = bytearray(nBytes)
+        bufferCtypesType = ctypes.c_byte * nBytes
+        bufferArg = bufferCtypesType.from_buffer(buffer)
+        rvNBytes = _cwipc_util_dll().cwipc_copy_packet(self._as_cwipc_p(), bufferArg, nBytes)
+        assert rvNBytes == nBytes
+        return buffer
+
 class cwipc_source:
     """Pointcloud source as an opaque object"""
     
@@ -450,6 +467,16 @@ def cwipc_from_points(points, timestamp):
         return cwipc(rv)
     return None
     
+def cwipc_from_packet(packet):
+    nBytes = ctypes.sizeof(packet)
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_from_packet(ctypes.addressof(packet), nBytes)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc(rv)
+    return None
+
 def cwipc_from_certh(certhPC, timestamp, origin=None, bbox=None):
     """Create a cwipc from a CERTH PointCloud structure (address passed as ctypes.c_void_p)"""
     if not isinstance(certhPC, ctypes.c_void_p):
