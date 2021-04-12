@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.10.0)
-
+cmake_minimum_required(VERSION 3.14.0)
+cmake_policy(SET CMP0074 NEW)
 find_package(Python3 COMPONENTS Interpreter)
 
 # Unfortunately Ubuntu 18.04 doesn't have the Python3 package (introduced in cmake 3.12 or so). Work around it.

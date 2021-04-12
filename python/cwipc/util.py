@@ -159,7 +159,7 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
     
-    _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_p
     
     _cwipc_util_dll_reference.cwipc_from_certh.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
@@ -468,9 +468,10 @@ def cwipc_from_points(points, timestamp):
     return None
     
 def cwipc_from_packet(packet):
-    nBytes = ctypes.sizeof(packet)
+    nBytes = len(packet)
+    byte_array_type = ctypes.c_char * nBytes
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_packet(ctypes.addressof(packet), nBytes)
+    rv = _cwipc_util_dll().cwipc_from_packet(byte_array_type.from_buffer(packet), nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
