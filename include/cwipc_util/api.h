@@ -41,13 +41,17 @@
  */
 
 struct cwipc_cwipcdump_header {
-    char hdr[4];
-    uint32_t magic;
-    uint64_t timestamp;
-    float cellsize;
-    size_t size;
+    char hdr[4];    // 0-4
+    uint32_t magic; // 4-8
+    uint64_t timestamp; // 8-16
+    float cellsize; // 16-20
+    uint32_t unused; // 20-24
+    size_t size; // 24-32
 };
 
+#ifdef __cplusplus
+static_assert(sizeof(struct cwipc_cwipcdump_header) == 32, "cwipc_cwipcdump_header unexpected size");
+#endif
 
 /** \brief Single 3D vector.
  *

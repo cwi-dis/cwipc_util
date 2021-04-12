@@ -186,11 +186,21 @@ class TestApi(unittest.TestCase):
         pc = self._build_pointcloud()
         packet = pc.get_packet()
         pc2 = cwipc.cwipc_from_packet(packet)
-        self.assertEqual(pc.timestamp, pc2.timestamp)
-        self.assertEqual(pc.cellsize, pc2.cellsize)
+        self.assertEqual(pc.timestamp(), pc2.timestamp())
+        self.assertEqual(pc.cellsize(), pc2.cellsize())
         points = pc.get_points()
         points2 = pc2.get_points()
-        self.assertEqual(points, points2)
+        self.assertEqual(len(points), len(points2))
+        for i in range(len(points)):
+            op = points[i]
+            np = points2[i]
+            self.assertEqual(op.x, np.x)
+            self.assertEqual(op.y, np.y)
+            self.assertEqual(op.z, np.z)
+            self.assertEqual(op.r, np.r)
+            self.assertEqual(op.g, np.g)
+            self.assertEqual(op.b, np.b)
+            self.assertEqual(op.tile, np.tile)
         packet2 = pc2.get_packet()
         self.assertEqual(packet, packet2)
 

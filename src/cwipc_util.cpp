@@ -129,10 +129,11 @@ public:
             }, 
             CWIPC_CWIPCDUMP_VERSION, 
             timestamp(), 
-            cellsize(), 
+            cellsize(),
+            0,
             dataSize
         };
-        memcpy(&hdr, packet, sizeof(struct cwipc_cwipcdump_header));
+        memcpy(packet, &hdr, sizeof(struct cwipc_cwipcdump_header));
         cwipc_point *pointData = (cwipc_point *)(packet + sizeof(struct cwipc_cwipcdump_header));
         copy_uncompressed(pointData, dataSize);
         return sizeNeeded;
@@ -344,6 +345,7 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
         CWIPC_CWIPCDUMP_VERSION, 
         pointcloud->timestamp(), 
         pointcloud->cellsize(), 
+        0,
         dataSize
     };
     fwrite(&hdr, sizeof(hdr), 1, fp);
@@ -379,7 +381,7 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
 	}
     cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
     if (rv->from_points(points, size, npoint, timestamp) < 0) {
-        if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
+        if (errorMessage) *errorMessage = (char *)"cwipc_from_points: cannot load points (size error?)";
         delete rv;
         return NULL;
     }
@@ -397,17 +399,19 @@ cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t ap
 	}
     struct cwipc_cwipcdump_header *header = (struct cwipc_cwipcdump_header *) packet;
     struct cwipc_point *points = (struct cwipc_point *)(packet + sizeof(cwipc_cwipcdump_header));
-    if (
-        memcpy(header->hdr, CWIPC_CWIPCDUMP_HEADER, 4) != 0 || 
-        header->magic != CWIPC_CWIPCDUMP_VERSION ||
-        header->size + sizeof(struct cwipc_cwipcdump_header) != size
-    ) {
-        *errorMessage = (char *)"cwipc_from_packet: bad packet data";
+    if (memcmp(header->hdr, CWIPC_CWIPCDUMP_HEADER, 4) != 0 || header->magic != CWIPC_CWIPCDUMP_VERSION) {
+        *errorMessage = (char *)"cwipc_from_packet: bad packet header";
+        return NULL;
     }
+    size_t dataSize = size - sizeof(struct cwipc_cwipcdump_header);
     int npoint = header->size / sizeof(cwipc_point);
+    if (npoint * sizeof(cwipc_point) != dataSize) {
+        *errorMessage = (char *)"cwipc_from_packet: inconsistent dataSize";
+        return NULL;
+    }
     cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
-    if (rv->from_points(points, size, npoint, header->timestamp) < 0) {
-        if (errorMessage) *errorMessage = (char *)"Cannot load points (size error?)";
+    if (rv->from_points(points, dataSize, npoint, header->timestamp) < 0) {
+        if (errorMessage) *errorMessage = (char *)"cwipc_from_packet: cannot load points (size error?)";
         delete rv;
         return NULL;
     }
