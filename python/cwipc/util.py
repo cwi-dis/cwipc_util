@@ -31,7 +31,7 @@ __all__ = [
     'cwipc_tilefilter'
 ]
 
-CWIPC_API_VERSION = 0x20210228
+CWIPC_API_VERSION = 0x20210412
 
 class CwipcError(RuntimeError):
     pass
@@ -128,13 +128,15 @@ CWIPC_TILEINFO_VERSION = 0x20190516
 class cwipc_point_packetheader(ctypes.Structure):
     """Packet header for talking to cwipc_proxy server"""
     _fields_ = [
+        ("hdr", ctypes.c_uint32),
         ("magic", ctypes.c_uint32),
-        ("dataCount", ctypes.c_uint32),
-        ("timestamp", ctypes.c_uint64),
         ("cellsize", ctypes.c_float),
+        ("timestamp", ctypes.c_uint64),
+        ("unused", ctypes.c_uint32),
+        ("dataCount", ctypes.c_uint32),
     ]
     
-CWIPC_POINT_PACKETHEADER_MAGIC = 0x20201016
+CWIPC_POINT_PACKETHEADER_MAGIC = 0x20210208
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
