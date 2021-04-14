@@ -14,14 +14,47 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
+
+class cwipc_auxiliary_data_impl : public cwipc_auxiliary_data {
+public:
+    cwipc_auxiliary_data_impl() {}
+    
+    ~cwipc_auxiliary_data_impl() {}
+    
+    int count() {
+        return 0;
+    }
+    
+    const std::string& name(int idx) {
+        return "";
+    }
+    
+    void *pointer(int idx) {
+        return NULL;
+    }
+    
+    size_t size(int idx) {
+        return 0;
+    }
+    
+    void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) {
+        
+    }
+    
+    void _move(cwipc_auxiliary_data *other) {
+        
+    }
+};
+
 class cwipc_impl : public cwipc {
 protected:
     uint64_t m_timestamp;
     float m_cellsize;
     cwipc_pcl_pointcloud m_pc;
+    cwipc_auxiliary_data* m_aux;
 public:
-    cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc) {}
+    cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL), m_aux(NULL) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc), m_aux(NULL) {}
 
     ~cwipc_impl() {}
 
@@ -143,8 +176,9 @@ public:
         return m_pc;
     }
     
-    cwipc_auxiliary_data *auxiliary_data() {
-        return nullptr;
+    cwipc_auxiliary_data *access_auxiliary_data() {
+        if (m_aux == NULL) m_aux = new cwipc_auxiliary_data_impl();
+        return m_aux;
     }
 };
 
@@ -474,6 +508,28 @@ size_t
 cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size)
 {
     return pc->copy_packet(packet, size);
+}
+
+cwipc_auxiliary_data *
+cwipc_access_auxiliary_data(cwipc *pc)
+{
+    return pc->access_auxiliary_data();
+}
+
+int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection) {
+    return collection->count();
+}
+
+const char * cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx) {
+    return collection->name(idx).c_str();
+}
+    
+void * cwipc_auxiliary_data_pointer(cwipc_auxiliary_data *collection, int idx) {
+    return collection->pointer(idx);
+}
+    
+size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx) {
+    return collection->size(idx);
 }
 
 cwipc* 

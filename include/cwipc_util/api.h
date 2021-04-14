@@ -217,7 +217,7 @@ public:
      * Note that this function returns a borrowed reference (and that the collection consists of more
      * borrowed references). AThese references become invalid when free() is called.
      */
-    virtual cwipc_auxiliary_data *auxiliary_data() = 0;
+    virtual cwipc_auxiliary_data *access_auxiliary_data() = 0;
 };
 
 /** \brief A generator of pointclouds, abstract C++ interface.
@@ -361,12 +361,48 @@ public:
 
 class cwipc_auxiliary_data {
 public:
+    typedef void (*deallocfunc)();
+    
     virtual ~cwipc_auxiliary_data() {}
   
     /** \brief Returns number of auxiliary data items
      * \returns Number of auxiliary data items.
      */
     virtual int count() = 0;
+    
+    /** \brief Return name of an item
+     * \param idx The item index
+     * \return the name
+     */
+    virtual const std::string& name(int idx) = 0;
+    
+    /** \brief Return data pointer of an item
+     * \param idx The item index
+     * \return the data pointer
+     */
+    virtual void *pointer(int idx) = 0;
+    
+    /** \brief Return size of an item
+     * \param idx The item index
+     * \return the size in bytes
+     */
+    virtual size_t size(int idx) = 0;
+    
+    /** \brief Add an auxiliary data item (internal use only)
+     * \param name The item name
+     * \param pointer The item pointer
+     * \param size The size of the item
+     * \param dealloc The item deallocator function
+     */
+    virtual void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) = 0;
+    
+    /** \brief Move all auxiliary data items to another collection
+     * \param other The collection to move the items to
+     *
+     * All auxiliary data is moved to another collection, and this collection is cleared, so ownership of the items is passed to
+     * the other collection
+     */
+    virtual void _move(cwipc_auxiliary_data *other) = 0;
 };
 
 #else
@@ -685,6 +721,24 @@ _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt
  * \returns Number of auxiliary data items.
  */
 _CWIPC_UTIL_EXPORT int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection);
+    
+/** \brief Returns name of an item in the collection
+ * \param collection the auxiliary data
+ * \returns Name (borrowed reference)
+ */
+_CWIPC_UTIL_EXPORT const char * cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx);
+    
+/** \brief Returns data pointer of an item in the collection
+ * \param collection the auxiliary data
+ * \returns Data pointer (borrowed reference)
+ */
+_CWIPC_UTIL_EXPORT void * cwipc_auxiliary_data_pointer(cwipc_auxiliary_data *collection, int idx);
+    
+/** \brief Returns size of a data item in the collection
+ * \param collection the auxiliary data
+ * \returns size
+ */
+_CWIPC_UTIL_EXPORT size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx);
     
 /** \brief Generate synthetic pointclouds.
  * \param fps Maximum frames-per-second produced (0 for unlimited)
