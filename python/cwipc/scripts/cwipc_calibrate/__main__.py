@@ -3,6 +3,7 @@ import argparse
 
 try:
     import cwipc.realsense2
+    _ = cwipc.realsense2._cwipc_realsense2_dll()
 except ModuleNotFoundError:
     cwipc.realsense2 = None
 try:
