@@ -16,33 +16,56 @@
 
 
 class cwipc_auxiliary_data_impl : public cwipc_auxiliary_data {
+protected:
+    struct item {
+        std::string name;
+        void *pointer;
+        size_t size;
+        deallocfunc dealloc;
+    };
+    std::vector<struct item> m_items;
 public:
     cwipc_auxiliary_data_impl() {}
     
-    ~cwipc_auxiliary_data_impl() {}
+    ~cwipc_auxiliary_data_impl() {
+        for(auto item: m_items) {
+            item.dealloc(item.pointer);
+        }
+        m_items.clear();
+    }
     
     int count() {
-        return 0;
+        return m_items.size();
     }
     
     const std::string& name(int idx) {
-        return "";
+        return m_items[idx].name;
     }
     
     void *pointer(int idx) {
-        return NULL;
+        return m_items[idx].pointer;
     }
     
     size_t size(int idx) {
-        return 0;
+        return m_items[idx].size;
     }
     
     void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) {
-        
+        struct item new_item = {
+            .name = name,
+            .pointer = pointer,
+            .size = size,
+            .dealloc = dealloc
+        };
+        m_items.push_back(new_item);
     }
     
     void _move(cwipc_auxiliary_data *other) {
-        
+        auto other_impl = (cwipc_auxiliary_data_impl *)other;
+        for(auto item: m_items) {
+            other_impl->m_items.push_back(item);
+        }
+        m_items.clear();
     }
 };
 

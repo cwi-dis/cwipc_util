@@ -361,7 +361,7 @@ public:
 
 class cwipc_auxiliary_data {
 public:
-    typedef void (*deallocfunc)();
+    typedef void (*deallocfunc)(void *);
     
     virtual ~cwipc_auxiliary_data() {}
   
