@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+#include <string>
+#include <set>
+#endif
+
 // For Windows ensure that the symbols are imported from a DLL, unless we're compiling the DLL itself.
 #ifndef _CWIPC_UTIL_EXPORT
 #ifdef WIN32
@@ -108,6 +113,8 @@ struct cwipc_tileinfo {
 
 #ifdef __cplusplus
 
+class cwipc_auxiliary_data;
+
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
 typedef void* cwipc_pcl_pointcloud;
 #define _CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
@@ -203,6 +210,14 @@ public:
      * that the reference remains valid after free() is called.
      */
     virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
+    
+    /** \brief Access auxiliary data collection
+     * \return A reference to the auxiliary data collection
+     *
+     * Note that this function returns a borrowed reference (and that the collection consists of more
+     * borrowed references). AThese references become invalid when free() is called.
+     */
+    virtual cwipc_auxiliary_data *auxiliary_data() = 0;
 };
 
 /** \brief A generator of pointclouds, abstract C++ interface.
@@ -240,6 +255,23 @@ public:
      * \return The new pointcloud.
      */
     virtual cwipc* get() = 0;
+    
+    /** \brief Request specific auxiliary data to be added to pointclouds.
+     * \param name Name of the auxiliary data
+     */
+    void request_auxiliary_data(const std::string& name) {
+        auxiliary_data_wanted.insert(name);
+    }
+    
+    /** \brief Returns true is specific auxiliary data has been requested
+     * \param name Name of the auxiliary data
+     * \returns True or false
+     */
+    bool auxiliary_data_requested(const std::string& name) {
+        return auxiliary_data_wanted.find(name) != auxiliary_data_wanted.end();
+    }
+private:
+    std::set<std::string> auxiliary_data_wanted;
 };
 
 /** \brief A generator of tiled pointclouds, abstract C++ interface.
@@ -327,6 +359,15 @@ public:
     virtual char interact(const char *prompt, const char *responses, int32_t millis) = 0;
 };
 
+class cwipc_auxiliary_data {
+public:
+    virtual ~cwipc_auxiliary_data() {}
+  
+    /** \brief Returns number of auxiliary data items
+     * \returns Number of auxiliary data items.
+     */
+    virtual int count() = 0;
+};
 
 #else
 
@@ -359,6 +400,12 @@ typedef struct _cwipc_tiledsource {
 typedef struct _cwipc_sink {
     int _dummy;
 } cwipc_sink;
+
+/** \brief Abstract interface to a cwipc auxiliary data collection. C-compatible placeholder.
+ */
+typedef struct _cwipc_auxiliary_data {
+    int _dummy;
+} cwipc_auxiliary_data;
 
 #endif
 
@@ -560,6 +607,19 @@ _CWIPC_UTIL_EXPORT bool cwipc_source_eof(cwipc_source *src);
  */
 _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source *src, bool wait);
 
+/** \brief Request specific auxiliary data to be added to pointclouds.
+ * \param src The cwipc_source object.
+ * \param name Name of the auxiliary data
+ */
+_CWIPC_UTIL_EXPORT void cwipc_source_request_auxiliary_data(cwipc_source *src, const char *name);
+
+/** \brief Returns true is specific auxiliary data has been requested
+ * \param src The cwipc_source object.
+ * \param name Name of the auxiliary data
+ * \returns True or false
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name);
+
 /** \brief Return maximum number of possible tiles returned.
  * \param src The cwipc_tiledsource object.
  *
@@ -619,6 +679,12 @@ _CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink *sink, const char *caption
  * or if this sink does not support user interaction.
  */
 _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis);
+    
+/** \brief Returns number of auxiliary data items in the collection
+ * \param collection the auxiliary data
+ * \returns Number of auxiliary data items.
+ */
+_CWIPC_UTIL_EXPORT int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection);
     
 /** \brief Generate synthetic pointclouds.
  * \param fps Maximum frames-per-second produced (0 for unlimited)

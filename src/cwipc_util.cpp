@@ -142,6 +142,10 @@ public:
     cwipc_pcl_pointcloud access_pcl_pointcloud() {
         return m_pc;
     }
+    
+    cwipc_auxiliary_data *auxiliary_data() {
+        return nullptr;
+    }
 };
 
 //
@@ -494,6 +498,18 @@ bool
 cwipc_source_available(cwipc_source *src, bool wait)
 {
 	return src->available(wait);
+}
+
+void
+cwipc_source_request_auxiliary_data(cwipc_source *src, const char *name)
+{
+    src->request_auxiliary_data(name);
+}
+
+bool
+cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name)
+{
+    return src->auxiliary_data_requested(name);
 }
 
 int
