@@ -250,6 +250,18 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
 
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.argtypes = [cwipc_auxiliary_data_p]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.restype = ctypes.c_int
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.restype = ctypes.c_char_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.restype = ctypes.c_void_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.restype = ctypes.c_int
+
 
     return _cwipc_util_dll_reference
 
@@ -459,6 +471,22 @@ class cwipc_auxiliary_data:
         
     def count(self):
         return _cwipc_util_dll().cwipc_auxiliary_data_count(self._as_cwipc_auxiliary_data_p())
+        
+    def name(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_name(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def pointer(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_pointer(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def size(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_size(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def data(self):
+        size = self.size()
+        pointer = self.pointer()
+        tp = ctypes.c_ubyte*size
+        return tp(pointer)
+        
         
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
