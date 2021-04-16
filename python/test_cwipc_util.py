@@ -324,6 +324,14 @@ class TestApi(unittest.TestCase):
             src = cwipc.cwipc_proxy('unknown.host.name', 8887)
             src.free()
         
+    def test_auxiliary_data_empty(self):
+        pc = self._build_pointcloud()
+        aux = pc.access_auxiliary_data()
+        self.assertNotEqual(aux, None)
+        nItems = aux.count()
+        self.assertEqual(nItems, 0)
+        pc.free()
+        
     def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()
         self.assertGreater(len(points), 1)

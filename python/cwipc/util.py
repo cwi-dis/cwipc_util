@@ -50,6 +50,8 @@ class cwipc_tiledsource_p(cwipc_source_p):
 class cwipc_sink_p(ctypes.c_void_p):
     pass
 
+class cwipc_auxiliary_data_p(ctypes.c_void_p):
+    pass
 
 #
 # C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_API_VERSION helps a bit.
@@ -200,6 +202,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_copy_packet.restype = ctypes.c_size_t
     
+    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.restype = cwipc_auxiliary_data_p
+    
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
     
@@ -320,6 +325,12 @@ class cwipc:
         assert self._bytes
         return self._bytes
         
+    def access_auxiliary_data(self):
+        rv_p = _cwipc_util_dll().cwipc_access_auxiliary_data(self._as_cwipc_p())
+        if rv_p:
+            return cwipc_auxiliary_data(rv_p)
+        return None
+        
     def _get_points_and_bytes(self):
         assert self._cwipc
         nBytes = _cwipc_util_dll().cwipc_get_uncompressed_size(self._as_cwipc_p())
@@ -433,6 +444,21 @@ class cwipc_sink:
         if responses != None: responses = responses.encode('utf8')
         rv = _cwipc_util_dll().cwipc_sink_interact(self._as_cwipc_sink_p(), prompt, responses, millis)
         return rv.decode('utf8')
+        
+class cwipc_auxiliary_data:
+    """Additional data attached to a cwipc object"""
+
+    def __init__(self, _cwipc_auxiliary_data=None):
+        if _cwipc_auxiliary_data != None:
+            assert isinstance(_cwipc_auxiliary_data, cwipc_auxiliary_data_p)
+        self._cwipc_auxiliary_data = _cwipc_auxiliary_data
+
+    def _as_cwipc_auxiliary_data_p(self):
+        assert self._cwipc_auxiliary_data
+        return self._cwipc_auxiliary_data
+        
+    def count(self):
+        return _cwipc_util_dll().cwipc_auxiliary_data_count(self._as_cwipc_auxiliary_data_p())
         
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""

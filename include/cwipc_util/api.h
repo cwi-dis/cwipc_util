@@ -603,6 +603,7 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *pointbuf, size_t size);
 
 /** \brief Get pointcloud in external representation format.
+ * \param pc The cwipc object.
  * \param packet A databuffer pointer.
  * \param size The size of the databuffer (in bytes).
  * \return The size of the databuffer
@@ -611,6 +612,15 @@ _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *po
  * call with buffer and size to copy the packet data.
  */
 _CWIPC_UTIL_EXPORT size_t cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size);
+
+/** \brief Access auxiliary data collection
+ * \param pc The cwipc object.
+ * \return A reference to the auxiliary data collection
+ *
+ * Note that this function returns a borrowed reference (and that the collection consists of more
+ * borrowed references). AThese references become invalid when free() is called.
+ */
+_CWIPC_UTIL_EXPORT cwipc_auxiliary_data *cwipc_access_auxiliary_data(cwipc *pc);
 
 /** \brief Get a new pointcloud (C interface).
  * \param src The cwipc_source object.
