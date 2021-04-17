@@ -51,12 +51,11 @@ public:
     }
     
     void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) {
-        struct item new_item = {
-            .name = name,
-            .pointer = pointer,
-            .size = size,
-            .dealloc = dealloc
-        };
+        struct item new_item;
+		new_item.name = name;
+		new_item.pointer = pointer;
+		new_item.size = size;
+		new_item.dealloc = dealloc;
         m_items.push_back(new_item);
     }
     
