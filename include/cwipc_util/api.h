@@ -258,8 +258,12 @@ public:
     
     /** \brief Request specific auxiliary data to be added to pointclouds.
      * \param name Name of the auxiliary data
+     *
+     * If a subclass needs special handing for dynamic requests of auxiliary data
+     * it should override this method, call the base and then use auxiliary_data_requested
+     * to see which data is currently wanted.
      */
-    void request_auxiliary_data(const std::string& name) {
+    virtual void request_auxiliary_data(const std::string& name) {
         auxiliary_data_wanted.insert(name);
     }
     

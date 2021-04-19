@@ -104,6 +104,8 @@ public:
 
     void free() {
         m_pc = NULL;
+        if (m_aux) delete m_aux;
+        m_aux = NULL;
     }
     
     uint64_t timestamp() {
@@ -220,7 +222,6 @@ public:
     cwipc_uncompressed_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : cwipc_impl(pc, timestamp), m_points(NULL), m_points_size(0) {}
     
     ~cwipc_uncompressed_impl() {
-        free();
     }
     
     int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp)
@@ -237,46 +238,46 @@ public:
         return npoint;
     }
     
-    void free() {
-        m_pc = NULL;
+    void free() override {
+        cwipc_impl::free();
         if (m_points) ::free(m_points);
         m_points = NULL;
         m_points_size = 0;
     }
     
-    uint64_t timestamp() {
+    uint64_t timestamp() override {
         return m_timestamp;
     }
     
-    float cellsize() {
+    float cellsize() override {
         return m_cellsize;
     }
     
-    void _set_cellsize(float cellsize) {
+    void _set_cellsize(float cellsize) override {
         (void)access_pcl_pointcloud();
         cwipc_impl::_set_cellsize(cellsize);
     }
     
-    void _set_timestamp(uint64_t timestamp) {
+    void _set_timestamp(uint64_t timestamp) override {
     	m_timestamp = timestamp;
     }
     
-    int count() {
+    int count() override {
         return m_points_size / sizeof(struct cwipc_point);
     }
     
-    size_t get_uncompressed_size() {
+    size_t get_uncompressed_size() override {
         return m_points_size;
     }
     
-    int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
+    int copy_uncompressed(struct cwipc_point *pointData, size_t size) override {
         if (size != m_points_size) return -1;
         memcpy(pointData, m_points, size);
 
         return m_points_size / sizeof(struct cwipc_point);
     }
     
-    cwipc_pcl_pointcloud access_pcl_pointcloud() {
+    cwipc_pcl_pointcloud access_pcl_pointcloud() override {
         if (m_pc == nullptr) {
             cwipc_impl::from_points(m_points, m_points_size, m_points_size / sizeof(struct cwipc_point), m_timestamp);
         }
