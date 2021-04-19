@@ -215,6 +215,16 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
+    def test_cwipc_synthetic_auxdata(self):
+        """Can we request auxiliary data on a cwipc_source"""
+        pcs = cwipc.cwipc_synthetic()
+        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        self.assertFalse(wantUnknown)
+        pcs.request_auxiliary_data("nonexistent-auxdata")
+        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        self.assertTrue(wantUnknown)
+        pcs.free()
+    
     def test_cwipc_synthetic_args(self):
         """Can we create a synthetic pointcloud with fps and npoints arguments?"""
         pcs = cwipc.cwipc_synthetic(10, 1000)

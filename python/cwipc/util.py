@@ -217,6 +217,12 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
+    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.restype = None
+    
+    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.restype = ctypes.c_bool
+    
     _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
     _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
     
@@ -396,6 +402,17 @@ class cwipc_source:
         if rv:
             return cwipc(rv)
         return None
+
+    def request_auxiliary_data(self, name):
+        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+        if name != None: name = name.encode('utf8')
+        return _cwipc_util_dll().cwipc_source_request_auxiliary_data(self._as_cwipc_source_p(), name)
+
+    def auxiliary_data_requested(self, name):
+        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+        if name != None: name = name.encode('utf8')
+        return _cwipc_util_dll().cwipc_source_auxiliary_data_requested(self._as_cwipc_source_p(), name)
+        
         
 class cwipc_tiledsource(cwipc_source):
     """Tiled pointcloud sources as opaque object"""
