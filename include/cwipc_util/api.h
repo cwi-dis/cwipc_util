@@ -380,6 +380,15 @@ public:
      */
     virtual const std::string& name(int idx) = 0;
     
+    /** \brief Return descrption of an item
+     * \param idx The item index
+     * \return the description
+     *
+     * The description is intended to be machine-readable for code that understands it.
+     * For example, it will contain image widht and height and such.
+     */
+    virtual const std::string& description(int idx) = 0;
+    
     /** \brief Return data pointer of an item
      * \param idx The item index
      * \return the data pointer
@@ -394,11 +403,12 @@ public:
     
     /** \brief Add an auxiliary data item (internal use only)
      * \param name The item name
+     * \param description String describing the item format
      * \param pointer The item pointer
      * \param size The size of the item
      * \param dealloc The item deallocator function
      */
-    virtual void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) = 0;
+    virtual void _add(const std::string& name, const std::string& description, void *pointer, size_t size, deallocfunc dealloc) = 0;
     
     /** \brief Move all auxiliary data items to another collection
      * \param other The collection to move the items to
@@ -742,6 +752,17 @@ _CWIPC_UTIL_EXPORT int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collecti
  */
 _CWIPC_UTIL_EXPORT const char * cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx);
     
+/** \brief Return descrption of an item
+ * \param collection the auxiliary data
+ * \param idx The item index
+ * \return the description
+ *
+ * The description is intended to be machine-readable for code that understands it.
+ * For example, it will contain image widht and height and such.
+ */
+_CWIPC_UTIL_EXPORT const char * cwipc_auxiliary_data_description(cwipc_auxiliary_data *collection, int idx);
+
+
 /** \brief Returns data pointer of an item in the collection
  * \param collection the auxiliary data
  * \returns Data pointer (borrowed reference)

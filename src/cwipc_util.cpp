@@ -19,6 +19,7 @@ class cwipc_auxiliary_data_impl : public cwipc_auxiliary_data {
 protected:
     struct item {
         std::string name;
+        std::string description;
         void *pointer;
         size_t size;
         deallocfunc dealloc;
@@ -34,32 +35,37 @@ public:
         m_items.clear();
     }
     
-    int count() {
+    int count() override {
         return m_items.size();
     }
     
-    const std::string& name(int idx) {
+    const std::string& name(int idx) override {
         return m_items[idx].name;
     }
     
-    void *pointer(int idx) {
+    const std::string& description(int idx) override {
+        return m_items[idx].description;
+    }
+    
+    void *pointer(int idx) override {
         return m_items[idx].pointer;
     }
     
-    size_t size(int idx) {
+    size_t size(int idx) override {
         return m_items[idx].size;
     }
     
-    void _add(const std::string& name, void *pointer, size_t size, deallocfunc dealloc) {
+    void _add(const std::string& name, const std::string& description, void *pointer, size_t size, deallocfunc dealloc) override {
         struct item new_item;
 		new_item.name = name;
+        new_item.description = description;
 		new_item.pointer = pointer;
 		new_item.size = size;
 		new_item.dealloc = dealloc;
         m_items.push_back(new_item);
     }
     
-    void _move(cwipc_auxiliary_data *other) {
+    void _move(cwipc_auxiliary_data *other) override {
         auto other_impl = (cwipc_auxiliary_data_impl *)other;
         for(auto item: m_items) {
             other_impl->m_items.push_back(item);
@@ -545,6 +551,10 @@ int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection) {
 
 const char * cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx) {
     return collection->name(idx).c_str();
+}
+    
+const char * cwipc_auxiliary_data_description(cwipc_auxiliary_data *collection, int idx) {
+    return collection->description(idx).c_str();
 }
     
 void * cwipc_auxiliary_data_pointer(cwipc_auxiliary_data *collection, int idx) {

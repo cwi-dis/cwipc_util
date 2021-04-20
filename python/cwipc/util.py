@@ -262,6 +262,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_auxiliary_data_name.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
     _cwipc_util_dll_reference.cwipc_auxiliary_data_name.restype = ctypes.c_char_p
 
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.restype = ctypes.c_char_p
+
     _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
     _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.restype = ctypes.c_void_p
 
@@ -491,6 +494,9 @@ class cwipc_auxiliary_data:
         
     def name(self, idx):
         return _cwipc_util_dll().cwipc_auxiliary_data_name(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def description(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_description(self._as_cwipc_auxiliary_data_p(), idx)
         
     def pointer(self, idx):
         return _cwipc_util_dll().cwipc_auxiliary_data_pointer(self._as_cwipc_auxiliary_data_p(), idx)
