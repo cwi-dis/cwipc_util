@@ -23,7 +23,7 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20210412
+#define CWIPC_API_VERSION 0x20210420
 
 /** \brief Version of oldest compatible cwipc API.
  *
