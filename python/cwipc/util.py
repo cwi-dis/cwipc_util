@@ -493,10 +493,12 @@ class cwipc_auxiliary_data:
         return _cwipc_util_dll().cwipc_auxiliary_data_count(self._as_cwipc_auxiliary_data_p())
         
     def name(self, idx):
-        return _cwipc_util_dll().cwipc_auxiliary_data_name(self._as_cwipc_auxiliary_data_p(), idx)
+        rv = _cwipc_util_dll().cwipc_auxiliary_data_name(self._as_cwipc_auxiliary_data_p(), idx)
+        return rv.decode('utf8')
         
     def description(self, idx):
-        return _cwipc_util_dll().cwipc_auxiliary_data_description(self._as_cwipc_auxiliary_data_p(), idx)
+        rv = _cwipc_util_dll().cwipc_auxiliary_data_description(self._as_cwipc_auxiliary_data_p(), idx)
+        return rv.decode('utf8')
         
     def pointer(self, idx):
         return _cwipc_util_dll().cwipc_auxiliary_data_pointer(self._as_cwipc_auxiliary_data_p(), idx)
@@ -504,9 +506,9 @@ class cwipc_auxiliary_data:
     def size(self, idx):
         return _cwipc_util_dll().cwipc_auxiliary_data_size(self._as_cwipc_auxiliary_data_p(), idx)
         
-    def data(self):
-        size = self.size()
-        pointer = self.pointer()
+    def data(self, idx):
+        size = self.size(idx)
+        pointer = self.pointer(idx)
         tp = ctypes.c_ubyte*size
         return tp(pointer)
         
