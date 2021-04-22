@@ -33,12 +33,19 @@ class FileWriter:
                 if not ok: break
             except queue.Empty:
                 pass
+        if self.verbose:
+            print(f"writer: stopped")
+            print(f"xxxjack producer.is_alive: {self.producer.is_alive()}")
                 
         
     def feed(self, pc):
         try:
             self.queue.put(pc, timeout=0.5)
+            if self.verbose:
+                print(f"writer: fed pointcloud {pc.timestamp()} to writer")
         except queue.Full:
+            if self.verbose:
+                print(f"writer: dropped pointcloud {pc.timestamp()}")
             pc.free()
 
     def save_pc(self, pc):
@@ -50,26 +57,31 @@ class FileWriter:
             if ext == '.ply':
                 cwipc.cwipc_write(filename, pc)
                 if self.verbose:
-                    print(f"{sys.argv[0]}: wrote pointcloud to {filename}")
+                    print(f"writer: wrote pointcloud to {filename}")
             elif ext == '.cwipcdump':
                 cwipc.cwipc_write_debugdump(filename, pc)
                 if self.verbose:
-                    print(f"{sys.argv[0]}: wrote pointcloud to {filename}")
+                    print(f"writer: wrote pointcloud to {filename}")
             else:
-                print(f"{sys.argv[0]}: Filetype unknown for pointcloud output: {filename}")
-                return
+                print(f"writer: Filetype unknown for pointcloud output: {filename}")
+                return False
             # xxxjack could easily add compressed files, etc
         if self.rgbpattern or self.depthpattern or self.skeletonpattern:
+            saved_any = False
             pc_auxdata = pc.access_auxiliary_data()
             for i in range(pc_auxdata.count()):
                 aux_name = pc_auxdata.name(i)
-                if aux_name.starts_with('rgb'):
-                    self.save_auxdata('rgb', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.rgbpattern)
-                if aux_name.starts_with('depth'):
-                    self.save_auxdata('depth', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.depthpattern)
-                if aux_name.starts_with('skeleton'):
+                if aux_name.startswith('rgb'):
+                    saved_any = self.save_auxdata('rgb', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.rgbpattern)
+                if aux_name.startswith('depth'):
+                    saved_any = self.save_auxdata('depth', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.depthpattern)
+                if aux_name.startswith('skeleton'):
                     # xxxjack skeleton probably needs to be saved using different method
-                    self.save_auxdata('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+                    saved_any = self.save_auxdata('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+            if not saved_any:
+                print(f"writer: did not find any auxiliary data in pointcloud {pc.timestamp()}")
+                return False
+        return True
 
     def save_auxdata(self, type, name, pc, description, data, pattern):
         filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
@@ -78,9 +90,11 @@ class FileWriter:
             with open(filename, 'wb') as fp:
                 fp.write(data)
             if self.verbose:
-                print(f"{sys.argv[0]}: wrote {type} to {filename}")
+                print(f"writer: wrote {type} to {filename}")
         else:
-            print(f"{sys.argv[0]}: Filetype unknown for {type} output: {filename}")
+            print(f"writer: Filetype unknown for {type} output: {filename}")
+            return False
+        return True
 
     
 def main():
@@ -114,12 +128,15 @@ def main():
     rgbpattern = None
     if args.rgb:
         rgbpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.rgb}}"
+        source.request_auxiliary_data("rgb")
     depthpattern = None
     if args.depth:
         depthpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.depth}}"
+        source.request_auxiliary_data("depth")
     skeletonpattern = None
     if args.skeleton:
         skeletonpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.skeleton}}"
+        source.request_auxiliary_data("skeleton")
     
     if args.all:
         kwargs = {'queuesize' : args.count}
