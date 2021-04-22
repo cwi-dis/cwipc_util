@@ -18,13 +18,13 @@ from .livegrabber import LiveGrabber
 from . import cameraconfig
 from .cameraconfig import DEFAULT_FILENAME
 from .targets import targets
+from .._scriptsupport import *
 
 def main():
-    parser = argparse.ArgumentParser(description="Calibrate cwipc_realsense2 or cwipc_kinect capturer")
+    parser = ArgumentParser(description="Calibrate cwipc_realsense2 or cwipc_kinect capturer")
     def twofloats(s):
         f1, f2 = s.split(',')
         return float(f1), float(f2)
-    parser.add_argument("--kinect", action="store_true", help=f"Use Azure Kinect capturer (default: realsense2 capturer)")
     parser.add_argument("--auto", action="store_true", help=f"Attempt to auto-install {DEFAULT_FILENAME}, if needed")
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--reuse", action="store_true", help=f"Reuse existing {DEFAULT_FILENAME}")
@@ -45,19 +45,11 @@ def main():
         for name, target in targets.items():
             print(f'{name}\n\t{target["description"]}')
         sys.exit(0)
-    capturer = None
-    if args.kinect:
-        if cwipc.kinect == None:
-            print("Kinect capturer not supported on this system")
-            sys.exit(1)
-        cameraconfig.selectCameraType('kinect')
-        capturer = cwipc.kinect.cwipc_kinect
-    else:
-        if cwipc.realsense2 == None:
-            print("Realsense capturer not supported on this system")
-            sys.exit(1)
-        cameraconfig.selectCameraType('realsense')
-        capturer = cwipc.realsense2.cwipc_realsense2
+    capturerFactory, capturerName = cwipc_genericsource_factory(args)
+    if not capturerName:
+        print(f"{sys.argv[0]}: selected capturer does not need calibration")
+        sys.exit(1)
+    cameraconfig.selectCameraType(capturerName)
     if args.bbox:
         bbox = args.bbox
         assert len(bbox) == 6
@@ -71,7 +63,7 @@ def main():
     if args.nograb:
         grabber = FileGrabber(args.nograb)
     else:
-        grabber = LiveGrabber(capturer)
+        grabber = LiveGrabber(capturerFactory)
     try:
     
         ok = prog.open(grabber, clean=args.clean, reuse=(args.reuse or args.auto))

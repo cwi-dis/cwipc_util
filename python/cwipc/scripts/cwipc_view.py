@@ -111,8 +111,8 @@ def main():
     #
     # Create source
     #
-    source = cwipc_genericsource(args)
-
+    sourceFactory, _ = cwipc_genericsource_factory(args)
+    source = sourceFactory()
     if not args.nodisplay:
         visualizer = Visualizer(args.verbose)
     else:

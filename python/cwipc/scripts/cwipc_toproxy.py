@@ -53,7 +53,8 @@ def main():
     parser.add_argument("port", type=int, action="store", help="Port where cwipc_proxy server is running")
     args = parser.parse_args()
 
-    source = cwipc_genericsource(args)
+    sourceFactory, _ = cwipc_genericsource_factory(args)
+    source = sourceFactory()
     sender = Sender(args.host, args.port)
     sourceServer = SourceServer(source, sender, count=args.count, verbose=args.verbose)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
