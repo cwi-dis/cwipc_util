@@ -86,13 +86,13 @@ class FileWriter:
     def save_auxdata(self, type, name, pc, description, data, pattern):
         filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
         ext = os.path.splitext(filename)[1].lower()
-        if 'ext' == '.bin':
+        if ext == '.bin':
             with open(filename, 'wb') as fp:
                 fp.write(data)
             if self.verbose:
                 print(f"writer: wrote {type} to {filename}")
         else:
-            print(f"writer: Filetype unknown for {type} output: {filename}")
+            print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
             return False
         return True
 
@@ -127,15 +127,15 @@ def main():
         pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.ply"
     rgbpattern = None
     if args.rgb:
-        rgbpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.rgb}}"
+        rgbpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.rgb}"
         source.request_auxiliary_data("rgb")
     depthpattern = None
     if args.depth:
-        depthpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.depth}}"
+        depthpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.depth}"
         source.request_auxiliary_data("depth")
     skeletonpattern = None
     if args.skeleton:
-        skeletonpattern = f"{args.outputdir}/{{type}}-{{{args.fpattern}}}.{{args.skeleton}}"
+        skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
         source.request_auxiliary_data("skeleton")
     
     if args.all:
