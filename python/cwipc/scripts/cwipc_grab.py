@@ -161,9 +161,12 @@ def main():
     try:
         sourceThread.start()
 
-        writer.run()
+        if not args.all:
+            writer.run()
             
         sourceThread.join()
+        if args.all:
+            writer.run()
     except KeyboardInterrupt:
         print("Interrupted.")
         sourceServer.stop()
