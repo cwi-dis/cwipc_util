@@ -70,7 +70,16 @@ public:
         m_angle = runtime.count();
         generate_points();
         cwipc *rv = cwipc_from_points(m_points, m_points_size, m_hsteps*m_asteps, timestamp, NULL, CWIPC_API_VERSION);
-        if (rv) rv->_set_cellsize(2.0 / m_hsteps);
+        if (rv) {
+            rv->_set_cellsize(2.0 / m_hsteps);
+            // For testing purposes: save angle if wanted
+            if ( auxiliary_data_requested("test-angle")) {
+                void *memptr = malloc(sizeof(m_angle));
+                memcpy(memptr, &m_angle, sizeof(m_angle));
+                cwipc_auxiliary_data *ap = rv->access_auxiliary_data();
+                ap->_add("test-angle", "", memptr, sizeof(m_angle), ::free);
+            }
+        }
         return rv;
     }
 

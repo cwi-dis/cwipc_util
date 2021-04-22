@@ -215,7 +215,7 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
-    def test_cwipc_synthetic_auxdata(self):
+    def test_cwipc_synthetic_nonexistent_auxdata(self):
         """Can we request auxiliary data on a cwipc_source"""
         pcs = cwipc.cwipc_synthetic()
         wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
@@ -223,6 +223,24 @@ class TestApi(unittest.TestCase):
         pcs.request_auxiliary_data("nonexistent-auxdata")
         wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
         self.assertTrue(wantUnknown)
+        pcs.free()
+    
+    def test_cwipc_synthetic_auxdata(self):
+        """Can we request auxiliary data on a cwipc_source"""
+        pcs = cwipc.cwipc_synthetic()
+        pcs.request_auxiliary_data("test-angle")
+        wantTestAngle = pcs.auxiliary_data_requested("test-angle")
+        self.assertTrue(wantTestAngle)
+        pc = pcs.get()
+        ap = pc.access_auxiliary_data()
+        self.assertEqual(ap.count(), 1)
+        self.assertEqual(ap.name(0), "test-angle")
+        self.assertEqual(ap.description(0), "")
+        self.assertEqual(ap.size(0), 4) # sizeof m_angle
+        data = bytes(ap.data(0))
+        self.assertEqual(len(data), 4)
+        self.assertNotEqual(data, b'\0\0\0\0')
+        pc.free()
         pcs.free()
     
     def test_cwipc_synthetic_args(self):
