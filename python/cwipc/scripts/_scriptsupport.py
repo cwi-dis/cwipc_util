@@ -68,7 +68,7 @@ def cwipc_genericsource(args):
         if cwipc.certh == None:
             print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
             sys.exit(-1)
-        source = cwipc.certh.cwipc_certh(args.certh, args.data, args.metadata)
+        source = cwipc.certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
     elif args.file:
         source = cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=True)
     elif args.dir:
@@ -163,8 +163,8 @@ def ArgumentParser(*args, **kwargs):
     parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
-    parser.add_argument("--data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
-    parser.add_argument("--metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
+    parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
+    parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
     parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
     parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dump")
