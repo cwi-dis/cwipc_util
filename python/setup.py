@@ -156,6 +156,7 @@ setup(
     # executes the function `main` from this package when invoked:
     entry_points={  # Optional
         'console_scripts': [
+            'cwipc_grab=cwipc.scripts.cwipc_grab:main',
             'cwipc_view=cwipc.scripts.cwipc_view:main',
             'cwipc_calibrate=cwipc.scripts.cwipc_calibrate:main',
             'cwipc_toproxy=cwipc.scripts.cwipc_toproxy:main',
