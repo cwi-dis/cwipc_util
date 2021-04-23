@@ -509,8 +509,10 @@ class cwipc_auxiliary_data:
     def data(self, idx):
         size = self.size(idx)
         pointer = self.pointer(idx)
-        tp = ctypes.c_ubyte*size
-        return tp(pointer)
+        c_type = ctypes.c_ubyte*size
+        c_array = c_type.from_address(pointer)
+        rv = bytearray(c_array)
+        return rv
         
         
 def cwipc_read(filename, timestamp):

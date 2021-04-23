@@ -237,7 +237,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(ap.name(0), "test-angle")
         self.assertEqual(ap.description(0), "")
         self.assertEqual(ap.size(0), 4) # sizeof m_angle
-        data = bytes(ap.data(0))
+        data = ap.data(0)
         self.assertEqual(len(data), 4)
         self.assertNotEqual(data, b'\0\0\0\0')
         pc.free()
