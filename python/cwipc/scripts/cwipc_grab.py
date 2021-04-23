@@ -7,6 +7,7 @@ import argparse
 import traceback
 import queue
 import cwipc
+from PIL import Image
 from ._scriptsupport import *
 
 class FileWriter:
@@ -19,6 +20,7 @@ class FileWriter:
         self.depthpattern = depthpattern
         self.skeletonpattern = skeletonpattern
         self.count = 0
+        self.error_encountered = False
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -30,13 +32,14 @@ class FileWriter:
                 self.count = self.count + 1
                 ok = self.save_pc(pc)
                 pc.free()
-                if not ok: break
+                if not ok:
+                    self.error_encountered = True
+                    break
             except queue.Empty:
                 pass
         if self.verbose:
             print(f"writer: stopped")
-            print(f"xxxjack producer.is_alive: {self.producer.is_alive()}")
-                
+        return not self.error_encountered              
         
     def feed(self, pc):
         try:
@@ -86,17 +89,47 @@ class FileWriter:
     def save_auxdata(self, type, name, pc, description, data, pattern):
         filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
         ext = os.path.splitext(filename)[1].lower()
-        if ext == '.bin':
+        if ext == '.bin' or ext == '.raw':
             with open(filename, 'wb') as fp:
                 fp.write(data)
             if self.verbose:
                 print(f"writer: wrote {type} to {filename}")
         else:
-            print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
-            return False
+            image = self.as_image(type, description, data)
+            try:
+                image.save(filename)
+            except ValueError:
+                print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
+                return False
         return True
 
-    
+    def parse_description(self, description):
+        rv = {}
+        fields = description.split(',')
+        for f in fields:
+            k, v = f.split('=')
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+            rv[k] = v
+        return rv
+        
+    def as_image(self, type, description, data):
+        attrs = self.parse_description(description)
+        width = attrs['width']
+        height = attrs['height']
+        if 'bpp' in attrs:
+            if attrs['bpp'] == 3:
+                image_mode = 'RGB'
+            elif attrs['bpp'] == 4:
+                image_mode = 'RGBA'
+            elif attrs['bpp'] == 2:
+                image_mode = 'I;16'
+            image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
+            return image
+        # xxxjack need to add support for kinect images
+        
 def main():
     SetupStackDumper()
     parser = ArgumentParser(description="Capture and save pointclouds")
@@ -158,15 +191,16 @@ def main():
     #
     # Run everything
     #
+    ok = False
     try:
         sourceThread.start()
 
         if not args.all:
-            writer.run()
+            ok = writer.run()
             
         sourceThread.join()
         if args.all:
-            writer.run()
+            ok = writer.run()
     except KeyboardInterrupt:
         print("Interrupted.")
         sourceServer.stop()
@@ -179,6 +213,8 @@ def main():
     sourceServer.stop()
     sourceThread.join()
     sourceServer.statistics()
+    if not ok:
+        sys.exit(1)
     
 if __name__ == '__main__':
     main()
