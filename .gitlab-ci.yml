@@ -16,13 +16,14 @@ build_linux:
     - apt-get install -y cmake
     - apt-get install -y libpcl-dev
     - apt-get install -y python3-pip
+    - apt-get install -y python3-venv
   script:
     - mkdir -p build
     - mkdir -p dist-ubuntu2004
     - cd build
     - cmake ..
     - make
-    - make test || cat Testing/Temporary/LastTest.log
+    - make test
     - make install DESTDIR=../dist-ubuntu2004
     - cd ..
     - tar --directory dist-ubuntu2004/usr/local -cvaf cwipc_util_ubuntu2004_$CI_COMMIT_TAG.tgz .
