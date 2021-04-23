@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.10.0)
-
+cmake_minimum_required(VERSION 3.14.0)
+cmake_policy(SET CMP0074 NEW)
 find_package(Python3 COMPONENTS Interpreter)
 
 # Unfortunately Ubuntu 18.04 doesn't have the Python3 package (introduced in cmake 3.12 or so). Work around it.
@@ -31,64 +31,63 @@ endif()
 
 
 if(Python3_FOUND)
-	set(ALL_PYTHON_TESTS xxxenv run_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate)
-	add_test(NAME xxxenv
-		COMMAND printenv
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	)
+	set(ALL_PYTHON_TESTS run_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate)
+	#
+	# Create venv for testing, and re-set Python3_EXECUTABLE to that Python.
+	# But: enable use of system-installed packages, because otherwise CI/CD will take forever.
+	#
+    get_filename_component(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" ABSOLUTE)
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv --system-site-packages "${VENV_DIR}")
+    set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        set(Python3_BINDIR "${VENV_DIR}/Scripts")
+        set(Python3_EXECUTABLE "${Python3_BINDIR}/python.exe")
+    else()
+        set(Python3_BINDIR "${VENV_DIR}/bin")
+        set(Python3_EXECUTABLE "${Python3_BINDIR}/python")
+    endif()
+    #
+    # Install packages into the venv
+    # (later: but scripts into the normal bin directory)
+    #
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m pip install "${CMAKE_CURRENT_SOURCE_DIR}")
+    #
+    # Run the unittests
+    #
 	add_test(NAME run_python_tests
-		COMMAND ${Python3_EXECUTABLE} setup.py test
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
 	)
+	#
+	# Test the various scripts
+	#
 	add_test(NAME cwipc_tilecolor
-		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_tilecolor -i ${CMAKE_SOURCE_DIR}/tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_SOURCE_DIR}/tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
 	)
 	add_test(NAME cwipc_view
-		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_view --nodisplay --synthetic --count 10
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 10
 	)
 	add_test(NAME cwipc_calibrate
-		COMMAND ${Python3_EXECUTABLE} -m cwipc.scripts.cwipc_calibrate --help
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${Python3_BINDIR}/cwipc_calibrate --help
 	)
-	
+	#
 	# Ensure the cwipc_util dynamic library can be found by the tests
-	
+	#
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		set_property(
 			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}:$ENV{PYTHONPATH}"
-		)
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH}""
+			APPEND PROPERTY ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH}"
 		)
  	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 		set_property(
 			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH}
-		)
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}:$ENV{PYTHONPATH}
+			APPEND PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH}"
 		)
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		# Jack doesn't understand why modifying PATH doesn't seem to work on Windows...
-		# Jack doesn't understand why we need the "Release" here, which should already be in CMAKE_RUNTIME_OUTPUT_DIRECTORY...
 		set_property(
 			TEST ${ALL_PYTHON_TESTS}
 			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}\;%PATH%"
 		)
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}"
-		)
-		#set_property(TEST run_python_tests PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
-		#set_property(TEST cwipc_tilecolor PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
-		#set_property(TEST cwipc_view PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
-		#set_property(TEST cwipc_calibrate PROPERTY ENVIRONMENT CWIPC_TEST_DLL=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release/cwipc_util.dll)
 	endif()
 endif()

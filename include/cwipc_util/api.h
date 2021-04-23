@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+#include <string>
+#include <set>
+#endif
+
 // For Windows ensure that the symbols are imported from a DLL, unless we're compiling the DLL itself.
 #ifndef _CWIPC_UTIL_EXPORT
 #ifdef WIN32
@@ -18,14 +23,40 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20201022
+#define CWIPC_API_VERSION 0x20210420
 
 /** \brief Version of oldest compatible cwipc API.
  *
  * Version of the oldest API of cwipc to which this set of libraries is compatible.
  */
-#define CWIPC_API_VERSION_OLD 0x20200703
+#define CWIPC_API_VERSION_OLD 0x20210228
 
+/** \brief 4 characters that are magic number of cwipcdump file format
+ */
+#define CWIPC_CWIPCDUMP_HEADER "cpcd"
+
+/** \brief Magic number (version) of cwipcdump file format
+ */
+#define CWIPC_CWIPCDUMP_VERSION 0x20210208
+
+/** \brief Header of cwipcdump file
+ * 
+ * The header is followed by `size` bytes of data, which should be an integral number of
+ * of `cwipc_point` structures.
+ */
+
+struct cwipc_cwipcdump_header {
+    char hdr[4];    // 0-4
+    uint32_t magic; // 4-8
+    uint64_t timestamp; // 8-16
+    float cellsize; // 16-20
+    uint32_t unused; // 20-24
+    size_t size; // 24-32
+};
+
+#ifdef __cplusplus
+static_assert(sizeof(struct cwipc_cwipcdump_header) == 32, "cwipc_cwipcdump_header unexpected size");
+#endif
 
 /** \brief Single 3D vector.
  *
@@ -82,6 +113,8 @@ struct cwipc_tileinfo {
 
 #ifdef __cplusplus
 
+class cwipc_auxiliary_data;
+
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
 typedef void* cwipc_pcl_pointcloud;
 #define _CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
@@ -131,6 +164,10 @@ public:
      */
     virtual void _set_cellsize(float cellsize) = 0;
     
+    /** \brief Semi-private method to initialize the timestamp. Not for general use.
+     */
+    virtual void _set_timestamp(uint64_t timestamp) = 0;
+    
     /** \brief Returns the number of points in the pointcloud.
 	 *  \return the point count
 	 */
@@ -144,7 +181,7 @@ public:
     virtual size_t get_uncompressed_size() = 0;
     
 	/** \brief Get points from pointcloud in external representation format.
-	 * \param pc A databuffer pointer.
+	 * \param pointbuf A databuffer pointer.
 	 * \param size The size of the databuffer (in bytes).
 	 * \return The number of points.
 	 *
@@ -154,7 +191,17 @@ public:
 	 * implemented in another language like C# or Python and needs a special
 	 * allocator).
 	 */
-    virtual int copy_uncompressed(struct cwipc_point *pc, size_t size) = 0;
+    virtual int copy_uncompressed(struct cwipc_point *pointbuf, size_t size) = 0;
+    
+    /** \brief Get pointcloud in external representation format.
+	 * \param packet A databuffer pointer.
+	 * \param size The size of the databuffer (in bytes).
+	 * \return The size of the databuffer
+	 *
+	 * Call with packet=NULL to obtain packet buffer size. Then allocate a buffer and
+     * call with buffer and size to copy the packet data.
+	 */
+    virtual size_t copy_packet(uint8_t *packet, size_t size) = 0;
     
     /** \brief Access PCL pointcloud.
      * \return A reference to the PCL pointcloud.
@@ -163,6 +210,14 @@ public:
      * that the reference remains valid after free() is called.
      */
     virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
+    
+    /** \brief Access auxiliary data collection
+     * \return A reference to the auxiliary data collection
+     *
+     * Note that this function returns a borrowed reference (and that the collection consists of more
+     * borrowed references). AThese references become invalid when free() is called.
+     */
+    virtual cwipc_auxiliary_data *access_auxiliary_data() = 0;
 };
 
 /** \brief A generator of pointclouds, abstract C++ interface.
@@ -200,6 +255,27 @@ public:
      * \return The new pointcloud.
      */
     virtual cwipc* get() = 0;
+    
+    /** \brief Request specific auxiliary data to be added to pointclouds.
+     * \param name Name of the auxiliary data
+     *
+     * If a subclass needs special handing for dynamic requests of auxiliary data
+     * it should override this method, call the base and then use auxiliary_data_requested
+     * to see which data is currently wanted.
+     */
+    virtual void request_auxiliary_data(const std::string& name) {
+        auxiliary_data_wanted.insert(name);
+    }
+    
+    /** \brief Returns true is specific auxiliary data has been requested
+     * \param name Name of the auxiliary data
+     * \returns True or false
+     */
+    bool auxiliary_data_requested(const std::string& name) {
+        return auxiliary_data_wanted.find(name) != auxiliary_data_wanted.end();
+    }
+private:
+    std::set<std::string> auxiliary_data_wanted;
 };
 
 /** \brief A generator of tiled pointclouds, abstract C++ interface.
@@ -287,6 +363,61 @@ public:
     virtual char interact(const char *prompt, const char *responses, int32_t millis) = 0;
 };
 
+class cwipc_auxiliary_data {
+public:
+    typedef void (*deallocfunc)(void *);
+    
+    virtual ~cwipc_auxiliary_data() {}
+  
+    /** \brief Returns number of auxiliary data items
+     * \returns Number of auxiliary data items.
+     */
+    virtual int count() = 0;
+    
+    /** \brief Return name of an item
+     * \param idx The item index
+     * \return the name
+     */
+    virtual const std::string& name(int idx) = 0;
+    
+    /** \brief Return descrption of an item
+     * \param idx The item index
+     * \return the description
+     *
+     * The description is intended to be machine-readable for code that understands it.
+     * For example, it will contain image widht and height and such.
+     */
+    virtual const std::string& description(int idx) = 0;
+    
+    /** \brief Return data pointer of an item
+     * \param idx The item index
+     * \return the data pointer
+     */
+    virtual void *pointer(int idx) = 0;
+    
+    /** \brief Return size of an item
+     * \param idx The item index
+     * \return the size in bytes
+     */
+    virtual size_t size(int idx) = 0;
+    
+    /** \brief Add an auxiliary data item (internal use only)
+     * \param name The item name
+     * \param description String describing the item format
+     * \param pointer The item pointer
+     * \param size The size of the item
+     * \param dealloc The item deallocator function
+     */
+    virtual void _add(const std::string& name, const std::string& description, void *pointer, size_t size, deallocfunc dealloc) = 0;
+    
+    /** \brief Move all auxiliary data items to another collection
+     * \param other The collection to move the items to
+     *
+     * All auxiliary data is moved to another collection, and this collection is cleared, so ownership of the items is passed to
+     * the other collection
+     */
+    virtual void _move(cwipc_auxiliary_data *other) = 0;
+};
 
 #else
 
@@ -319,6 +450,12 @@ typedef struct _cwipc_tiledsource {
 typedef struct _cwipc_sink {
     int _dummy;
 } cwipc_sink;
+
+/** \brief Abstract interface to a cwipc auxiliary data collection. C-compatible placeholder.
+ */
+typedef struct _cwipc_auxiliary_data {
+    int _dummy;
+} cwipc_auxiliary_data;
 
 #endif
 
@@ -362,6 +499,18 @@ _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **error
  * a string with the message.
  */
 _CWIPC_UTIL_EXPORT cwipc *cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion);
+
+/** \brief Create cwipc pointcloud from external representation.
+ * \param packet Pointer to packet obtained from cwipc_copy_packet
+ * \param size Size of points in bytes.
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
+ * \return the abstract point cloud, or NULL in case of errors.
+ *
+ * If an error occurs and errorMessage is non-NULL it will receive a pointer to
+ * a string with the message.
+ */
+_CWIPC_UTIL_EXPORT cwipc *cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t apiVersion);
 
 /** \brief Create cwipc pointcloud from CERTH pointcloud representation.
  * \param points Pointer to CERTH PointCloud structure.
@@ -437,6 +586,10 @@ _CWIPC_UTIL_EXPORT float cwipc_cellsize(cwipc *pc);
  */
 _CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc *pc, float cellsize);
 
+/** \brief Semi-private method to initialize the timestamp. Not for general use.
+ */
+_CWIPC_UTIL_EXPORT void cwipc__set_timestamp(cwipc *pc, uint64_t timestamp);
+
 /** \brief Returns number of points in the pointcloud.
  * \return The number of points.
  */
@@ -451,7 +604,7 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
 
 /** \brief Get points from pointcloud in external representation format (C interface).
  * \param pc The cwipc object.
- * \param pc A databuffer pointer.
+ * \param pointbuf A databuffer pointer.
  * \param size The size of the databuffer (in bytes).
  * \return The number of points.
  *
@@ -461,7 +614,27 @@ _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc *pc);
  * implemented in another language like C# or Python and needs a special
  * allocator).
  */
-_CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *, size_t size);
+_CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *pointbuf, size_t size);
+
+/** \brief Get pointcloud in external representation format.
+ * \param pc The cwipc object.
+ * \param packet A databuffer pointer.
+ * \param size The size of the databuffer (in bytes).
+ * \return The size of the databuffer
+ *
+ * Call with packet=NULL to obtain packet buffer size. Then allocate a buffer and
+ * call with buffer and size to copy the packet data.
+ */
+_CWIPC_UTIL_EXPORT size_t cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size);
+
+/** \brief Access auxiliary data collection
+ * \param pc The cwipc object.
+ * \return A reference to the auxiliary data collection
+ *
+ * Note that this function returns a borrowed reference (and that the collection consists of more
+ * borrowed references). AThese references become invalid when free() is called.
+ */
+_CWIPC_UTIL_EXPORT cwipc_auxiliary_data *cwipc_access_auxiliary_data(cwipc *pc);
 
 /** \brief Get a new pointcloud (C interface).
  * \param src The cwipc_source object.
@@ -493,6 +666,19 @@ _CWIPC_UTIL_EXPORT bool cwipc_source_eof(cwipc_source *src);
  * one becomes available.
  */
 _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source *src, bool wait);
+
+/** \brief Request specific auxiliary data to be added to pointclouds.
+ * \param src The cwipc_source object.
+ * \param name Name of the auxiliary data
+ */
+_CWIPC_UTIL_EXPORT void cwipc_source_request_auxiliary_data(cwipc_source *src, const char *name);
+
+/** \brief Returns true is specific auxiliary data has been requested
+ * \param src The cwipc_source object.
+ * \param name Name of the auxiliary data
+ * \returns True or false
+ */
+_CWIPC_UTIL_EXPORT bool cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name);
 
 /** \brief Return maximum number of possible tiles returned.
  * \param src The cwipc_tiledsource object.
@@ -553,6 +739,41 @@ _CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink *sink, const char *caption
  * or if this sink does not support user interaction.
  */
 _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis);
+    
+/** \brief Returns number of auxiliary data items in the collection
+ * \param collection the auxiliary data
+ * \returns Number of auxiliary data items.
+ */
+_CWIPC_UTIL_EXPORT int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection);
+    
+/** \brief Returns name of an item in the collection
+ * \param collection the auxiliary data
+ * \returns Name (borrowed reference)
+ */
+_CWIPC_UTIL_EXPORT const char * cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx);
+    
+/** \brief Return descrption of an item
+ * \param collection the auxiliary data
+ * \param idx The item index
+ * \return the description
+ *
+ * The description is intended to be machine-readable for code that understands it.
+ * For example, it will contain image widht and height and such.
+ */
+_CWIPC_UTIL_EXPORT const char * cwipc_auxiliary_data_description(cwipc_auxiliary_data *collection, int idx);
+
+
+/** \brief Returns data pointer of an item in the collection
+ * \param collection the auxiliary data
+ * \returns Data pointer (borrowed reference)
+ */
+_CWIPC_UTIL_EXPORT void * cwipc_auxiliary_data_pointer(cwipc_auxiliary_data *collection, int idx);
+    
+/** \brief Returns size of a data item in the collection
+ * \param collection the auxiliary data
+ * \returns size
+ */
+_CWIPC_UTIL_EXPORT size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx);
     
 /** \brief Generate synthetic pointclouds.
  * \param fps Maximum frames-per-second produced (0 for unlimited)

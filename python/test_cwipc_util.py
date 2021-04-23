@@ -131,6 +131,8 @@ class TestApi(unittest.TestCase):
         timestamp = 0x11223344556677
         pc = cwipc.cwipc_from_points([(0,0,0,0,0,0,1), (1,0,0,0,0,0,1), (2,0,0,0,0,0,1), (3,0,0,0,0,0,1)], timestamp)
         self.assertEqual(pc.timestamp(), timestamp)
+        pc._set_timestamp(timestamp+1)
+        self.assertEqual(pc.timestamp(), timestamp+1)
         self.assertEqual(pc.cellsize(), 0)
         pc._set_cellsize(0.1)
         self.assertAlmostEqual(pc.cellsize(), 0.1)
@@ -179,6 +181,29 @@ class TestApi(unittest.TestCase):
         with self.assertRaises(cwipc.CwipcError):
             cwipc.cwipc_write_debugdump(filename, pc)
 
+    def test_cwipc_packet(self):
+        """Test cwipc_copy_packet and cwipc_from_packet"""
+        pc = self._build_pointcloud()
+        packet = pc.get_packet()
+        pc2 = cwipc.cwipc_from_packet(packet)
+        self.assertEqual(pc.timestamp(), pc2.timestamp())
+        self.assertEqual(pc.cellsize(), pc2.cellsize())
+        points = pc.get_points()
+        points2 = pc2.get_points()
+        self.assertEqual(len(points), len(points2))
+        for i in range(len(points)):
+            op = points[i]
+            np = points2[i]
+            self.assertEqual(op.x, np.x)
+            self.assertEqual(op.y, np.y)
+            self.assertEqual(op.z, np.z)
+            self.assertEqual(op.r, np.r)
+            self.assertEqual(op.g, np.g)
+            self.assertEqual(op.b, np.b)
+            self.assertEqual(op.tile, np.tile)
+        packet2 = pc2.get_packet()
+        self.assertEqual(packet, packet2)
+
     def test_cwipc_synthetic(self):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()
@@ -190,6 +215,34 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
+    def test_cwipc_synthetic_nonexistent_auxdata(self):
+        """Can we request auxiliary data on a cwipc_source"""
+        pcs = cwipc.cwipc_synthetic()
+        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        self.assertFalse(wantUnknown)
+        pcs.request_auxiliary_data("nonexistent-auxdata")
+        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        self.assertTrue(wantUnknown)
+        pcs.free()
+    
+    def test_cwipc_synthetic_auxdata(self):
+        """Can we request auxiliary data on a cwipc_source"""
+        pcs = cwipc.cwipc_synthetic()
+        pcs.request_auxiliary_data("test-angle")
+        wantTestAngle = pcs.auxiliary_data_requested("test-angle")
+        self.assertTrue(wantTestAngle)
+        pc = pcs.get()
+        ap = pc.access_auxiliary_data()
+        self.assertEqual(ap.count(), 1)
+        self.assertEqual(ap.name(0), "test-angle")
+        self.assertEqual(ap.description(0), "")
+        self.assertEqual(ap.size(0), 4) # sizeof m_angle
+        data = ap.data(0)
+        self.assertEqual(len(data), 4)
+        self.assertNotEqual(data, b'\0\0\0\0')
+        pc.free()
+        pcs.free()
+    
     def test_cwipc_synthetic_args(self):
         """Can we create a synthetic pointcloud with fps and npoints arguments?"""
         pcs = cwipc.cwipc_synthetic(10, 1000)
@@ -298,6 +351,14 @@ class TestApi(unittest.TestCase):
         with self.assertRaises(cwipc.CwipcError):
             src = cwipc.cwipc_proxy('unknown.host.name', 8887)
             src.free()
+        
+    def test_auxiliary_data_empty(self):
+        pc = self._build_pointcloud()
+        aux = pc.access_auxiliary_data()
+        self.assertNotEqual(aux, None)
+        nItems = aux.count()
+        self.assertEqual(nItems, 0)
+        pc.free()
         
     def _verify_pointcloud(self, pc, tiled=False):
         points = pc.get_points()

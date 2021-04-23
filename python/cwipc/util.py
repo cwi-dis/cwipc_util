@@ -20,6 +20,7 @@ __all__ = [
     'cwipc_write',
     'cwipc_write_debugdump',
     'cwipc_from_points',
+    'cwipc_from_packet',
     'cwipc_from_certh',
     
     'cwipc_synthetic',
@@ -30,7 +31,7 @@ __all__ = [
     'cwipc_tilefilter'
 ]
 
-CWIPC_API_VERSION = 0x20201022
+CWIPC_API_VERSION = 0x20210420
 
 class CwipcError(RuntimeError):
     pass
@@ -49,6 +50,8 @@ class cwipc_tiledsource_p(cwipc_source_p):
 class cwipc_sink_p(ctypes.c_void_p):
     pass
 
+class cwipc_auxiliary_data_p(ctypes.c_void_p):
+    pass
 
 #
 # C/Python cwipc_point structure. MUST match cwipc_util/api.h, but CWIPC_API_VERSION helps a bit.
@@ -127,13 +130,15 @@ CWIPC_TILEINFO_VERSION = 0x20190516
 class cwipc_point_packetheader(ctypes.Structure):
     """Packet header for talking to cwipc_proxy server"""
     _fields_ = [
+        ("hdr", ctypes.c_uint32),
         ("magic", ctypes.c_uint32),
-        ("dataCount", ctypes.c_uint32),
-        ("timestamp", ctypes.c_uint64),
         ("cellsize", ctypes.c_float),
+        ("timestamp", ctypes.c_uint64),
+        ("unused", ctypes.c_uint32),
+        ("dataCount", ctypes.c_uint32),
     ]
     
-CWIPC_POINT_PACKETHEADER_MAGIC = 0x20201016
+CWIPC_POINT_PACKETHEADER_MAGIC = 0x20210208
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
@@ -158,6 +163,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
     
+    _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_p
+    
     _cwipc_util_dll_reference.cwipc_from_certh.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_certh.restype = cwipc_p
     
@@ -179,6 +187,9 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
     _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
     
+    _cwipc_util_dll_reference.cwipc__set_timestamp.argtypes = [cwipc_p, ctypes.c_ulonglong]
+    _cwipc_util_dll_reference.cwipc__set_timestamp.restype = None
+    
     _cwipc_util_dll_reference.cwipc_count.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_count.restype = ctypes.c_int
     
@@ -187,6 +198,12 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_copy_uncompressed.restype = ctypes.c_int
+    
+    _cwipc_util_dll_reference.cwipc_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_copy_packet.restype = ctypes.c_size_t
+    
+    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.restype = cwipc_auxiliary_data_p
     
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
@@ -199,6 +216,12 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
+    
+    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.restype = None
+    
+    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.restype = ctypes.c_bool
     
     _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
     _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
@@ -232,6 +255,21 @@ def _cwipc_util_dll(libname=None):
 
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.argtypes = [cwipc_auxiliary_data_p]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.restype = ctypes.c_int
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.restype = ctypes.c_char_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.restype = ctypes.c_char_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.restype = ctypes.c_void_p
+
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.restype = ctypes.c_int
 
 
     return _cwipc_util_dll_reference
@@ -281,6 +319,10 @@ class cwipc:
         """Internal use only: set the size of the cells this pointcloud represents"""
         _cwipc_util_dll().cwipc__set_cellsize(self._as_cwipc_p(), cellsize)
         
+    def _set_timestamp(self, timestamp):
+        """Internal use only: set the size of the cells this pointcloud represents"""
+        _cwipc_util_dll().cwipc__set_timestamp(self._as_cwipc_p(), timestamp)
+        
     def count(self):
         """Get the number of points in the pointcloud"""
         rv = _cwipc_util_dll().cwipc_count(self._as_cwipc_p())
@@ -304,6 +346,12 @@ class cwipc:
         assert self._bytes
         return self._bytes
         
+    def access_auxiliary_data(self):
+        rv_p = _cwipc_util_dll().cwipc_access_auxiliary_data(self._as_cwipc_p())
+        if rv_p:
+            return cwipc_auxiliary_data(rv_p)
+        return None
+        
     def _get_points_and_bytes(self):
         assert self._cwipc
         nBytes = _cwipc_util_dll().cwipc_get_uncompressed_size(self._as_cwipc_p())
@@ -314,6 +362,16 @@ class cwipc:
         points = cwipc_point_array(count=nPoints, values=buffer)
         self._bytes = buffer
         self._points = points
+
+    def get_packet(self):
+        assert self._cwipc
+        nBytes = _cwipc_util_dll().cwipc_copy_packet(self._as_cwipc_p(), None, 0)
+        buffer = bytearray(nBytes)
+        bufferCtypesType = ctypes.c_byte * nBytes
+        bufferArg = bufferCtypesType.from_buffer(buffer)
+        rvNBytes = _cwipc_util_dll().cwipc_copy_packet(self._as_cwipc_p(), bufferArg, nBytes)
+        assert rvNBytes == nBytes
+        return buffer
 
 class cwipc_source:
     """Pointcloud source as an opaque object"""
@@ -347,6 +405,17 @@ class cwipc_source:
         if rv:
             return cwipc(rv)
         return None
+
+    def request_auxiliary_data(self, name):
+        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+        if name != None: name = name.encode('utf8')
+        return _cwipc_util_dll().cwipc_source_request_auxiliary_data(self._as_cwipc_source_p(), name)
+
+    def auxiliary_data_requested(self, name):
+        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+        if name != None: name = name.encode('utf8')
+        return _cwipc_util_dll().cwipc_source_auxiliary_data_requested(self._as_cwipc_source_p(), name)
+        
         
 class cwipc_tiledsource(cwipc_source):
     """Tiled pointcloud sources as opaque object"""
@@ -408,6 +477,44 @@ class cwipc_sink:
         rv = _cwipc_util_dll().cwipc_sink_interact(self._as_cwipc_sink_p(), prompt, responses, millis)
         return rv.decode('utf8')
         
+class cwipc_auxiliary_data:
+    """Additional data attached to a cwipc object"""
+
+    def __init__(self, _cwipc_auxiliary_data=None):
+        if _cwipc_auxiliary_data != None:
+            assert isinstance(_cwipc_auxiliary_data, cwipc_auxiliary_data_p)
+        self._cwipc_auxiliary_data = _cwipc_auxiliary_data
+
+    def _as_cwipc_auxiliary_data_p(self):
+        assert self._cwipc_auxiliary_data
+        return self._cwipc_auxiliary_data
+        
+    def count(self):
+        return _cwipc_util_dll().cwipc_auxiliary_data_count(self._as_cwipc_auxiliary_data_p())
+        
+    def name(self, idx):
+        rv = _cwipc_util_dll().cwipc_auxiliary_data_name(self._as_cwipc_auxiliary_data_p(), idx)
+        return rv.decode('utf8')
+        
+    def description(self, idx):
+        rv = _cwipc_util_dll().cwipc_auxiliary_data_description(self._as_cwipc_auxiliary_data_p(), idx)
+        return rv.decode('utf8')
+        
+    def pointer(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_pointer(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def size(self, idx):
+        return _cwipc_util_dll().cwipc_auxiliary_data_size(self._as_cwipc_auxiliary_data_p(), idx)
+        
+    def data(self, idx):
+        size = self.size(idx)
+        pointer = self.pointer(idx)
+        c_type = ctypes.c_ubyte*size
+        c_array = c_type.from_address(pointer)
+        rv = bytearray(c_array)
+        return rv
+        
+        
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
@@ -443,6 +550,17 @@ def cwipc_from_points(points, timestamp):
         return cwipc(rv)
     return None
     
+def cwipc_from_packet(packet):
+    nBytes = len(packet)
+    byte_array_type = ctypes.c_char * nBytes
+    errorString = ctypes.c_char_p()
+    rv = _cwipc_util_dll().cwipc_from_packet(byte_array_type.from_buffer(packet), nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc(rv)
+    return None
+
 def cwipc_from_certh(certhPC, timestamp, origin=None, bbox=None):
     """Create a cwipc from a CERTH PointCloud structure (address passed as ctypes.c_void_p)"""
     if not isinstance(certhPC, ctypes.c_void_p):

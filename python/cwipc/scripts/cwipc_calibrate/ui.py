@@ -47,7 +47,7 @@ class UI:
     def pick_points(self, title, pc, from000=False):
         vis = open3d.visualization.VisualizerWithEditing()
         vis.create_window(window_name=title, width=960, height=540, left=self.winpos, top=self.winpos)
-        self.winpos += 50
+        #self.winpos += 50
         vis.add_geometry(pc.get_o3d())
         if from000:
             viewControl = vis.get_view_control()
@@ -61,7 +61,7 @@ class UI:
     def show_points(self, title, pc, from000=False):
         vis = open3d.visualization.Visualizer()
         vis.create_window(window_name=title, width=960, height=540, left=self.winpos, top=self.winpos)
-        self.winpos += 50
+        #self.winpos += 50
         vis.add_geometry(pc.get_o3d())
         # Draw 1 meter axes (x=red, y=green, z=blue)
         axes = open3d.geometry.LineSet()

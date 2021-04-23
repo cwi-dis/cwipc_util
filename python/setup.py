@@ -39,7 +39,7 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='2.9.0',  # Required
+    version='5.1',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -116,7 +116,7 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['numpy', 'open3d'],
+    install_requires=['numpy', 'open3d', 'Pillow'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
@@ -156,6 +156,7 @@ setup(
     # executes the function `main` from this package when invoked:
     entry_points={  # Optional
         'console_scripts': [
+            'cwipc_grab=cwipc.scripts.cwipc_grab:main',
             'cwipc_view=cwipc.scripts.cwipc_view:main',
             'cwipc_calibrate=cwipc.scripts.cwipc_calibrate:main',
             'cwipc_toproxy=cwipc.scripts.cwipc_toproxy:main',
