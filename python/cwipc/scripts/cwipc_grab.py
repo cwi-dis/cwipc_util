@@ -58,9 +58,13 @@ class FileWriter:
             filename = self.pcpattern.format(timestamp=pc.timestamp(), count=self.count)
             ext = os.path.splitext(filename)[1].lower()
             if ext == '.ply':
-                cwipc.cwipc_write(filename, pc)
-                if self.verbose:
-                    print(f"writer: wrote pointcloud to {filename}")
+                try:
+                    cwipc.cwipc_write(filename, pc)
+                    if self.verbose:
+                        print(f"writer: wrote pointcloud to {filename}")
+                except cwipc.CwipcError as e:
+                    print(f"writer: error: {e}")
+                    self.error_encountered = True
             elif ext == '.cwipcdump':
                 cwipc.cwipc_write_debugdump(filename, pc)
                 if self.verbose:
