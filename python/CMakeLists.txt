@@ -31,7 +31,7 @@ endif()
 
 
 if(Python3_FOUND)
-	set(ALL_PYTHON_TESTS run_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate)
+	set(ALL_PYTHON_TESTS printenv run_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate)
 	#
 	# Create venv for testing, and re-set Python3_EXECUTABLE to that Python.
 	# But: enable use of system-installed packages, because otherwise CI/CD will take forever.
@@ -54,6 +54,9 @@ if(Python3_FOUND)
     #
     # Run the unittests
     #
+	add_test(NAME printenv
+		COMMAND ${Python3_EXECUTABLE} -c "import os ; print(os.environ)"
+		)
 	add_test(NAME run_python_tests
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
 	)
@@ -85,9 +88,10 @@ if(Python3_FOUND)
 		)
 	endif()
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+		string(REPLACE ";" "\\;" prevpath "$ENV{PATH}")
 		set_property(
 			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}\;${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\;%PATH%"
+			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}Release\;${prevpath}"
 		)
 	endif()
 endif()
