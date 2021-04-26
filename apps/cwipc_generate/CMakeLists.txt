@@ -10,4 +10,4 @@ target_link_libraries(cwipc_generate cwipc_util ${PCL_LIBRARIES})
 
 install(TARGETS cwipc_generate RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_test(NAME cwipc_generate COMMAND cwipc_generate 6 . )
+add_test(NAME cwipc_generate COMMAND cwipc_generate 2 . )
