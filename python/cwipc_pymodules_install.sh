@@ -1,6 +1,7 @@
 #!/bin/sh
 # Find Actual INSTALL_PREFIX
 bindir=`dirname $0`
+bindir=`cd $bindir ; pwd`
 installdir=`cd $bindir/.. ; pwd`
 sharedir="$installdir/share"
 # Determine Python to use: python3 on linux/osx, python on windows, or embeddable python
@@ -11,16 +12,18 @@ fi
 if [ -f "$installdir/python37embedded/python.exe" ]; then
 	python3="$installdir/python37embedded/python.exe"
 fi
-python3 -m pip install importlib.metadata
-(cd "$sharedir/cwipc_util/python" ; "$python3" setup.py install)
+"$python3" -m pip install importlib.metadata
+"$python3" -m pip  install "$sharedir/cwipc_util/python"
 if [ -d "$sharedir/cwipc_realsense2/python" ]; then
-	(cd "$sharedir/cwipc_realsense2/python" ; "$python3" setup.py install)
+	"$python3" -m pip install "$sharedir/cwipc_realsense2/python"
 fi
 if [ -d "$sharedir/cwipc_kinect/python" ]; then
-	(cd "$sharedir/cwipc_kinect/python" ; "$python3" setup.py install)
+	"$python3" -m pip install "$sharedir/cwipc_kinect/python"
 fi
-(cd "$sharedir/cwipc_codec/python" ; "$python3" setup.py install)
-# Finally, if we have installed into an embedded Python, copy phython-based programs into bin
+"$python3" -m pip install "$sharedir/cwipc_codec/python"
+#
+# Finally, link python-based programs into bin
+#
 if [ -d "$installdir/bin" -a -d "$installdir/python37embedded/Scripts" ]; then
-	ln -f "$installdir/python37embedded/Scripts/cwipc_"* "$installdir/bin/"
+    ln -f "$installdir/python37embedded/Scripts/cwipc_"* "$installdir/bin/"
 fi

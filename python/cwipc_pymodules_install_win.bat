@@ -8,24 +8,16 @@ if exist %bindir%..\python37embedded\python.exe (
 	set python="%bindir%..\python37embedded\python.exe"
 )
 %python% -m pip install importlib.metadata
-pushd %bindir%..\share\cwipc_util\python
-%python% setup.py install
-popd
+%python% -m pip install %bindir%..\share\cwipc_util\python
 if exist %bindir%..\share\cwipc_realsense2\python\setup.py (
-	pushd %bindir%..\share\cwipc_realsense2\python
-	%python% setup.py install
-	popd
+	%python% -m pip install %bindir%..\share\cwipc_realsense2\python
 )
 if exist %bindir%..\share\cwipc_kinect\python\setup.py (
-	pushd %bindir%..\share\cwipc_kinect\python
-	%python% setup.py install
-	popd
+	%python% -m pip install %bindir%..\share\cwipc_kinect\python
 )
-pushd %bindir%..\share\cwipc_codec\python
-%python% setup.py install
-popd
+%python% -m pip install %bindir%..\share\cwipc_codec\python
 pushd %bindir%..
 if exist %bindir%..\python37embedded\Scripts\ (
-	xcopy /y "%bindir%..\python37embedded\Scripts\cwipc_*" "%bindir%..\bin"
+    xcopy /y "%bindir%..\python37embedded\Scripts\cwipc_*" "%bindir%..\bin"
 )
 popd
