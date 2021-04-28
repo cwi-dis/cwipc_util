@@ -63,6 +63,13 @@ def cwipc_genericsource_factory(args):
             sys.exit(-1)
         source = cwipc.kinect.cwipc_kinect
         name = 'kinect'
+    elif args.k4aoffline:
+        if cwipc.kinect == None or not hasattr(cwipc.kinect, 'cwipc_k4aoffline'):
+            print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
+            sys.exit(-1)
+        source = cwipc.kinect.cwipc_k4aoffline
+        name = 'kinect' # xxxjack unsure about this: do we treat kinect live and offline the same?
+    
     elif args.synthetic:
         source = lambda : cwipc.cwipc_synthetic(fps=args.fps, npoints=args.npoints)
         name = None
@@ -168,6 +175,7 @@ class SourceServer:
 def GrabberArgumentParser(*args, **kwargs):
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
+    parser.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
