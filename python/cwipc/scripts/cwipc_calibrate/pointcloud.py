@@ -49,6 +49,7 @@ class Pointcloud:
     @classmethod
     def from_cwipc(klass, pc):
         """Create Pointcloud from cwipc"""
+        assert pc
         self = klass()
         self.cwipc = pc
         return self
@@ -56,6 +57,7 @@ class Pointcloud:
     @classmethod
     def from_o3d(klass, o3d):
         """Create Pointcloud from o3d pc"""
+        assert o3d
         self = klass()
         self.o3d = o3d
         return self
@@ -63,6 +65,7 @@ class Pointcloud:
     @classmethod
     def from_points(klass, points):
         """Create Pointcloud from list of xyzrgbt tuples"""
+        assert points
         self = klass()
         pc = cwipc.cwipc_from_points(points, 0)
         self.cwipc = pc
@@ -119,6 +122,7 @@ class Pointcloud:
         alltiles.sort()
         for tilenum in alltiles:
             tile_pc = cwipc.cwipc_tilefilter(self.cwipc, tilenum)
+            assert tile_pc
             rv.append(self.__class__.from_cwipc(tile_pc))
         return rv
         
