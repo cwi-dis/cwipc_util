@@ -142,7 +142,7 @@ def main():
     parser.add_argument("--rgb", action="store", metavar="EXT", help="Save RGB auxiliary data as images of type EXT")
     parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
     parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton auxiliary data as files of type EXT")
-    parser.add_argument("--fpattern", action="store", metavar="VAR", default="timestamp", help="Construct filenames using VAR, which can be count or timestamp (default)")
+    parser.add_argument("--fpattern", action="store", metavar="VAR", default="count:04d", help="Construct filenames using VAR, which can be count or timestamp (default)")
     parser.add_argument("--all", action="store_true", help="Attempt to store all captures, at the expense of horrendous memory usage. Requires --count")
     parser.add_argument("outputdir", action="store", help="Save output files in this directory")
 
