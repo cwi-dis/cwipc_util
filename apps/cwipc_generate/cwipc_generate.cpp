@@ -24,6 +24,7 @@ int main(int argc, char** argv)
     	cwipc *pc = generator->get();
     	snprintf(filename, sizeof(filename), "%s/pointcloud-%llu.ply", argv[2], pc->timestamp());
     	ok = cwipc_write(filename, pc, &error);
+        pc->free();
     }
     if (ok < 0) {
     	std::cerr << "Error: " << error << std::endl;

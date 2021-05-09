@@ -419,9 +419,11 @@ cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessa
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
         if (errorMessage) *errorMessage = (char *)"Write output file failed";
         fclose(fp);
+        free(dataBuf);
         return -1;
     }
     fclose(fp);
+    free(dataBuf);
     return 0;
 }
 
