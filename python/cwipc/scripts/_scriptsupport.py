@@ -83,10 +83,10 @@ def cwipc_genericsource_factory(args):
         source = lambda : cwipc.certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
         name = None
     elif args.file:
-        source = lambda : cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=True)
+        source = lambda : cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=args.loop)
         name = None
     elif args.dir:
-        source = lambda : cwipc.playback.cwipc_playback(args.dir, ply=not args.dump, fps=args.fps, loop=True)
+        source = lambda : cwipc.playback.cwipc_playback(args.dir, ply=not args.dump, fps=args.fps, loop=args.loop)
         name = None
     else:
         if cwipc.realsense2 == None:
@@ -183,8 +183,9 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
     parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
+    parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dir")
+    parser.add_argument("--loop", action="store_true", help="With --file or --dir loop the contents in stead of terminating after the last file")
     parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
-    parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dump")
     parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS", default=0)
     return parser
     
