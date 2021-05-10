@@ -82,12 +82,23 @@ def cwipc_genericsource_factory(args):
             sys.exit(-1)
         source = lambda : cwipc.certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
         name = None
-    elif args.file:
-        source = lambda : cwipc.playback.cwipc_playback([args.file], ply=not args.dump, fps=args.fps, loop=args.loop)
-        name = None
-    elif args.dir:
-        source = lambda : cwipc.playback.cwipc_playback(args.dir, ply=not args.dump, fps=args.fps, loop=args.loop)
-        name = None
+    elif args.playback:
+        if not os.path.isdir(args.playback):
+            filename = args.playback
+            playback_type = _guess_playback_type([filename])
+            if playback_type not in ('ply', 'dump'):
+                print(f'{sys.argv[0]}: {filename}: unknown playback file type')
+                sys.exit(-1)
+            source = lambda : cwipc.playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop)
+            name = None
+        else:
+            dirname = args.playback
+            playback_type = _guess_playback_type(os.listdir(dirname))
+            if playback_type not in ('ply', 'dump'):
+                print(f'{sys.argv[0]}: {dirname}: should contain only .ply or .cwipcdump files')
+                sys.exit(-1)
+            source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop)
+            name = None
     else:
         if cwipc.realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
@@ -96,6 +107,21 @@ def cwipc_genericsource_factory(args):
         name = 'realsense'
     return source, name
 
+def _guess_playback_type(filenames):
+    has_ply = False
+    has_dump = False
+    for fn in filenames:
+        if fn.lower().endswith('.ply'): has_ply = True
+        if fn.lower().endswith('.cwipcdump'): has_dump = True
+    if has_ply and has_dump:
+        return None     # Cop-out: if we have both ply and dump files we don't know
+    if has_ply:
+        return 'ply'
+    if has_dump:
+        return 'dump'
+    # xxxjack Here we could check for cameraconfig.xml and return 'k4aoffline' to unify that too....
+    return None
+    
 class SourceServer:
     """Wrapper class around cwipc_grabber.
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
@@ -182,9 +208,8 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
-    parser.add_argument("--dir", action="store", metavar="DIR", help="Continually show pointclouds from ply files in DIR in alphabetical order")
-    parser.add_argument("--dump", action="store_true", help="Playback .cwipcdump files in stead of .ply files with --file or --dir")
-    parser.add_argument("--loop", action="store_true", help="With --file or --dir loop the contents in stead of terminating after the last file")
+    parser.add_argument("--playback", action="store", metavar="PATH", help="Read pointclouds from ply or cwipcdump file or directory (in alphabetical order)")
+    parser.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
     parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS", default=0)
     return parser
