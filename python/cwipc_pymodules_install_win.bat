@@ -8,7 +8,7 @@ if exist "%bindir%..\python37embedded\python.exe" (
 	set python="%bindir%..\python37embedded\python.exe"
 )
 %python% -m pip install importlib.metadata
-%python% -m pip install %bindir%..\share\cwipc_util\python
+%python% -m pip install "%bindir%..\share\cwipc_util\python"
 if exist "%bindir%..\share\cwipc_realsense2\python\setup.py" (
 	%python% -m pip install "%bindir%..\share\cwipc_realsense2\python"
 )
