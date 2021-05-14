@@ -11,6 +11,8 @@ if ! python3 --version >/dev/null 2>&1 ; then
 fi
 if [ -f "$installdir/python37embedded/python.exe" ]; then
 	python3="$installdir/python37embedded/python.exe"
+	# Workaround for embedded Python: add . to pythonpath
+	echo 'import sys ; sys.path.insert(0, "")' >> "$installdir/python37embedded/Lib/site-packages/sitecustomize.py"
 fi
 "$python3" -m pip install importlib.metadata
 "$python3" -m pip  install "$sharedir/cwipc_util/python"

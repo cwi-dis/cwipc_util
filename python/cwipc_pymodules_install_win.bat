@@ -6,6 +6,7 @@ set bindir=%~dp0
 set python=python
 if exist "%bindir%..\python37embedded\python.exe" (
 	set python="%bindir%..\python37embedded\python.exe"
+	echo "import sys ; sys.path.insert(0,'')" >> "%bindir%../python37embedded/Lib/site-packages/sitecustomize.py"
 )
 %python% -m pip install importlib.metadata
 %python% -m pip install "%bindir%..\share\cwipc_util\python"
