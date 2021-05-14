@@ -15,8 +15,10 @@ space         Pause/resume
 mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
-0,1,2,4,8     Select single tile to view ( 0=All )
+0-9           Select single tile to view ( 0=All )
+n             Select next tile to view
 a             Show all tiles
+m             Toggle tile selection mask/index mode
 w             Write PLY file
 ?,h           Help
 q             Quit
@@ -30,6 +32,7 @@ q             Quit
         self.cur_pc = None
         self.paused = False
         self.tilefilter = None
+        self.tilefilter_mask = True
         self.start_window()
         
     def set_producer(self, producer):
@@ -70,13 +73,15 @@ q             Quit
             pc_to_show = pc
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
+                if self.verbose:
+                    print(f'display: selected {pc_to_show.count()} of {pc.count()} points')                  
             ok = self.visualiser.feed(pc_to_show, True)
             if pc_to_show != pc:
                 pc_to_show.free()
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?hq +-cwa012345678", 30) 
+        cmd = self.visualiser.interact(None, "?hq +-cwamn0123456789", 30) 
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
@@ -89,17 +94,31 @@ q             Quit
             self.paused = not self.paused
         elif cmd == 'a':
             self.tilefilter = None
+            print("Showing all tiles")
+        elif cmd == 'm':
+            self.tilefilter_mask = not self.tilefilter_mask
+            print(f"tilefilter mask mode: {self.tilefilter_mask}. Showing all tiles", flush=True)
+            self.tilefilter = None
+        elif cmd == 'n':
+            if not self.tilefilter:
+                self.tilefilter = 1
+            else:
+                self.tilefilter = self.tilefilter + 1
+            print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
         elif cmd in '0123456789':
             if int(cmd) == 0:
                 self.tilefilter = 0
-                print("Showing all tiles")
+                print("Showing all tiles", flush=True)
             else:
-                self.tilefilter = pow(2,int(cmd)-1)
-                print("Showing tile =",self.tilefilter)
+                if self.tilefilter_mask:
+                    self.tilefilter = pow(2,int(cmd)-1)
+                else:
+                    self.tilefilter = int(cmd)
+                print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
         elif cmd == '\0':
             pass
         else: #c to crash and print stack trace
-            print(HELP)
+            print(HELP, flush=True)
         return True
     
 def main():
