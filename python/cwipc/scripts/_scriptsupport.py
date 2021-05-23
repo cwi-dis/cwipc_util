@@ -127,11 +127,13 @@ class SourceServer:
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
     At the end statistics can be printed."""
     
-    def __init__(self, grabber, viewer=None, count=None, verbose=False):
+    def __init__(self, grabber, viewer=None, count=None, inpoint=None, outpoint=None, verbose=False):
         self.verbose = verbose
         self.grabber = grabber
         self.viewer = viewer
         self.count = count
+        self.inpoint = inpoint
+        self.outpoint = outpoint
         self.times_grab = []
         self.pointcounts_grab = []
         self.stopped = False
@@ -172,7 +174,15 @@ class SourceServer:
                 self.pointcounts_grab.append(pc.count())
                 if self.verbose: print(f'grab: captured {pc.count()} points')
                 t1 = time.time()
-                if self.viewer: self.viewer.feed(pc)
+                if self.viewer: 
+                    t = pc.timestamp()
+                    if self.inpoint and t<self.inpoint:
+                        continue
+                    if self.outpoint and t>self.outpoint:
+                        self.count = 0
+                        self.stop()
+                        continue
+                    self.viewer.feed(pc)
             self.times_grab.append(t1-t0)
             if self.count != None:
                 self.count -= 1
@@ -218,4 +228,6 @@ def ArgumentParser(*args, **kwargs):
     parser = GrabberArgumentParser(*args, **kwargs)
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
+    parser.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
+    parser.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     return parser

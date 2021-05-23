@@ -28,7 +28,7 @@ class FileWriter:
     def run(self):
         while (self.producer and self.producer.is_alive()) or not self.queue.empty():
             try:
-                pc = self.queue.get()
+                pc = self.queue.get(timeout=0.5)
                 self.count = self.count + 1
                 ok = self.save_pc(pc)
                 pc.free()
@@ -176,7 +176,10 @@ def main():
         source.request_auxiliary_data("skeleton")
     
     if args.all or args.k4aoffline: # to ensure we do not loose any frame because queue is full
-        kwargs = {'queuesize' : args.count}
+        if args.count:
+            kwargs = {'queuesize' : args.count}
+        else:
+            kwargs = {'queuesize' : 2000} # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
     else:
         kwargs = {}
     writer = FileWriter(
@@ -188,7 +191,7 @@ def main():
         **kwargs
         )
 
-    sourceServer = SourceServer(source, writer, count=args.count, verbose=args.verbose)
+    sourceServer = SourceServer(source, writer, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     writer.set_producer(sourceThread)
 
