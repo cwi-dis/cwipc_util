@@ -175,7 +175,7 @@ def main():
         skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
         source.request_auxiliary_data("skeleton")
     
-    if args.all:
+    if args.all or args.k4aoffline: # to ensure we do not loose any frame because queue is full
         kwargs = {'queuesize' : args.count}
     else:
         kwargs = {}
