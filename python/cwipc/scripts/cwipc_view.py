@@ -139,14 +139,14 @@ def main():
     #
     # Create source
     #
-    sourceFactory, _ = cwipc_genericsource_factory(args)
+    sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
     if not args.nodisplay:
         visualizer = Visualizer(args.verbose, nodrop=args.nodrop)
     else:
         visualizer = None
 
-    sourceServer = SourceServer(source, visualizer, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose)
+    sourceServer = SourceServer(source, visualizer, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if visualizer:
         visualizer.set_producer(sourceThread)

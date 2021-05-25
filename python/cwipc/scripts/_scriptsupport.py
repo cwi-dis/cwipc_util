@@ -68,7 +68,7 @@ def cwipc_genericsource_factory(args):
             print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
             sys.exit(-1)
         source = cwipc.kinect.cwipc_k4aoffline
-        name = 'kinect' # xxxjack unsure about this: do we treat kinect live and offline the same?
+        name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
     
     elif args.synthetic:
         source = lambda : cwipc.cwipc_synthetic(fps=args.fps, npoints=args.npoints)
@@ -89,16 +89,16 @@ def cwipc_genericsource_factory(args):
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {filename}: unknown playback file type')
                 sys.exit(-1)
-            source = lambda : cwipc.playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop)
-            name = None
+            source = lambda : cwipc.playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            name = 'playback'
         else:
             dirname = args.playback
             playback_type = _guess_playback_type(os.listdir(dirname))
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {dirname}: should contain only .ply or .cwipcdump files')
                 sys.exit(-1)
-            source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop)
-            name = None
+            source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            name = 'playback'
     else:
         if cwipc.realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
@@ -127,7 +127,7 @@ class SourceServer:
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
     At the end statistics can be printed."""
     
-    def __init__(self, grabber, viewer=None, count=None, inpoint=None, outpoint=None, verbose=False):
+    def __init__(self, grabber, viewer=None, count=None, inpoint=None, outpoint=None, verbose=False, source_name=None):
         self.verbose = verbose
         self.grabber = grabber
         self.viewer = viewer
@@ -139,6 +139,7 @@ class SourceServer:
         self.stopped = False
         self.lastGrabTime = None
         self.fps = None
+        self.source_name = source_name
         
     def __del__(self):
         self.stopped = True
@@ -165,12 +166,13 @@ class SourceServer:
         
     def run(self):
         if self.inpoint:
-            result = self.grabber.seek(self.inpoint)
-            if result:
-                print(f'grab: seek to timestamp {self.inpoint} successfull', flush=True)
-            else:
-                print(f'grab: ERRROR : seek to timestamp {self.inpoint} failed', flush=True)
-                sys.exit(-1)
+            if self.source_name and self.source_name == 'k4aoffline':
+                result = self.grabber.seek(self.inpoint)
+                if result:
+                    print(f'grab: seek to timestamp {self.inpoint} successfull', flush=True)
+                else:
+                    print(f'grab: ERRROR : seek to timestamp {self.inpoint} failed', flush=True)
+                    sys.exit(-1)
         if self.verbose: print('grab: started', flush=True)
         while not self.stopped and not self.grabber.eof():
             t0 = time.time()

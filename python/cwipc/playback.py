@@ -41,7 +41,7 @@ class _DumpFilesource(_Filesource):
     def _get(self, fn):
         return cwipc.cwipc_read_debugdump(fn)        
     
-def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None):
+def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None, inpoint=None, outpoint=None):
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     if isinstance(dir_or_files, str):
         ext = ".ply" if ply else ".cwipcdump"
@@ -50,6 +50,14 @@ def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None):
             raise cwipc.CwipcError(f"No {ext} files in {dir_or_files}")
         filenames = sorted(filenames)
         filenames = list(filenames)
+                
+        #remove files based on inpoint and/or outpoint
+        if inpoint:
+            filenames = [fn for fn in filenames if not int(''.join(x for x in fn if x.isdigit())) < inpoint]
+            
+        if outpoint:
+            filenames = [fn for fn in filenames if not int(''.join(x for x in fn if x.isdigit())) > outpoint]
+        
         filenames = map(lambda fn: os.path.join(dir_or_files, fn), filenames)
         filenames = list(filenames)
         dir_or_files = filenames
