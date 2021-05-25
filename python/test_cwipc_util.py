@@ -160,6 +160,14 @@ class TestApi(unittest.TestCase):
         pc2 = cwipc.cwipc_read(filename, 0)
         self.assertEqual(list(pc.get_points()), list(pc2.get_points()))
     
+    def test_cwipc_write_binary(self):
+        """Can we write a cwipc to a ply file and read it back?"""
+        pc = self._build_pointcloud()
+        filename = os.path.join(TEST_OUTPUT_DIR, 'test_cwipc_write.ply')
+        cwipc.cwipc_write(filename, pc, cwipc.CWIPC_FLAGS_BINARY)
+        pc2 = cwipc.cwipc_read(filename, 0)
+        self.assertEqual(list(pc.get_points()), list(pc2.get_points()))
+        
     def test_cwipc_write_nonexistent(self):
         """When we write a cwipc from a nonexistent ply file do we get an exception?"""
         pc = self._build_pointcloud()

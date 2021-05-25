@@ -325,6 +325,22 @@ cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage)
 	return status;
 }
 
+int
+cwipc_write_ext(const char* filename, cwipc* pointcloud, int flag, char** errorMessage)
+{
+    cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
+    if (pc == NULL) {
+        if (errorMessage) *errorMessage = (char*)"Not yet implemented";
+        return -1;
+    }
+    pcl::PLYWriter writer;
+    int status = writer.write(filename, *pc, flag&CWIPC_FLAG_BINARY);
+    if (status < 0) {
+        if (errorMessage) *errorMessage = (char*)"Saving of PLY file failed";
+    }
+    return status;
+}
+
 cwipc *
 cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion)
 {

@@ -11,7 +11,7 @@ from PIL import Image
 from ._scriptsupport import *
 
 class FileWriter:
-    def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False):
+    def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False, flags=0):
         self.producer = None
         self.queue = queue.Queue(maxsize=queuesize)
         self.nodrop = nodrop
@@ -21,6 +21,7 @@ class FileWriter:
         self.depthpattern = depthpattern
         self.skeletonpattern = skeletonpattern
         self.count = 0
+        self.flags = flags
         self.error_encountered = False
         
     def set_producer(self, producer):
@@ -63,7 +64,7 @@ class FileWriter:
             ext = os.path.splitext(filename)[1].lower()
             if ext == '.ply':
                 try:
-                    cwipc.cwipc_write(filename, pc)
+                    cwipc.cwipc_write(filename, pc, self.flags)
                     if self.verbose:
                         print(f"writer: wrote pointcloud to {filename}")
                 except cwipc.CwipcError as e:
@@ -143,6 +144,7 @@ def main():
     parser = ArgumentParser(description="Capture and save pointclouds")
     parser.add_argument("--nopointclouds", action="store_true", help="Don't save pointclouds")
     parser.add_argument("--cwipcdump", action="store_true", help="Save pointclouds as .cwipcdump (default: .ply)")
+    parser.add_argument("--binary", action="store_true", help="Save pointclouds as binary .ply (default: ASCII .ply)")
     parser.add_argument("--rgb", action="store", metavar="EXT", help="Save RGB auxiliary data as images of type EXT")
     parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
     parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton auxiliary data as files of type EXT")
@@ -179,6 +181,7 @@ def main():
     if args.skeleton:
         skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
         source.request_auxiliary_data("skeleton")
+        
     kwargs = {}
     if args.incore: # Attempt realtime capturing by storing all frames incore
         if args.count:
@@ -187,6 +190,8 @@ def main():
             kwargs['queuesize'] = 2000 # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
     if args.nodrop:
         kwargs['nodrop'] = True
+    if args.binary:
+        kwargs['flags'] = cwipc.CWIPC_FLAGS_BINARY
     writer = FileWriter(
         pcpattern=pcpattern,
         rgbpattern=rgbpattern,

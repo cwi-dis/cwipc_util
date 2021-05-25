@@ -5,6 +5,7 @@ import warnings
 __all__ = [
     'CWIPC_API_VERSION',
     'CWIPC_POINT_PACKETHEADER_MAGIC',
+    'CWIPC_FLAGS_BINARY',
     'CwipcError',
     
     'cwipc',
@@ -31,7 +32,7 @@ __all__ = [
     'cwipc_tilefilter'
 ]
 
-CWIPC_API_VERSION = 0x20210420
+CWIPC_API_VERSION = 0x20210525
 
 class CwipcError(RuntimeError):
     pass
@@ -139,6 +140,8 @@ class cwipc_point_packetheader(ctypes.Structure):
     ]
     
 CWIPC_POINT_PACKETHEADER_MAGIC = 0x20210208
+
+CWIPC_FLAGS_BINARY = 1
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
@@ -157,8 +160,8 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
     
-    _cwipc_util_dll_reference.cwipc_write.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.POINTER(ctypes.c_char_p)]
-    _cwipc_util_dll_reference.cwipc_write.restype = int
+    _cwipc_util_dll_reference.cwipc_write_ext.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_write_ext.restype = int
     
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
@@ -527,10 +530,10 @@ def cwipc_read(filename, timestamp):
         return cwipc(rv)
     return None
     
-def cwipc_write(filename, pointcloud):
+def cwipc_write(filename, pointcloud, flags=0):
     """Write a cwipc object to a .ply file."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_write(filename.encode('utf8'), pointcloud._as_cwipc_p(), ctypes.byref(errorString))
+    rv = _cwipc_util_dll().cwipc_write_ext(filename.encode('utf8'), pointcloud._as_cwipc_p(), flags, ctypes.byref(errorString))
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     return rv

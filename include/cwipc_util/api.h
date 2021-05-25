@@ -23,7 +23,7 @@
  * Version of the current API of cwipc. Pass to constructors to ensure library
  * compatibility.
  */
-#define CWIPC_API_VERSION 0x20210420
+#define CWIPC_API_VERSION 0x20210525
 
 /** \brief Version of oldest compatible cwipc API.
  *
@@ -38,6 +38,10 @@
 /** \brief Magic number (version) of cwipcdump file format
  */
 #define CWIPC_CWIPCDUMP_VERSION 0x20210208
+
+ /** \brief flags for cwipc_write_ext. 1=write binary ply file
+  */
+#define CWIPC_FLAG_BINARY 1
 
 /** \brief Header of cwipcdump file
  * 
@@ -485,6 +489,18 @@ _CWIPC_UTIL_EXPORT cwipc *cwipc_read(const char *filename, uint64_t timestamp, c
  * a string with the message.
  */
 _CWIPC_UTIL_EXPORT int cwipc_write(const char *filename, cwipc *pc, char **errorMessage);
+
+/** \brief Write pointcloud to .ply file.
+ * \param filename The ply file to frite.
+ * \param pc The pointcloud to write.
+ * \param flag Pass CWIPC_FLAG_BINARY to write a binary file
+ * \param errorMessage Address of a char* where any error message is saved (or NULL).
+ * \return 0 on success, -1 on failure.
+ *
+ * If an error occurs and errorMessage is non-NULL it will receive a pointer to
+ * a string with the message.
+ */
+_CWIPC_UTIL_EXPORT int cwipc_write_ext(const char* filename, cwipc* pc,int flag, char** errorMessage);
 
 /** \brief Create cwipc pointcloud from external representation.
  * \param points Pointer to buffer with points.
