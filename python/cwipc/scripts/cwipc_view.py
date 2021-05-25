@@ -42,6 +42,9 @@ q             Quit
     def run(self):
         while self.producer and self.producer.is_alive():
             try:
+                if self.paused and self.nodrop:
+                    ok = self.draw_pc(None)
+                    continue
                 pc = self.queue.get(timeout=0.033)
                 if self.paused:
                     if pc: pc.free()
@@ -76,7 +79,8 @@ q             Quit
         if pc:
             pc_to_show = pc
             if self.verbose:
-                print(f'display: showing pointcloud t={pc.timestamp()}')
+                if not self.paused:
+                    print(f'display: showing pointcloud t={pc.timestamp()}')
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
