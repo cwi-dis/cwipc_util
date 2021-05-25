@@ -32,7 +32,10 @@ class _Filesource:
         return rv
         
     def _get(self, fn):
-        return cwipc.cwipc_read(fn, int(time.time()))        
+        numbers = ''.join(x for x in fn if x.isdigit())
+        if numbers == '':
+            numbers = 0
+        return cwipc.cwipc_read(fn, int(numbers))        
         
 class _DumpFilesource(_Filesource):
     def _get(self, fn):
