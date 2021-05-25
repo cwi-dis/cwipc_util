@@ -619,6 +619,12 @@ cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name)
     return src->auxiliary_data_requested(name);
 }
 
+bool
+cwipc_tiledsource_seek(cwipc_tiledsource* src, uint64_t timestamp)
+{
+    return src->seek(timestamp);
+}
+
 int
 cwipc_tiledsource_maxtile(cwipc_tiledsource *src)
 {

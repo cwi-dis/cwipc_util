@@ -164,6 +164,13 @@ class SourceServer:
         return pc
         
     def run(self):
+        if self.inpoint:
+            result = self.grabber.seek(self.inpoint)
+            if result:
+                print(f'grab: seek to timestamp {self.inpoint} successfull', flush=True)
+            else:
+                print(f'grab: ERRROR : seek to timestamp {self.inpoint} failed', flush=True)
+                sys.exit(-1)
         if self.verbose: print('grab: started', flush=True)
         while not self.stopped and not self.grabber.eof():
             t0 = time.time()
@@ -230,4 +237,5 @@ def ArgumentParser(*args, **kwargs):
     parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
     parser.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     parser.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
+    parser.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
     return parser

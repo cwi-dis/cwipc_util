@@ -24,13 +24,14 @@ w             Write PLY file
 q             Quit
     """
     
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, nodrop=False):
         self.visualiser = None
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
         self.paused = False
+        self.nodrop = nodrop
         self.tilefilter = None
         self.tilefilter_mask = True
         self.start_window()
@@ -56,7 +57,10 @@ q             Quit
         
     def feed(self, pc):
         try:
-            self.queue.put(pc, timeout=0.5)
+            if self.nodrop:
+                self.queue.put(pc)
+            else:
+                self.queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
@@ -71,6 +75,8 @@ q             Quit
         """Draw pointcloud"""
         if pc:
             pc_to_show = pc
+            if self.verbose:
+                print(f'display: showing pointcloud t={pc.timestamp()}')
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
@@ -132,11 +138,11 @@ def main():
     sourceFactory, _ = cwipc_genericsource_factory(args)
     source = sourceFactory()
     if not args.nodisplay:
-        visualizer = Visualizer(args.verbose)
+        visualizer = Visualizer(args.verbose, nodrop=args.nodrop)
     else:
         visualizer = None
 
-    sourceServer = SourceServer(source, visualizer, count=args.count, verbose=args.verbose)
+    sourceServer = SourceServer(source, visualizer, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if visualizer:
         visualizer.set_producer(sourceThread)
