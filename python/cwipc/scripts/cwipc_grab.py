@@ -11,9 +11,10 @@ from PIL import Image
 from ._scriptsupport import *
 
 class FileWriter:
-    def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2):
+    def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False):
         self.producer = None
         self.queue = queue.Queue(maxsize=queuesize)
+        self.nodrop = nodrop
         self.verbose = verbose
         self.pcpattern = pcpattern
         self.rgbpattern = rgbpattern
@@ -43,7 +44,10 @@ class FileWriter:
         
     def feed(self, pc):
         try:
-            self.queue.put(pc, timeout=0.5)
+            if self.nodrop:
+                self.queue.put(pc)
+            else:
+                self.queue.put(pc, timeout=0.5)
             if self.verbose:
                 print(f"writer: fed pointcloud {pc.timestamp()} to writer")
         except queue.Full:
@@ -143,7 +147,8 @@ def main():
     parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
     parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton auxiliary data as files of type EXT")
     parser.add_argument("--fpattern", action="store", metavar="VAR", default="count:04d", help="Construct filenames using VAR, which can be count or timestamp (default)")
-    parser.add_argument("--all", action="store_true", help="Attempt to store all captures, at the expense of horrendous memory usage. Requires --count")
+    parser.add_argument("--incore", action="store_true", help="Attempt to store all captures, at the expense of horrendous memory usage. Requires --count")
+    parser.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
     parser.add_argument("outputdir", action="store", help="Save output files in this directory")
 
     args = parser.parse_args()
@@ -174,14 +179,14 @@ def main():
     if args.skeleton:
         skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
         source.request_auxiliary_data("skeleton")
-    
-    if args.all or args.k4aoffline: # to ensure we do not loose any frame because queue is full
+    kwargs = {}
+    if args.incore: # Attempt realtime capturing by storing all frames incore
         if args.count:
-            kwargs = {'queuesize' : args.count}
+            kwargs['queuesize'] = args.count
         else:
-            kwargs = {'queuesize' : 2000} # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
-    else:
-        kwargs = {}
+            kwargs['queuesize'] = 2000 # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
+    if args.nodrop:
+        kwargs['nodrop'] = True
     writer = FileWriter(
         pcpattern=pcpattern,
         rgbpattern=rgbpattern,
@@ -202,11 +207,11 @@ def main():
     try:
         sourceThread.start()
 
-        if not args.all:
+        if not args.incore:
             ok = writer.run()
             
         sourceThread.join()
-        if args.all:
+        if args.incore:
             ok = writer.run()
     except KeyboardInterrupt:
         print("Interrupted.")
