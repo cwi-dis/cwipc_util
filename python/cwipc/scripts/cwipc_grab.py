@@ -6,6 +6,7 @@ import time
 import argparse
 import traceback
 import queue
+import numpy as np
 import cwipc
 from PIL import Image
 from ._scriptsupport import *
@@ -110,6 +111,8 @@ class FileWriter:
             except ValueError:
                 print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
                 return False
+            except AttributeError:
+                print("Couldn't save image {}".format(image))
         return True
 
     def parse_description(self, description):
@@ -124,8 +127,17 @@ class FileWriter:
             rv[k] = v
         return rv
         
+    def bgra_to_rgb(self, bgra_image):
+        bgra_image = bgra_image.convert("RGBA")
+        data = np.array(bgra_image) 
+        red, green, blue, alpha = data.T 
+        data = np.array([blue, green, red, alpha])
+        data = data.transpose()
+        return Image.fromarray(data)
+        
     def as_image(self, type, description, data):
         attrs = self.parse_description(description)
+        #print(f"attrs: {attrs}")
         width = attrs['width']
         height = attrs['height']
         if 'bpp' in attrs:
@@ -137,7 +149,20 @@ class FileWriter:
                 image_mode = 'I;16'
             image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
             return image
-        # xxxjack need to add support for kinect images
+        elif 'format' in attrs:
+            if attrs['format'] == 2:
+                image_mode = 'RGB'
+                bgra_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
+                rgb_image = self.bgra_to_rgb(bgra_image)
+            elif attrs['format'] == 3:
+                image_mode = 'RGBA'
+                bgra_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
+                rgb_image = self.bgra_to_rgb(bgra_image)
+            elif attrs['format'] == 4:
+                image_mode = 'I;16'
+                rgb_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
+            return rgb_image
+            
         
 def main():
     SetupStackDumper()
