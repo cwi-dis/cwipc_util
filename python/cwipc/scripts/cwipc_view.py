@@ -35,9 +35,13 @@ q             Quit
         self.tilefilter = None
         self.tilefilter_mask = True
         self.start_window()
+        self.stopped = False
         
     def set_producer(self, producer):
-        self.producer = producer    
+        self.producer = producer
+        
+    def is_alive(self):
+        return not self.stopped  
         
     def run(self):
         while self.producer and self.producer.is_alive():
@@ -57,6 +61,7 @@ q             Quit
                 if not ok: break
             except queue.Empty:
                 pass
+        self.stopped = True
         
     def feed(self, pc):
         try:
