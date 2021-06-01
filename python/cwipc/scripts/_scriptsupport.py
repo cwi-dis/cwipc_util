@@ -7,6 +7,7 @@ import traceback
 
 import cwipc
 import cwipc.playback
+import cwipc.net.netclient
 
 try:
     import cwipc.realsense2
@@ -99,6 +100,9 @@ def cwipc_genericsource_factory(args):
                 sys.exit(-1)
             source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
             name = 'playback'
+    elif args.netclient:
+        source = lambda : cwipc.net.netclient.cwipc_netclient(args.netclient)
+        name = None
     else:
         if cwipc.realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
@@ -222,7 +226,8 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     parser.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
-    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyser pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
+    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
+    parser.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
@@ -230,7 +235,7 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--playback", action="store", metavar="PATH", help="Read pointclouds from ply or cwipcdump file or directory (in alphabetical order)")
     parser.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
     parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
-    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS", default=0)
+    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some grabbers)", default=0)
     return parser
     
 def ArgumentParser(*args, **kwargs):
