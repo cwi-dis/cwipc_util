@@ -8,6 +8,7 @@ import traceback
 import cwipc
 import cwipc.playback
 import cwipc.net.netclient
+import cwipc.net.subsource
 
 try:
     import cwipc.realsense2
@@ -102,6 +103,9 @@ def cwipc_genericsource_factory(args):
             name = 'playback'
     elif args.netclient:
         source = lambda : cwipc.net.netclient.cwipc_netclient(args.netclient)
+        name = None
+    elif args.sub:
+        source = lambda : cwipc.net.subsource.cwipc_subsource(args.sub, verbose=args.verbose)
         name = None
     else:
         if cwipc.realsense2 == None:
@@ -228,6 +232,7 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
+    parser.add_argument("--sub", action="store", metavar="URL", help="View DASH compressed pointcloud stream from URL in stead of realsense2 camera")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
