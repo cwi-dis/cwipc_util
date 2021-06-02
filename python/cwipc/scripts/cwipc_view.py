@@ -15,6 +15,7 @@ space         Pause/resume
 mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
++/-           Increase/decrease point size
 0-9           Select single tile to view ( 0=All )
 n             Select next tile to view
 a             Show all tiles
@@ -36,6 +37,7 @@ q             Quit
         self.tilefilter_mask = True
         self.start_window()
         self.stopped = False
+        self.point_size_inc = 0.0
         
     def set_producer(self, producer):
         self.producer = producer
@@ -82,10 +84,11 @@ q             Quit
     def draw_pc(self, pc):
         """Draw pointcloud"""
         if pc:
+            pc._set_cellsize(pc.cellsize()+self.point_size_inc)
             pc_to_show = pc
             if self.verbose:
                 if not self.paused:
-                    print(f'display: showing pointcloud t={pc.timestamp()}')
+                    print(f'display: showing pointcloud t={pc.timestamp()} | cellsize={pc.cellsize()}')
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
@@ -103,7 +106,7 @@ q             Quit
             print(Visualizer.HELP)
         elif cmd == "w" and self.cur_pc:
             filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-            cwipc.cwipc_write(filename, self.cur_pc)
+            cwipc.cwipc_write(filename, self.cur_pc, True) #writing in binary
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
@@ -130,6 +133,10 @@ q             Quit
                 else:
                     self.tilefilter = int(cmd)
                 print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+        elif cmd == '+':
+            self.point_size_inc += float(0.001)
+        elif cmd == '-':
+            self.point_size_inc -= float(0.001)
         elif cmd == '\0':
             pass
         else: #c to crash and print stack trace
