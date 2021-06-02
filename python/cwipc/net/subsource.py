@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 import time
 import os
+import cwipc
 try:
     import cwipc.codec
 except ModuleNotFoundError:
