@@ -40,24 +40,24 @@ class _NetClientSource(threading.Thread):
         return self.queue.empty() and self._conn_refused
     
     def available(self, wait=False):
-        # xxxjack if wait==True should get and put
         if not self.queue.empty():
             return True
         if not wait:
             return False
+        # Note: the following code may reorder packets...
         try:
-            pc = self.queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-            if pc:
-                self.queue.put(pc)
-            return not not pc
+            packet = self.queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+            if packet:
+                self.queue.put(packet)
+            return not not packet
         except queue.Empty:
             return False
         
     def get(self):
         if self.eof():
             return None
-        pc = self.queue.get()
-        return pc
+        packet = self.queue.get()
+        return packet
 
     def run(self):
         if self.verbose: print(f"netclient: thread started")

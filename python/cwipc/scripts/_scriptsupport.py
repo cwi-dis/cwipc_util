@@ -106,7 +106,7 @@ def cwipc_genericsource_factory(args):
         source = lambda : cwipc.net.netdecoder.cwipc_netdecoder(cwipc.net.netclient.cwipc_netclient(args.netclient))
         name = None
     elif args.sub:
-        source = lambda : cwipc.net.subsource.cwipc_subsource(args.sub, verbose=args.verbose)
+        source = lambda : cwipc.net.netdecoder.cwipc_netdecoder(cwipc.net.subsource.cwipc_subsource(args.sub, verbose=args.verbose))
         name = None
     else:
         if cwipc.realsense2 == None:
