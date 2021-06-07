@@ -8,9 +8,9 @@ import cwipc
 class _NetClientSource(threading.Thread):
     
     QUEUE_WAIT_TIMEOUT=1
-    verbose=False
     
-    def __init__(self, address):
+    
+    def __init__(self, address, verbose=False):
         threading.Thread.__init__(self)
         hostname, port = address.split(':')
         if not hostname:
@@ -22,6 +22,7 @@ class _NetClientSource(threading.Thread):
         self.port = port
         self.running = False
         self._conn_refused = False
+        self.verbose = verbose
         self.queue = queue.Queue()
         
     def free(self):
@@ -34,6 +35,7 @@ class _NetClientSource(threading.Thread):
         
     def stop(self):
         self.running = False
+        self.queue.put(None)
         self.join()
         
     def eof(self):
@@ -42,7 +44,7 @@ class _NetClientSource(threading.Thread):
     def available(self, wait=False):
         if not self.queue.empty():
             return True
-        if not wait:
+        if not wait or self._conn_refused:
             return False
         # Note: the following code may reorder packets...
         try:
@@ -80,10 +82,11 @@ class _NetClientSource(threading.Thread):
                     packet += data
                 if self.verbose: print(f'netclient: received {len(packet)} bytes')
                 self.queue.put(packet)
+        self.queue.put(None)
         if self.verbose: print(f"netclient: thread exiting")
     
-def cwipc_source_netclient(address):
+def cwipc_source_netclient(address, verbose=False):
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
-    source = _NetClientSource(address)
+    source = _NetClientSource(address, verbose=False)
     return source
         

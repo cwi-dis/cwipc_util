@@ -142,16 +142,17 @@ class _SignalsUnityBridgeSource(threading.Thread):
         
     def stop(self):
         self.running = False
+        self.queue.put(None)
         if self.started:
             self.join()
         
     def eof(self):
-        return self.queue.empty() and not self.running
+        return not self.running or self.queue.empty() and not self.running
     
     def available(self, wait=False):
         if not self.queue.empty():
             return True
-        if not wait:
+        if not wait or not self.running:
             return False
         # Note: the following code may reorder packets...
         try:
@@ -229,6 +230,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
                 self.queue.put(packet)
         finally:
             self.running = False
+            self.queue.put(None)
         if self.verbose: print(f"source_sub: thread exiting")
         
     def _old_available(self, wait, streamIndex=None):

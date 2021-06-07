@@ -19,7 +19,7 @@ class _NetDecoder(threading.Thread):
         threading.Thread.__init__(self)
         self.source = source
         self.running = False
-        self.verbose = verbose
+        self.verbose = True # verbose
         self.queue = queue.Queue()
         
     def free(self):
@@ -33,16 +33,20 @@ class _NetDecoder(threading.Thread):
             self.source.start()
         
     def stop(self):
+        if self.verbose: print('netdecoder: stop')
         self.running = False
         if hasattr(self.source, 'stop'):
             self.source.stop()
+        self.queue.put(None)
         self.join()
         
     def eof(self):
-        return self.queue.empty() and self.source.eof()
+        return not self.running or self.queue.empty() and self.source.eof()
     
     def available(self, wait=False):
         # xxxjack if wait==True should get and put
+        if not self.running:
+            return False
         if not self.queue.empty():
             return True
         return self.source.available(wait)
@@ -60,7 +64,9 @@ class _NetDecoder(threading.Thread):
                 continue
             cpc = self.source.get()
             if not cpc:
-                if self.verbose: print(f'netdecoder: source.get returned no data')
+                print(f'netdecoder: source.get returned no data')
+                self.queue.put(None)
+                break
             pc = self._decompress(cpc)
             self.queue.put(pc)
             if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points')

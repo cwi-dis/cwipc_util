@@ -103,10 +103,26 @@ def cwipc_genericsource_factory(args):
             source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
             name = 'playback'
     elif args.netclient:
-        source = lambda : cwipc.net.source_decoder.cwipc_source_decoder(cwipc.net.source_netclient.cwipc_source_netclient(args.netclient))
+        source = lambda : (
+            cwipc.net.source_decoder.cwipc_source_decoder(
+                cwipc.net.source_netclient.cwipc_source_netclient(
+                    args.netclient,
+                    verbose=(args.verbose > 1)
+                    ),
+                verbose=(args.verbose > 1)
+                )
+            )
         name = None
     elif args.sub:
-        source = lambda : cwipc.net.source_decoder.cwipc_source_decoder(cwipc.net.source_sub.cwipc_source_sub(args.sub, verbose=args.verbose))
+        source = lambda : (
+            cwipc.net.source_decoder.cwipc_source_decoder(
+                cwipc.net.source_sub.cwipc_source_sub(
+                    args.sub, 
+                    verbose=(args.verbose > 1)
+                    ),
+                verbose=(args.verbose > 1)
+                )
+            )
         name = None
     else:
         if cwipc.realsense2 == None:
@@ -255,7 +271,7 @@ def GrabberArgumentParser(*args, **kwargs):
 def ArgumentParser(*args, **kwargs):
     parser = GrabberArgumentParser(*args, **kwargs)
     parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
-    parser.add_argument("--verbose", action="store_true", help="Print information about each pointcloud after it has been received")
+    parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud after it has been received. Double for even more verbosity.")
     parser.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     parser.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     parser.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
