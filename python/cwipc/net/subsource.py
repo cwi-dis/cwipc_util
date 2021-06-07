@@ -124,7 +124,9 @@ class _SignalsUnityBridgeSource:
         assert self.dll
         if self.verbose: print(f"_SignalsUnityBridgeSource: sub_play({self.url})")
         ok = self.dll.sub_play(self.handle, self.url.encode('utf8'))
-        if not ok: return False
+        if not ok:
+            if self.verbose: print(f"_SignalsUnityBridgeSource: sub_play returned false")
+            return False
         nstreams = self.dll.sub_get_stream_count(self.handle)
         if self.verbose: print(f"_SignalsUnityBridgeSource: sub_get_stream_count() -> {nstreams}")
         assert nstreams > self.streamIndex
@@ -153,12 +155,14 @@ class _SignalsUnityBridgeSource:
         assert self.handle
         assert self.dll
         assert self.started
+        if self.verbose: print(f"_SignalsUnityBridgeSource: sub_enable_stream(handle, {tileNum}, {quality})")
         return self.dll.sub_enable_stream(self.handle, tileNum, quality)
         
     def disable_stream(self, tileNum):
         assert self.handle
         assert self.dll
         assert self.started
+        if self.verbose: print(f"_SignalsUnityBridgeSource: sub_disable_stream(handle, {tileNum})")
         return self.dll.sub_disable_stream(self.handle, tileNum)
         
     def _read_cpc(self, streamIndex=None):
@@ -172,9 +176,9 @@ class _SignalsUnityBridgeSource:
         # We loop until sub_grab_frame returns a length != 0
         #
         while time.time() < startTime + EOF_TIME:
-            if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(..., {streamIndex})")
+            if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
             length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
-            if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(..., {streamIndex}) -> {length}")
+            if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
             if length != 0:
                 break
             time.sleep(SLEEP_TIME)
@@ -183,13 +187,14 @@ class _SignalsUnityBridgeSource:
         rv = bytearray(length)
         ptr_char = (ctypes.c_char * length).from_buffer(rv)
         ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
-        if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(..., {streamIndex}, {length})")
+        if self.verbose: print(f"_SignalsUnityBridgeSource: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
         length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
         if length2 != length:
             raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
         return rv
         
     def available(self, wait, streamIndex=None):
+        return True # xxxjack debug
         assert self.handle
         assert self.dll
         assert self.started

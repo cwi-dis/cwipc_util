@@ -144,6 +144,7 @@ class SourceServer:
         self.outpoint = outpoint
         self.times_grab = []
         self.pointcounts_grab = []
+        self.latency_grab = []
         self.stopped = False
         self.lastGrabTime = None
         self.fps = None
@@ -200,6 +201,7 @@ class SourceServer:
                         self.stop()
                         continue
                     self.viewer.feed(pc)
+                self.latency_grab.append(time.time()-(pc.timestamp()/1000.0))
             self.times_grab.append(t1-t0)
             if self.count != None:
                 self.count -= 1
@@ -210,6 +212,7 @@ class SourceServer:
     def statistics(self):
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
+        self.print1stat('capture_latency', self.latency_grab)
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)
