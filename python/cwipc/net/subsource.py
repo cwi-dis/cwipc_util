@@ -134,6 +134,9 @@ class _SignalsUnityBridgeSource:
         self.firstRead = True
         return True
         
+    def stop(self):
+        pass
+        
     def count(self):
         assert self.handle
         assert self.dll
@@ -225,13 +228,5 @@ def cwipc_subsource(address, verbose=False):
         raise RuntimeError("subsource requires cwipc.codec which is not available")
     _signals_unity_bridge_dll()
     src = _SignalsUnityBridgeSource(address, verbose=verbose)
-    if not src.start():
-        raise RuntimeError("subsource could not start() stream")
-    if verbose:
-        nstream = src.count()
-        print(f'cwipc_subsource: {nstream} streams:')
-        for i in range(nstream):
-            fourcc, bandwidth, quality = src.cpc_info_for_stream(i)
-            print(f'cwipc_subsource: stream {i}: fourcc={fourcc}, bandwidth={bandwidth}, quality={quality}')
     return src
         

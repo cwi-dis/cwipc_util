@@ -17,18 +17,30 @@ class _NetClientSource:
         port = int(port)
         self.hostname = hostname
         self.port = port
+        self.running = False
+        self._conn_refused = False
         
     def free(self):
         pass
         
+    def start(self):
+        assert not self.running
+        self.running = True
+        
+    def stop(self):
+        assert self.running
+        self.running = False
+        
     def eof(self):
-        return False
+        return self._conn_refused
     
     def available(self, wait=False):
         return True
         
     def get(self):
         data = self._read_cpc()
+        if not data:
+            return None
         pc = self._decompress(data)
         return pc
 
@@ -36,6 +48,9 @@ class _NetClientSource:
         with socket.socket() as s:
             try:
                 s.connect((self.hostname, self.port))
+            except ConnectionRefusedError:
+                self._conn_refused = True
+                return None
             except socket.error as err:
                 print('connecting to {}:{}: {}'.format(self.hostname, self.port, err))
                 raise
@@ -58,5 +73,6 @@ def cwipc_netclient(address):
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
     if cwipc.codec == None:
         raise RuntimeError("netclient requires cwipc.codec which is not available")
-    return _NetClientSource(address)
+    source = _NetClientSource(address)
+    return source
         

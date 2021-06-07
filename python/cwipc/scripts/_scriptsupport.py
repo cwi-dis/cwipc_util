@@ -149,6 +149,8 @@ class SourceServer:
         self.lastGrabTime = None
         self.fps = None
         self.source_name = source_name
+        if hasattr(self.grabber, 'start'):
+            self.grabber.start()
         
     def __del__(self):
         self.stopped = True
@@ -158,6 +160,8 @@ class SourceServer:
     def stop(self):
         if self.stopped: return
         if self.verbose: print("grab: stopping", flush=True)
+        if hasattr(self.grabber, 'stop'):
+            self.grabber.stop()
         self.stopped = True
         
     def grab_pc(self):
