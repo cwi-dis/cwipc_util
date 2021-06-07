@@ -26,9 +26,11 @@ def main():
         forwarder = encoder_factory(
             cwipc.net.sink_netserver.cwipc_sink_netserver(
                 args.port, 
-                verbose=(args.verbose > 1)
+                verbose=(args.verbose > 1),
+                nodrop=args.nodrop
             ),
-            verbose=(args.verbose > 1)
+            verbose=(args.verbose > 1),
+            nodrop=args.nodrop
         )
     else:
         forwarder = None

@@ -33,6 +33,7 @@ class _Sink_NetServer(threading.Thread):
     def stop(self):
         if self.verbose: print(f"netserver: stopping thread")
         self.stopped = True
+        self.socket.close()
         if self.started:
             self.join()
         
@@ -45,8 +46,10 @@ class _Sink_NetServer(threading.Thread):
     def run(self):
         if self.verbose: print(f"netserver: thread started")
         try:
-            while self.producer and self.producer.is_alive():
-                readable, _, _ = select.select([self.socket], [], [], self.SELECT_TIMEOUT)
+            while not self.stopped and self.producer and self.producer.is_alive():
+                readable, _, errorable = select.select([self.socket], [], [], self.SELECT_TIMEOUT)
+                if self.socket in errorable:
+                    continue
                 if self.socket in readable:
                     t1 = time.time()
                     connSocket, other = self.socket.accept()
@@ -104,6 +107,6 @@ class _Sink_NetServer(threading.Thread):
             fmtstring = 'netserver: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_netserver(port, verbose=False):
+def cwipc_sink_netserver(port, verbose=False, nodrop=False):
     """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
-    return _Sink_NetServer(port, verbose=verbose)
+    return _Sink_NetServer(port, verbose=verbose, nodrop=nodrop)

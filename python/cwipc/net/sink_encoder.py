@@ -20,6 +20,7 @@ class _Sink_Encoder(threading.Thread):
         threading.Thread.__init__(self)
         self.sink = sink
         self.producer = None
+        self.nodrop = nodrop
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
@@ -106,8 +107,8 @@ class _Sink_Encoder(threading.Thread):
             fmtstring = 'encoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_encoder(sink, verbose=False):
+def cwipc_sink_encoder(sink, verbose=False, nodrop=False):
     """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
     if cwipc.codec == None:
         raise RuntimeError("cwipc_sink_encoder: requires cwipc.codec with is not available")
-    return _Sink_Encoder(sink, verbose=verbose)
+    return _Sink_Encoder(sink, verbose=verbose, nodrop=nodrop)
