@@ -88,7 +88,7 @@ q             Quit
             pc_to_show = pc
             if self.verbose:
                 if not self.paused:
-                    print(f'display: showing pointcloud t={pc.timestamp()} | cellsize={pc.cellsize()}')
+                    print(f'display: showing pointcloud timestamp={pc.timestamp()} cellsize={pc.cellsize()} latency={time.time() - pc.timestamp()/1000.0:.3f}')
             if self.tilefilter:
                 pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
