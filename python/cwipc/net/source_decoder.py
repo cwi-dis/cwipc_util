@@ -19,14 +19,16 @@ class _NetDecoder(threading.Thread):
         threading.Thread.__init__(self)
         self.source = source
         self.running = False
-        self.verbose = True # verbose
+        self.verbose = verbose
         self.queue = queue.Queue()
+        self.times_decode = []
         
     def free(self):
         pass
         
     def start(self):
         assert not self.running
+        if self.verbose: print('netdecoder: start')
         self.running = True
         threading.Thread.start(self)
         if hasattr(self.source, 'start'):
@@ -67,7 +69,10 @@ class _NetDecoder(threading.Thread):
                 print(f'netdecoder: source.get returned no data')
                 self.queue.put(None)
                 break
+            t1 = time.time()
             pc = self._decompress(cpc)
+            t2 = time.time()
+            self.times_decode.append(t2-t1)
             self.queue.put(pc)
             if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points')
         if self.verbose: print(f"netdecoder: thread exiting")
@@ -79,6 +84,25 @@ class _NetDecoder(threading.Thread):
         if not gotData: return None
         pc = decomp.get()
         return pc
+
+    def statistics(self):
+        self.print1stat('decodetime', self.times_decode)
+        if hasattr(self.source, 'statistics'):
+            self.source.statistics()
+        
+    def print1stat(self, name, values, isInt=False):
+        count = len(values)
+        if count == 0:
+            print('netdecoder: {}: count=0'.format(name))
+            return
+        minValue = min(values)
+        maxValue = max(values)
+        avgValue = sum(values) / count
+        if isInt:
+            fmtstring = 'netdecoder: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+        else:
+            fmtstring = 'netdecoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
     
 def cwipc_source_decoder(source, verbose=False):
     """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""

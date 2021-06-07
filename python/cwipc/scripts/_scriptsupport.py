@@ -235,6 +235,8 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
+        if hasattr(self.grabber, 'statistics'):
+            self.grabber.statistics()
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)

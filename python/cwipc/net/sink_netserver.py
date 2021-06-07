@@ -6,11 +6,6 @@ import time
 import queue
 import cwipc
 
-try:
-    import cwipc.codec
-except ModuleNotFoundError:
-    cwipc.codec = None
-
 class _Sink_NetServer(threading.Thread):
     
     SELECT_TIMEOUT=0.1
@@ -36,6 +31,7 @@ class _Sink_NetServer(threading.Thread):
         self.started = True
         
     def stop(self):
+        if self.verbose: print(f"netserver: stopping thread")
         self.stopped = True
         if self.started:
             self.join()
@@ -47,34 +43,36 @@ class _Sink_NetServer(threading.Thread):
         return not self.stopped  
         
     def run(self):
-        while self.producer and self.producer.is_alive():
-            readable, _, _ = select.select([self.socket], [], [], self.SELECT_TIMEOUT)
-            if self.socket in readable:
-                t1 = time.time()
-                connSocket, other = self.socket.accept()
-                if self.verbose:
-                    print(f"netserver: accepted connection from {other}")
-                data = self.queue.get()
-                connSocket.sendall(data)
-                connSocket.close()
-                t2 = time.time()
-                connSocket = None
-                self.times_forward.append(t2-t1)
-                datasize = len(data)
-                self.sizes_forward.append(datasize)
-                self.bandwidths_forward.append(datasize/(t2-t1))
-        self.stopped = True
+        if self.verbose: print(f"netserver: thread started")
+        try:
+            while self.producer and self.producer.is_alive():
+                readable, _, _ = select.select([self.socket], [], [], self.SELECT_TIMEOUT)
+                if self.socket in readable:
+                    t1 = time.time()
+                    connSocket, other = self.socket.accept()
+                    if self.verbose:
+                        print(f"netserver: accepted connection from {other}")
+                    data = self.queue.get()
+                    connSocket.sendall(data)
+                    connSocket.close()
+                    t2 = time.time()
+                    connSocket = None
+                    self.times_forward.append(t2-t1)
+                    datasize = len(data)
+                    self.sizes_forward.append(datasize)
+                    self.bandwidths_forward.append(datasize/(t2-t1))
+        finally:
+            self.stopped = True
+            if self.verbose: print(f"netserver: thread stopping")
         
-    def feed(self, pc):
-        cpc = self._encode_pc(pc)
+    def feed(self, data):
         try:
             if self.nodrop:
-                self.queue.put(cpc)
+                self.queue.put(data)
             else:
-                self.queue.put(cpc, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.queue.put(data, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
-            pass
-        pc.free()
+            if self.verbose: print(f"netserver: queue full, drop packet")            
     
     def _encode_pc(self, pc):
         encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)

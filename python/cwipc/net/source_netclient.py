@@ -24,16 +24,21 @@ class _NetClientSource(threading.Thread):
         self._conn_refused = False
         self.verbose = verbose
         self.queue = queue.Queue()
+        self.times_receive = []
+        self.sizes_receive = []
+        self.bandwidths_receive = []
         
     def free(self):
         pass
         
     def start(self):
         assert not self.running
+        if self.verbose: print('netclient: start')
         self.running = True
         threading.Thread.start(self)
         
     def stop(self):
+        if self.verbose: print('netclient: stop')
         self.running = False
         self.queue.put(None)
         self.join()
@@ -75,18 +80,42 @@ class _NetClientSource(threading.Thread):
                     print(f'netclient: connecting to {self.hostname}:{self.port}: {err}')
                     raise
                 if self.verbose: print(f'netclient: connected')
+                t1 = time.time()
                 packet = b''
                 while True:
                     data = s.recv(8192)
                     if not data: break
                     packet += data
+                t2 = time.time()
+                self.times_receive.append(t2-t1)
+                self.sizes_receive.append(len(packet))
+                self.bandwidths_receive.append(len(packet)/(t2-t1))
                 if self.verbose: print(f'netclient: received {len(packet)} bytes')
                 self.queue.put(packet)
         self.queue.put(None)
         if self.verbose: print(f"netclient: thread exiting")
+
+    def statistics(self):
+        self.print1stat('receive_duration', self.times_receive)
+        self.print1stat('packetsize', self.sizes_receive, isInt=True)
+        self.print1stat('bandwidth', self.times_receive)
+        
+    def print1stat(self, name, values, isInt=False):
+        count = len(values)
+        if count == 0:
+            print('netclient: {}: count=0'.format(name))
+            return
+        minValue = min(values)
+        maxValue = max(values)
+        avgValue = sum(values) / count
+        if isInt:
+            fmtstring = 'netclient: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+        else:
+            fmtstring = 'netclient: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
     
 def cwipc_source_netclient(address, verbose=False):
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
-    source = _NetClientSource(address, verbose=False)
+    source = _NetClientSource(address, verbose=verbose)
     return source
         

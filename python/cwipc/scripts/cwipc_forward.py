@@ -7,6 +7,7 @@ import argparse
 import traceback
 import cwipc
 import cwipc.net.sink_netserver
+import cwipc.net.sink_encoder
 from ._scriptsupport import *
 
 def main():
@@ -20,8 +21,15 @@ def main():
     #
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
+    encoder_factory = cwipc.net.sink_encoder.cwipc_sink_encoder
     if not args.noforward:
-        forwarder = cwipc.net.sink_netserver.cwipc_sink_netserver(args.port, verbose=args.verbose)
+        forwarder = encoder_factory(
+            cwipc.net.sink_netserver.cwipc_sink_netserver(
+                args.port, 
+                verbose=(args.verbose > 1)
+            ),
+            verbose=(args.verbose > 1)
+        )
     else:
         forwarder = None
 
