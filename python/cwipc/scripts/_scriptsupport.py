@@ -190,6 +190,7 @@ class SourceServer:
                 continue
             else:
                 self.pointcounts_grab.append(pc.count())
+                pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
                 t1 = time.time()
                 if self.viewer: 
@@ -201,7 +202,7 @@ class SourceServer:
                         self.stop()
                         continue
                     self.viewer.feed(pc)
-                self.latency_grab.append(time.time()-(pc.timestamp()/1000.0))
+                self.latency_grab.append(time.time()-pc_timestamp)
             self.times_grab.append(t1-t0)
             if self.count != None:
                 self.count -= 1
