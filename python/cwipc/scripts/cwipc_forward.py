@@ -8,6 +8,7 @@ import traceback
 import cwipc
 import cwipc.net.sink_netserver
 import cwipc.net.sink_encoder
+import cwipc.net.sink_bin2dash
 from ._scriptsupport import *
 
 def main():
@@ -15,14 +16,44 @@ def main():
     parser = ArgumentParser(description="Forward pointcloud streams", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--noforward", action="store_true", help="Don't forward pointclouds, only prints statistics at the end")
     parser.add_argument("--port", action="store", default=4303, type=int, metavar="PORT", help="Port to serve compressed pointclouds on (default: 4303)")
+    parser.add_argument("--bin2dash", action="store", metavar="URL", help="Send compressed data to bin2dash URL in stead of serving. Example URL:  https://vrt-evanescent.viaccess-orca.com/pctest/")
+    parser.add_argument("--seg_dur", action="store", type=int, metavar="MS", help="Bin2dash segment duration (milliseconds, default 10000)")
+    parser.add_argument("--timeshift_buffer", action="store", type=int, metavar="MS", help="Bin2dash timeshift buffer depth (milliseconds, default 30000)")
+#    parser.add_argument("--octree_bits", action="store", type=int, metavar="N", help="Override encoder parameter (depth of octree)")
+#    parser.add_argument("--jpeg_quality", action="store", type=int, metavar="N", help="Override encoder parameter (jpeg quality)")
     args = parser.parse_args()
     #
     # Create source
     #
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
+#    encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
+#    if args.octree_bits or args.jpeg_quality:
+#        if args.octree_bits:
+#            encparams.octree_bits = args.octree_bits
+#        if args.jpeg_quality:
+#            encparams.jpeg_quality = args.jpeg_quality
     encoder_factory = cwipc.net.sink_encoder.cwipc_sink_encoder
-    if not args.noforward:
+    if args.noforward:
+        forwarder = None
+    elif args.bin2dash:
+#        b2dparams = {}
+#        if args.seg_dur:
+#            b2dparams['seg_dur_in_ms'] = args.seg_dur
+#        if args.timeshift_buffer:
+#            b2dparams['timeshift_buffer_depth_in_ms'] = args.timeshift_buffer
+        forwarder = encoder_factory(
+            cwipc.net.sink_bin2dash.cwipc_sink_bin2dash(
+                args.bin2dash,
+                seg_dur_in_ms=args.seg_dur,
+                timeshift_buffer_depth_in_ms=args.timeshift_buffer, 
+                verbose=(args.verbose > 1),
+                nodrop=args.nodrop
+            ),
+            verbose=(args.verbose > 1),
+            nodrop=args.nodrop
+        )
+    else:
         forwarder = encoder_factory(
             cwipc.net.sink_netserver.cwipc_sink_netserver(
                 args.port, 
@@ -32,8 +63,6 @@ def main():
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
         )
-    else:
-        forwarder = None
 
     sourceServer = SourceServer(source, forwarder, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())

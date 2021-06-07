@@ -91,7 +91,8 @@ class _Sink_Encoder(threading.Thread):
     def statistics(self):
         self.print1stat('encode_duration', self.times_encode)
         self.print1stat('pointcount', self.pointcounts)
-        self.sink.statistics()
+        if hasattr(self.sink, 'statistics'):
+            self.sink.statistics()
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)
