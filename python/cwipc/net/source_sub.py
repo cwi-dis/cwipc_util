@@ -107,8 +107,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.streamIndex = streamIndex
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
-        if self.verbose: print(f"subsource: sub_create()")
-        self.handle = self.dll.sub_create("SUBsource".encode('utf8'), SubErrorCallbackType(_onSubError), SUB_API_VERSION)
+        if self.verbose: print(f"source_sub: sub_create()")
+        self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), SubErrorCallbackType(_onSubError), SUB_API_VERSION)
         if not self.handle:
             raise SubError("sub_create failed")
         
@@ -127,13 +127,13 @@ class _SignalsUnityBridgeSource(threading.Thread):
     def start(self):
         assert self.handle
         assert self.dll
-        if self.verbose: print(f"subsource: sub_play({self.url})")
+        if self.verbose: print(f"source_sub: sub_play({self.url})")
         ok = self.dll.sub_play(self.handle, self.url.encode('utf8'))
         if not ok:
-            if self.verbose: print(f"subsource: sub_play returned false")
+            if self.verbose: print(f"source_sub: sub_play returned false")
             return False
         nstreams = self.dll.sub_get_stream_count(self.handle)
-        if self.verbose: print(f"subsource: sub_get_stream_count() -> {nstreams}")
+        if self.verbose: print(f"source_sub: sub_get_stream_count() -> {nstreams}")
         assert nstreams > self.streamIndex
         self.running = True
         threading.Thread.start(self)
@@ -189,25 +189,25 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.handle
         assert self.dll
         assert self.started
-        if self.verbose: print(f"subsource: sub_enable_stream(handle, {tileNum}, {quality})")
+        if self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {quality})")
         return self.dll.sub_enable_stream(self.handle, tileNum, quality)
         
     def disable_stream(self, tileNum):
         assert self.handle
         assert self.dll
         assert self.started
-        if self.verbose: print(f"subsource: sub_disable_stream(handle, {tileNum})")
+        if self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
         return self.dll.sub_disable_stream(self.handle, tileNum)
         
     def run(self):
-        if self.verbose: print(f"subsource: thread started")
+        if self.verbose: print(f"source_sub: thread started")
         last_successful_read_time = time.time()
         try:
             while self.running:
                 streamIndex = self.streamIndex
-                if self.verbose: print(f"subsource: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
+                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
                 length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
-                if self.verbose: print(f"subsource: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
+                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
 
                 if length == 0:
                     if time.time() - last_successful_read_time > self.SUB_EOF_TIME:
@@ -222,14 +222,14 @@ class _SignalsUnityBridgeSource(threading.Thread):
                 packet = bytearray(length)
                 ptr_char = (ctypes.c_char * length).from_buffer(packet)
                 ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
-                if self.verbose: print(f"subsource: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
+                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
                 length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
                 if length2 != length:
                     raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
                 self.queue.put(packet)
         finally:
             self.running = False
-        if self.verbose: print(f"subsource: thread exiting")
+        if self.verbose: print(f"source_sub: thread exiting")
         
     def _old_available(self, wait, streamIndex=None):
         return True # xxxjack debug
@@ -238,17 +238,11 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.started
         if streamIndex == None:
             streamIndex = self.streamIndex
-        if self.verbose: print(f"subsource: available: sub_grab_frame(..., {streamIndex})")
+        if self.verbose: print(f"source_sub: available: sub_grab_frame(..., {streamIndex})")
         length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
         return length != 0
-        
-    def get(self):
-        data = self._read_cpc()
-        if not data: return None
-        pc = self._decompress(data)
-        return pc
 
-def cwipc_subsource(address, verbose=False):
+def cwipc_source_sub(address, verbose=False):
     """Return cwipc_source-like object that reads compressed pointclouds from a Dash stream using MotionSpell SignalsUnityBridge"""
     _signals_unity_bridge_dll()
     src = _SignalsUnityBridgeSource(address, verbose=verbose)

@@ -7,9 +7,9 @@ import traceback
 
 import cwipc
 import cwipc.playback
-import cwipc.net.netclient
-import cwipc.net.netdecoder
-import cwipc.net.subsource
+import cwipc.net.source_netclient
+import cwipc.net.source_decoder
+import cwipc.net.source_sub
 
 try:
     import cwipc.realsense2
@@ -103,10 +103,10 @@ def cwipc_genericsource_factory(args):
             source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
             name = 'playback'
     elif args.netclient:
-        source = lambda : cwipc.net.netdecoder.cwipc_netdecoder(cwipc.net.netclient.cwipc_netclient(args.netclient))
+        source = lambda : cwipc.net.source_decoder.cwipc_source_decoder(cwipc.net.source_netclient.cwipc_source_netclient(args.netclient))
         name = None
     elif args.sub:
-        source = lambda : cwipc.net.netdecoder.cwipc_netdecoder(cwipc.net.subsource.cwipc_subsource(args.sub, verbose=args.verbose))
+        source = lambda : cwipc.net.source_decoder.cwipc_source_decoder(cwipc.net.source_sub.cwipc_source_sub(args.sub, verbose=args.verbose))
         name = None
     else:
         if cwipc.realsense2 == None:

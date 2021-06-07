@@ -82,7 +82,7 @@ class _NetClientSource(threading.Thread):
                 self.queue.put(packet)
         if self.verbose: print(f"netclient: thread exiting")
     
-def cwipc_netclient(address):
+def cwipc_source_netclient(address):
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
     source = _NetClientSource(address)
     return source

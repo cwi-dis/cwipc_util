@@ -13,12 +13,13 @@ except ModuleNotFoundError:
 class _NetDecoder(threading.Thread):
     
     QUEUE_WAIT_TIMEOUT=1
-    verbose=False
     
-    def __init__(self, source):
+    
+    def __init__(self, source, verbose=False):
         threading.Thread.__init__(self)
         self.source = source
         self.running = False
+        self.verbose = verbose
         self.queue = queue.Queue()
         
     def free(self):
@@ -58,9 +59,11 @@ class _NetDecoder(threading.Thread):
             if not self.source.available(True):
                 continue
             cpc = self.source.get()
-            if cpc:
-                pc = self._decompress(cpc)
-                self.queue.put(pc)
+            if not cpc:
+                if self.verbose: print(f'netdecoder: source.get returned no data')
+            pc = self._decompress(cpc)
+            self.queue.put(pc)
+            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points')
         if self.verbose: print(f"netdecoder: thread exiting")
 
     def _decompress(self, cpc):
@@ -71,10 +74,10 @@ class _NetDecoder(threading.Thread):
         pc = decomp.get()
         return pc
     
-def cwipc_netdecoder(source):
-    """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
+def cwipc_source_decoder(source, verbose=False):
+    """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""
     if cwipc.codec == None:
         raise RuntimeError("netdecoder requires cwipc.codec which is not available")
-    rv = _NetDecoder(source)
+    rv = _NetDecoder(source, verbose=verbose)
     return rv
         
