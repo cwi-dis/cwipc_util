@@ -1,14 +1,22 @@
 import time
 import os
 import socket
+import threading
+import queue
 import cwipc
+
 try:
     import cwipc.codec
 except ModuleNotFoundError:
     cwipc.codec = None
 
-class _NetClientSource:
+class _NetClientSource(threading.Thread):
+    
+    QUEUE_WAIT_TIMEOUT=1
+    verbose=False
+    
     def __init__(self, address):
+        threading.Thread.__init__(self)
         hostname, port = address.split(':')
         if not hostname:
             hostname = 'localhost'
@@ -19,6 +27,7 @@ class _NetClientSource:
         self.port = port
         self.running = False
         self._conn_refused = False
+        self.queue = queue.Queue()
         
     def free(self):
         pass
@@ -26,40 +35,58 @@ class _NetClientSource:
     def start(self):
         assert not self.running
         self.running = True
+        threading.Thread.start(self)
         
     def stop(self):
-        assert self.running
         self.running = False
+        self.join()
         
     def eof(self):
-        return self._conn_refused
+        return self.queue.empty() and self._conn_refused
     
     def available(self, wait=False):
-        return True
+        # xxxjack if wait==True should get and put
+        if not self.queue.empty():
+            return True
+        if not wait:
+            return False
+        try:
+            pc = self.queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+            if pc:
+                self.queue.put(pc)
+            return not not pc
+        except queue.Empty:
+            return False
         
     def get(self):
-        data = self._read_cpc()
-        if not data:
+        if self.eof():
             return None
-        pc = self._decompress(data)
+        pc = self.queue.get()
         return pc
 
-    def _read_cpc(self):
-        with socket.socket() as s:
-            try:
-                s.connect((self.hostname, self.port))
-            except ConnectionRefusedError:
-                self._conn_refused = True
-                return None
-            except socket.error as err:
-                print('connecting to {}:{}: {}'.format(self.hostname, self.port, err))
-                raise
-            rv = b''
-            while True:
-                data = s.recv(8192)
-                if not data: break
-                rv += data
-            return rv
+    def run(self):
+        if self.verbose: print(f"netclient: thread started")
+        while self.running and not self._conn_refused:
+            with socket.socket() as s:
+                try:
+                    other = s.connect((self.hostname, self.port))
+                except ConnectionRefusedError:
+                    if self.verbose: print(f"netclient: connection refused")
+                    self._conn_refused = True
+                    break
+                except socket.error as err:
+                    print(f'netclient: connecting to {self.hostname}:{self.port}: {err}')
+                    raise
+                if self.verbose: print(f'netclient: connected')
+                packet = b''
+                while True:
+                    data = s.recv(8192)
+                    if not data: break
+                    packet += data
+                if self.verbose: print(f'netclient: received {len(packet)} bytes')
+                pc = self._decompress(packet)
+                self.queue.put(pc)
+        if self.verbose: print(f"netclient: thread exiting")
 
     def _decompress(self, cpc):
         decomp = cwipc.codec.cwipc_new_decoder()
