@@ -5,11 +5,6 @@ import threading
 import queue
 import cwipc
 
-try:
-    import cwipc.codec
-except ModuleNotFoundError:
-    cwipc.codec = None
-
 class _NetClientSource(threading.Thread):
     
     QUEUE_WAIT_TIMEOUT=1
@@ -84,22 +79,11 @@ class _NetClientSource(threading.Thread):
                     if not data: break
                     packet += data
                 if self.verbose: print(f'netclient: received {len(packet)} bytes')
-                pc = self._decompress(packet)
-                self.queue.put(pc)
+                self.queue.put(packet)
         if self.verbose: print(f"netclient: thread exiting")
-
-    def _decompress(self, cpc):
-        decomp = cwipc.codec.cwipc_new_decoder()
-        decomp.feed(cpc)
-        gotData = decomp.available(True)
-        if not gotData: return None
-        pc = decomp.get()
-        return pc
     
 def cwipc_netclient(address):
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
-    if cwipc.codec == None:
-        raise RuntimeError("netclient requires cwipc.codec which is not available")
     source = _NetClientSource(address)
     return source
         
