@@ -10,6 +10,7 @@ import numpy as np
 import cwipc
 from PIL import Image
 from ._scriptsupport import *
+import struct
 
 class FileWriter:
     def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False, flags=0):
@@ -89,11 +90,10 @@ class FileWriter:
                 if aux_name.startswith('depth'):
                     saved_any = self.save_auxdata('depth', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.depthpattern)
                 if aux_name.startswith('skeleton'):
-                    # xxxjack skeleton probably needs to be saved using different method
-                    saved_any = self.save_auxdata('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+                    saved_any = self.save_auxdata_skeleton('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
             if not saved_any:
                 print(f"writer: did not find any auxiliary data in pointcloud {pc.timestamp()}")
-                return False
+                #return False
         return True
 
     def save_auxdata(self, type, name, pc, description, data, pattern):
@@ -108,11 +108,43 @@ class FileWriter:
             image = self.as_image(type, description, data)
             try:
                 image.save(filename)
+                if self.verbose:
+                    print(f"writer: wrote {type} to {filename}")
             except ValueError:
                 print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
                 return False
             except AttributeError:
                 print("Couldn't save image {}".format(image))
+        return True
+    
+    def save_auxdata_skeleton(self, type, name, pc, description, data, pattern):
+        data_bytes = bytes(data)
+        n_skeletons, n_joints = struct.unpack('II', data_bytes[:8])
+        #print(f'n_skeletons= {n_skeletons} | n_joints= {n_joints}')
+        if n_skeletons > 0:
+            filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext == '.txt':    
+                text_file = open(filename, "w")
+                n = text_file.write('n_skeletons : '+str(n_skeletons)+'\n')
+                n = text_file.write('n_joints : '+str(n_joints)+'\n')
+                joint_byte_syze = 8 * 4 # 1 int and 7 floats = 8 elements of size 4 bytes
+                joints_size = joint_byte_syze * n_joints
+                total_size_joints = joints_size * n_skeletons
+                offset = 8
+                #print("Joints:")
+                for i in range(n_skeletons*n_joints):
+                    joint_struct = struct.Struct('I 7f')
+                    confidence, x, y, z, qw, qx, qy, qz = joint_struct.unpack_from(data,offset)
+                    n = text_file.write(str((confidence, x, y, z, qw, qx, qy, qz))+'\n')
+                    offset += joint_struct.size
+                    #print((confidence, x, y, z, qw, qx, qy, qz))
+                
+                text_file.close()
+                print(f"writer: wrote {type} to {filename}")
+            else:
+                print(f"Couldn't save skeleton. {ext} format not supported. Try txt")
+                return False
         return True
 
     def parse_description(self, description):
