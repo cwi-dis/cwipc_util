@@ -4,6 +4,7 @@ import numpy as np
 import open3d
 import pprint
 import math
+import cwipc
 
 from .pointcloud import Pointcloud
 from .cameraconfig import CameraConfig, DEFAULT_FILENAME
@@ -106,7 +107,7 @@ class Calibrator:
         if DEBUG:
             for i in range(len(self.pointclouds)):
                 self.ui.show_message('Saving pointcloud {} to file'.format(i))
-                self.pointclouds[i].save('pc-%d.ply' % i)
+                self.pointclouds[i].save('pc-%d.ply' % i, cwipc.CWIPC_FLAGS_BINARY)
         #
         # First show the pointclouds for visual inspection.
         #
@@ -157,7 +158,7 @@ class Calibrator:
         self.ui.show_prompt('Inspect the resultant merged pointclouds of all cameras')
         joined = Pointcloud.from_join(self.coarse_calibrated_pointclouds)
         os.chdir(self.workdir)
-        joined.save('cwipc_calibrate_coarse.ply')
+        joined.save('cwipc_calibrate_coarse.ply', cwipc.CWIPC_FLAGS_BINARY)
         self.ui.show_points('Inspect manual calibration result', joined)
         
     def skip_coarse(self):
@@ -228,11 +229,11 @@ class Calibrator:
                     self.fine_matrix = self.align_fine_multiscale_ICP(self.coarse_calibrated_pointclouds, camPositions, correspondance_dist)
                 for i in range(len(camPositions)):
                     transformMatrix = self.fine_matrix[i]
-                    pc = self.coarse_calibrated_pointclouds[i].clean_background()
+                    pc = self.coarse_calibrated_pointclouds[i].clean()
                     transformedPointcloud = pc.transform(transformMatrix)
                     self.fine_calibrated_pointclouds.append(transformedPointcloud)
             else:
-                refPointcloud = self.coarse_calibrated_pointclouds[0].clean_background()
+                refPointcloud = self.coarse_calibrated_pointclouds[0].clean()
                 self.fine_calibrated_pointclouds.append(refPointcloud)
                 #Store the order of cameras being aligned
                 camIndex = []
@@ -267,8 +268,8 @@ class Calibrator:
                     ref_cam = camIndex[Idx[0]]
                     src_cam = Idx[1]
                     print(f' -Now calibrating camera {src_cam} to fine align with {ref_cam}')
-                    refPointcloud = self.coarse_calibrated_pointclouds[ref_cam].clean_background()
-                    srcPointcloud = self.coarse_calibrated_pointclouds[src_cam].clean_background()
+                    refPointcloud = self.coarse_calibrated_pointclouds[ref_cam].clean()
+                    srcPointcloud = self.coarse_calibrated_pointclouds[src_cam].clean()
                     if method == '3':
                         print("## Computing alignment using pairwise ICP point2point:")
                         initMatrix = self.align_fine_point2point(refPointcloud, srcPointcloud, correspondance_dist, [camPositions[ref_cam],camPositions[src_cam]], iter)
@@ -307,7 +308,7 @@ class Calibrator:
             if retry == 'y':
                 compute_align_fine = False
         
-        joined.save('cwipc_calibrate_calibrated.ply')
+        joined.save('cwipc_calibrate_calibrated.ply', cwipc.CWIPC_FLAGS_BINARY)
         print("Result saved as cwipc_calibrate_calibrated.ply")
         
     def skip_fine(self):
@@ -351,7 +352,7 @@ class Calibrator:
         # Save captured pointcloud (for possible use later)
         #
         joined = Pointcloud.from_join(self.pointclouds)
-        joined.save('cwipc_calibrate_captured.ply')
+        joined.save('cwipc_calibrate_captured.ply', cwipc.CWIPC_FLAGS_BINARY)
     
     def writeconfig(self):
         allcaminfo = ""
@@ -488,7 +489,7 @@ class Calibrator:
         pcs = [] #list of ordered pcs
         transformations = [] #list of ordered transformations
         for i in range(len(cam_order)):
-            pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
+            pcs.append(pointclouds[cam_order[i]].clean().get_o3d())
             #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
             transformations.append(np.identity(4))
             
@@ -546,7 +547,7 @@ class Calibrator:
         final_pc = open3d.geometry.PointCloud()
         tup = [] #tuple list to recover original order
         for i in range(len(cam_order)):
-            final_pc += pointclouds[cam_order[i]].clean_background().get_o3d().transform(transformations[i])
+            final_pc += pointclouds[cam_order[i]].clean().get_o3d().transform(transformations[i])
             tup.append((cam_order[i],transformations[i]))
         #open3d.visualization.draw_geometries([final_pc])
 
@@ -561,7 +562,7 @@ class Calibrator:
         pcs = [] #list of ordered pcs
         transformations = [] #list of ordered transformations
         for i in range(len(cam_order)):
-            pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
+            pcs.append(pointclouds[cam_order[i]].clean().get_o3d())
             #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
             transformations.append(np.identity(4))
             
@@ -635,7 +636,7 @@ class Calibrator:
         final_pc = open3d.geometry.PointCloud()
         tup = [] #tuple list to recover original order
         for i in range(len(cam_order)):
-            final_pc += pointclouds[cam_order[i]].clean_background().get_o3d().transform(transformations[i])
+            final_pc += pointclouds[cam_order[i]].clean().get_o3d().transform(transformations[i])
             tup.append((cam_order[i],transformations[i]))
         #open3d.visualization.draw_geometries([final_pc])
 
@@ -653,7 +654,7 @@ class Calibrator:
         pcs = [] #list of ordered pcs
         transformations = [] #list of ordered transformations
         for i in range(len(cam_order)):
-            pcs.append(pointclouds[cam_order[i]].clean_background().get_o3d())
+            pcs.append(pointclouds[cam_order[i]].clean().get_o3d())
             #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
             transformations.append(np.identity(4))
             
@@ -679,7 +680,7 @@ class Calibrator:
         final_pc = open3d.geometry.PointCloud()
         tup = [] #tuple list to recover original order
         for i in range(len(cam_order)):
-            final_pc += pointclouds[cam_order[i]].clean_background().get_o3d().transform(transformations[i])
+            final_pc += pointclouds[cam_order[i]].clean().get_o3d().transform(transformations[i])
             tup.append((cam_order[i],transformations[i]))
         #open3d.visualization.draw_geometries([final_pc])
 

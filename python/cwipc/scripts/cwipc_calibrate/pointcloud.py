@@ -102,10 +102,10 @@ class Pointcloud:
         self._ensure_o3d()
         return self.o3d
         
-    def save(self, filename):
+    def save(self, filename, flags=0):
         """Save to PLY file"""
         self._ensure_cwipc()
-        cwipc.cwipc_write(filename, self.cwipc)
+        cwipc.cwipc_write(filename, self.cwipc, flags)
         
     def split(self):
         """Split into per-tile Pointcloud objects"""
@@ -176,6 +176,11 @@ class Pointcloud:
             p.b = b
         return self.__class__.from_points(pcpoints)
     
+    def clean(self):
+        """Removes statistical outliers (undesired points). Ex. occlusion tales"""
+        clean_pc, index = self.get_o3d().remove_statistical_outlier(nb_neighbors=20,std_ratio=2.0)
+        return self.__class__.from_o3d(clean_pc)
+    
     def clean_background(self):
         #Cleaning green background color
         colors = np.asarray(self.get_o3d().colors)
@@ -186,6 +191,8 @@ class Pointcloud:
             if (color[1]>color[0]) & (color[1]>color[2]):
                 background_ids.append(id)
         pc_clean = self.get_o3d().select_by_index(background_ids,invert=True)
+        
+        #remove radius outliers
         mean_dist = self.compute_mean_dist_pc()
         pc_out,l = pc_clean.remove_radius_outlier(int(0.02/mean_dist),0.02) # it removes points that do not have int nb_points in a sphere of float radius
         
