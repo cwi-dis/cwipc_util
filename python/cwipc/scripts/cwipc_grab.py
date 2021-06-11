@@ -125,22 +125,20 @@ class FileWriter:
             filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
             ext = os.path.splitext(filename)[1].lower()
             if ext == '.txt':    
-                text_file = open(filename, "w")
-                n = text_file.write('n_skeletons : '+str(n_skeletons)+'\n')
-                n = text_file.write('n_joints : '+str(n_joints)+'\n')
-                joint_byte_syze = 8 * 4 # 1 int and 7 floats = 8 elements of size 4 bytes
-                joints_size = joint_byte_syze * n_joints
-                total_size_joints = joints_size * n_skeletons
-                offset = 8
-                #print("Joints:")
-                for i in range(n_skeletons*n_joints):
-                    joint_struct = struct.Struct('I 7f')
-                    confidence, x, y, z, qw, qx, qy, qz = joint_struct.unpack_from(data,offset)
-                    n = text_file.write(str((confidence, x, y, z, qw, qx, qy, qz))+'\n')
-                    offset += joint_struct.size
-                    #print((confidence, x, y, z, qw, qx, qy, qz))
-                
-                text_file.close()
+                with open(filename, "w") as f:
+                    f.write('n_skeletons : '+str(n_skeletons)+'\n')
+                    f.write('n_joints : '+str(n_joints)+'\n')
+                    joint_byte_syze = 8 * 4 # 1 int and 7 floats = 8 elements of size 4 bytes
+                    joints_size = joint_byte_syze * n_joints
+                    total_size_joints = joints_size * n_skeletons
+                    offset = 8
+                    #print("Joints:")
+                    for i in range(n_skeletons*n_joints):
+                        joint_struct = struct.Struct('I 7f')
+                        confidence, x, y, z, qw, qx, qy, qz = joint_struct.unpack_from(data,offset)
+                        f.write(str((confidence, x, y, z, qw, qx, qy, qz))+'\n')
+                        offset += joint_struct.size
+                        #print((confidence, x, y, z, qw, qx, qy, qz))
                 print(f"writer: wrote {type} to {filename}")
             else:
                 print(f"Couldn't save skeleton. {ext} format not supported. Try txt")
