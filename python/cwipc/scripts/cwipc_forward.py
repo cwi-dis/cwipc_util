@@ -8,6 +8,7 @@ import traceback
 import cwipc
 import cwipc.net.sink_netserver
 import cwipc.net.sink_encoder
+import cwipc.net.sink_passthrough
 import cwipc.net.sink_bin2dash
 from ._scriptsupport import *
 
@@ -19,6 +20,7 @@ def main():
     parser.add_argument("--bin2dash", action="store", metavar="URL", help="Send compressed data to bin2dash URL in stead of serving. Example URL:  https://vrt-evanescent.viaccess-orca.com/pctest/")
     parser.add_argument("--seg_dur", action="store", type=int, metavar="MS", help="Bin2dash segment duration (milliseconds, default 10000)")
     parser.add_argument("--timeshift_buffer", action="store", type=int, metavar="MS", help="Bin2dash timeshift buffer depth (milliseconds, default 30000)")
+    parser.add_argument("--noencode", action="store_true", help="Send uncompressed pointclouds (default: use cwipc_codec encoder)")
 #    parser.add_argument("--octree_bits", action="store", type=int, metavar="N", help="Override encoder parameter (depth of octree)")
 #    parser.add_argument("--jpeg_quality", action="store", type=int, metavar="N", help="Override encoder parameter (jpeg quality)")
     args = parser.parse_args()
@@ -33,15 +35,13 @@ def main():
 #            encparams.octree_bits = args.octree_bits
 #        if args.jpeg_quality:
 #            encparams.jpeg_quality = args.jpeg_quality
-    encoder_factory = cwipc.net.sink_encoder.cwipc_sink_encoder
+    if args.noencode:
+        encoder_factory = cwipc.net.sink_passthrough.cwipc_sink_passthrough
+    else:
+        encoder_factory = cwipc.net.sink_encoder.cwipc_sink_encoder
     if args.noforward:
         forwarder = None
     elif args.bin2dash:
-#        b2dparams = {}
-#        if args.seg_dur:
-#            b2dparams['seg_dur_in_ms'] = args.seg_dur
-#        if args.timeshift_buffer:
-#            b2dparams['timeshift_buffer_depth_in_ms'] = args.timeshift_buffer
         forwarder = encoder_factory(
             cwipc.net.sink_bin2dash.cwipc_sink_bin2dash(
                 args.bin2dash,

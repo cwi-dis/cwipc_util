@@ -102,39 +102,50 @@ class _CpcBin2dashSink:
         self.handle = None
         self.dll = _bin2dash_dll()
         assert self.dll
-        url = url.encode('utf8')
-        if streamDescs != None:
-            assert fourcc == None   # Can only use fourcc or streamDescs
-            streamDescCount = len(streamDescs)
-            # ctypes array constructors are a bit weird. Check the documentation.
-            c_streamDescs = (streamDesc*streamDescCount)(*streamDescs)
-            if self.verbose:
-                for i in range(streamDescCount):
-                    print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, objectX={c_streamDescs[i].objectX}, objectY={c_streamDescs[i].objectY}, objectWidth={c_streamDescs[i].objectWidth}, objectHeight={c_streamDescs[i].objectHeight}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
-            self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, url, seg_dur_in_ms, timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
-            if not self.handle:
-                raise Bin2dashError(f"vrt_create_ext({url}) failed")
-        else:
-            if fourcc == None:
-                fourcc = VRT_4CC("cwi1")
-            else:
-                fourcc = VRT_4CC(fourcc)
-            self.handle = self.dll.vrt_create("bin2dashSink".encode('utf8'), fourcc, url, seg_dur_in_ms, timeshift_buffer_depth_in_ms)
-            if not self.handle:
-                raise Bin2dashError(f"vrt_create({url}) failed")
-        assert self.handle
+        self.url = url
+        self.streamDescs = streamDescs
+        self.fourcc = fourcc
+        self.seg_dur_in_ms = seg_dur_in_ms
+        self.timeshift_buffer_depth_in_ms = timeshift_buffer_depth_in_ms
+        self.handle = None        
         
     def __del__(self):
         self.free()
         
     def start(self):
-        pass
+        url = self.url.encode('utf8')
+        if self.streamDescs != None:
+            assert self.fourcc == None   # Can only use fourcc or streamDescs
+            streamDescCount = len(self.streamDescs)
+            # ctypes array constructors are a bit weird. Check the documentation.
+            c_streamDescs = (streamDesc*streamDescCount)(*sself.treamDescs)
+            if self.verbose:
+                for i in range(streamDescCount):
+                    print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, objectX={c_streamDescs[i].objectX}, objectY={c_streamDescs[i].objectY}, objectWidth={c_streamDescs[i].objectWidth}, objectHeight={c_streamDescs[i].objectHeight}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
+            self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, self.url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
+            if not self.handle:
+                raise Bin2dashError(f"vrt_create_ext({url}) failed")
+        else:
+            if self.fourcc == None:
+                self.fourcc = VRT_4CC("cwi1")
+            else:
+                self.fourcc = VRT_4CC(fourcc)
+            self.handle = self.dll.vrt_create("bin2dashSink".encode('utf8'), self.fourcc, self.url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms)
+            if not self.handle:
+                raise Bin2dashError(f"vrt_create({url}) failed")
+        assert self.handle
         
     def stop(self):
         pass
         
     def set_producer(self, producer):
         self.producer = None
+        
+    def set_fourcc(self, fourcc):
+        self.fourcc = fourcc
+        
+    def set_streamDescs(self, streamDescs):
+        self.streamDescs = streamDescs
         
     def free(self):
         if self.handle:

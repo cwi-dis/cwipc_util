@@ -9,6 +9,7 @@ import cwipc
 import cwipc.playback
 import cwipc.net.source_netclient
 import cwipc.net.source_decoder
+import cwipc.net.source_passthrough
 import cwipc.net.source_sub
 
 try:
@@ -60,6 +61,10 @@ def cwipc_genericsource_factory(args):
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
     name = None
+    if args.nodecode:
+        decoder_factory = cwipc.net.source_passthrough.cwipc_source_passthrough
+    else:
+        decoder_factory = cwipc.net.source_decoder.cwipc_source_decoder
     if args.kinect:
         if cwipc.kinect == None:
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
@@ -104,7 +109,7 @@ def cwipc_genericsource_factory(args):
             name = 'playback'
     elif args.netclient:
         source = lambda : (
-            cwipc.net.source_decoder.cwipc_source_decoder(
+            decoder_factory(
                 cwipc.net.source_netclient.cwipc_source_netclient(
                     args.netclient,
                     verbose=(args.verbose > 1)
@@ -115,7 +120,7 @@ def cwipc_genericsource_factory(args):
         name = None
     elif args.sub:
         source = lambda : (
-            cwipc.net.source_decoder.cwipc_source_decoder(
+            decoder_factory(
                 cwipc.net.source_sub.cwipc_source_sub(
                     args.sub, 
                     verbose=(args.verbose > 1)
@@ -260,6 +265,7 @@ def GrabberArgumentParser(*args, **kwargs):
     parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     parser.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
     parser.add_argument("--sub", action="store", metavar="URL", help="View DASH compressed pointcloud stream from URL in stead of realsense2 camera")
+    parser.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --sub (default: compressed with cwipc_codec)")
     parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
     parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")

@@ -563,8 +563,12 @@ def cwipc_from_points(points, timestamp):
 def cwipc_from_packet(packet):
     nBytes = len(packet)
     byte_array_type = ctypes.c_char * nBytes
+    try:
+        c_packet = byte_array_type.from_buffer(packet)
+    except TypeError:
+        c_packet = byte_array_type.from_buffer_copy(packet)
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_packet(byte_array_type.from_buffer(packet), nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = _cwipc_util_dll().cwipc_from_packet(c_packet, nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
