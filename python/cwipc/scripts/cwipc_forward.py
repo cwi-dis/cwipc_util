@@ -5,11 +5,11 @@ import threading
 import time
 import argparse
 import traceback
-import cwipc
-import cwipc.net.sink_netserver
-import cwipc.net.sink_encoder
-import cwipc.net.sink_passthrough
-import cwipc.net.sink_bin2dash
+
+from ..net import sink_netserver
+from ..net import sink_encoder
+from ..net import sink_passthrough
+from ..net import sink_bin2dash
 from ._scriptsupport import *
 
 def main():
@@ -34,21 +34,15 @@ def main():
     #
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
-#    encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
-#    if args.octree_bits or args.jpeg_quality:
-#        if args.octree_bits:
-#            encparams.octree_bits = args.octree_bits
-#        if args.jpeg_quality:
-#            encparams.jpeg_quality = args.jpeg_quality
     if args.noencode:
-        encoder_factory = cwipc.net.sink_passthrough.cwipc_sink_passthrough
+        encoder_factory = sink_passthrough.cwipc_sink_passthrough
     else:
-        encoder_factory = cwipc.net.sink_encoder.cwipc_sink_encoder
+        encoder_factory = sink_encoder.cwipc_sink_encoder
     if args.noforward:
         forwarder = None
     elif args.bin2dash:
         forwarder = encoder_factory(
-            cwipc.net.sink_bin2dash.cwipc_sink_bin2dash(
+            sink_bin2dash.cwipc_sink_bin2dash(
                 args.bin2dash,
                 seg_dur_in_ms=args.seg_dur,
                 timeshift_buffer_depth_in_ms=args.timeshift_buffer, 
@@ -60,7 +54,7 @@ def main():
         )
     else:
         forwarder = encoder_factory(
-            cwipc.net.sink_netserver.cwipc_sink_netserver(
+            sink_netserver.cwipc_sink_netserver(
                 args.port, 
                 verbose=(args.verbose > 1),
                 nodrop=args.nodrop

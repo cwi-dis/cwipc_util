@@ -6,11 +6,12 @@ import time
 import argparse
 import traceback
 import queue
-import numpy as np
-import cwipc
-from PIL import Image
-from ._scriptsupport import *
 import struct
+import numpy as np
+from PIL import Image
+
+from .. import cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
+from ._scriptsupport import *
 
 class FileWriter:
     def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False, flags=0):
@@ -66,14 +67,14 @@ class FileWriter:
             ext = os.path.splitext(filename)[1].lower()
             if ext == '.ply':
                 try:
-                    cwipc.cwipc_write(filename, pc, self.flags)
+                    cwipc_write(filename, pc, self.flags)
                     if self.verbose:
                         print(f"writer: wrote pointcloud to {filename}")
-                except cwipc.CwipcError as e:
+                except CwipcError as e:
                     print(f"writer: error: {e}")
                     self.error_encountered = True
             elif ext == '.cwipcdump':
-                cwipc.cwipc_write_debugdump(filename, pc)
+                cwipc_write_debugdump(filename, pc)
                 if self.verbose:
                     print(f"writer: wrote pointcloud to {filename}")
             else:
@@ -245,7 +246,7 @@ def main():
     if args.nodrop:
         kwargs['nodrop'] = True
     if args.binary:
-        kwargs['flags'] = cwipc.CWIPC_FLAGS_BINARY
+        kwargs['flags'] = CWIPC_FLAGS_BINARY
     writer = FileWriter(
         pcpattern=pcpattern,
         rgbpattern=rgbpattern,

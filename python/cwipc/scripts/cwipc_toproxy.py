@@ -6,7 +6,7 @@ import traceback
 import queue
 import socket
 import struct
-import cwipc
+from .. import CWIPC_POINT_PACKETHEADER_MAGIC
 from ._scriptsupport import *
 
 class Sender:
@@ -40,7 +40,7 @@ class Sender:
         data = pc.get_bytes()
         cellsize = pc.cellsize()
         timestamp = pc.timestamp()
-        header = struct.pack("<iiqfi", cwipc.CWIPC_POINT_PACKETHEADER_MAGIC, len(data), timestamp, cellsize, 0)
+        header = struct.pack("<iiqfi", CWIPC_POINT_PACKETHEADER_MAGIC, len(data), timestamp, cellsize, 0)
         x = self.socket.send(header)
         y = self.socket.send(data)
 

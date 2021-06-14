@@ -24,8 +24,8 @@ class FrameInfo(ctypes.Structure):
 class streamDesc(ctypes.Structure):
     _fields_ = [
         ("MP4_4CC", ctypes.c_uint32),
-        ("objectX", ctypes.c_uint32),
-        ("objectY", ctypes.c_uint32),
+        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for VRTogether
+        ("quality", ctypes.c_uint32), # official DASH: objectY. Re-targeted for VRTogether
         ("objectWidth", ctypes.c_uint32),
         ("objectHeight", ctypes.c_uint32),
         ("totalWidth", ctypes.c_uint32),
@@ -183,10 +183,12 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.started
         c_desc = streamDesc()
         ok = self.dll.sub_get_stream_info(self.handle, num, c_desc)
+        if not ok:
+            return None
         if c_desc.objectWidth or c_desc.objectHeight or c_desc.totalWidth or c_desc.totalHeight:
-            print(f"sub_get_stream_info({num}): MP4_4CC={c_desc.MP4_4CC},  objectX={c_desc.objectX},  objectY={c_desc.objectY},  objectWidth={c_desc.objectWidth},  objectHeight={c_desc.objectHeight},  totalWidth={c_desc.totalWidth},  totalHeight={c_desc.totalHeight}", file=sys.stdout)
+            print(f"sub_get_stream_info({num}): MP4_4CC={c_desc.MP4_4CC},  tileNumber={c_desc.tileNumber},  quality={c_desc.quality},  objectWidth={c_desc.objectWidth},  objectHeight={c_desc.objectHeight},  totalWidth={c_desc.totalWidth},  totalHeight={c_desc.totalHeight}", file=sys.stdout)
             raise SubError(f"sub_get_stream_info({num}) returned unexpected information")
-        return (c_desc.MP4_4CC, c_desc.objectX, c_desc.objectY)
+        return (c_desc.MP4_4CC, c_desc.tileNumber, c_desc.quality)
     
     def enable_stream(self, tileNum, quality):
         assert self.handle
@@ -201,6 +203,12 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.started
         if self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
         return self.dll.sub_disable_stream(self.handle, tileNum)
+        
+    def select_stream(self, streamIndex):
+        if streamIndex >= self.count():
+            return False
+        self.streamIndex = streamIndex
+        return True
         
     def run(self):
         if self.verbose: print(f"source_sub: thread started")

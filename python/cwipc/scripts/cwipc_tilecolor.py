@@ -1,8 +1,8 @@
 import sys
 import os
 import argparse
-import cwipc
-from cwipc.scripts.cwipc_calibrate.pointcloud import Pointcloud
+from .. import cwipc_read
+from .cwipc_calibrate.pointcloud import Pointcloud
 
 colors_list = [] #to store the color palette
 colors_list.append([0,0,1])
@@ -22,7 +22,7 @@ def main():
     # Create source
     #
     if args.i and args.o:
-        source_pc = cwipc.cwipc_read(args.i, 0)
+        source_pc = cwipc_read(args.i, 0)
         pcc = Pointcloud.from_cwipc(source_pc)
         pc_split = pcc.split()
         print("Current pointcloud has ",len(pc_split), " tiles")

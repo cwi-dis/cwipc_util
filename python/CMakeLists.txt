@@ -72,6 +72,12 @@ if(Python3_FOUND)
 	add_test(NAME cwipc_calibrate
 		COMMAND ${Python3_BINDIR}/cwipc_calibrate --help
 	)
+	add_test(NAME cwipc_forward
+		COMMAND ${Python3_BINDIR}/cwipc_forward --help
+	)
+	add_test(NAME cwipc_toproxy
+		COMMAND ${Python3_BINDIR}/cwipc_toproxy --help
+	)
 	add_test(NAME cwipc_grab
 		COMMAND ${Python3_BINDIR}/cwipc_grab --synthetic --count 2 .
 	)

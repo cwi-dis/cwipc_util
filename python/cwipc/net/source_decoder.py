@@ -3,12 +3,11 @@ import os
 import socket
 import threading
 import queue
-import cwipc
 
 try:
-    import cwipc.codec
+    from .. import codec
 except ModuleNotFoundError:
-    cwipc.codec = None
+    codec = None
 
 class _NetDecoder(threading.Thread):
     
@@ -22,6 +21,7 @@ class _NetDecoder(threading.Thread):
         self.verbose = verbose
         self.queue = queue.Queue()
         self.times_decode = []
+        self.streamNumber = None
         
     def free(self):
         pass
@@ -59,12 +59,20 @@ class _NetDecoder(threading.Thread):
         pc = self.queue.get()
         return pc
 
+#    def select_stream(self, streamIndex):
+#        if not hasattr(self.source, 'set_streamIndex'):
+#            return False
+#        return self.source.set_streamIndex(streamIndex)
+        
     def run(self):
         if self.verbose: print(f"netdecoder: thread started")
         while self.running:
             if not self.source.available(True):
                 continue
-            cpc = self.source.get()
+            if self.streamNumber:
+                cpc = self.source.get()
+            else:
+                cpc = self.source.get()
             if not cpc:
                 print(f'netdecoder: source.get returned no data')
                 self.queue.put(None)
@@ -78,7 +86,7 @@ class _NetDecoder(threading.Thread):
         if self.verbose: print(f"netdecoder: thread exiting")
 
     def _decompress(self, cpc):
-        decomp = cwipc.codec.cwipc_new_decoder()
+        decomp = codec.cwipc_new_decoder()
         decomp.feed(cpc)
         gotData = decomp.available(True)
         if not gotData: return None
@@ -106,7 +114,7 @@ class _NetDecoder(threading.Thread):
     
 def cwipc_source_decoder(source, verbose=False):
     """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""
-    if cwipc.codec == None:
+    if codec == None:
         raise RuntimeError("netdecoder requires cwipc.codec which is not available")
     rv = _NetDecoder(source, verbose=verbose)
     return rv

@@ -6,7 +6,7 @@ import time
 import argparse
 import traceback
 import queue
-import cwipc
+from .. import cwipc_window, cwipc_tilefilter, cwipc_write
 from ._scriptsupport import *
 
 class Visualizer:
@@ -76,7 +76,7 @@ q             Quit
             
     def start_window(self):
         cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
-        self.visualiser = cwipc.cwipc_window("cwipc_view")
+        self.visualiser = cwipc_window("cwipc_view")
         os.chdir(cwd)
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
@@ -90,7 +90,7 @@ q             Quit
                 if not self.paused:
                     print(f'display: showing pointcloud timestamp={pc.timestamp()} cellsize={pc.cellsize()} latency={time.time() - pc.timestamp()/1000.0:.3f}')
             if self.tilefilter:
-                pc_to_show = cwipc.cwipc_tilefilter(pc, self.tilefilter)
+                pc_to_show = cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
                     print(f'display: selected {pc_to_show.count()} of {pc.count()} points')                  
             ok = self.visualiser.feed(pc_to_show, True)
@@ -106,7 +106,7 @@ q             Quit
             print(Visualizer.HELP)
         elif cmd == "w" and self.cur_pc:
             filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-            cwipc.cwipc_write(filename, self.cur_pc, True) #writing in binary
+            cwipc_write(filename, self.cur_pc, True) #writing in binary
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
@@ -130,7 +130,8 @@ q             Quit
             print(HELP, flush=True)
         return True
         
-    def select_tile(self, *, number=None, all=False, increment=True):
+    def select_tile(self, *, number=None, all=False, increment=False):
+        print(f'xxxjack producer={self.producer}')
         if hasattr(self.producer, 'select_stream'):
             if number == None or all or increment:
                 print('Network input only supports numeric stream selection')

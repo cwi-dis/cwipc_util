@@ -5,25 +5,24 @@ import signal
 import argparse
 import traceback
 
-import cwipc
-import cwipc.playback
-import cwipc.net.source_netclient
-import cwipc.net.source_decoder
-import cwipc.net.source_passthrough
-import cwipc.net.source_sub
+from .. import playback, cwipc_proxy, cwipc_synthetic 
+from ..net import source_netclient
+from ..net import source_decoder
+from ..net import source_passthrough
+from ..net import source_sub
 
 try:
-    import cwipc.realsense2
+    from .. import realsense2
 except ModuleNotFoundError:
-    cwipc.realsense2 = None
+    realsense2 = None
 try:
-    import cwipc.certh
+    from .. import certh
 except ModuleNotFoundError:
-    cwipc.certh = None
+    certh = None
 try:
-    import cwipc.kinect
+    from .. import kinect
 except ModuleNotFoundError:
-    cwipc.kinect = None
+    kinect = None
 
 if False:
     # Convoluted code warning: adding ../python directory to path so we can import subsource
@@ -61,33 +60,33 @@ def cwipc_genericsource_factory(args):
     """
     name = None
     if args.nodecode:
-        decoder_factory = cwipc.net.source_passthrough.cwipc_source_passthrough
+        decoder_factory = source_passthrough.cwipc_source_passthrough
     else:
-        decoder_factory = cwipc.net.source_decoder.cwipc_source_decoder
+        decoder_factory = source_decoder.cwipc_source_decoder
     if args.kinect:
-        if cwipc.kinect == None:
+        if kinect == None:
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
-        source = cwipc.kinect.cwipc_kinect
+        source = kinect.cwipc_kinect
         name = 'kinect'
     elif args.k4aoffline:
-        if cwipc.kinect == None or not hasattr(cwipc.kinect, 'cwipc_k4aoffline'):
+        if kinect == None or not hasattr(kinect, 'cwipc_k4aoffline'):
             print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
             sys.exit(-1)
-        source = cwipc.kinect.cwipc_k4aoffline
+        source = kinect.cwipc_k4aoffline
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
     
     elif args.synthetic:
-        source = lambda : cwipc.cwipc_synthetic(fps=args.fps, npoints=args.npoints)
+        source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
         name = None
     elif args.proxy:
-        source = lambda : cwipc.cwipc_proxy('', args.proxy)
+        source = lambda : cwipc_proxy('', args.proxy)
         name = None
     elif args.certh:
-        if cwipc.certh == None:
+        if certh == None:
             print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
             sys.exit(-1)
-        source = lambda : cwipc.certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
+        source = lambda : certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
         name = None
     elif args.playback:
         if not os.path.isdir(args.playback):
@@ -96,7 +95,7 @@ def cwipc_genericsource_factory(args):
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {filename}: unknown playback file type')
                 sys.exit(-1)
-            source = lambda : cwipc.playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            source = lambda : playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
             name = 'playback'
         else:
             dirname = args.playback
@@ -104,12 +103,12 @@ def cwipc_genericsource_factory(args):
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {dirname}: should contain only .ply or .cwipcdump files')
                 sys.exit(-1)
-            source = lambda : cwipc.playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            source = lambda : playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
             name = 'playback'
     elif args.netclient:
         source = lambda : (
             decoder_factory(
-                cwipc.net.source_netclient.cwipc_source_netclient(
+                source_netclient.cwipc_source_netclient(
                     args.netclient,
                     verbose=(args.verbose > 1)
                     ),
@@ -120,7 +119,7 @@ def cwipc_genericsource_factory(args):
     elif args.sub:
         source = lambda : (
             decoder_factory(
-                cwipc.net.source_sub.cwipc_source_sub(
+                source_sub.cwipc_source_sub(
                     args.sub, 
                     verbose=(args.verbose > 1)
                     ),
@@ -129,10 +128,10 @@ def cwipc_genericsource_factory(args):
             )
         name = None
     else:
-        if cwipc.realsense2 == None:
+        if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
-        source = cwipc.realsense2.cwipc_realsense2
+        source = realsense2.cwipc_realsense2
         name = 'realsense'
     return source, name
 
