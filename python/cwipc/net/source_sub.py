@@ -4,7 +4,6 @@ import time
 import os
 import threading
 import queue
-import cwipc
 
 
 SUB_API_VERSION = 0x20200420A

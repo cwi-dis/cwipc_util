@@ -27,6 +27,9 @@ class _Sink_Passthrough(threading.Thread):
         self.started = False
         self.pointcounts = []
          
+    def set_encoder_params(self, **kwargs):
+        raise RuntimeError("cwipc_sink_passthrough: no encoder parameters supported")
+        
     def start(self):
         threading.Thread.start(self)
         self.sink.start()

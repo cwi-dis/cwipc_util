@@ -36,8 +36,8 @@ class FrameInfo(ctypes.Structure):
 class streamDesc(ctypes.Structure):
     _fields_ = [
         ("MP4_4CC", ctypes.c_uint32),
-        ("objectX", ctypes.c_uint32),
-        ("objectY", ctypes.c_uint32),
+        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for VRTogether
+        ("quality", ctypes.c_uint32), # official DASH: objectY. Re-targeted for VRTogether
         ("objectWidth", ctypes.c_uint32),
         ("objectHeight", ctypes.c_uint32),
         ("totalWidth", ctypes.c_uint32),
@@ -117,10 +117,9 @@ class _CpcBin2dashSink:
     def start(self):
         url = self.url.encode('utf8')
         if self.streamDescs != None:
-            assert self.fourcc == None   # Can only use fourcc or streamDescs
             streamDescCount = len(self.streamDescs)
             # ctypes array constructors are a bit weird. Check the documentation.
-            c_streamDescs = (streamDesc*streamDescCount)(*sself.treamDescs)
+            c_streamDescs = (streamDesc*streamDescCount)(*self.streamDescs)
             if self.verbose:
                 for i in range(streamDescCount):
                     print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, objectX={c_streamDescs[i].objectX}, objectY={c_streamDescs[i].objectY}, objectWidth={c_streamDescs[i].objectWidth}, objectHeight={c_streamDescs[i].objectHeight}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
@@ -149,6 +148,13 @@ class _CpcBin2dashSink:
     def set_streamDescs(self, streamDescs):
         self.streamDescs = streamDescs
         
+    def add_streamDesc(self, tilenum, octree_bits, jpeg_quality):
+        quality = 100*octree_bits + jpeg_quality
+        if not self.streamDescs:
+            self.streamDescs = []
+        self.streamDescs.append(streamDesc(self.fourcc, tilenum, quality))
+        return len(self.streamDescs)-1
+        
     def free(self):
         if self.handle:
             assert self.dll
@@ -167,7 +173,7 @@ class _CpcBin2dashSink:
         if ok:
             self.sizes_forward.append(length)
         else:
-            raise Bin2dashError(f"vrt_push_buffer(..., {length}) failed")
+            raise Bin2dashError(f"vrt_push_buffer(handle, {stream_index}, buffer, {length}) failed")
         return ok
 
     def canfeed(self, timestamp, wait=True):

@@ -31,8 +31,20 @@ class _Sink_Encoder(threading.Thread):
         self.started = False
         self.times_encode = []
         self.pointcounts = []
-         
+        self.encoder_group = None
+        self.encoders = []
+        
+        self.tiled = False
+        self.octree_bits = None
+        self.jpeg_quality = None
+        
+    def set_encoder_params(self, tiled=False, octree_bits=None, jpeg_quality=None):
+        self.tiled = tiled
+        self.octree_bits = octree_bits
+        self.jpeg_quality = jpeg_quality
+        
     def start(self):
+        self._init_encoders()
         threading.Thread.start(self)
         self.sink.start()
         self.started = True
@@ -60,10 +72,22 @@ class _Sink_Encoder(threading.Thread):
                     print(f"encoder: get() returned None")
                     continue
                 self.pointcounts.append(pc.count())
+                
                 t1 = time.time()
-                cpc = self._encode_pc(pc)
+                self.encoder_group.feed(pc)
+                packets = []
+                for i in range(len(self.encoders)):
+                    got_data = self.encoders[i].available(True)
+                    assert got_data
+                    cpc = self.encoders[i].get_bytes()
+                    packets.append(cpc)
                 t2 = time.time()
-                self.sink.feed(cpc)
+                
+                if len(packets) == 1:
+                    self.sink.feed(packets[0])
+                else:
+                    for i in range(len(packets)):
+                        self.sink.feed(packets[i], stream_index=i)
                 pc.free()
                 self.times_encode.append(t2-t1)
         finally:
@@ -80,16 +104,35 @@ class _Sink_Encoder(threading.Thread):
             if self.verbose: print(f"encoder: queue full, drop pointcloud")
             pc.free()
     
-    def _encode_pc(self, pc):
-        encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
-        enc = cwipc.codec.cwipc_new_encoder(params=encparams)
-        enc.feed(pc)
-        gotData = enc.available(True)
-        assert gotData
-        data = enc.get_bytes()
-        pc.free()
-        enc.free()
-        return data
+    def _init_encoders(self):
+        if not self.octree_bits:
+            self.octree_bits = 9
+        if type(self.octree_bits) != type([]):
+            self.octree_bits = [self.octree_bits]
+       
+        if not self.jpeg_quality:
+            self.jpeg_quality = 85
+        if type(self.jpeg_quality) != type([]):
+            self.jpeg_quality = [self.jpeg_quality]
+            
+        if self.tiled:
+            raise RuntimeError("encoder: tiled not yet implemented")
+
+        voxelsize = 0
+        tiles = [0]
+        
+        self.encoder_group = cwipc.codec.cwipc_new_encodergroup()
+        for tile in tiles:
+            for octree_bits in self.octree_bits:
+                for jpeg_quality in self.jpeg_quality:
+                    encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, tile, voxelsize)
+                    encoder = self.encoder_group.addencoder(params=encparams)
+                    self.encoders.append(encoder)
+                    if hasattr(self.sink, 'add_streamDesc'):
+                        streamNum = self.sink.add_streamDesc(tile, octree_bits, jpeg_quality)
+                    else:
+                        streamNum = 0
+                    assert streamNum == len(self.encoders)-1 # Fails if multi-stream not supported by network sink.
 
     def statistics(self):
         self.print1stat('encode_duration', self.times_encode)

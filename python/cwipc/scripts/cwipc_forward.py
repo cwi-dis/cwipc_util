@@ -25,8 +25,9 @@ def main():
     output_args.add_argument("--seg_dur", action="store", type=int, metavar="MS", help="Bin2dash segment duration (milliseconds, default 10000)")
     output_args.add_argument("--timeshift_buffer", action="store", type=int, metavar="MS", help="Bin2dash timeshift buffer depth (milliseconds, default 30000)")
     output_args.add_argument("--noencode", action="store_true", help="Send uncompressed pointclouds (default: use cwipc_codec encoder)")
-#    parser.add_argument("--octree_bits", action="store", type=int, metavar="N", help="Override encoder parameter (depth of octree)")
-#    parser.add_argument("--jpeg_quality", action="store", type=int, metavar="N", help="Override encoder parameter (jpeg quality)")
+    output_args.add_argument("--octree_bits", action="append", type=int, metavar="N", help="Override/append encoder parameter (depth of octree)")
+    output_args.add_argument("--jpeg_quality", action="append", type=int, metavar="N", help="Override/append encoder parameter (jpeg quality)")
+    output_args.add_argument("--tiled", action="store_true", help="Encode and transmit tiled streams (bin2dash only)")
     args = parser.parse_args()
     #
     # Create source
@@ -67,6 +68,8 @@ def main():
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
         )
+    if args.octree_bits or args.jpeg_quality or args.tiled:
+        forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiled=args.tiled)
 
     sourceServer = SourceServer(source, forwarder, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
