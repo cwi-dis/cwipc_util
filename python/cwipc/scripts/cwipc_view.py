@@ -111,28 +111,15 @@ q             Quit
         elif cmd == " ":
             self.paused = not self.paused
         elif cmd == 'a':
-            self.tilefilter = None
-            print("Showing all tiles")
+            self.select_tile(all=True)
         elif cmd == 'm':
             self.tilefilter_mask = not self.tilefilter_mask
             print(f"tilefilter mask mode: {self.tilefilter_mask}. Showing all tiles", flush=True)
-            self.tilefilter = None
+            self.select_tile(all=True)
         elif cmd == 'n':
-            if not self.tilefilter:
-                self.tilefilter = 1
-            else:
-                self.tilefilter = self.tilefilter + 1
-            print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+            self.select_tile(increment=True)
         elif cmd in '0123456789':
-            if int(cmd) == 0:
-                self.tilefilter = 0
-                print("Showing all tiles", flush=True)
-            else:
-                if self.tilefilter_mask:
-                    self.tilefilter = pow(2,int(cmd)-1)
-                else:
-                    self.tilefilter = int(cmd)
-                print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+            self.select_tile(number=int(cmd))
         elif cmd == '+':
             self.point_size_inc += float(0.001)
         elif cmd == '-':
@@ -142,7 +129,38 @@ q             Quit
         else: #c to crash and print stack trace
             print(HELP, flush=True)
         return True
-    
+        
+    def select_tile(self, *, number=None, all=False, increment=True):
+        if hasattr(self.producer, 'select_stream'):
+            if number == None or all or increment:
+                print('Network input only supports numeric stream selection')
+                return
+            ok = self.producer.select_stream(number)
+            if ok:
+                print(f'Selecting input stream {number}')
+            else:
+                print(f'Error selecting input stream {number}, probably non-existent')
+        else:
+            if all:
+                self.tilefilter = None
+                print("Showing all tiles")
+            elif increment:
+                if not self.tilefilter:
+                    self.tilefilter = 1
+                else:
+                    self.tilefilter = self.tilefilter + 1
+                print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+            else:
+                if number == 0:
+                    self.tilefilter = 0
+                    print("Showing all tiles", flush=True)
+                else:
+                    if self.tilefilter_mask:
+                        self.tilefilter = pow(2,number-1)
+                    else:
+                        self.tilefilter = number
+                    print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+
 def main():
     SetupStackDumper()
     parser = ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
