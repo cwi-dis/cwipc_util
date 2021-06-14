@@ -104,6 +104,9 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.started = False
         self.running = False
         self.queue = queue.Queue()
+        self.times_receive = []
+        self.sizes_receive = []
+        self.bandwidths_receive = []
         self.streamIndex = streamIndex
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
@@ -217,8 +220,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
                     # We wait a while and try again (if not closed)
                     time.sleep(self.SUB_WAIT_TIME)
                     continue
-
-                last_successful_read_time = time.time()
+                
             
                 packet = bytearray(length)
                 ptr_char = (ctypes.c_char * length).from_buffer(packet)
@@ -227,6 +229,12 @@ class _SignalsUnityBridgeSource(threading.Thread):
                 length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
                 if length2 != length:
                     raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
+                now = time.time()
+                delta = now-last_successful_read_time
+                self.times_receive.append(delta)
+                self.sizes_receive.append(length2)
+                self.bandwidths_receive.append(len(packet)/delta)
+                last_successful_read_time = now
                 self.queue.put(packet)
         finally:
             self.running = False
@@ -244,6 +252,25 @@ class _SignalsUnityBridgeSource(threading.Thread):
         length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
         return length != 0
 
+    def statistics(self):
+        self.print1stat('receive_duration', self.times_receive)
+        self.print1stat('packetsize', self.sizes_receive, isInt=True)
+        self.print1stat('bandwidth', self.bandwidths_receive)
+        
+    def print1stat(self, name, values, isInt=False):
+        count = len(values)
+        if count == 0:
+            print('source_sub: {}: count=0'.format(name))
+            return
+        minValue = min(values)
+        maxValue = max(values)
+        avgValue = sum(values) / count
+        if isInt:
+            fmtstring = 'source_sub: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+        else:
+            fmtstring = 'source_sub: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
+        
 def cwipc_source_sub(address, verbose=False):
     """Return cwipc_source-like object that reads compressed pointclouds from a Dash stream using MotionSpell SignalsUnityBridge"""
     _signals_unity_bridge_dll()

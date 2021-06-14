@@ -21,7 +21,6 @@ class _Sink_NetServer(threading.Thread):
         self.started = False
         self.times_forward = []
         self.sizes_forward = []
-        self.bandwidths_forward = []
         self.socket = socket.socket()
         self.socket.bind(('', port))
         self.socket.listen()
@@ -90,7 +89,7 @@ class _Sink_NetServer(threading.Thread):
 
     def statistics(self):
         self.print1stat('connection_duration', self.times_forward)
-        self.print1stat('datasize', self.sizes_forward)
+        self.print1stat('packetsize', self.sizes_forward)
         self.print1stat('bandwidth', self.bandwidths_forward)
         
     def print1stat(self, name, values, isInt=False):

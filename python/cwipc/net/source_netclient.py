@@ -98,7 +98,7 @@ class _NetClientSource(threading.Thread):
     def statistics(self):
         self.print1stat('receive_duration', self.times_receive)
         self.print1stat('packetsize', self.sizes_receive, isInt=True)
-        self.print1stat('bandwidth', self.times_receive)
+        self.print1stat('bandwidth', self.bandwidths_receive)
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)

@@ -108,6 +108,8 @@ class _CpcBin2dashSink:
         self.seg_dur_in_ms = seg_dur_in_ms
         self.timeshift_buffer_depth_in_ms = timeshift_buffer_depth_in_ms
         self.handle = None        
+        self.sizes_forward = []
+        self.bandwidths_forward = []
         
     def __del__(self):
         self.free()
@@ -122,15 +124,15 @@ class _CpcBin2dashSink:
             if self.verbose:
                 for i in range(streamDescCount):
                     print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, objectX={c_streamDescs[i].objectX}, objectY={c_streamDescs[i].objectY}, objectWidth={c_streamDescs[i].objectWidth}, objectHeight={c_streamDescs[i].objectHeight}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
-            self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, self.url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
+            self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
             if not self.handle:
                 raise Bin2dashError(f"vrt_create_ext({url}) failed")
         else:
             if self.fourcc == None:
                 self.fourcc = VRT_4CC("cwi1")
             else:
-                self.fourcc = VRT_4CC(fourcc)
-            self.handle = self.dll.vrt_create("bin2dashSink".encode('utf8'), self.fourcc, self.url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms)
+                self.fourcc = VRT_4CC(self.fourcc)
+            self.handle = self.dll.vrt_create("bin2dashSink".encode('utf8'), self.fourcc, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms)
             if not self.handle:
                 raise Bin2dashError(f"vrt_create({url}) failed")
         assert self.handle
@@ -162,12 +164,31 @@ class _CpcBin2dashSink:
             ok = self.dll.vrt_push_buffer(self.handle, bytes(buffer), length)
         else:
             ok = self.dll.vrt_push_buffer_ext(self.handle, stream_index, bytes(buffer), length)
-        if not ok:
+        if ok:
+            self.sizes_forward.append(length)
+        else:
             raise Bin2dashError(f"vrt_push_buffer(..., {length}) failed")
         return ok
 
     def canfeed(self, timestamp, wait=True):
         return not not self.handle
+
+    def statistics(self):
+        self.print1stat('packetsize', self.sizes_forward)
+        
+    def print1stat(self, name, values, isInt=False):
+        count = len(values)
+        if count == 0:
+            print('bin2dash: {}: count=0'.format(name))
+            return
+        minValue = min(values)
+        maxValue = max(values)
+        avgValue = sum(values) / count
+        if isInt:
+            fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+        else:
+            fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
 def cwipc_sink_bin2dash(url, verbose=False, nodrop=False, **kwargs):
     return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)
