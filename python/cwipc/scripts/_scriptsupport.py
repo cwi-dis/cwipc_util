@@ -35,7 +35,6 @@ if False:
 
 __all__ = [ 
     "SetupStackDumper",
-    "GrabberArgumentParser",
     "ArgumentParser",
     "cwipc_genericsource_factory",
     "SourceServer",
@@ -257,30 +256,30 @@ class SourceServer:
             fmtstring = 'grab: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def GrabberArgumentParser(*args, **kwargs):
-    parser = argparse.ArgumentParser(*args, **kwargs)
-    parser.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
-    parser.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
-    parser.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
-    parser.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
-    parser.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
-    parser.add_argument("--sub", action="store", metavar="URL", help="View DASH compressed pointcloud stream from URL in stead of realsense2 camera")
-    parser.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --sub (default: compressed with cwipc_codec)")
-    parser.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
-    parser.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
-    parser.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
-    parser.add_argument("--file", action="store", metavar="FILE", help="Continually show pointcloud from ply file FILE ")
-    parser.add_argument("--playback", action="store", metavar="PATH", help="Read pointclouds from ply or cwipcdump file or directory (in alphabetical order)")
-    parser.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
-    parser.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
-    parser.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some grabbers)", default=0)
-    return parser
-    
 def ArgumentParser(*args, **kwargs):
-    parser = GrabberArgumentParser(*args, **kwargs)
-    parser.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
-    parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud after it has been received. Double for even more verbosity.")
-    parser.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
-    parser.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
-    parser.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
+    parser = argparse.ArgumentParser(*args, **kwargs)
+    parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
+
+    input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
+    input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
+    input_selection_args.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
+    input_selection_args.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
+    input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
+    input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
+    input_selection_args.add_argument("--sub", action="store", metavar="URL", help="View DASH compressed pointcloud stream from URL in stead of realsense2 camera")
+    input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Read pointclouds from ply or cwipcdump file or directory (in alphabetical order)")
+    input_selection_args.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
+
+    input_args = parser.add_argument_group("input arguments")
+    input_args.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --sub (default: compressed with cwipc_codec)")
+    input_args.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
+    input_args.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
+    input_args.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
+    input_args.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
+    input_args.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some grabbers)", default=0)
+    input_args.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
+    input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
+    input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
+    input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
+
     return parser
