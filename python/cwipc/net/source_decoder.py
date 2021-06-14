@@ -59,10 +59,10 @@ class _NetDecoder(threading.Thread):
         pc = self.queue.get()
         return pc
 
-#    def select_stream(self, streamIndex):
-#        if not hasattr(self.source, 'set_streamIndex'):
-#            return False
-#        return self.source.set_streamIndex(streamIndex)
+    def select_stream(self, streamIndex):
+        if not hasattr(self.source, 'select_stream'):
+            return False
+        return self.source.select_stream(streamIndex)
         
     def run(self):
         if self.verbose: print(f"netdecoder: thread started")

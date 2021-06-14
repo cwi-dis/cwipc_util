@@ -28,6 +28,7 @@ q             Quit
     def __init__(self, verbose=False, nodrop=False):
         self.visualiser = None
         self.producer = None
+        self.source = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
@@ -41,6 +42,9 @@ q             Quit
         
     def set_producer(self, producer):
         self.producer = producer
+        
+    def set_source(self, source):
+        self.source = source
         
     def is_alive(self):
         return not self.stopped  
@@ -131,12 +135,11 @@ q             Quit
         return True
         
     def select_tile(self, *, number=None, all=False, increment=False):
-        print(f'xxxjack producer={self.producer}')
-        if hasattr(self.producer, 'select_stream'):
+        if self.source and hasattr(self.source, 'select_stream'):
             if number == None or all or increment:
                 print('Network input only supports numeric stream selection')
                 return
-            ok = self.producer.select_stream(number)
+            ok = self.source.select_stream(number)
             if ok:
                 print(f'Selecting input stream {number}')
             else:
@@ -181,6 +184,7 @@ def main():
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if visualizer:
         visualizer.set_producer(sourceThread)
+        visualizer.set_source(source)
 
     #
     # Run everything
