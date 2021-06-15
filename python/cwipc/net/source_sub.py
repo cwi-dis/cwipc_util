@@ -93,6 +93,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
     SUB_EOF_TIME=10
     # How long to wait for data to be put into the queue (really only to forestall deadlocks on close)
     QUEUE_WAIT_TIMEOUT=1
+    # Should we check all streams for available data, or only ones where we are expecting it?
+    EAGER_RECEIVE = False
 
     def __init__(self, url, streamIndex=0, verbose=False):
         threading.Thread.__init__(self)
@@ -106,7 +108,9 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
+        self.unwanted_receive = []
         self.streamIndex = streamIndex
+        self.streamCount = 0
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
@@ -138,8 +142,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
         if self.verbose: print(f"source_sub: sub_get_stream_count() -> {nstreams}")
         assert nstreams > self.streamIndex
         self.running = True
-        threading.Thread.start(self)
         self.started = True
+        threading.Thread.start(self)
         return True
         
     def stop(self):
@@ -172,10 +176,12 @@ class _SignalsUnityBridgeSource(threading.Thread):
         return packet
 
     def count(self):
-        assert self.handle
-        assert self.dll
-        assert self.started
-        return self.dll.sub_get_stream_count(self.handle)
+        if not self.streamCount:
+            assert self.handle
+            assert self.dll
+            assert self.started
+            self.streamCount = self.dll.sub_get_stream_count(self.handle)
+        return self.streamCount
         
     def cpc_info_for_stream(self, num):
         assert self.handle
@@ -215,34 +221,50 @@ class _SignalsUnityBridgeSource(threading.Thread):
         last_successful_read_time = time.time()
         try:
             while self.running:
-                streamIndex = self.streamIndex
-                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
-                length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
-                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
+                receivedAnything = False
+                if self.EAGER_RECEIVE:
+                    streamsToCheck = range(self.count())
+                else:
+                    streamsToCheck = [self.streamIndex]
+                for streamIndex in streamsToCheck:
+                    if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
+                    length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
+                    if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
 
-                if length == 0:
+                    if length == 0:
+                        continue
+            
+                    packet = bytearray(length)
+                    ptr_char = (ctypes.c_char * length).from_buffer(packet)
+                    ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
+                    if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
+                    length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
+                    if length2 != length:
+                        raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
+                    
+                    receivedAnything = True
+                    
+                    if streamIndex != self.streamIndex:
+                        if self.verbose: print(f'source_sub: drop {length2} received on stream {streamIndex}')
+                        self.unwanted_receive.append(length2)
+                        continue
+                        
+                    now = time.time()
+                    delta = now-last_successful_read_time
+                    last_successful_read_time = now
+
+                    self.times_receive.append(delta)
+                    self.sizes_receive.append(length2)
+                    self.bandwidths_receive.append(len(packet)/delta)
+                    self.queue.put(packet)
+
+                if not receivedAnything:
                     if time.time() - last_successful_read_time > self.SUB_EOF_TIME:
                         # Too long with no data, assume the producer has exited and treat as end of file
+                        print(f'source_sub: nothing received for {self.SUB_EOF_TIME} seconds, assuming end of file')
                         break
                     # We wait a while and try again (if not closed)
                     time.sleep(self.SUB_WAIT_TIME)
-                    continue
-                
-            
-                packet = bytearray(length)
-                ptr_char = (ctypes.c_char * length).from_buffer(packet)
-                ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
-                if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
-                length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
-                if length2 != length:
-                    raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
-                now = time.time()
-                delta = now-last_successful_read_time
-                self.times_receive.append(delta)
-                self.sizes_receive.append(length2)
-                self.bandwidths_receive.append(len(packet)/delta)
-                last_successful_read_time = now
-                self.queue.put(packet)
         finally:
             self.running = False
             self.queue.put(None)
@@ -263,6 +285,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.print1stat('receive_duration', self.times_receive)
         self.print1stat('packetsize', self.sizes_receive, isInt=True)
         self.print1stat('bandwidth', self.bandwidths_receive)
+        self.print1stat('unwanted_packetsize', self.unwanted_receive, isInt=True)
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)
