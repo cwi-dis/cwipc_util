@@ -21,6 +21,7 @@ class _Sink_NetServer(threading.Thread):
         self.started = False
         self.times_forward = []
         self.sizes_forward = []
+        self.bandwidths_forward = []
         self.socket = socket.socket()
         self.socket.bind(('', port))
         self.socket.listen()
