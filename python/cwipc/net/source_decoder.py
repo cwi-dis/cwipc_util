@@ -22,6 +22,9 @@ class _NetDecoder(threading.Thread):
         self.queue = queue.Queue()
         self.times_decode = []
         self.streamNumber = None
+        # Bit of a hack: export the select_stream() method if our source has one.
+        if hasattr(self.source, 'select_stream'):
+            self.select_stream = self._select_stream
         
     def free(self):
         pass
@@ -59,9 +62,7 @@ class _NetDecoder(threading.Thread):
         pc = self.queue.get()
         return pc
 
-    def select_stream(self, streamIndex):
-        if not hasattr(self.source, 'select_stream'):
-            return False
+    def _select_stream(self, streamIndex):
         return self.source.select_stream(streamIndex)
         
     def run(self):
