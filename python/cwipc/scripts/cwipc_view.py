@@ -16,10 +16,12 @@ mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
 +/-           Increase/decrease point size
-0-9           Select single tile to view ( 0=All )
-n             Select next tile to view
-a             Show all tiles
-m             Toggle tile selection mask/index mode
+0-9           Select single tile/stream to view ( 0=All )
+n             Select next tile/stream to view
+a             Show all tiles/streams
+m             Toggle tile/stream selection tile mask mode
+i             Toggle tile/stream selection tile index mode
+s             Toggle tile/stream selection stream mode
 w             Write PLY file
 ?,h           Help
 q             Quit
@@ -35,7 +37,7 @@ q             Quit
         self.paused = False
         self.nodrop = nodrop
         self.tilefilter = None
-        self.tilefilter_mask = True
+        self.filter_mode = 'mask'
         self.start_window()
         self.stopped = False
         self.point_size_inc = 0.0
@@ -103,7 +105,7 @@ q             Quit
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?hq +-cwamn0123456789", 30) 
+        cmd = self.visualiser.interact(None, "?hq +-cwamisn0123456789", 30) 
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
@@ -115,15 +117,17 @@ q             Quit
         elif cmd == " ":
             self.paused = not self.paused
         elif cmd == 'a':
-            self.select_tile(all=True)
+            self.select_tile_or_stream(all=True)
         elif cmd == 'm':
-            self.tilefilter_mask = not self.tilefilter_mask
-            print(f"tilefilter mask mode: {self.tilefilter_mask}. Showing all tiles", flush=True)
-            self.select_tile(all=True)
+            self.select_mode('mask')
+        elif cmd == 'i':
+            self.select_mode('index')
+        elif cmd == 's':
+            self.select_mode('stream')
         elif cmd == 'n':
-            self.select_tile(increment=True)
+            self.select_tile_or_stream(increment=True)
         elif cmd in '0123456789':
-            self.select_tile(number=int(cmd))
+            self.select_tile_or_stream(number=int(cmd))
         elif cmd == '+':
             self.point_size_inc += float(0.001)
         elif cmd == '-':
@@ -134,9 +138,20 @@ q             Quit
             print(HELP, flush=True)
         return True
         
-    def select_tile(self, *, number=None, all=False, increment=False):
-        if self.source and hasattr(self.source, 'select_stream'):
-            if number == None or all or increment:
+    def select_mode(self, newmode):
+        self.filter_mode = newmode
+        print(f"tilefilter mask mode: {self.filter_mode}. Showing all tiles", flush=True)
+        self.tilefilter = None
+        self.select_tile_or_stream(all=True)
+        
+    def select_tile_or_stream(self, *, number=None, all=False, increment=False):
+        if self.filter_mode == 'stream':
+            if not hasattr(self.source, 'select_stream'):
+                print('Input does not support stream selection')
+                return
+            if all:
+                number = 0
+            if number == None:
                 print('Network input only supports numeric stream selection')
                 return
             ok = self.source.select_stream(number)
@@ -153,17 +168,17 @@ q             Quit
                     self.tilefilter = 1
                 else:
                     self.tilefilter = self.tilefilter + 1
-                print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+                print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
             else:
                 if number == 0:
                     self.tilefilter = 0
                     print("Showing all tiles", flush=True)
                 else:
-                    if self.tilefilter_mask:
+                    if self.filter_mode == 'mask':
                         self.tilefilter = pow(2,number-1)
                     else:
                         self.tilefilter = number
-                    print(f"Showing tile {self.tilefilter} 0x{self.tilefilter:x}", flush=True)
+                    print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
 
 def main():
     SetupStackDumper()
