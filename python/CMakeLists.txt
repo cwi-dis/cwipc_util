@@ -31,7 +31,7 @@ endif()
 
 
 if(Python3_FOUND)
-	set(ALL_PYTHON_TESTS run_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate cwipc_grab)
+	set(ALL_PYTHON_TESTS cwipc_util_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate cwipc_grab)
 	#
 	# Create venv for testing, and re-set Python3_EXECUTABLE to that Python.
 	# But: enable use of system-installed packages, because otherwise CI/CD will take forever.
@@ -57,14 +57,14 @@ if(Python3_FOUND)
 	#add_test(NAME printenv
 	#	COMMAND ${Python3_EXECUTABLE} -c "import os ; print(os.environ)"
 	#	)
-	add_test(NAME run_python_tests
+	add_test(NAME cwipc_util_python_tests
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
 	)
 	#
 	# Test the various scripts
 	#
 	add_test(NAME cwipc_tilecolor
-		COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_SOURCE_DIR}/tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
+		COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
 	)
 	add_test(NAME cwipc_view
 		COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2

@@ -10,4 +10,4 @@ target_link_libraries(cwipc_tilefilter cwipc_util ${PCL_LIBRARIES})
 
 install(TARGETS cwipc_tilefilter RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_test(NAME cwipc_tilefilter COMMAND cwipc_tilefilter 0 ${CMAKE_SOURCE_DIR}/tests/fixtures/input/pcl_frame1.ply ./pcl_frame1_tilefiltered.ply )
+add_test(NAME cwipc_tilefilter COMMAND cwipc_tilefilter 0 ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/fixtures/input/pcl_frame1.ply ./pcl_frame1_tilefiltered.ply )
