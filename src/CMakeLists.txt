@@ -11,7 +11,7 @@ target_sources(cwipc_util
 
 target_include_directories(
     cwipc_util PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include> 
 )
 target_include_directories(
