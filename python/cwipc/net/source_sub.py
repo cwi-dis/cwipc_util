@@ -24,10 +24,10 @@ class FrameInfo(ctypes.Structure):
 class streamDesc(ctypes.Structure):
     _fields_ = [
         ("MP4_4CC", ctypes.c_uint32),
-        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for VRTogether
-        ("quality", ctypes.c_uint32), # official DASH: objectY. Re-targeted for VRTogether
-        ("objectWidth", ctypes.c_uint32),
-        ("objectHeight", ctypes.c_uint32),
+        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for pointclouds
+        ("x", ctypes.c_uint32), # official DASH: objectY. Re-targeted for pointclouds
+        ("y", ctypes.c_uint32), # Official DASH: objectWidth. Retargeted for pointclouds
+        ("z", ctypes.c_uint32), # Official DASH: objectHeight. Retargeted for pointclouds
         ("totalWidth", ctypes.c_uint32),
         ("totalHeight", ctypes.c_uint32),
     ]
@@ -36,7 +36,7 @@ SubErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p)
 
 def _onSubError(msg):
     """Callback function passed to sub_create: re-raise SUB errors in Python environment"""
-    print(f"xxxjack SUB error: {msg}", file=sys.stderr, flush=True)
+    print(f"source_sub: asynchronous error: {msg}", file=sys.stderr, flush=True)
     raise SubError(msg)
     
 def _signals_unity_bridge_dll(libname=None):
@@ -88,13 +88,13 @@ def _signals_unity_bridge_dll(libname=None):
 class _SignalsUnityBridgeSource(threading.Thread):
 
     # If no data is available from the sub this is how long we sleep before trying again:
-    SUB_WAIT_TIME=0.1
+    SUB_WAIT_TIME=0.01
     # If no data is available from the sub for this long we treat it as end-of-file:
     SUB_EOF_TIME=10
     # How long to wait for data to be put into the queue (really only to forestall deadlocks on close)
     QUEUE_WAIT_TIMEOUT=1
     # Should we check all streams for available data, or only ones where we are expecting it?
-    EAGER_RECEIVE = False
+    EAGER_RECEIVE = True
 
     def __init__(self, url, streamIndex=0, verbose=False):
         threading.Thread.__init__(self)
@@ -104,6 +104,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.handle = None
         self.started = False
         self.running = False
+        self.failed = False
         self.queue = queue.Queue()
         self.times_receive = []
         self.sizes_receive = []
@@ -111,6 +112,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.unwanted_receive = []
         self.streamIndex = streamIndex
         self.streamCount = 0
+        self.tile_info = None
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
@@ -127,24 +129,21 @@ class _SignalsUnityBridgeSource(threading.Thread):
             self.dll.sub_destroy(self.handle)
             self.handle = None
             
-    def eof(self):
-        return False
-            
     def start(self):
         assert self.handle
         assert self.dll
         if self.verbose: print(f"source_sub: sub_play({self.url})")
         ok = self.dll.sub_play(self.handle, self.url.encode('utf8'))
         if not ok:
-            if self.verbose: print(f"source_sub: sub_play returned false")
-            return False
+            self.failed = True
+            self.queue.put(None)
+            raise SubError("source_sub: sub_play returned false")
         nstreams = self.dll.sub_get_stream_count(self.handle)
         if self.verbose: print(f"source_sub: sub_get_stream_count() -> {nstreams}")
         assert nstreams > self.streamIndex
         self.running = True
         self.started = True
         threading.Thread.start(self)
-        return True
         
     def stop(self):
         self.running = False
@@ -153,12 +152,12 @@ class _SignalsUnityBridgeSource(threading.Thread):
             self.join()
         
     def eof(self):
-        return not self.running or self.queue.empty() and not self.running
+        return self.failed or (self.started and self.queue.empty() and not self.running)
     
     def available(self, wait=False):
         if not self.queue.empty():
             return True
-        if not wait or not self.running:
+        if not wait or not self.running or self.failed:
             return False
         # Note: the following code may reorder packets...
         try:
@@ -182,26 +181,58 @@ class _SignalsUnityBridgeSource(threading.Thread):
             assert self.started
             self.streamCount = self.dll.sub_get_stream_count(self.handle)
         return self.streamCount
-        
-    def cpc_info_for_stream(self, num):
+
+    def maxtile(self):
+        self._init_tile_info()
+        return len(self.tile_info)
+    
+    def get_tileinfo_dict(self, tilenum):
+        """Return tile information for tile tilenum as Python dictionary"""
+        self._init_tile_info()
+        info = self.tile_info[tilenum]
+        mp4_4cc, tileNumber, (x, y, z), qualityCount = info
+        normal = dict(x=x, y=y, z=z)
+        return dict(normal=normal, camera=f"tile-{tilenum}", ncamera=tilenum, nquality=qualityCount, mp4_4cc=mp4_4cc)
+
+    def _srd_info_for_stream(self, num):
         assert self.handle
         assert self.dll
         assert self.started
         c_desc = streamDesc()
         ok = self.dll.sub_get_stream_info(self.handle, num, c_desc)
-        if not ok:
-            return None
-        if c_desc.objectWidth or c_desc.objectHeight or c_desc.totalWidth or c_desc.totalHeight:
-            print(f"sub_get_stream_info({num}): MP4_4CC={c_desc.MP4_4CC},  tileNumber={c_desc.tileNumber},  quality={c_desc.quality},  objectWidth={c_desc.objectWidth},  objectHeight={c_desc.objectHeight},  totalWidth={c_desc.totalWidth},  totalHeight={c_desc.totalHeight}", file=sys.stdout)
-            raise SubError(f"sub_get_stream_info({num}) returned unexpected information")
-        return (c_desc.MP4_4CC, c_desc.tileNumber, c_desc.quality)
-    
-    def enable_stream(self, tileNum, quality):
+        return (c_desc.MP4_4CC, c_desc.tileNumber, c_desc.x, c_desc.y, c_desc.z, c_desc.totalWidth, c_desc.totalHeight)
+
+    def _init_tile_info(self):
+        if self.tile_info:
+            return self.tile_info
+        tiledict = {}
+        ordered_tiles = []
+        for i in range(self.count()):
+            streamDesc = self._srd_info_for_stream(i)
+            if not streamDesc in tiledict:
+                tiledict[streamDesc] = 1
+                ordered_tiles.append(streamDesc)
+            else:
+                tiledict[streamDesc] += 1
+        self.tile_info = []
+        for tileDesc in ordered_tiles:
+            mp4_4cc, tileNumber, x, y, z, totalWidth, totalHeight = tileDesc
+            qualityCount = tiledict[tileDesc]
+            self.tile_info.append((mp4_4cc, tileNumber, (x, y, z), qualityCount))
+        return self.tile_info
+
+    def enable_stream(self, tileNum, qualityNum):
         assert self.handle
         assert self.dll
         assert self.started
-        if self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {quality})")
-        return self.dll.sub_enable_stream(self.handle, tileNum, quality)
+        if self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {qualityNum})")
+        ok = self.dll.sub_enable_stream(self.handle, tileNum, qualityNum)
+        if not ok:
+            return False
+        if tileNum != 0:
+            raise NotImplementedError
+        self.streamIndex = qualityNum
+        return True
         
     def disable_stream(self, tileNum):
         assert self.handle
@@ -209,12 +240,6 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.started
         if self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
         return self.dll.sub_disable_stream(self.handle, tileNum)
-        
-    def select_stream(self, streamIndex):
-        if streamIndex >= self.count():
-            return False
-        self.streamIndex = streamIndex
-        return True
         
     def run(self):
         if self.verbose: print(f"source_sub: thread started")
@@ -227,9 +252,9 @@ class _SignalsUnityBridgeSource(threading.Thread):
                 else:
                     streamsToCheck = [self.streamIndex]
                 for streamIndex in streamsToCheck:
-                    if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
+                    #if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
                     length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
-                    if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
+                    #if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None) -> {length}")
 
                     if length == 0:
                         continue
@@ -270,17 +295,6 @@ class _SignalsUnityBridgeSource(threading.Thread):
             self.queue.put(None)
         if self.verbose: print(f"source_sub: thread exiting")
         
-    def _old_available(self, wait, streamIndex=None):
-        return True # xxxjack debug
-        assert self.handle
-        assert self.dll
-        assert self.started
-        if streamIndex == None:
-            streamIndex = self.streamIndex
-        if self.verbose: print(f"source_sub: available: sub_grab_frame(..., {streamIndex})")
-        length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
-        return length != 0
-
     def statistics(self):
         self.print1stat('receive_duration', self.times_receive)
         self.print1stat('packetsize', self.sizes_receive, isInt=True)

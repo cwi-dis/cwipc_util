@@ -165,12 +165,13 @@ class SourceServer:
         self.times_grab = []
         self.pointcounts_grab = []
         self.latency_grab = []
-        self.stopped = False
+        self.stopped = True
         self.lastGrabTime = None
         self.fps = None
         self.source_name = source_name
         if hasattr(self.grabber, 'start'):
             self.grabber.start()
+        self.stopped = False
         
     def __del__(self):
         self.stopped = True

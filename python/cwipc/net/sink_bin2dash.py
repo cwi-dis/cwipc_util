@@ -152,6 +152,7 @@ class _CpcBin2dashSink:
         quality = 100*octree_bits + jpeg_quality
         if not self.streamDescs:
             self.streamDescs = []
+        quality = 42 # xxxjack workaround for bin2dash misunderstanding/misdesign
         self.streamDescs.append(streamDesc(self.fourcc, tilenum, quality))
         return len(self.streamDescs)-1
         

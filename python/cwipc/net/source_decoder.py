@@ -22,23 +22,32 @@ class _NetDecoder(threading.Thread):
         self.queue = queue.Queue()
         self.times_decode = []
         self.streamNumber = None
-        # Bit of a hack: export the select_stream() method if our source has one.
-        if hasattr(self.source, 'select_stream'):
+        self._init_tiling()
+
+    def _init_tiling(self):
+        # Bit of a hack: export the select_stream() method if our source has multiple tiles/streams
+        if hasattr(self.source, 'enable_stream'):
             self.select_stream = self._select_stream
+            self.tileNum = 0
         
     def free(self):
         pass
         
     def start(self):
         assert not self.running
-        if self.verbose: print('netdecoder: start')
+        if self.verbose: print('netdecoder: start', flush=True)
         self.running = True
         threading.Thread.start(self)
         if hasattr(self.source, 'start'):
             self.source.start()
+        if hasattr(self.source, 'disable_stream'):
+            # For sources with streams per tile disable all tiles except the first one.
+            for i in range(1, self.source.maxtile()):
+                print(f'netdecoder: disable tile {i}')
+                self.source.disable_stream(i)
         
     def stop(self):
-        if self.verbose: print('netdecoder: stop')
+        if self.verbose: print('netdecoder: stop', flush=True)
         self.running = False
         if hasattr(self.source, 'stop'):
             self.source.stop()
@@ -63,28 +72,25 @@ class _NetDecoder(threading.Thread):
         return pc
 
     def _select_stream(self, streamIndex):
-        return self.source.select_stream(streamIndex)
+        if self.verbose: print(f'netdecoder: select_stream({streamIndex}', flush=True)
+        return self.source.enable_stream(self.tileNum, streamIndex)
         
     def run(self):
-        if self.verbose: print(f"netdecoder: thread started")
+        if self.verbose: print(f"netdecoder: thread started", flush=True)
         while self.running:
-            if not self.source.available(True):
-                continue
-            if self.streamNumber:
-                cpc = self.source.get()
-            else:
-                cpc = self.source.get()
+            if self.source.eof():
+                break
+            cpc = self.source.get()
             if not cpc:
                 print(f'netdecoder: source.get returned no data')
-                self.queue.put(None)
-                break
+                continue
             t1 = time.time()
             pc = self._decompress(cpc)
             t2 = time.time()
             self.times_decode.append(t2-t1)
             self.queue.put(pc)
-            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points')
-        if self.verbose: print(f"netdecoder: thread exiting")
+            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points', flush=True)
+        if self.verbose: print(f"netdecoder: thread exiting", flush=True)
 
     def _decompress(self, cpc):
         decomp = codec.cwipc_new_decoder()
