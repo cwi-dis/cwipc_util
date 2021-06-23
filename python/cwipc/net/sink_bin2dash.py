@@ -36,10 +36,10 @@ class FrameInfo(ctypes.Structure):
 class streamDesc(ctypes.Structure):
     _fields_ = [
         ("MP4_4CC", ctypes.c_uint32),
-        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for VRTogether
-        ("quality", ctypes.c_uint32), # official DASH: objectY. Re-targeted for VRTogether
-        ("objectWidth", ctypes.c_uint32),
-        ("objectHeight", ctypes.c_uint32),
+        ("tileNumber", ctypes.c_uint32), # official DASH: objectX. Re-targeted for pointclouds
+        ("x", ctypes.c_uint32), # official DASH: objectY. Re-targeted for pointclouds
+        ("y", ctypes.c_uint32), # Official DASH: objectWidth. Retargeted for pointclouds
+        ("z", ctypes.c_uint32), # Official DASH: objectHeight. Retargeted for pointclouds
         ("totalWidth", ctypes.c_uint32),
         ("totalHeight", ctypes.c_uint32),
     ]
@@ -122,7 +122,7 @@ class _CpcBin2dashSink:
             c_streamDescs = (streamDesc*streamDescCount)(*self.streamDescs)
             if self.verbose:
                 for i in range(streamDescCount):
-                    print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, quality={c_streamDescs[i].quality}, objectWidth={c_streamDescs[i].objectWidth}, objectHeight={c_streamDescs[i].objectHeight}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
+                    print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
             self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
             if not self.handle:
                 raise Bin2dashError(f"vrt_create_ext({url}) failed")
@@ -145,15 +145,16 @@ class _CpcBin2dashSink:
     def set_fourcc(self, fourcc):
         self.fourcc = fourcc
         
-    def set_streamDescs(self, streamDescs):
+    def _set_streamDescs(self, streamDescs):
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum, octree_bits, jpeg_quality):
-        quality = 100*octree_bits + jpeg_quality
+    def add_streamDesc(self, tilenum, x, y, z):
         if not self.streamDescs:
             self.streamDescs = []
-        quality = 42 # xxxjack workaround for bin2dash misunderstanding/misdesign
-        self.streamDescs.append(streamDesc(self.fourcc, tilenum, quality))
+        if type(x) != int: x = int(x*1000)
+        if type(y) != int: y = int(y*1000)
+        if type(z) != int: z = int(z*1000)
+        self.streamDescs.append(streamDesc(self.fourcc, tilenum, x, y, z))
         return len(self.streamDescs)-1
         
     def free(self):

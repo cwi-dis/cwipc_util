@@ -34,12 +34,13 @@ class _Sink_Encoder(threading.Thread):
         self.encoder_group = None
         self.encoders = []
         
-        self.tiled = False
+        self.tiledescriptions = [{}]
         self.octree_bits = None
         self.jpeg_quality = None
         
-    def set_encoder_params(self, tiled=False, octree_bits=None, jpeg_quality=None):
-        self.tiled = tiled
+    def set_encoder_params(self, tiles=False, octree_bits=None, jpeg_quality=None):
+        if tiles == None: tiles = [{}]
+        self.tiledescriptions = tiles
         self.octree_bits = octree_bits
         self.jpeg_quality = jpeg_quality
         
@@ -115,22 +116,30 @@ class _Sink_Encoder(threading.Thread):
         if type(self.jpeg_quality) != type([]):
             self.jpeg_quality = [self.jpeg_quality]
             
-        if self.tiled:
-            raise RuntimeError("encoder: tiled not yet implemented")
-
         voxelsize = 0
-        tiles = [0]
+        
+        if self.verbose:
+            print(f'encoder: creating {len(self.tiledescriptions)*len(self.octree_bits)*len(self.jpeg_quality)} encoders/streams')
         
         self.encoder_group = cwipc.codec.cwipc_new_encodergroup()
-        for tile in tiles:
+        for tile in range(len(self.tiledescriptions)):
             for octree_bits in self.octree_bits:
                 for jpeg_quality in self.jpeg_quality:
-                    encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, tile, voxelsize)
+                    srctile = self.tiledescriptions[tile].get('ncamera', tile)
+                    encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, srctile, voxelsize)
                     encoder = self.encoder_group.addencoder(params=encparams)
                     self.encoders.append(encoder)
                     if hasattr(self.sink, 'add_streamDesc'):
-                        streamNum = self.sink.add_streamDesc(tile, octree_bits, jpeg_quality)
+                        # Our sink can handle multiple tiles/quality streams.
+                        # Initialize to the best of our knowledge
+                        if not 'normal' in self.tiledescriptions[tile]:
+                            print(f'encoder: warning: tile {tile} description has no normal vector: {self.tiledescriptions[tile]}')
+                        normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
+                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z'])
+                        if self.verbose:
+                            print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
                     else:
+                        # Single stream sink.
                         streamNum = 0
                     assert streamNum == len(self.encoders)-1 # Fails if multi-stream not supported by network sink.
 
