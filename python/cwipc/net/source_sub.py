@@ -95,6 +95,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
     QUEUE_WAIT_TIMEOUT=1
     # Should we check all streams for available data, or only ones where we are expecting it?
     EAGER_RECEIVE = True
+    # Should we forward all available streams?
+    EAGER_FORWARD = True
 
     def __init__(self, url, streamIndex=0, verbose=False):
         threading.Thread.__init__(self)
@@ -251,6 +253,10 @@ class _SignalsUnityBridgeSource(threading.Thread):
                     streamsToCheck = range(self.count())
                 else:
                     streamsToCheck = [self.streamIndex]
+                if self.EAGER_FORWARD:
+                    streamsToForward = set(range(self.count()))
+                else:
+                    streamsToForward = set([self.streamIndex])
                 for streamIndex in streamsToCheck:
                     #if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, None, 0, None)")
                     length = self.dll.sub_grab_frame(self.handle, streamIndex, None, 0, None)
@@ -269,8 +275,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
                     
                     receivedAnything = True
                     
-                    if streamIndex != self.streamIndex:
-                        if self.verbose: print(f'source_sub: drop {length2} received on stream {streamIndex}')
+                    if not streamIndex in streamsToForward:
+                        print(f'source_sub: drop {length2} received on stream {streamIndex}')
                         self.unwanted_receive.append(length2)
                         continue
                         
