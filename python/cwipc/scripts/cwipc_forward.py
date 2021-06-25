@@ -73,7 +73,7 @@ def main():
             tiledescriptions = None
         forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions)
 
-    sourceServer = SourceServer(source, forwarder, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose, source_name=source_name)
+    sourceServer = SourceServer(source, forwarder, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if forwarder:
         forwarder.set_producer(sourceThread)

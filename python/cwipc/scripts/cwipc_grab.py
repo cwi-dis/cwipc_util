@@ -256,7 +256,7 @@ def main():
         **kwargs
         )
 
-    sourceServer = SourceServer(source, writer, count=args.count, inpoint=args.inpoint, outpoint=args.outpoint, verbose=args.verbose, source_name=source_name)
+    sourceServer = SourceServer(source, writer, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     writer.set_producer(sourceThread)
 

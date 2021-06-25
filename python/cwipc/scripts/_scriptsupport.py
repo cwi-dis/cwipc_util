@@ -5,7 +5,7 @@ import signal
 import argparse
 import traceback
 
-from .. import playback, cwipc_proxy, cwipc_synthetic 
+from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -164,15 +164,18 @@ class SourceServer:
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
     At the end statistics can be printed."""
     
-    def __init__(self, grabber, viewer=None, count=None, inpoint=None, outpoint=None, verbose=False, source_name=None):
-        self.verbose = verbose
+    def __init__(self, grabber, viewer, args, source_name=None):
         self.grabber = grabber
+        self.verbose = args.verbose
+        self.count = args.count
+        self.inpoint = args.inpoint
+        self.outpoint = args.outpoint
+        self.downsample = args.downsample
         self.viewer = viewer
-        self.count = count
-        self.inpoint = inpoint
-        self.outpoint = outpoint
         self.times_grab = []
+        self.times_downsample = []
         self.pointcounts_grab = []
+        self.pointcounts_downsample = []
         self.latency_grab = []
         self.stopped = True
         self.lastGrabTime = None
@@ -227,6 +230,13 @@ class SourceServer:
                 pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
                 t1 = time.time()
+                if self.downsample:
+                    downsampled_pc = cwipc_downsample(pc, self.downsample)
+                    pc.free()
+                    pc = downsampled_pc
+                    t2 = time.time()
+                    self.times_downsample.append(t2-t1)
+                    self.pointcounts_downsample.append(pc.count())
                 if self.viewer: 
                     t = pc.timestamp()
                     if self.inpoint and t<self.inpoint:
@@ -248,6 +258,10 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
+        if self.times_downsample:
+            self.print1stat('downsample_duration', self.times_downsample)
+        if self.pointcounts_downsample:
+            self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
             self.grabber.statistics()
         
@@ -291,5 +305,5 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
-
+    input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
     return parser

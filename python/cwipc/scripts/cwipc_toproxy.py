@@ -56,7 +56,7 @@ def main():
     sourceFactory, _ = cwipc_genericsource_factory(args)
     source = sourceFactory()
     sender = Sender(args.host, args.port)
-    sourceServer = SourceServer(source, sender, count=args.count, verbose=args.verbose)
+    sourceServer = SourceServer(source, sender, args)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if sender:
         sender.set_producer(sourceThread)
