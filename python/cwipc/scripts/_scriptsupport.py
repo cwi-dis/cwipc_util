@@ -67,13 +67,19 @@ def cwipc_genericsource_factory(args):
         if kinect == None:
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
-        source = kinect.cwipc_kinect
+        if args.cameraconfig:
+            source = lambda : kinect.cwipc_kinect(args.cameraconfig)
+        else:
+            source = kinect.cwipc_kinect
         name = 'kinect'
     elif args.k4aoffline:
         if kinect == None or not hasattr(kinect, 'cwipc_k4aoffline'):
             print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
             sys.exit(-1)
-        source = kinect.cwipc_k4aoffline
+        if args.cameraconfig:
+            source = lambda : kinect.cwipc_k4aoffline(args.cameraconfig)
+        else:
+            source = kinect.cwipc_k4aoffline
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
     
     elif args.synthetic:
@@ -131,7 +137,10 @@ def cwipc_genericsource_factory(args):
         if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
-        source = realsense2.cwipc_realsense2
+        if args.cameraconfig:
+            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig)
+        else:
+            source = realsense2.cwipc_realsense2
         name = 'realsense'
     return source, name
 
@@ -263,6 +272,7 @@ def ArgumentParser(*args, **kwargs):
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     input_selection_args.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
+    input_selection_args.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.xml)")
     input_selection_args.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
