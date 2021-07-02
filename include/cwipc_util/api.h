@@ -102,6 +102,37 @@ struct cwipc_point_packetheader {
  */
 #define CWIPC_POINT_PACKETHEADER_MAGIC 0x20201016
 
+ /** \brief Per-joint skeleton information.
+  *
+  * x, y, z are the coordinates in 3D space of this joint.
+  * q_w, q_x, q_y, q_z are the quaternion of the joint orientation.
+  * confidence is the value reported by the k4abt module.
+  */
+struct cwipc_skeleton_joint {
+    uint32_t confidence;
+    float x;
+    float y;
+    float z;
+    float q_w;
+    float q_x;
+    float q_y;
+    float q_z;
+};
+
+/** \brief All skeleton information returned by k4abt body tracker.
+ *
+ * n_skeletons is the total number of skeletons found (by all cameras),
+ * n_joints is the number of joints per skeleton.
+ * joints contains all joints in order.
+ *
+ * See k4abt documentation for the order of the joints in each skeleton.
+ */
+struct cwipc_skeleton_collection {
+    uint32_t n_skeletons;
+    uint32_t n_joints;
+    struct cwipc_skeleton_joint joints[1];
+};
+
  /** \brief Information on a tile.
   *
   * Information on tiles with a certain tile number, a vector of length 1 indicating which way the tile is pointing.
