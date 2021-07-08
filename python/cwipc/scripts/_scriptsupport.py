@@ -5,7 +5,7 @@ import signal
 import argparse
 import traceback
 
-from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample
+from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -171,11 +171,14 @@ class SourceServer:
         self.inpoint = args.inpoint
         self.outpoint = args.outpoint
         self.downsample = args.downsample
+        self.outliers = args.outliers
         self.viewer = viewer
         self.times_grab = []
         self.times_downsample = []
+        self.times_outliers = []
         self.pointcounts_grab = []
         self.pointcounts_downsample = []
+        self.pointcounts_outliers = []
         self.latency_grab = []
         self.stopped = True
         self.lastGrabTime = None
@@ -230,12 +233,21 @@ class SourceServer:
                 pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
                 t1 = time.time()
+                if self.outliers:
+                    t1_o = time.time()
+                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]))
+                    pc.free()
+                    pc = clean_pc
+                    t2_o = time.time()
+                    self.times_outliers.append(t2_o-t1_o)
+                    self.pointcounts_outliers.append(pc.count())
                 if self.downsample:
+                    t1_d = time.time()
                     downsampled_pc = cwipc_downsample(pc, self.downsample)
                     pc.free()
                     pc = downsampled_pc
-                    t2 = time.time()
-                    self.times_downsample.append(t2-t1)
+                    t2_d = time.time()
+                    self.times_downsample.append(t2_d-t1_d)
                     self.pointcounts_downsample.append(pc.count())
                 if self.viewer: 
                     t = pc.timestamp()
@@ -260,6 +272,8 @@ class SourceServer:
         self.print1stat('capture_latency', self.latency_grab)
         if self.times_downsample:
             self.print1stat('downsample_duration', self.times_downsample)
+        if self.pointcounts_outliers:
+            self.print1stat('outliers_pointcount', self.pointcounts_outliers)
         if self.pointcounts_downsample:
             self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
@@ -306,4 +320,5 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
+    input_args.add_argument("--outliers", action="store", nargs=2,  metavar="O", help="After capture remove outliers from the pointcloud. 2 arguments: kNeighbors and stddevMulThresh")
     return parser

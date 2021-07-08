@@ -876,6 +876,17 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT cwipc* cwipc_downsample(cwipc* pc, float voxelsize);
 
+    /** \brief Remove outliers from a cwipc pointcloud.
+     * \param pc The source pointcloud
+     * \param kNeighbors number of neighbors to analyze for each point.
+     * \param stddevMulThresh standard deviation multiplier
+     * \return a cleaned pointcloud
+     *
+     * All points who have a distance larger than stddevMulThresh standard deviation of 
+     * the mean distance to the query point will be marked as outliers and removed
+     */
+    _CWIPC_UTIL_EXPORT cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh);
+
     /** \brief Filter a pointcloud by tile.
      * \param pc The source pointcloud.
      * \param tile The tile number.

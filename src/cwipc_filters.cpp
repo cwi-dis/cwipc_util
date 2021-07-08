@@ -18,6 +18,7 @@
 #include <pcl/exceptions.h>
 
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 namespace pcl {
 template class VoxelGrid<cwipc_pcl_point>;
@@ -58,6 +59,39 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 	}
 	cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 	rv->_set_cellsize(voxelsize);
+	return rv;
+}
+
+/// <summary>
+/// All points who have a distance larger than StddevMulThresh standard deviation of the mean distance to the query point will be marked as outliers and removed
+/// </summary>
+/// <param name="pc">Source point cloud to be cleaned</param>
+/// <param name="kNeighbors">number of neighbors to analyze for each point</param>
+/// <param name="stddevMulThresh">standard deviation multiplier</param>
+/// <returns>Cleaned point cloud</returns>
+cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh)
+{
+	if (pc == NULL) return NULL;
+	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+	if (src == NULL) return NULL;
+	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+	// Apply statistical outlier removal 
+	try {
+		pcl::StatisticalOutlierRemoval<cwipc_pcl_point> sor;
+		sor.setInputCloud(src);
+		sor.setMeanK(kNeighbors);
+		sor.setStddevMulThresh(stddevMulThresh);
+		sor.filter(*dst);
+	}
+	catch (pcl::PCLException& e) {
+		std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+		return NULL;
+	}
+	catch (std::exception& e) {
+		std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+		return NULL;
+	}
+	cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 	return rv;
 }
 
