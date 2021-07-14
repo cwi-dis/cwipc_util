@@ -257,7 +257,7 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_downsample.argtypes = [cwipc_p, ctypes.c_float]
     _cwipc_util_dll_reference.cwipc_downsample.restype = cwipc_p
 
-    _cwipc_util_dll_reference.cwipc_remove_outliers.argtypes = [cwipc_p, ctypes.c_int, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc_remove_outliers.argtypes = [cwipc_p, ctypes.c_int, ctypes.c_float, ctypes.c_bool]
     _cwipc_util_dll_reference.cwipc_remove_outliers.restype = cwipc_p
     
     _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
@@ -639,8 +639,8 @@ def cwipc_downsample(pc, voxelsize):
     rv = _cwipc_util_dll().cwipc_downsample(pc._as_cwipc_p(), voxelsize)
     return cwipc(rv)
     
-def cwipc_remove_outliers(pc, kNeighbors, stdDesvMultThresh):
-    rv = _cwipc_util_dll().cwipc_remove_outliers(pc._as_cwipc_p(), kNeighbors, stdDesvMultThresh)
+def cwipc_remove_outliers(pc, kNeighbors, stdDesvMultThresh, perTile):
+    rv = _cwipc_util_dll().cwipc_remove_outliers(pc._as_cwipc_p(), kNeighbors, stdDesvMultThresh, perTile)
     return cwipc(rv)
     
 def cwipc_tilefilter(pc, tile):

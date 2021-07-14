@@ -69,12 +69,13 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 /// <param name="kNeighbors">number of neighbors to analyze for each point</param>
 /// <param name="stddevMulThresh">standard deviation multiplier</param>
 /// <returns>Cleaned point cloud</returns>
-cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh)
+cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh)
 {
 	if (pc == NULL) return NULL;
 	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 	if (src == NULL) return NULL;
 	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+
 	// Apply statistical outlier removal 
 	try {
 		pcl::StatisticalOutlierRemoval<cwipc_pcl_point> sor;
@@ -91,9 +92,66 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh)
 		std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
 		return NULL;
 	}
-	cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
-	return rv;
+	return dst;
 }
+
+
+/// <summary>
+/// All points who have a distance larger than StddevMulThresh standard deviation of the mean distance to the query point will be marked as outliers and removed
+/// </summary>
+/// <param name="pc">Source point cloud to be cleaned</param>
+/// <param name="kNeighbors">number of neighbors to analyze for each point</param>
+/// <param name="stddevMulThresh">standard deviation multiplier</param>
+/// <param name="perTile">decides if apply the filter per tile or to the full pointcloud</param>
+/// <returns>Cleaned point cloud</returns>
+cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, bool perTile)
+{
+	if (pc == NULL) return NULL;
+	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+	if (src == NULL) return NULL;
+	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+
+	// Apply statistical outlier removal 
+	try {
+		if (perTile) {
+			std::vector< int > tiles;
+			for (auto pt : src->points) {
+				int tile = pt.a;
+				if (std::find(tiles.begin(), tiles.end(), tile) != tiles.end()) {
+					//std::cout << "Element found";
+					continue;
+				}
+				else {
+					tiles.push_back(tile);
+				}
+			}
+			std::cout << "Found " << tiles.size() << " tiles " << std::endl;
+			for (int tile : tiles)
+			{
+				cwipc* aux_pc = cwipc_tilefilter(pc, tile);
+				cwipc_pcl_pointcloud aux_dst = cwipc_remove_outliers(aux_pc, kNeighbors, stddevMulThresh);
+				*dst += *aux_dst;
+				aux_pc->free();
+				std::cout << "Cleaned tile " << tile << std::endl;
+			}
+			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+		}
+		else {
+			dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
+			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+		}
+	}
+	catch (pcl::PCLException& e) {
+		std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+		return NULL;
+	}
+	catch (std::exception& e) {
+		std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+		return NULL;
+	}
+	return pc;
+}
+
 
 cwipc *cwipc_tilefilter(cwipc *pc, int tile)
 {

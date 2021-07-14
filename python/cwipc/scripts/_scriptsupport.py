@@ -235,7 +235,7 @@ class SourceServer:
                 t1 = time.time()
                 if self.outliers:
                     t1_o = time.time()
-                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]))
+                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]), bool(self.outliers[1]))
                     pc.free()
                     pc = clean_pc
                     t2_o = time.time()
@@ -320,5 +320,5 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
-    input_args.add_argument("--outliers", action="store", nargs=2,  metavar="O", help="After capture remove outliers from the pointcloud. 2 arguments: kNeighbors and stddevMulThresh")
+    input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     return parser
