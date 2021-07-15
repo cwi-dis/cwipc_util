@@ -235,7 +235,7 @@ class SourceServer:
                 t1 = time.time()
                 if self.outliers:
                     t1_o = time.time()
-                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]), bool(self.outliers[1]))
+                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]), bool(int(self.outliers[2])))
                     pc.free()
                     pc = clean_pc
                     t2_o = time.time()

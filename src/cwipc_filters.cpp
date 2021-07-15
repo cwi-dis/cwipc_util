@@ -114,6 +114,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 	// Apply statistical outlier removal 
 	try {
 		if (perTile) {
+			std::cout << "Removing outliers per tile";
 			std::vector< int > tiles;
 			for (auto pt : src->points) {
 				int tile = pt.a;
@@ -125,18 +126,19 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 					tiles.push_back(tile);
 				}
 			}
-			std::cout << "Found " << tiles.size() << " tiles " << std::endl;
+			//std::cout << "Found " << tiles.size() << " tiles " << std::endl;
 			for (int tile : tiles)
 			{
 				cwipc* aux_pc = cwipc_tilefilter(pc, tile);
 				cwipc_pcl_pointcloud aux_dst = cwipc_remove_outliers(aux_pc, kNeighbors, stddevMulThresh);
 				*dst += *aux_dst;
 				aux_pc->free();
-				std::cout << "Cleaned tile " << tile << std::endl;
+				//std::cout << "Cleaned tile " << tile << std::endl;
 			}
 			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 		}
 		else {
+			std::cout << "Removing outliers on the full pointcloud";
 			dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
 			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 		}
