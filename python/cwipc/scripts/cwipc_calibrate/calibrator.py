@@ -511,7 +511,7 @@ class Calibrator:
             tpc += tf_pc
             tpc_down = tpc.voxel_down_sample(radius_ds)
             aligned_pc += tf_pc
-            print("-Aligned pc",i)
+            print("-Aligned tile",i)
 
         #Extra step to fine align first cam
         aligned_pc_down = aligned_pc.voxel_down_sample(radius_ds)
@@ -658,7 +658,6 @@ class Calibrator:
             #print(len(pointclouds[cam_order[i]].get_o3d().points),"->",len(pcs[-1].points))
             transformations.append(np.identity(4))
             
-        radius_ds = 0.005 #voxel downsampling radius
         tpc = pcs[0] #the target pc
         aligned_pc = open3d.geometry.PointCloud()
         
@@ -668,14 +667,14 @@ class Calibrator:
             tf_pc = pcs[i].transform(current_transformation)
             tpc += tf_pc
             aligned_pc += tf_pc
-            print("-Aligned pc",i)
+            print("-Aligned tile",cam_order[i])
 
-        #Extra step to fine align first cam
-        current_transformation = self.multiscale_icp(pcs[0], aligned_pc, correspondance_dist, mode, np.identity(4))
-        transformations[0] = current_transformation @ transformations[0]
-        tf_pc = pcs[0].transform(current_transformation)
-        aligned_pc += tf_pc
-        print("-Aligned pc",0)
+        #Extra step to fine align first cam -> better leave first camera static.
+        #current_transformation = self.multiscale_icp(pcs[0], aligned_pc, correspondance_dist, mode, np.identity(4))
+        #transformations[0] = current_transformation @ transformations[0]
+        #tf_pc = pcs[0].transform(current_transformation)
+        #aligned_pc += tf_pc
+        #print("-Aligned tile",0)
 
         final_pc = open3d.geometry.PointCloud()
         tup = [] #tuple list to recover original order
@@ -688,14 +687,12 @@ class Calibrator:
         return [i[1] for i in ordered_tup] #return transformations in original order
     
     def multiscale_icp(self, source, target, voxel_size, mode, init_transformation=np.identity(4)):
-        vox_scale = np.asarray([voxel_size, voxel_size/2.0, voxel_size/4.0])
-        if mode == 3:
-            vox_scale *= 2.0 #color mode needs higher values
+        vox_scale = np.asarray([voxel_size, voxel_size/2.0, voxel_size/4.0]) #original-> vox_scale = [0.04, 0.02, 0.01]
         max_iter = [50, 30, 14]
         current_transformation = init_transformation
         for i, scale in enumerate(range(len(max_iter))):  # multi-scale approach
             iter = max_iter[scale]
-            distance_threshold = voxel_size * 1.4
+            distance_threshold = vox_scale[scale] #voxel_size * 1.4
             print("voxel_size {}".format(vox_scale[scale]), "\t",iter,"iterations")
             source_down = source.voxel_down_sample(vox_scale[scale])
             target_down = target.voxel_down_sample(vox_scale[scale])

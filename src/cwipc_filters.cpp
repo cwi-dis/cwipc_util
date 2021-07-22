@@ -114,7 +114,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 	// Apply statistical outlier removal 
 	try {
 		if (perTile) {
-			std::cout << "Removing outliers per tile";
+			std::cout << "cwipc_util: cwipc_remove_outliers: Removing outliers per tile" << std::endl;
 			std::vector< int > tiles;
 			for (auto pt : src->points) {
 				int tile = pt.a;
