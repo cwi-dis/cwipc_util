@@ -2,11 +2,11 @@ import ctypes
 import ctypes.util
 import time
 import os
+import sys
 import threading
 import queue
 
-
-SUB_API_VERSION = 0x20200420A
+SUB_API_VERSION = 0x20210726A
 
 _signals_unity_bridge_dll_reference = None
 
@@ -32,12 +32,16 @@ class streamDesc(ctypes.Structure):
         ("totalHeight", ctypes.c_uint32),
     ]
       
-SubErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p)
+SubErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int)
 
-def _onSubError(msg):
-    """Callback function passed to sub_create: re-raise SUB errors in Python environment"""
-    print(f"source_sub: asynchronous error: {msg}", file=sys.stderr, flush=True)
-    raise SubError(msg)
+def _onSubError(msg, level):
+    """Callback function passed to sub_create: preint (or re-raise) SUB errors in Python environment"""
+    msg = msg.decode('utf8')
+    levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
+    
+    print(f"source_sub: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
+    if level == 0:
+        raise SubError(msg)
     
 def _signals_unity_bridge_dll(libname=None):
     global _signals_unity_bridge_dll_reference
@@ -118,7 +122,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
-        self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), SubErrorCallbackType(_onSubError), SUB_API_VERSION)
+        self._onSubError = SubErrorCallbackType(_onSubError)
+        self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), self._onSubError, SUB_API_VERSION)
         if not self.handle:
             raise SubError("sub_create failed")
         
@@ -145,6 +150,10 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert nstreams > self.streamIndex
         self.running = True
         self.started = True
+        if True and self.verbose:
+            for i in range(nstreams):
+                srd_info = self._srd_info_for_stream(i)
+                print(f"source_sub: stream[{i}]: {srd_info}")
         threading.Thread.start(self)
         
     def stop(self):
@@ -227,7 +236,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.handle
         assert self.dll
         assert self.started
-        if self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {qualityNum})")
+        if True or self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {qualityNum})")
         ok = self.dll.sub_enable_stream(self.handle, tileNum, qualityNum)
         if not ok:
             return False
@@ -240,7 +249,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.handle
         assert self.dll
         assert self.started
-        if self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
+        if True or self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
         return self.dll.sub_disable_stream(self.handle, tileNum)
         
     def run(self):
