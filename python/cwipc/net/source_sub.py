@@ -6,7 +6,7 @@ import sys
 import threading
 import queue
 
-SUB_API_VERSION = 0x20210726A
+SUB_API_VERSION = 0x20210729A
 
 _signals_unity_bridge_dll_reference = None
 
@@ -63,7 +63,7 @@ def _signals_unity_bridge_dll(libname=None):
         os.putenv('SIGNALS_SMD_PATH', libdirname)
     _signals_unity_bridge_dll_reference = ctypes.cdll.LoadLibrary(libname)
     
-    _signals_unity_bridge_dll_reference.sub_create.argtypes = [ctypes.c_char_p, SubErrorCallbackType, ctypes.c_uint64]
+    _signals_unity_bridge_dll_reference.sub_create.argtypes = [ctypes.c_char_p, SubErrorCallbackType, ctypes.c_int, ctypes.c_uint64]
     _signals_unity_bridge_dll_reference.sub_create.restype = sub_handle_p
     
     _signals_unity_bridge_dll_reference.sub_destroy.argtypes = [sub_handle_p]
@@ -123,7 +123,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
         self._onSubError = SubErrorCallbackType(_onSubError)
-        self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), self._onSubError, SUB_API_VERSION)
+        msgLevel = 3 if self.verbose else 0
+        self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), self._onSubError, msgLevel, SUB_API_VERSION)
         if not self.handle:
             raise SubError("sub_create failed")
         
