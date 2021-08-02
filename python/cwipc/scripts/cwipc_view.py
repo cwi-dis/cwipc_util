@@ -195,7 +195,7 @@ def main():
     else:
         visualizer = None
 
-    sourceServer = SourceServer(source, visualizer, args)
+    sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=())
     if visualizer:
         visualizer.set_producer(sourceThread)
