@@ -47,4 +47,6 @@ install(FILES ${PROJECT_SOURCE_DIR}/CMakeFiles/cwipc_util-config.cmake DESTINATI
 
 install(EXPORT cwipc_util DESTINATION lib/cmake/cwipc_util)
 
-install(FILES $<TARGET_PDB_FILE:cwipc_util> DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL)
+if(WIN32)
+	install(FILES $<TARGET_PDB_FILE:cwipc_util> DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL)
+endif()
