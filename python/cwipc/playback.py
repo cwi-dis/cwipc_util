@@ -1,9 +1,17 @@
 import cwipc
 import time
 import os
+import json
 
 class _Filesource:
-    def __init__(self, filenames, loop=False, fps=None):
+    def __init__(self, filenames, tileInfo=None, loop=False, fps=None):
+        if not tileInfo:
+            tileInfo = [{
+                "cameraName" : "None",
+                "cameraMask" : 0,
+                "normal" : {"x":0, "y":0, "z":0}
+            }]
+        self.tileInfo = tileInfo
         self.filenames = list(filenames)
         self.loop = loop
         self.delta_t = 0
@@ -35,7 +43,13 @@ class _Filesource:
         numbers = ''.join(x for x in fn if x.isdigit())
         if numbers == '':
             numbers = 0
-        return cwipc.cwipc_read(fn, int(numbers))        
+        return cwipc.cwipc_read(fn, int(numbers))       
+        
+    def maxtile(self):
+        return len(self.tileInfo)
+        
+    def get_tileinfo_dict(self, i):
+        return self.tileInfo[i]
         
 class _DumpFilesource(_Filesource):
     def _get(self, fn):
@@ -43,6 +57,7 @@ class _DumpFilesource(_Filesource):
     
 def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None, inpoint=None, outpoint=None):
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
+    tileInfo = None
     if isinstance(dir_or_files, str):
         ext = ".ply" if ply else ".cwipcdump"
         filenames = filter(lambda fn : fn.lower().endswith(ext), os.listdir(dir_or_files))
@@ -58,11 +73,17 @@ def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None, inpoint=None, o
         if outpoint:
             filenames = [fn for fn in filenames if not int(''.join(x for x in fn if x.isdigit())) > outpoint]
         
+        tileInfo_fn = os.path.join(dir_or_files, "tileconfig.json")
+        if os.path.exists(tileInfo_fn):
+            with open(tileInfo_fn) as fp:
+                ti = json.load(fp)
+                tileInfo = ti.get('tileInfo')
+
         filenames = map(lambda fn: os.path.join(dir_or_files, fn), filenames)
         filenames = list(filenames)
         dir_or_files = filenames
     if ply:
-        return _Filesource(dir_or_files, loop, fps)
+        return _Filesource(dir_or_files, tileInfo=tileInfo, loop=loop, fps=fps)
     else:
-        return _DumpFilesource(dir_or_files, loop, fps)
+        return _DumpFilesource(dir_or_files, tileInfo=tileInfo, loop=loop, fps=fps)
         
