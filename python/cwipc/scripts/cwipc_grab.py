@@ -209,6 +209,7 @@ def main():
     parser.add_argument("outputdir", action="store", help="Save output files in this directory")
 
     args = parser.parse_args()
+    beginOfRun(args)
     #
     # Create source
     #
@@ -285,6 +286,8 @@ def main():
     sourceServer.stop()
     sourceThread.join()
     sourceServer.statistics()
+    del sourceServer
+    endOfRun(args)
     if not ok:
         sys.exit(1)
     

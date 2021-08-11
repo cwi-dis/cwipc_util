@@ -185,6 +185,7 @@ def main():
     parser = ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     args = parser.parse_args()
+    beginOfRun(args)
     #
     # Create source
     #
@@ -224,6 +225,9 @@ def main():
     sourceServer.stop()
     sourceThread.join()
     sourceServer.statistics()
+    del visualizer
+    del sourceServer
+    endOfRun(args)
     
 if __name__ == '__main__':
     main()
