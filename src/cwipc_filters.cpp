@@ -138,7 +138,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 		}
 		else {
-			std::cout << "Removing outliers on the full pointcloud";
+			std::cout << "Removing outliers on the full pointcloud" << std::endl;
 			dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
 			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 		}
