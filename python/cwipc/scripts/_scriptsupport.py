@@ -37,6 +37,8 @@ __all__ = [
     "ArgumentParser",
     "cwipc_genericsource_factory",
     "SourceServer",
+    "beginOfRun",
+    "endOfRun"
 ]
 
 def _dump_app_stacks(*args):
@@ -296,6 +298,7 @@ class SourceServer:
 def ArgumentParser(*args, **kwargs):
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
+    parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
@@ -322,3 +325,23 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     return parser
+    
+def beginOfRun(args):
+    """Optionally pause execution"""
+    if args.pausefordebug:
+        answer=None
+        while answer != 'Y':
+            print(f"{sys.argv[0]}: starting, pid={os.getpid()}. Press Y to continue -", flush=True)
+            answer = sys.stdin.readline()
+            answer = answer.strip()
+        print(f"{sys.argv[0]}: started.")
+            
+def endOfRun(args):
+    """Optionally pause execution"""
+    if args.pausefordebug:
+        answer=None
+        while answer != 'Y':
+            print(f"{sys.argv[0]}: stopping, pid={os.getpid()}. Press Y to continue -", flush=True)
+            answer = sys.stdin.readline()
+            answer = answer.strip()
+        print(f"{sys.argv[0]}: stopped.")

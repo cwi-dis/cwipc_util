@@ -30,6 +30,7 @@ def main():
     output_args.add_argument("--tiled", action="store_true", help="Encode and transmit streams for every tile (bin2dash only)")
     output_args.add_argument("--tile", action="append", type=int, help="Encode and transmit stream for specific tile (bin2dash only), can be specified more than once.")
     args = parser.parse_args()
+    beginOfRun(args)
     #
     # Create source
     #
@@ -109,6 +110,9 @@ def main():
     if forwarder and hasattr(forwarder, 'statistics'):
         forwarder.statistics()
     sourceServer.statistics()
+    del forwarder
+    del sourceServer
+    endOfRun(args)
     
 if __name__ == '__main__':
     main()
