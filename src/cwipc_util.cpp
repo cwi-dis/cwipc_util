@@ -93,6 +93,7 @@ public:
         }
         m_timestamp = timestamp;
         cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
+        pc->points.reserve(npoint);
         for (int i=0; i<npoint; i++) {
             cwipc_pcl_point point;
             point.x = pointData[i].x;
