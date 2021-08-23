@@ -651,6 +651,7 @@ class Calibrator:
         print("   Choose ICP method:\n\t1) point2point\n\t2) point2plane\n\t3) color")
         mode = int(sys.stdin.readline().strip().lower())
         cam_order = get_cameras_order(cam_pos)
+        print("cam_order = ",cam_order)
         pcs = [] #list of ordered pcs
         transformations = [] #list of ordered transformations
         for i in range(len(cam_order)):
@@ -693,7 +694,7 @@ class Calibrator:
         for i, scale in enumerate(range(len(max_iter))):  # multi-scale approach
             iter = max_iter[scale]
             distance_threshold = vox_scale[scale] #voxel_size * 1.4
-            print("voxel_size {}".format(vox_scale[scale]), "\t",iter,"iterations")
+            print("#   voxel_size {}".format(vox_scale[scale]), "\t",iter,"iterations")
             source_down = source.voxel_down_sample(vox_scale[scale])
             target_down = target.voxel_down_sample(vox_scale[scale])
             if mode == 1: #"point_to_point"
