@@ -11,7 +11,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE})
 
 
-find_package(PCL 1.11 COMPONENTS common io octree filters features)
+find_package(PCL 1.10 COMPONENTS common io octree filters features)
 find_package(glfw3 3.2)
 if(NOT glfw3_FOUND)
 	add_subdirectory("third-party/glfw")
