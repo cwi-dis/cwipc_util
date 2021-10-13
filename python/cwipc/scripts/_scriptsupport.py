@@ -103,7 +103,7 @@ def cwipc_genericsource_factory(args):
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {filename}: unknown playback file type')
                 sys.exit(-1)
-            source = lambda : playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            source = lambda : playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
             name = 'playback'
         else:
             dirname = args.playback
@@ -111,7 +111,7 @@ def cwipc_genericsource_factory(args):
             if playback_type not in ('ply', 'dump'):
                 print(f'{sys.argv[0]}: {dirname}: should contain only .ply or .cwipcdump files')
                 sys.exit(-1)
-            source = lambda : playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint)
+            source = lambda : playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
             name = 'playback'
     elif args.netclient:
         source = lambda : (
@@ -319,6 +319,7 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
     input_args.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     input_args.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some grabbers)", default=0)
+    input_args.add_argument("--retimestamp", action="store_true", help="Set timestamps to wall clock in stead of recorded timestamps (for some grabbers)")
     input_args.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
