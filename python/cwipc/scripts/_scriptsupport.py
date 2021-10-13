@@ -299,6 +299,7 @@ def ArgumentParser(*args, **kwargs):
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
+    parser.add_argument("--debuglibrary", action="store", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
@@ -335,6 +336,26 @@ def beginOfRun(args):
             answer = sys.stdin.readline()
             answer = answer.strip()
         print(f"{sys.argv[0]}: started.")
+    if args.debuglibrary:
+        try:
+            name, path = args.debuglibrary.split('=')
+        except ValueError:
+            name = path = None
+        if name == 'cwipc_util':
+            from ..util import _cwipc_util_dll
+            _cwipc_util_dll(path)
+        elif name == 'cwipc_codec':
+            from _cwipc_codec import _cwipc_codec_dll
+            _cwipc_codec_dll(path)
+        elif name == 'cwipc_realsense2':
+            from _cwipc_realsense2 import _cwipc_realsense2_dll
+            _cwipc_realsense2_dll(path)
+        elif name == 'cwipc_kinect':
+            from _cwipc_kinect import _cwipc_kinect_dll
+            _cwipc_kinect_dll(path)
+        else:
+            print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
+            sys.exit(1)
             
 def endOfRun(args):
     """Optionally pause execution"""
