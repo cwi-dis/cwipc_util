@@ -23,6 +23,7 @@ class _Sink_NetServer(threading.Thread):
         self.sizes_forward = []
         self.bandwidths_forward = []
         self.socket = socket.socket()
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', port))
         self.socket.listen()
          
