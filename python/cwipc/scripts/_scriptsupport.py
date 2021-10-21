@@ -354,6 +354,12 @@ def beginOfRun(args):
         elif name == 'cwipc_kinect':
             from _cwipc_kinect import _cwipc_kinect_dll
             _cwipc_kinect_dll(path)
+        elif name == 'signals-unity-bridge':
+            from ..net.source_sub import _signals_unity_bridge_dll
+            _signals_unity_bridge_dll(path)
+        elif name == 'bin2dash':
+            from ..net.sink_bin2dash import _bin2dash_dll
+            _bin2dash_dll(path)
         else:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
             sys.exit(1)
