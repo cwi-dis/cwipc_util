@@ -12,6 +12,7 @@ class _NetClientSource(threading.Thread):
     
     def __init__(self, address, verbose=False):
         threading.Thread.__init__(self)
+        self.name = 'cwipc_util._NetClientSource'
         hostname, port = address.split(':')
         if not hostname:
             hostname = 'localhost'

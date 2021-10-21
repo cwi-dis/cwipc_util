@@ -86,7 +86,7 @@ class _RabbitmqReceiver:
         if DEBUG: print(f"cwipc_certh: DEBUG: {self.exchangeName}: datachannel={self.channel}", flush=True, file=sys.stderr)
 
     def _start_rabbitmq(self):
-        self.thread = threading.Thread(target=self._run_rabbitmq, args=())
+        self.thread = threading.Thread(target=self._run_rabbitmq, args=(), name="cwipc_util.certh")
         self.thread.start()
         if DEBUG: print(f"cwipc_certh: DEBUG: {self.exchangeName}: datathread={self.thread}", flush=True, file=sys.stderr)
         

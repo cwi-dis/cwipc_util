@@ -13,6 +13,7 @@ class _Sink_NetServer(threading.Thread):
     
     def __init__(self, port, verbose=False, nodrop=False):
         threading.Thread.__init__(self)
+        self.name = 'cwipc_util._Sink_NetServer'
         self.producer = None
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose

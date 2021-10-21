@@ -104,6 +104,7 @@ class _SignalsUnityBridgeSource(threading.Thread):
 
     def __init__(self, url, streamIndex=0, verbose=False):
         threading.Thread.__init__(self)
+        self.name = 'cwipc_util._SignalsUnityBridgeSource'
         self.verbose = verbose
         self.url = url
         self.dll = None

@@ -19,6 +19,7 @@ class _Sink_Encoder(threading.Thread):
     
     def __init__(self, sink, verbose=False, nodrop=False):
         threading.Thread.__init__(self)
+        self.name = 'cwipc_util._Sink_Encoder'
         self.sink = sink
         if hasattr(self.sink, 'set_fourcc'):
             self.sink.set_fourcc(self.FOURCC)

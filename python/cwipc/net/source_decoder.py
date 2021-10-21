@@ -16,6 +16,7 @@ class _NetDecoder(threading.Thread):
     
     def __init__(self, source, verbose=False):
         threading.Thread.__init__(self)
+        self.name = 'cwipc_util._NetDecoder'
         self.source = source
         self.running = False
         self.verbose = verbose
