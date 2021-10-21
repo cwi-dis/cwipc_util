@@ -258,7 +258,7 @@ def main():
         )
 
     sourceServer = SourceServer(source, writer, args, source_name=source_name)
-    sourceThread = threading.Thread(target=sourceServer.run, args=())
+    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_grab.SourceServer")
     writer.set_producer(sourceThread)
 
     #

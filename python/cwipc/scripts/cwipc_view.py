@@ -197,7 +197,7 @@ def main():
         visualizer = None
 
     sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
-    sourceThread = threading.Thread(target=sourceServer.run, args=())
+    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
     if visualizer:
         visualizer.set_producer(sourceThread)
         visualizer.set_source(source)

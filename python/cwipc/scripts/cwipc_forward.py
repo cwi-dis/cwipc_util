@@ -80,7 +80,7 @@ def main():
         forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions)
 
     sourceServer = SourceServer(source, forwarder, args, source_name=source_name)
-    sourceThread = threading.Thread(target=sourceServer.run, args=())
+    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_forward.SourceServer")
     if forwarder:
         forwarder.set_producer(sourceThread)
 
