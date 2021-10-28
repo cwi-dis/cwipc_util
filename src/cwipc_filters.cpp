@@ -157,17 +157,68 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 
 cwipc *cwipc_tilefilter(cwipc *pc, int tile)
 {
-	if (pc == NULL) return NULL;
-	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
-	if (src == NULL) return NULL;
-	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
-	for (auto pt : src->points) {
-		if (tile == 0 || tile == pt.a) {
-			dst->points.push_back(pt);
-		}
-	}
-	cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
-	rv->_set_cellsize(pc->cellsize());
-	return rv;
+    if (pc == NULL) return NULL;
+    cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+    if (src == NULL) return NULL;
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    for (auto pt : src->points) {
+        if (tile == 0 || tile == pt.a) {
+            dst->points.push_back(pt);
+        }
+    }
+    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    rv->_set_cellsize(pc->cellsize());
+    return rv;
+}
+
+cwipc *cwipc_tilemap(cwipc *pc, uint8_t map[256])
+{
+    if (pc == NULL) return NULL;
+    cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+    if (src == NULL) return NULL;
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    for (auto pt : src->points) {
+        pt.a = map[pt.a];
+        dst->points.push_back(pt);
+    }
+    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    rv->_set_cellsize(pc->cellsize());
+    return rv;
+}
+
+cwipc *cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits)
+{
+    if (pc == NULL) return NULL;
+    cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+    if (src == NULL) return NULL;
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    for (auto pt : src->points) {
+        pt.rgba &= ~clearBits;
+        pt.rgba |= setBits;
+        dst->points.push_back(pt);
+    }
+    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    rv->_set_cellsize(pc->cellsize());
+    return rv;
+}
+
+cwipc *cwipc_join(cwipc *pc1, cwipc *pc2)
+{
+    if (pc1 == NULL || pc2 == NULL) return NULL;
+    cwipc_pcl_pointcloud src1 = pc1->access_pcl_pointcloud();
+    cwipc_pcl_pointcloud src2 = pc2->access_pcl_pointcloud();
+    if (src1 == NULL || src2 == NULL) return NULL;
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    for (auto pt : src1->points) {
+        dst->points.push_back(pt);
+    }
+    for (auto pt : src2->points) {
+        dst->points.push_back(pt);
+    }
+    uint64_t timestamp = std::min(pc1->timestamp(), pc2->timestamp());
+    cwipc *rv = cwipc_from_pcl(dst, timestamp, NULL, CWIPC_API_VERSION);
+    float cellsize = std::min(pc1->cellsize(), pc2->cellsize());
+    rv->_set_cellsize(cellsize);
+    return rv;
 }
 

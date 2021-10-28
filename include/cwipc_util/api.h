@@ -897,6 +897,38 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT cwipc* cwipc_tilefilter(cwipc* pc, int tile);
 
+    /** \brief Change tiling of a pointcloud.
+     * \param pc The source pointcloud.
+     * \param map The tile number mapping.
+     *
+     * Returns a new pointcloud where the tile number of each point is mapped through `map`.
+     * This can be used to combine tiles, creating a pointcloud with fewer tiles than the original
+     * (for example by only keeping the "major" tiles, and combining all remaining tiles into a single one).
+     */
+    _CWIPC_UTIL_EXPORT cwipc* cwipc_tilemap(cwipc* pc, uint8_t map[256]);
+
+    /** \brief Change colors in a pointcloud.
+     * \param pc The source pointcloud.
+     * \param clearBits Map of bits to clear in the RGBa color
+     * \param setBits Map of bits to set in the RGBa color
+     *
+     * Returns a new pointcloud with the color of each point modified.
+     * Note: this function is primarliy intended for debugging and inspecting pointclouds, it is not
+     * coded for efficiency.
+     */
+    _CWIPC_UTIL_EXPORT cwipc* cwipc_colormap(cwipc* pc, uint32_t clearBits, uint32_t setBits);
+
+    /** \brief Combine two pointclouds
+     * \param pc1 A source pointcloud.
+     * \param pc1 Another source pointcloud.
+     *
+     * Returns a new pointcloud that contains all points in both sources.
+     * Timestamp and cellsize is set to the minimum of both values in the sources.
+     * Note: this function is primarliy intended for debugging and inspecting pointclouds, it is not
+     * coded for efficiency.
+     */
+    _CWIPC_UTIL_EXPORT cwipc* cwipc_join(cwipc* pc1, cwipc* pc2);
+
     /** \brief Receive pointclouds over a socket connection.
      * \param host Local hostname or IP address to bind socket to (default: 0.0.0.0)
      * \param port Local port number to bind socket to.

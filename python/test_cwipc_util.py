@@ -297,6 +297,46 @@ class TestApi(unittest.TestCase):
         pc_orig.free()
         pc_filtered.free()
         
+    def test_join(self):
+        """Check that joining two pointclouds results in a pointcloud with the correct number of points"""
+        gen = cwipc.cwipc_synthetic()
+        pc_1 = gen.get()
+        pc_2 = gen.get()
+        pc_out = cwipc.cwipc_join(pc_1, pc_2)
+        self.assertEqual(len(pc_out.get_points()), len(pc_1.get_points()) + len(pc_2.get_points()))
+        
+    def test_tilemap(self):
+        """Check that tilemap keeps the correct numer of points in the mapped tiles"""
+        gen = cwipc.cwipc_synthetic()
+        pc_orig = gen.get()
+        pc_filtered_1 = cwipc.cwipc_tilefilter(pc_orig, 1)
+        pc_filtered_2 = cwipc.cwipc_tilefilter(pc_orig, 2)
+        pc_mapped = cwipc.cwipc_tilemap(pc_orig, {1:5, 2:6})
+        pc_mapped_1 = cwipc.cwipc_tilefilter(pc_orig, 5)
+        pc_mapped_2 = cwipc.cwipc_tilefilter(pc_orig, 6)
+        self.assertEqual(len(pc_filtered_1.get_points()), len(pc_mapped_1.get_points()))
+        self.assertEqual(len(pc_filtered_2.get_points()), len(pc_mapped_2.get_points()))
+        
+    def test_colormap(self):
+        """Check that colormap keeps all points but gives them the new color"""
+        gen = cwipc.cwipc_synthetic()
+        pc = gen.get()
+        pc2 = cwipc.cwipc_colormap(pc, 0xffffffff, 0x01020304)
+        points = pc.get_points()
+        points2 = pc2.get_points()
+        self.assertEqual(len(points), len(points2))
+        for i in range(len(points)):
+            op = points[i]
+            np = points2[i]
+            self.assertEqual(op.x, np.x)
+            self.assertEqual(op.y, np.y)
+            self.assertEqual(op.z, np.z)
+            self.assertEqual(np.r, 0x01)
+            self.assertEqual(np.g, 0x02)
+            self.assertEqual(np.b, 0x03)
+            self.assertEqual(np.tile, 0x04)
+        
+        
     def test_downsample(self):
         """Check that the downsampler returns at most the same number of points and eventually returns 1"""
         gen = cwipc.cwipc_synthetic()

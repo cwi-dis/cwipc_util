@@ -30,7 +30,10 @@ __all__ = [
     
     'cwipc_downsample',
     'cwipc_remove_outliers',
-    'cwipc_tilefilter'
+    'cwipc_tilefilter',
+    'cwipc_tilemap',
+    'cwipc_colormap',
+    'cwipc_join'
 ]
 
 CWIPC_API_VERSION = 0x20210525
@@ -262,6 +265,15 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
     _cwipc_util_dll_reference.cwipc_tilefilter.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_tilemap.argtypes = [cwipc_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_tilemap.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_colormap.argtypes = [cwipc_p, ctypes.c_ulong, ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_colormap.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_join.argtypes = [cwipc_p, cwipc_p]
+    _cwipc_util_dll_reference.cwipc_join.restype = cwipc_p
 
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
@@ -645,6 +657,23 @@ def cwipc_remove_outliers(pc, kNeighbors, stdDesvMultThresh, perTile):
     
 def cwipc_tilefilter(pc, tile):
     rv = _cwipc_util_dll().cwipc_tilefilter(pc._as_cwipc_p(), tile)
+    return cwipc(rv)
+  
+def cwipc_tilemap(pc, mapping):
+    if type(mapping) != bytes and type(mapping) != bytearray:
+        m = [0]*256
+        for k in mapping:
+            m[k] = mapping[k]
+        mapping = m
+    rv = _cwipc_util_dll().cwipc_tilemap(pc._as_cwipc_p(), bytes(mapping))
+    return cwipc(rv)
+  
+def cwipc_colormap(pc, clearBits, setBits):
+    rv = _cwipc_util_dll().cwipc_colormap(pc._as_cwipc_p(), clearBits, setBits)
+    return cwipc(rv)
+  
+def cwipc_join(pc1, pc2):
+    rv = _cwipc_util_dll().cwipc_join(pc1._as_cwipc_p(), pc2._as_cwipc_p())
     return cwipc(rv)
   
 def cwipc_proxy(host, port):
