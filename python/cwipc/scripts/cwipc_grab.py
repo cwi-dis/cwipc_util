@@ -287,7 +287,7 @@ def main():
         )
     if args.compress:
         params = {}
-        for sparam in args.compress_param:
+        for sparam in args.compress_param or []:
             k, v = sparam.split('=')
             params[k] = eval(v)
         writer.setup_encoder(params)
