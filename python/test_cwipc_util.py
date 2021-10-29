@@ -369,7 +369,7 @@ class TestApi(unittest.TestCase):
         pc_filtered.free()
         
     def test_playback_file(self):
-        src = cwipc.playback.cwipc_playback([PLY_FILENAME], ply=True, loop=False)
+        src = cwipc.playback.cwipc_playback([PLY_FILENAME], loop=False)
         self.assertFalse(src.eof())
         pc = src.get()
         self._verify_pointcloud(pc)
@@ -378,7 +378,7 @@ class TestApi(unittest.TestCase):
         src.free()
 
     def test_playback_dir(self):
-        src = cwipc.playback.cwipc_playback(PLY_DIRNAME, ply=True, loop=False)
+        src = cwipc.playback.cwipc_playback(PLY_DIRNAME, loop=False)
         self.assertFalse(src.eof())
         pc = src.get()
         self._verify_pointcloud(pc)
