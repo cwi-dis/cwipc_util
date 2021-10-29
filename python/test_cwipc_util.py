@@ -311,30 +311,31 @@ class TestApi(unittest.TestCase):
         pc_orig = gen.get()
         pc_filtered_1 = cwipc.cwipc_tilefilter(pc_orig, 1)
         pc_filtered_2 = cwipc.cwipc_tilefilter(pc_orig, 2)
+        pc_filtered_5 = cwipc.cwipc_tilefilter(pc_orig, 5)
+        pc_filtered_6 = cwipc.cwipc_tilefilter(pc_orig, 6)
         pc_mapped = cwipc.cwipc_tilemap(pc_orig, {1:5, 2:6})
-        pc_mapped_1 = cwipc.cwipc_tilefilter(pc_orig, 5)
-        pc_mapped_2 = cwipc.cwipc_tilefilter(pc_orig, 6)
-        self.assertEqual(len(pc_filtered_1.get_points()), len(pc_mapped_1.get_points()))
-        self.assertEqual(len(pc_filtered_2.get_points()), len(pc_mapped_2.get_points()))
+        pc_mapped_1 = cwipc.cwipc_tilefilter(pc_mapped, 1)
+        pc_mapped_2 = cwipc.cwipc_tilefilter(pc_mapped, 2)
+        pc_mapped_5 = cwipc.cwipc_tilefilter(pc_mapped, 5)
+        pc_mapped_6 = cwipc.cwipc_tilefilter(pc_mapped, 6)
+        self.assertEqual(len(pc_filtered_1.get_points()), len(pc_mapped_5.get_points()))
+        self.assertEqual(len(pc_filtered_2.get_points()), len(pc_mapped_6.get_points()))
+        self.assertEqual(len(pc_filtered_5.get_points()), len(pc_mapped_1.get_points()))
+        self.assertEqual(len(pc_filtered_6.get_points()), len(pc_mapped_2.get_points()))
         
     def test_colormap(self):
         """Check that colormap keeps all points but gives them the new color"""
         gen = cwipc.cwipc_synthetic()
         pc = gen.get()
-        pc2 = cwipc.cwipc_colormap(pc, 0xffffffff, 0x01020304)
+        pc2 = cwipc.cwipc_colormap(pc, 0xffffffff, 0x010203)
         points = pc.get_points()
         points2 = pc2.get_points()
         self.assertEqual(len(points), len(points2))
         for i in range(len(points)):
             op = points[i]
             np = points2[i]
-            self.assertEqual(op.x, np.x)
-            self.assertEqual(op.y, np.y)
-            self.assertEqual(op.z, np.z)
-            self.assertEqual(np.r, 0x01)
-            self.assertEqual(np.g, 0x02)
-            self.assertEqual(np.b, 0x03)
-            self.assertEqual(np.tile, 0x04)
+            self.assertEqual((op.x, op.y, op.z), (np.x, np.y, np.z))
+            self.assertEqual((np.r, np.g, np.b, np.tile), (0x01, 0x02, 0x03, 0x00))
         
         
     def test_downsample(self):

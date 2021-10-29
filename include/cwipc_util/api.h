@@ -909,8 +909,8 @@ extern "C" {
 
     /** \brief Change colors in a pointcloud.
      * \param pc The source pointcloud.
-     * \param clearBits Map of bits to clear in the RGBa color
-     * \param setBits Map of bits to set in the RGBa color
+     * \param clearBits Map of bits to clear in the ARGB color
+     * \param setBits Map of bits to set in the ARGB color
      *
      * Returns a new pointcloud with the color of each point modified.
      * Note: this function is primarliy intended for debugging and inspecting pointclouds, it is not
