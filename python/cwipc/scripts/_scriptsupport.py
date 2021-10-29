@@ -100,18 +100,18 @@ def cwipc_genericsource_factory(args):
         if not os.path.isdir(args.playback):
             filename = args.playback
             playback_type = _guess_playback_type([filename])
-            if playback_type not in ('ply', 'dump'):
+            if not playback_type:
                 print(f'{sys.argv[0]}: {filename}: unknown playback file type')
                 sys.exit(-1)
-            source = lambda : playback.cwipc_playback([filename], ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
+            source = lambda : playback.cwipc_playback([filename], ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
             name = 'playback'
         else:
             dirname = args.playback
             playback_type = _guess_playback_type(os.listdir(dirname))
-            if playback_type not in ('ply', 'dump'):
-                print(f'{sys.argv[0]}: {dirname}: should contain only .ply or .cwipcdump files')
+            if not playback_type:
+                print(f'{sys.argv[0]}: {dirname}: should contain only one of .ply, .cwipcdump or .cwicpc files')
                 sys.exit(-1)
-            source = lambda : playback.cwipc_playback(dirname, ply=(playback_type=='ply'), fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
+            source = lambda : playback.cwipc_playback(dirname, ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
             name = 'playback'
     elif args.netclient:
         source = lambda : (
@@ -149,16 +149,19 @@ def cwipc_genericsource_factory(args):
 def _guess_playback_type(filenames):
     has_ply = False
     has_dump = False
+    has_compressed = False
     for fn in filenames:
         if fn.lower().endswith('.ply'): has_ply = True
         if fn.lower().endswith('.cwipcdump'): has_dump = True
-    if has_ply and has_dump:
-        return None     # Cop-out: if we have both ply and dump files we don't know
+        if fn.lower().endswith('.cwicpc'): has_compressed = True
+    if int(has_ply)+int(has_dump)+int(has_compressed) != 1:
+        return None     # Cop-out: if we don't have exactly one file type we don't know
     if has_ply:
-        return 'ply'
+        return '.ply'
     if has_dump:
-        return 'dump'
-    # xxxjack Here we could check for cameraconfig.xml and return 'k4aoffline' to unify that too....
+        return '.cwipcdump'
+    if has_compressed:
+        return '.cwicpc'
     return None
     
 class SourceServer:

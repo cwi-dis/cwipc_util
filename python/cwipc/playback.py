@@ -62,12 +62,23 @@ class _DumpFilesource(_Filesource):
     def _get(self, fn):
         rv = cwipc.cwipc_read_debugdump(fn)
         return rv
+        
+class _CompressedFilesource(_Filesource):
+    def __init__(self, *args, **kwargs):
+        _Filesource.__init__(self, *args, **kwargs)
+        from .codec import cwipc_new_decoder
+        self.decoder = cwipc_new_decoder()
+        
+    def _get(self, fn):
+        with open(fn, 'rb') as fp:
+            data = fp.read()
+        self.decoder.feed(data)
+        return self.decoder.get()
     
-def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None, inpoint=None, outpoint=None, retimestamp=False):
+def cwipc_playback(dir_or_files, ext='.ply', loop=False, fps=None, inpoint=None, outpoint=None, retimestamp=False):
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
     if isinstance(dir_or_files, str):
-        ext = ".ply" if ply else ".cwipcdump"
         filenames = filter(lambda fn : fn.lower().endswith(ext), os.listdir(dir_or_files))
         if not filenames:
             raise cwipc.CwipcError(f"No {ext} files in {dir_or_files}")
@@ -90,8 +101,12 @@ def cwipc_playback(dir_or_files, ply=True, loop=False, fps=None, inpoint=None, o
         filenames = map(lambda fn: os.path.join(dir_or_files, fn), filenames)
         filenames = list(filenames)
         dir_or_files = filenames
-    if ply:
+    if ext == '.ply':
         return _Filesource(dir_or_files, tileInfo=tileInfo, loop=loop, fps=fps, retimestamp=retimestamp)
-    else:
+    elif ext == '.cwipcdump':
         return _DumpFilesource(dir_or_files, tileInfo=tileInfo, loop=loop, fps=fps, retimestamp=retimestamp)
+    elif ext == '.cwicpc':
+        return _CompressedFilesource(dir_or_files, tileInfo=tileInfo, loop=loop, fps=fps, retimestamp=retimestamp)
+    else:
+        raise cwipc.CwipcError(f'Unknown playback filetype {ext}')
         
