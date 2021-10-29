@@ -26,6 +26,26 @@ class FileWriter:
         self.count = 0
         self.flags = flags
         self.error_encountered = False
+        self.encoder = None
+        
+    def setup_encoder(self, params):
+        from .. import codec
+        encoder_params = None
+        if params:
+            encoder_params = codec.cwipc_new_encoder_params()
+            if 'help' in params:
+                print('Default arguments for compression:')
+                for k in dir(encoder_params):
+                    if k[0] != '_':
+                        v = getattr(encoder_params, k)
+                        print(f'{k}={v}')
+                sys.exit(1)
+            for k in params:
+                if not hasattr(encoder_params, k):
+                    print(f'Unknown compression parameter {k}. help=1 for allowed parameters.')
+                    sys.exit(1)
+                setattr(encoder_params, k, params[k])
+        self.encoder = codec.cwipc_new_encoder(params=encoder_params)
         
     def set_producer(self, producer):
         self.producer = producer    
@@ -77,6 +97,11 @@ class FileWriter:
                 cwipc_write_debugdump(filename, pc)
                 if self.verbose:
                     print(f"writer: wrote pointcloud to {filename}")
+            elif ext == '.cwicpc':
+                self.encoder.feed(pc)
+                cdata = self.encoder.get_bytes()
+                with open(filename, 'wb') as fp:
+                    fp.write(cdata)
             else:
                 print(f"writer: Filetype unknown for pointcloud output: {filename}")
                 return False
@@ -200,6 +225,8 @@ def main():
     parser = ArgumentParser(description="Capture and save pointclouds")
     parser.add_argument("--nopointclouds", action="store_true", help="Don't save pointclouds")
     parser.add_argument("--cwipcdump", action="store_true", help="Save pointclouds as .cwipcdump (default: .ply)")
+    parser.add_argument("--compress", action="store_true", help="Save pointclouds as compressed .cwicpc (default: .ply)")
+    parser.add_argument("--compress_param", action="append", metavar="NAME=VALUE", help="Add compressor parameter (help=1 for help)")
     parser.add_argument("--binary", action="store_true", help="Save pointclouds as binary .ply (default: ASCII .ply)")
     parser.add_argument("--rgb", action="store", metavar="EXT", help="Save RGB auxiliary data as images of type EXT")
     parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
@@ -223,6 +250,8 @@ def main():
         pcpattern = None
     elif args.cwipcdump:
         pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.cwipcdump"
+    elif args.compress:
+        pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.cwicpc"
     else:
         pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.ply"
     rgbpattern = None
@@ -256,7 +285,12 @@ def main():
         verbose=args.verbose,
         **kwargs
         )
-
+    if args.compress:
+        params = {}
+        for sparam in args.compress_param:
+            k, v = sparam.split('=')
+            params[k] = eval(v)
+        writer.setup_encoder(params)
     sourceServer = SourceServer(source, writer, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_grab.SourceServer")
     writer.set_producer(sourceThread)
