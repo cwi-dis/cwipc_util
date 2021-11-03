@@ -337,6 +337,18 @@ class TestApi(unittest.TestCase):
             self.assertEqual((op.x, op.y, op.z), (np.x, np.y, np.z))
             self.assertEqual((np.r, np.g, np.b, np.tile), (0x01, 0x02, 0x03, 0x00))
         
+    def test_remove_outliers(self):
+        """Chech that remove_outliers returns less points than the original pc, but still > 0 points."""
+        gen = cwipc.cwipc_synthetic()
+        pc_orig = gen.get()
+        count_orig = len(pc_orig.get_points())
+        pc_filtered = cwipc.cwipc_remove_outliers(pc_orig, 30, 1.0, True))
+        count_filtered = len(pc_filtered.get_points())
+        self.assertLess(count_filtered, count_orig)
+        self.assertGreater(count_filtered, 0)
+        pc_filtered.free()
+        gen.free()
+        pc_orig.free()
         
     def test_downsample(self):
         """Check that the downsampler returns at most the same number of points and eventually returns 1"""
