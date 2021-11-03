@@ -342,7 +342,7 @@ class TestApi(unittest.TestCase):
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
         count_orig = len(pc_orig.get_points())
-        pc_filtered = cwipc.cwipc_remove_outliers(pc_orig, 30, 1.0, True))
+        pc_filtered = cwipc.cwipc_remove_outliers(pc_orig, 30, 1.0, True)
         count_filtered = len(pc_filtered.get_points())
         self.assertLess(count_filtered, count_orig)
         self.assertGreater(count_filtered, 0)
