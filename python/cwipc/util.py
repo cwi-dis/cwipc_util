@@ -1,12 +1,14 @@
 import ctypes
 import ctypes.util
 import warnings
+import os
 
 __all__ = [
     'CWIPC_API_VERSION',
     'CWIPC_POINT_PACKETHEADER_MAGIC',
     'CWIPC_FLAGS_BINARY',
     'CwipcError',
+    '_cwipc_dll_search_path_collection',
     
     'cwipc',
     'cwipc_source',
@@ -38,6 +40,30 @@ __all__ = [
 
 CWIPC_API_VERSION = 0x20210525
 
+class _cwipc_dll_search_path_collection:
+    """Hack to ensure the correct DLL search path is used when loading a DLL on Windows"""
+    def __init__(self):
+        self.open_dll_dirs = []
+        if not hasattr(os, 'add_dll_directory'):
+            # Apparently we don't need to do this...
+            return
+        path_string = os.environ.get('PATH')
+        if not path_string:
+            return
+        path_entries = path_string.split(os.pathsep)
+        for p in path_entries:
+            try:
+                self.open_dll_dirs.append(os.add_dll_directory(p))
+            except FileNotFoundError as e:
+                warnings.warn(f'cwipc_dll_search_path_collection: {e}')
+            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        for d in self.open_dll_dirs:
+            d.close()
+            
 class CwipcError(RuntimeError):
     pass
     
@@ -159,7 +185,8 @@ def _cwipc_util_dll(libname=None):
         if not libname:
             raise RuntimeError('Dynamic library cwipc_util not found')
     assert libname
-    _cwipc_util_dll_reference = ctypes.CDLL(libname)
+    with _cwipc_dll_search_path_collection():
+        _cwipc_util_dll_reference = ctypes.CDLL(libname)
     
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
