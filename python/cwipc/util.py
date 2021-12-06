@@ -87,7 +87,6 @@ class _cwipc_dll_search_path_collection:
                 warnings.warn(f'_cwipc_dll_search_path_collection: DLL {dll} not found')
                 continue
             dirname = os.path.dirname(path)
-            print(f'xxxjack adding {dirname} for {dll}')
             rv.append(dirname)
             done.append(dll)
         return rv
