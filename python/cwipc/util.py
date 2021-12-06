@@ -40,23 +40,58 @@ __all__ = [
 
 CWIPC_API_VERSION = 0x20210525
 
+#
+# This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
+# Python no longer uses the PATH environment variable to load dependent dlls but only
+# its own set. For that reason we list here a set of dependencies that we know are needed,
+# find those on PATH, and add the directories where those DLLs are located while loading our
+# DLL.
+# The list does not have to be complete, as long as at least one DLL from each directory needed
+# is listed.
+# NOTE: this list must be kept up-to-date otherwise loading DLLs will fail with
+# an obscure message "Python could not find module .... or one of its dependencies"
+#
+_WINDOWS_NEEDED_DLLS=[
+    "pcl_common",
+    "vtkCommonCore-8.2",
+    "OpenNI2",
+]
+
 class _cwipc_dll_search_path_collection:
     """Hack to ensure the correct DLL search path is used when loading a DLL on Windows"""
-    def __init__(self):
+    def __init__(self, dlls=None):
         self.open_dll_dirs = []
         if not hasattr(os, 'add_dll_directory'):
             # Apparently we don't need to do this...
             return
-        path_string = os.environ.get('PATH')
-        if not path_string:
-            return
-        path_entries = path_string.split(os.pathsep)
+        if dlls:
+            # We implicitly add DLLs needed by cwipc_util
+            path_entries = self._get_dll_directories(dlls + _WINDOWS_NEEDED_DLLS)
+        else:
+            path_string = os.environ.get('PATH')
+            path_entries = path_string.split(os.pathsep)
         for p in path_entries:
             try:
                 self.open_dll_dirs.append(os.add_dll_directory(p))
             except FileNotFoundError as e:
                 warnings.warn(f'cwipc_dll_search_path_collection: {e}')
-            
+    
+    def _get_dll_directories(self, dlls):
+        done = []
+        rv = []
+        for dll in dlls:
+            if dll in done:
+                continue
+            path = ctypes.util.find_library(dll)
+            if not path:
+                warnings.warn(f'_cwipc_dll_search_path_collection: DLL {dll} not found')
+                continue
+            dirname = os.path.dirname(path)
+            print(f'xxxjack adding {dirname} for {dll}')
+            rv.append(dirname)
+            done.append(dll)
+        return rv
+    
     def __enter__(self):
         return self
         
@@ -185,7 +220,7 @@ def _cwipc_util_dll(libname=None):
         if not libname:
             raise RuntimeError('Dynamic library cwipc_util not found')
     assert libname
-    with _cwipc_dll_search_path_collection():
+    with _cwipc_dll_search_path_collection(_WINDOWS_NEEDED_DLLS):
         _cwipc_util_dll_reference = ctypes.CDLL(libname)
     
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
