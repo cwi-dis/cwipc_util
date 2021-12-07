@@ -59,6 +59,12 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 	}
 	cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
 	rv->_set_cellsize(voxelsize);
+
+	// copy src auxdata to dst pointcloud
+	cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+	cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+	src_ad->_move(dst_ad);
+
 	return rv;
 }
 
@@ -135,12 +141,26 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 				aux_pc->free();
 				//std::cout << "Cleaned tile " << tile << std::endl;
 			}
-			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+			cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+
+			// copy src auxdata to dst pointcloud
+			cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+			cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+			src_ad->_move(dst_ad);
+
+			return rv;
 		}
 		else {
 			std::cout << "Removing outliers on the full pointcloud" << std::endl;
 			dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
-			return cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+			cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+
+			// copy src auxdata to dst pointcloud
+			cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+			cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+			src_ad->_move(dst_ad);
+
+			return rv;
 		}
 	}
 	catch (pcl::PCLException& e) {
