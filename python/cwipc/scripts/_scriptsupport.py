@@ -4,6 +4,7 @@ import time
 import signal
 import argparse
 import traceback
+import importlib.util
 
 from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers
 from ..net import source_netclient
@@ -192,7 +193,15 @@ class SourceServer:
         if hasattr(self.grabber, 'start'):
             self.grabber.start()
         self.stopped = False
-        
+        self.custom_filter = None
+        if args.custom_filter:
+            print("Loading custom_filter from " + args.custom_filter)
+            spec = importlib.util.spec_from_file_location("module.name", args.custom_filter)
+            foo = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(foo)
+            self.custom_filter = foo.CustomFilter()
+            print("Loaded successfull")
+
     def __del__(self):
         self.stopped = True
         if self.grabber:
@@ -234,6 +243,8 @@ class SourceServer:
             if not pc:
                 continue
             else:
+                if self.custom_filter:
+                    pc = self.custom_filter.filter(pc)
                 self.pointcounts_grab.append(pc.count())
                 pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
@@ -329,6 +340,7 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
+    input_args.add_argument("--custom_filter", action="store", metavar="filename.py", help="It allows users to use custom filters defined in filename.py files. Please indicate the file to read.")
     return parser
     
 def beginOfRun(args):
