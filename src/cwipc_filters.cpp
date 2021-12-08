@@ -188,6 +188,12 @@ cwipc *cwipc_tilefilter(cwipc *pc, int tile)
     }
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
+
+	// copy src auxdata to dst pointcloud
+	cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+	cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+	src_ad->_move(dst_ad);
+
     return rv;
 }
 
@@ -203,6 +209,12 @@ cwipc *cwipc_tilemap(cwipc *pc, uint8_t map[256])
     }
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
+
+	// copy src auxdata to dst pointcloud
+	cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+	cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+	src_ad->_move(dst_ad);
+
     return rv;
 }
 
@@ -219,6 +231,12 @@ cwipc *cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits)
     }
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
+
+	// copy src auxdata to dst pointcloud
+	cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+	cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+	src_ad->_move(dst_ad);
+
     return rv;
 }
 
@@ -239,6 +257,8 @@ cwipc *cwipc_join(cwipc *pc1, cwipc *pc2)
     cwipc *rv = cwipc_from_pcl(dst, timestamp, NULL, CWIPC_API_VERSION);
     float cellsize = std::min(pc1->cellsize(), pc2->cellsize());
     rv->_set_cellsize(cellsize);
+
+	// xxxNacho. how do we deal with aux data when we do a join?
     return rv;
 }
 
