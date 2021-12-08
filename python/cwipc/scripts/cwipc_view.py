@@ -22,6 +22,7 @@ a             Show all tiles/streams
 m             Toggle tile/stream selection tile mask mode
 i             Toggle tile/stream selection tile index mode
 s             Toggle tile/stream selection stream mode
+r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
 ?,h           Help
 q             Quit
@@ -105,7 +106,7 @@ q             Quit
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?hq +-cwamisn0123456789", 30) 
+        cmd = self.visualiser.interact(None, "?hq +-cwamirsn0123456789", 30)
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
@@ -126,6 +127,8 @@ q             Quit
             self.select_mode('stream')
         elif cmd == 'n':
             self.select_tile_or_stream(increment=True)
+        elif cmd == 'r':
+            pass # toggle skeleton rendering (managed on cwipc_view)
         elif cmd in '0123456789':
             self.select_tile_or_stream(number=int(cmd))
         elif cmd == '+':
@@ -184,6 +187,7 @@ def main():
     SetupStackDumper()
     parser = ArgumentParser(description="View pointcloud streams", epilog="Interactive commands:\n" + Visualizer.HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
+    parser.add_argument("--skeleton", action="store_true", help="Tries to get and render skeleton from the capture. Only for source --kinect or --k4aoffline")
     args = parser.parse_args()
     beginOfRun(args)
     #
@@ -195,6 +199,9 @@ def main():
         visualizer = Visualizer(args.verbose, nodrop=args.nodrop)
     else:
         visualizer = None
+
+    if args.skeleton:
+        source.request_auxiliary_data("skeleton")
 
     sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
