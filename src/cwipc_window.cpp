@@ -30,7 +30,7 @@ private:
     std::condition_variable m_last_char_cv;
     std::mutex m_last_char_mutex;
     bool m_render_skeleton;
-    cwipc_skeleton_collection* m_skeleton;
+    std::vector<cwipc_skeleton_joint> joints;
 public:
     cwipc_sink_window_impl(const char *title)
     :   m_title(title),
@@ -97,7 +97,7 @@ public:
         glEnd();
 
         //render skeleton
-        if (m_render_skeleton && m_skeleton) {
+        if (m_render_skeleton && joints.size()>0) {
             render_skeleton();
         }
 
@@ -113,26 +113,33 @@ public:
             void* ptr = auxdata->pointer(i);
             if (auxdata->name(i).find("skeleton") != std::string::npos) {
                 if (!found_skeleton) {
-                    m_skeleton = (cwipc_skeleton_collection*)auxdata->pointer(i);
-                    int n_skl = m_skeleton->n_skeletons;
-                    if (m_skeleton->n_joints > 0) {
+
+                    cwipc_skeleton_collection* skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
+                    int n_skeletons = skl->n_skeletons;
+                    if (n_skeletons > 0 && skl->n_joints > 0) {
                         found_skeleton = true;
+
+                        joints.clear();
+                        for (int s = 0; s < skl->n_joints; s++) {
+                            cwipc_skeleton_joint joint = skl->joints[s];
+                            joints.push_back({ joint.confidence, joint.x, joint.y, joint.z, joint.q_w, joint.q_x, joint.q_y, joint.q_z });
+                        }
                     }
                 }
                 else { // multiple cameras = multiple skeletons, so we need to fuse them
                     cwipc_skeleton_collection* new_skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
-                    int n_joints = std::min(m_skeleton->n_joints, new_skl->n_joints);
+                    int n_joints = std::min((uint32_t)joints.size(), new_skl->n_joints);
                     for (int j = 0; j < n_joints; j++)
                     {
-                        cwipc_skeleton_joint old_joint = m_skeleton->joints[j];
+                        cwipc_skeleton_joint old_joint = joints[j];
                         cwipc_skeleton_joint new_joint = new_skl->joints[j];
                         if (old_joint.confidence == new_joint.confidence) { // average positions
-                            m_skeleton->joints[j].x = (m_skeleton->joints[j].x + new_joint.x) / 2;
-                            m_skeleton->joints[j].y = (m_skeleton->joints[j].y + new_joint.y) / 2;
-                            m_skeleton->joints[j].z = (m_skeleton->joints[j].z + new_joint.z) / 2;
+                            joints[j].x = (joints[j].x + new_joint.x) / 2;
+                            joints[j].y = (joints[j].y + new_joint.y) / 2;
+                            joints[j].z = (joints[j].z + new_joint.z) / 2;
                         }
                         else if (old_joint.confidence < new_joint.confidence) { // use joint with higher confidence
-                            m_skeleton->joints[j] = new_skl->joints[j];
+                            joints[j] = { new_skl->joints[j].confidence, new_skl->joints[j].x, new_skl->joints[j].y, new_skl->joints[j].z, new_skl->joints[j].q_w, new_skl->joints[j].q_x, new_skl->joints[j].q_y, new_skl->joints[j].q_z };
                         }
                     }
                 }
@@ -144,9 +151,9 @@ public:
         glPointSize(6.0);
         glBegin(GL_POINTS);
         //render joints as points
-        for (int i = 0; i < m_skeleton->n_joints; i++) {
-            glColor3ub(255, 0, (255 / 3) * m_skeleton->joints[i].confidence);
-            glVertex3f(m_skeleton->joints[i].x, m_skeleton->joints[i].y, m_skeleton->joints[i].z);
+        for (int i = 0; i < joints.size(); i++) {
+            glColor3ub(255, 0, (255 / 3) * joints[i].confidence);
+            glVertex3f(joints[i].x, joints[i].y, joints[i].z);
         }
         glEnd();
 
@@ -155,47 +162,47 @@ public:
         glBegin(GL_LINES);
         glColor3ub(0, 255, 255);
         //left leg
-        boneline(m_skeleton->joints[0], m_skeleton->joints[18]);
-        boneline(m_skeleton->joints[18], m_skeleton->joints[19]);
-        boneline(m_skeleton->joints[19], m_skeleton->joints[20]);
-        boneline(m_skeleton->joints[20], m_skeleton->joints[21]);
+        boneline(joints[0], joints[18]);
+        boneline(joints[18], joints[19]);
+        boneline(joints[19], joints[20]);
+        boneline(joints[20], joints[21]);
 
         //right leg
-        boneline(m_skeleton->joints[0], m_skeleton->joints[22]);
-        boneline(m_skeleton->joints[22], m_skeleton->joints[23]);
-        boneline(m_skeleton->joints[23], m_skeleton->joints[24]);
-        boneline(m_skeleton->joints[24], m_skeleton->joints[25]);
+        boneline(joints[0], joints[22]);
+        boneline(joints[22], joints[23]);
+        boneline(joints[23], joints[24]);
+        boneline(joints[24], joints[25]);
 
         //torso
-        boneline(m_skeleton->joints[0], m_skeleton->joints[1]);
-        boneline(m_skeleton->joints[1], m_skeleton->joints[2]);
-        boneline(m_skeleton->joints[2], m_skeleton->joints[3]);
+        boneline(joints[0], joints[1]);
+        boneline(joints[1], joints[2]);
+        boneline(joints[2], joints[3]);
 
         //head
-        boneline(m_skeleton->joints[3], m_skeleton->joints[26]);
-        boneline(m_skeleton->joints[26], m_skeleton->joints[27]);
-        boneline(m_skeleton->joints[27], m_skeleton->joints[28]);
-        boneline(m_skeleton->joints[28], m_skeleton->joints[29]);
-        boneline(m_skeleton->joints[27], m_skeleton->joints[30]);
-        boneline(m_skeleton->joints[30], m_skeleton->joints[31]);
+        boneline(joints[3], joints[26]);
+        boneline(joints[26], joints[27]);
+        boneline(joints[27], joints[28]);
+        boneline(joints[28], joints[29]);
+        boneline(joints[27], joints[30]);
+        boneline(joints[30], joints[31]);
 
         //left arm
-        boneline(m_skeleton->joints[2], m_skeleton->joints[4]);
-        boneline(m_skeleton->joints[4], m_skeleton->joints[5]);
-        boneline(m_skeleton->joints[5], m_skeleton->joints[6]);
-        boneline(m_skeleton->joints[6], m_skeleton->joints[7]);
-        boneline(m_skeleton->joints[7], m_skeleton->joints[8]);
-        boneline(m_skeleton->joints[8], m_skeleton->joints[9]);
-        boneline(m_skeleton->joints[7], m_skeleton->joints[10]);
+        boneline(joints[2], joints[4]);
+        boneline(joints[4], joints[5]);
+        boneline(joints[5], joints[6]);
+        boneline(joints[6], joints[7]);
+        boneline(joints[7], joints[8]);
+        boneline(joints[8], joints[9]);
+        boneline(joints[7], joints[10]);
 
         //right arm
-        boneline(m_skeleton->joints[2], m_skeleton->joints[11]);
-        boneline(m_skeleton->joints[11], m_skeleton->joints[12]);
-        boneline(m_skeleton->joints[12], m_skeleton->joints[13]);
-        boneline(m_skeleton->joints[13], m_skeleton->joints[14]);
-        boneline(m_skeleton->joints[14], m_skeleton->joints[15]);
-        boneline(m_skeleton->joints[15], m_skeleton->joints[16]);
-        boneline(m_skeleton->joints[14], m_skeleton->joints[17]);
+        boneline(joints[2], joints[11]);
+        boneline(joints[11], joints[12]);
+        boneline(joints[12], joints[13]);
+        boneline(joints[13], joints[14]);
+        boneline(joints[14], joints[15]);
+        boneline(joints[15], joints[16]);
+        boneline(joints[14], joints[17]);
         glEnd();
     }
 

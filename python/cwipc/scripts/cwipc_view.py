@@ -41,7 +41,8 @@ q             Quit
         self.filter_mode = 'mask'
         self.start_window()
         self.stopped = False
-        self.point_size_inc = 0.0
+        self.point_size_min = 0.0005
+        self.point_size_power = 0
         
     def set_producer(self, producer):
         self.producer = producer
@@ -90,8 +91,10 @@ q             Quit
 
     def draw_pc(self, pc):
         """Draw pointcloud"""
+        cellsize = self.point_size_min
         if pc:
-            pc._set_cellsize(pc.cellsize()+self.point_size_inc)
+            cellsize = max(pc.cellsize(), cellsize)
+            pc._set_cellsize(cellsize*pow(2,self.point_size_power))
             pc_to_show = pc
             if self.verbose:
                 if not self.paused:
@@ -132,9 +135,14 @@ q             Quit
         elif cmd in '0123456789':
             self.select_tile_or_stream(number=int(cmd))
         elif cmd == '+':
-            self.point_size_inc += float(0.001)
+            self.point_size_power += 1
+            print(f'Changed point size = {cellsize*pow(2,self.point_size_power)}')
         elif cmd == '-':
-            self.point_size_inc -= float(0.001)
+            if self.point_size_power>0:
+                self.point_size_power -= 1
+                print(f'Changed point size = {cellsize*pow(2,self.point_size_power)}')
+            else:
+                print(f'Reached point size min = {cellsize*pow(2,self.point_size_power)}')
         elif cmd == '\0':
             pass
         else: #c to crash and print stack trace
