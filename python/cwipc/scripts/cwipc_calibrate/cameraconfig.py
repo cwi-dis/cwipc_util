@@ -5,6 +5,7 @@ DEFAULT_CONFIGFILE="""<?xml version="1.0" ?>
 <file>
     <CameraConfig version="2">
         <system  />
+        <skeleton />
         <postprocessing height_min="0" height_max="0" greenscreenremoval="0">
             <depthfilterparameters  />
         </postprocessing>
@@ -54,6 +55,8 @@ SYSTEM_PARAMS_REALSENSE=dict(
     density_preferred="1"
 )
 
+SKELETON_PARAMS_REALSENSE=dict()
+
 FILTER_PARAMS_KINECT=dict(
     do_threshold="1",
     threshold_near="0.2",
@@ -80,6 +83,12 @@ SYSTEM_PARAMS_KINECT=dict(
     color_powerline_frequency="-1"
 )
 
+SKELETON_PARAMS_KINECT=dict(
+    sensor_orientation="-1",
+    processing_mode="-1",
+    model_path=""
+)
+
 DEFAULT_FILENAME="cameraconfig.xml"
 DEFAULT_TYPE="realsense"
 DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
@@ -90,6 +99,7 @@ def selectCameraType(cameraType):
     DEFAULT_TYPE = cameraType
     DEFAULT_FILTER_PARAMS = globals()[f'FILTER_PARAMS_{cameraType.upper()}']
     DEFAULT_SYSTEM_PARAMS = globals()[f'SYSTEM_PARAMS_{cameraType.upper()}']
+    DEFAULT_SKELETON_PARAMS = globals()[f'SKELETON_PARAMS_{cameraType.upper()}']
     
 class CameraConfig:
 
@@ -116,6 +126,9 @@ class CameraConfig:
             paramElt.set(k, v)
         paramElt = root.find('CameraConfig/system')
         for k, v in DEFAULT_SYSTEM_PARAMS.items():
+            paramElt.set(k, v)
+        paramElt = root.find('CameraConfig/skeleton')
+        for k, v in DEFAULT_SKELETON_PARAMS.items():
             paramElt.set(k, v)
         self.tree = ET.ElementTree(root)
         
