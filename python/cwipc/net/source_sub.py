@@ -33,15 +33,6 @@ class streamDesc(ctypes.Structure):
     ]
       
 SubErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int)
-
-def _onSubError(msg, level):
-    """Callback function passed to sub_create: preint (or re-raise) SUB errors in Python environment"""
-    msg = msg.decode('utf8')
-    levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
-    
-    print(f"source_sub: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
-    if level == 0:
-        raise SubError(msg)
     
 def _signals_unity_bridge_dll(libname=None):
     global _signals_unity_bridge_dll_reference
@@ -123,12 +114,21 @@ class _SignalsUnityBridgeSource(threading.Thread):
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
-        self._onSubError = SubErrorCallbackType(_onSubError)
+        self._onSubError = SubErrorCallbackType(self._onSubError)
         msgLevel = 3 if self.verbose else 0
         self.handle = self.dll.sub_create("cwipc_source_sub".encode('utf8'), self._onSubError, msgLevel, SUB_API_VERSION)
         if not self.handle:
             raise SubError("sub_create failed")
         
+    def _onSubError(self, msg, level):
+        """Callback function passed to sub_create: preint (or re-raise) SUB errors in Python environment"""
+        msg = msg.decode('utf8')
+        levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
+    
+        print(f"source_sub: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
+        if level == 0:
+            raise SubError(msg)
+
     def __del__(self):
         self.free()
         
