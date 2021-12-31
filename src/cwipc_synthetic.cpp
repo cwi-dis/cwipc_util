@@ -87,9 +87,9 @@ public:
 
     bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
     	static cwipc_tileinfo syntheticInfo[3] = {
-    		{{0, 0, 0}, (char *)"synthetic", 3},
-    		{{0, 0, 1}, (char *)"synthetic", 1},
-    		{{0, 0, -1}, (char *)"synthetic", 2},
+    		{{0, 0, 0}, (char *)"synthetic", 2, 0},
+    		{{0, 0, 1}, (char *)"synthetic-right", 1, 1},
+    		{{0, 0, -1}, (char *)"synthetic-left", 1, 2},
 		};
 		switch(tilenum) {
 		case 0:

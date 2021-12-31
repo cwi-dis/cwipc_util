@@ -266,9 +266,9 @@ class TestApi(unittest.TestCase):
         """Is a synthetic pointcloud generator providing the correct tiling interface?"""
         pcs = cwipc.cwipc_synthetic()
         self.assertEqual(pcs.maxtile(), 3)
-        self.assertEqual(pcs.get_tileinfo_dict(0), {'normal':{'x':0, 'y':0, 'z':0},'camera':b'synthetic', 'ncamera':3})
-        self.assertEqual(pcs.get_tileinfo_dict(1), {'normal':{'x':0, 'y':0, 'z':1},'camera':b'synthetic', 'ncamera':1})
-        self.assertEqual(pcs.get_tileinfo_dict(2), {'normal':{'x':0, 'y':0, 'z':-1},'camera':b'synthetic', 'ncamera':2})
+        self.assertEqual(pcs.get_tileinfo_dict(0), {'normal':{'x':0, 'y':0, 'z':0},'cameraName':b'synthetic', 'ncamera':2, 'cameraMask':0})
+        self.assertEqual(pcs.get_tileinfo_dict(1), {'normal':{'x':0, 'y':0, 'z':1},'cameraName':b'synthetic-right', 'ncamera':1, 'cameraMask':1})
+        self.assertEqual(pcs.get_tileinfo_dict(2), {'normal':{'x':0, 'y':0, 'z':-1},'cameraName':b'synthetic-left', 'ncamera':1, 'cameraMask':2})
         pcs.free()
 
     def test_tilefilter(self):

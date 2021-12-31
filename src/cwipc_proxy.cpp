@@ -181,7 +181,7 @@ public:
 	int maxtile() { return 1; }
 
     bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
-        static cwipc_tileinfo proxyInfo = {{0, 0, 0}, (char *)"proxy", 1};
+        static cwipc_tileinfo proxyInfo = {{0, 0, 0}, (char *)"proxy", 1, 0};
 		switch(tilenum) {
 		case 0:
 			if (tileinfo) *tileinfo = proxyInfo;

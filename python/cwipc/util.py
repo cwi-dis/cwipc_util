@@ -38,7 +38,7 @@ __all__ = [
     'cwipc_join'
 ]
 
-CWIPC_API_VERSION = 0x20210525
+CWIPC_API_VERSION = 0x20211230
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -177,17 +177,16 @@ class cwipc_vector(ctypes.Structure):
         return False
             
 #
-# C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h, but CWIPC_TILEINFO_VERSION helps a bit.
+# C/Python cwipc_tileinfo structure. MUST match cwipc_util/api.h
 #
 class cwipc_tileinfo(ctypes.Structure):
     """Direction of a pointcloud tile. Fields are vector pointing in the direction the tile is pointing (relative to (0,0,0))"""
     _fields_ = [
         ("normal", cwipc_vector),
-        ("camera", ctypes.c_char_p),
+        ("cameraName", ctypes.c_char_p),
         ("ncamera", ctypes.c_uint8),
+        ("cameraMask", ctypes.c_uint8),
     ]
-
-CWIPC_TILEINFO_VERSION = 0x20190516
 
 #
 # C/Python cwipc_point_packetheader structure
@@ -530,7 +529,7 @@ class cwipc_tiledsource(cwipc_source):
         if info == None:
             return info
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
-        return dict(normal=normal, camera=info.camera, ncamera=info.ncamera)
+        return dict(normal=normal, cameraName=info.cameraName, ncamera=info.ncamera, cameraMask=info.cameraMask)
         
 class cwipc_sink:
     """Pointcloud sink as an opaque object"""

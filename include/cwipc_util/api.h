@@ -23,13 +23,13 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION 0x20210525
+#define CWIPC_API_VERSION 0x20211230
 
 /** \brief Version of oldest compatible cwipc API.
 *
 * Version of the oldest API of cwipc to which this set of libraries is compatible.
 */
-#define CWIPC_API_VERSION_OLD 0x20210228
+#define CWIPC_API_VERSION_OLD 0x20211230
 
 /** \brief 4 characters that are magic number of cwipcdump file format
 */
@@ -142,8 +142,9 @@ struct cwipc_skeleton_collection {
   */
 struct cwipc_tileinfo {
     struct cwipc_vector normal;	/**< Normal indicating the direction the tile is facing */
-    char* camera; 				/**< Identifier of the camera (static string) or NULL */
+    char* cameraName; 				/**< Identifier of the camera (static string) or NULL */
     uint8_t ncamera; 			/**< Number of cameras that potentially contribute to this tile */
+    uint8_t cameraMask;         /**< Bit mask for this camera */
 };
 
 #ifdef __cplusplus
