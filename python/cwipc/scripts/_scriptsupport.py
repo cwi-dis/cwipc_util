@@ -377,6 +377,7 @@ def beginOfRun(args):
             _bin2dash_dll(path)
         else:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
+            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, signals-unity-bridge, bin2dash")
             sys.exit(1)
             
 def endOfRun(args):
