@@ -207,7 +207,8 @@ class _SignalsUnityBridgeSource(threading.Thread):
         info = self.tile_info[tilenum]
         mp4_4cc, tileNumber, (x, y, z), qualityCount = info
         normal = dict(x=(x/1000.0), y=(y/1000.0), z=(z/1000.0))
-        return dict(normal=normal, camera=f"tile-{tilenum}", ncamera=tilenum, nquality=qualityCount, mp4_4cc=mp4_4cc)
+        # Computing ncamera is difficult...
+        return dict(normal=normal, cameraName=f"tile-{tilenum}", cameraMask=tileNumber, nquality=qualityCount, mp4_4cc=mp4_4cc)
 
     def _srd_info_for_stream(self, num):
         assert self.handle

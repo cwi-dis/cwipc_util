@@ -70,8 +70,8 @@ class LiveGrabber:
         ntile = self.grabber.maxtile()
         for i in range(ntile):
             info = self.grabber.get_tileinfo_raw(i)
-            if info.camera != None:
-                cam_id = info.camera
+            if info.cameraName != None:
+                cam_id = info.cameraName
                 cam_id = cam_id.decode('ascii')
                 print('Found camera at tile', i, ', camera serial', cam_id)
                 rv.append(cam_id)
