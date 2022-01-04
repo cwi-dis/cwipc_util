@@ -126,7 +126,9 @@ class _SignalsUnityBridgeSource(threading.Thread):
         levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
     
         print(f"source_sub: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
-        if level == 0:
+        # xxxjack raising an exception from a ctypes callback doesn't work.
+        # Need to fix at some point.
+        if False and level == 0:
             raise SubError(msg)
 
     def __del__(self):
