@@ -1,6 +1,8 @@
 import sys
 import open3d
 
+DRAW_OWN_AXES=True   # Use open3d coordinate drawing when false.
+
 class UI:
     def __init__(self):
         self.winpos = 100
@@ -51,9 +53,9 @@ class UI:
         vis.add_geometry(pc.get_o3d())
         if from000:
             viewControl = vis.get_view_control()
-            viewControl.set_front([0, 0, -1])
-            viewControl.set_lookat([0, 0, 1])
             viewControl.set_up([0, -1, 0])
+            viewControl.set_front([0, 0, -1])
+            viewControl.set_lookat([0, 0, 0])
         vis.run() # user picks points
         vis.destroy_window()
         return vis.get_picked_points()
@@ -63,17 +65,20 @@ class UI:
         vis.create_window(window_name=title, width=960, height=540, left=self.winpos, top=self.winpos)
         #self.winpos += 50
         vis.add_geometry(pc.get_o3d())
-        # Draw 1 meter axes (x=red, y=green, z=blue)
-        axes = open3d.geometry.LineSet()
-        axes.points = open3d.utility.Vector3dVector([[0,0,0], [1,0,0], [0,1,0], [0,0,1]])
-        axes.lines = open3d.utility.Vector2iVector([[0,1], [0,2], [0,3]])
-        axes.colors = open3d.utility.Vector3dVector([[1,0,0], [0,1,0], [0,0,1]])
+        if DRAW_OWN_AXES:
+            # Draw 1 meter axes (x=red, y=green, z=blue)
+            axes = open3d.geometry.LineSet()
+            axes.points = open3d.utility.Vector3dVector([[0,0,0], [1,0,0], [0,1,0], [0,0,1]])
+            axes.lines = open3d.utility.Vector2iVector([[0,1], [0,2], [0,3]])
+            axes.colors = open3d.utility.Vector3dVector([[1,0,0], [0,1,0], [0,0,1]])
+        else:
+            axes = open3d.geometry.TriangleMesh.create_coordinate_frame()
         vis.add_geometry(axes)
         if from000:
             viewControl = vis.get_view_control()
-            viewControl.set_front([0, 0, -1])
-            viewControl.set_lookat([0, 0, 1])
             viewControl.set_up([0, -1, 0])
+            viewControl.set_front([0, 0, -1])
+            viewControl.set_lookat([0, 0, 0])
         vis.run()
         vis.destroy_window()
         
