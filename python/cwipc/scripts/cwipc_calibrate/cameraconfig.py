@@ -6,7 +6,7 @@ DEFAULT_CONFIGFILE="""<?xml version="1.0" ?>
     <CameraConfig version="2">
         <system  />
         <skeleton />
-        <postprocessing height_min="0" height_max="0" greenscreenremoval="0">
+        <postprocessing height_min="0" height_max="0" radius_filter="0" greenscreenremoval="0">
             <depthfilterparameters  />
         </postprocessing>
         <camera serial="0" type="">
