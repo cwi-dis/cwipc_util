@@ -128,9 +128,9 @@ private:
                         rr = gg = bb = 255;
                     }
                 }
-                pptr->x = x;
+                pptr->x = -x;
                 pptr->y = height;
-                pptr->z = -y;
+                pptr->z = y;
                 pptr->r = rr;
                 pptr->g = gg;
                 pptr->b = bb;
