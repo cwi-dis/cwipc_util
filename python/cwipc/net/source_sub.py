@@ -294,6 +294,9 @@ class _SignalsUnityBridgeSource(threading.Thread):
                     now = time.time()
                     delta = now-last_successful_read_time
                     last_successful_read_time = now
+                    if delta <= 0:
+                        # sub-millisecond read. Guess.
+                        delta = 0.0005
 
                     self.times_receive.append(delta)
                     self.sizes_receive.append(length2)
