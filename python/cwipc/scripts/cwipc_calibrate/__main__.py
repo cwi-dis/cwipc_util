@@ -30,7 +30,7 @@ def main():
     parser.add_argument("--reuse", action="store_true", help=f"Reuse existing {DEFAULT_FILENAME}")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--noinspect", action="store_true", help="Don't inspect pointclouds after grabbing")
-    parser.add_argument("--target", action="store", metavar="NAME", default="a4", help="Specify which target to use for coarse calibration. --list to see options.")
+    parser.add_argument("--target", action="store", metavar="NAME", default="a4floor", help="Specify which target to use for coarse calibration. --list to see options.")
     parser.add_argument("--list", action="store_true", help="List available targets")
     parser.add_argument("--nocoarse", action="store_true", help="Skip coarse (manual) calibration step")
     parser.add_argument("--nofine", action="store_true", help="Skip fine (automatic) calibration step")
