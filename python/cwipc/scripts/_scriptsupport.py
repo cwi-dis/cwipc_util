@@ -6,7 +6,7 @@ import argparse
 import traceback
 import importlib.util
 
-from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers
+from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -177,6 +177,7 @@ class SourceServer:
         self.inpoint = args.inpoint
         self.outpoint = args.outpoint
         self.downsample = args.downsample
+        self.spatial_crop = args.spatial_crop
         self.outliers = args.outliers
         self.viewer = viewer
         self.times_grab = []
@@ -265,6 +266,10 @@ class SourceServer:
                     t2_d = time.time()
                     self.times_downsample.append(t2_d-t1_d)
                     self.pointcounts_downsample.append(pc.count())
+                if self.spatial_crop:
+                    cropped_pc = cwipc_crop(pc, self.spatial_crop)
+                    pc.free()
+                    pc = cropped_pc
                 if self.viewer: 
                     t = pc.timestamp()
                     if self.inpoint and t<self.inpoint:
@@ -341,6 +346,7 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     input_args.add_argument("--custom_filter", action="store", metavar="filename.py", help="It allows users to use custom filters defined in filename.py files. Please indicate the file to read.")
+    input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="Spatially crop incoming point clouds")
     return parser
     
 def beginOfRun(args):

@@ -218,6 +218,26 @@ cwipc *cwipc_tilemap(cwipc *pc, uint8_t map[256])
     return rv;
 }
 
+cwipc *cwipc_crop(cwipc *pc, float bbox[6])
+{
+    if (pc == NULL) return NULL;
+    cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+    if (src == NULL) return NULL;
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    for (auto pt : src->points) {
+        if (bbox[0] <= pt.x && pt.x < bbox[1] &&
+            bbox[2] <= pt.y && pt.y < bbox[3] &&
+            bbox[4] <= pt.z && pt.z < bbox[5]) {
+            
+            dst->points.push_back(pt);
+        }
+    }
+    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    rv->_set_cellsize(pc->cellsize());
+
+    return rv;
+}
+
 cwipc *cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits)
 {
     if (pc == NULL) return NULL;
@@ -232,10 +252,10 @@ cwipc *cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits)
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
-	// copy src auxdata to dst pointcloud
-	cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-	cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
-	src_ad->_move(dst_ad);
+    // copy src auxdata to dst pointcloud
+    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    src_ad->_move(dst_ad);
 
     return rv;
 }

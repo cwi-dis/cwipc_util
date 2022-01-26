@@ -23,7 +23,7 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION 0x20211230
+#define CWIPC_API_VERSION 0x20220126
 
 /** \brief Version of oldest compatible cwipc API.
 *
@@ -892,6 +892,7 @@ extern "C" {
     /** \brief Filter a pointcloud by tile.
      * \param pc The source pointcloud.
      * \param tile The tile number.
+     * \return a new pointcloud
      *
      * Returns a new pointcloud (possibly empty) that only consists only of the points
      * with the given tile number.
@@ -901,6 +902,7 @@ extern "C" {
     /** \brief Change tiling of a pointcloud.
      * \param pc The source pointcloud.
      * \param map The tile number mapping.
+     * \return a new pointcloud
      *
      * Returns a new pointcloud where the tile number of each point is mapped through `map`.
      * This can be used to combine tiles, creating a pointcloud with fewer tiles than the original
@@ -908,10 +910,22 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT cwipc* cwipc_tilemap(cwipc* pc, uint8_t map[256]);
 
+    /** \brief Spatially crop a pointcloud.
+     * \param pc The source pointcloud.
+     * \param bbox minx, maxx, miny, maxy, minz, maxz
+     * \return a new pointcloud
+     *
+     * Returns a new cropped pointcloud.
+     * The new pointcloud contains only the points that fall within the bbxo bounding box.
+     * Lower bounds are included, upper bounds are excluded.
+     */
+    _CWIPC_UTIL_EXPORT cwipc* cwipc_crop(cwipc* pc, float bbox[6]);
+
     /** \brief Change colors in a pointcloud.
      * \param pc The source pointcloud.
      * \param clearBits Map of bits to clear in the ARGB color
      * \param setBits Map of bits to set in the ARGB color
+     * \return a new pointcloud
      *
      * Returns a new pointcloud with the color of each point modified.
      * Note: this function is primarliy intended for debugging and inspecting pointclouds, it is not
@@ -922,6 +936,7 @@ extern "C" {
     /** \brief Combine two pointclouds
      * \param pc1 A source pointcloud.
      * \param pc1 Another source pointcloud.
+     * \return a new pointcloud
      *
      * Returns a new pointcloud that contains all points in both sources.
      * Timestamp and cellsize is set to the minimum of both values in the sources.
