@@ -35,10 +35,11 @@ __all__ = [
     'cwipc_tilefilter',
     'cwipc_tilemap',
     'cwipc_colormap',
-    'cwipc_join'
+    'cwipc_join',
+    'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20211230
+CWIPC_API_VERSION = 0x20220126
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -331,6 +332,9 @@ def _cwipc_util_dll(libname=None):
 
     _cwipc_util_dll_reference.cwipc_colormap.argtypes = [cwipc_p, ctypes.c_ulong, ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_colormap.restype = cwipc_p
+
+    _cwipc_util_dll_reference.cwipc_crop.argtypes = [cwipc_p, ctypes.c_float*6]
+    _cwipc_util_dll_reference.cwipc_crop.restype = cwipc_p
 
     _cwipc_util_dll_reference.cwipc_join.argtypes = [cwipc_p, cwipc_p]
     _cwipc_util_dll_reference.cwipc_join.restype = cwipc_p
@@ -730,6 +734,11 @@ def cwipc_tilemap(pc, mapping):
   
 def cwipc_colormap(pc, clearBits, setBits):
     rv = _cwipc_util_dll().cwipc_colormap(pc._as_cwipc_p(), clearBits, setBits)
+    return cwipc(rv)
+  
+def cwipc_crop(pc, bbox):
+    bbox_arg = (ctypes.c_float*6)(*bbox)
+    rv = _cwipc_util_dll().cwipc_crop(pc._as_cwipc_p(), bbox_arg)
     return cwipc(rv)
   
 def cwipc_join(pc1, pc2):

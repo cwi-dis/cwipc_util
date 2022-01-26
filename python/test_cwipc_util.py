@@ -337,6 +337,25 @@ class TestApi(unittest.TestCase):
             self.assertEqual((op.x, op.y, op.z), (np.x, np.y, np.z))
             self.assertEqual((np.r, np.g, np.b, np.tile), (0x01, 0x02, 0x03, 0x00))
         
+    def test_crop(self):
+        """Check that splitting a pointcloud into two using cropping gives the right number of points"""
+        gen = cwipc.cwipc_synthetic()
+        pc = gen.get()
+        left_pc = cwipc.cwipc_crop(pc, [-999, 0, -999, 999, -999, 999])
+        right_pc = cwipc.cwipc_crop(pc, [0, 999, -999, 999, -999, 999])
+        points = pc.get_points()
+        left_points = left_pc.get_points()
+        right_points = right_pc.get_points()
+        self.assertEqual(len(points), len(left_points)+len(right_points))
+        for pt in left_points:
+            self.assertLess(pt.x, 0)
+        for pt in right_points:
+            self.assertGreaterEqual(pt.x, 0)
+        gen.free()
+        pc.free()
+        left_pc.free()
+        right_pc.free()
+                
     def test_remove_outliers(self):
         """Chech that remove_outliers returns less points than the original pc, but still > 0 points."""
         gen = cwipc.cwipc_synthetic()
