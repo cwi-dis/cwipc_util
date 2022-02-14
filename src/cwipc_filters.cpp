@@ -9,7 +9,7 @@
 #define _CWIPC_UTIL_EXPORT
 #endif
 
-#undef XXXJACK_IGNORE_MASK
+#define _CWIPC_DOWNSAMPLE_USE_OCTREE
 
 #define PCL_NO_PRECOMPILE
 
@@ -36,16 +36,32 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 	// Step 1 - Voxelize
 	try {
+#ifdef _CWIPC_DOWNSAMPLE_USE_OCTREE
+		// 
+		dst->reserve(src->size());
+		pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(voxelsize);
+		octree.setInputCloud(src);
+		octree.addPointsFromInputCloud();
+		for (auto it = octree.leaf_begin(); it != octree.leaf_end(); it++) {
+			const std::vector<int>& indices = it.getLeafContainer().getPointIndicesVector();
+			pcl::CentroidPoint<cwipc_pcl_point> centroid;
+			int mask = 0;
+			for (auto i : indices) {
+				const cwipc_pcl_point& pt = src->points[i];
+				centroid.add(pt);
+				mask |= pt.a;
+			}
+			cwipc_pcl_point pt;
+			centroid.get(pt);
+			pt.a = mask;
+			dst->push_back(pt);
+		}
+#else
 		pcl::VoxelGrid<cwipc_pcl_point> grid;
 		grid.setInputCloud(src);
 		grid.setLeafSize(voxelsize, voxelsize, voxelsize);
-#ifdef XXXJACK_IGNORE_MASK
-		grid.setSaveLeafLayout(false);
-#else
 		grid.setSaveLeafLayout(true);
-#endif
 		grid.filter(*dst);
-#ifndef XXXJACK_IGNORE_MASK
 		// Step 2 - Clear tile numbers in destination
 		for (auto dstpt : dst->points) {
 			dstpt.a = 0;
@@ -56,7 +72,7 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 			auto dstpt = dst->points[dstIndex];
 			dstpt.a |= srcpt.a;
 		}
-#endif
+#endif // _CWI_DOWNSAMPLE_USE_OCTREE
 	} catch (pcl::PCLException& e) {
 		std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
 		return NULL;
