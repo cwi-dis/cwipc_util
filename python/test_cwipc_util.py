@@ -389,11 +389,41 @@ class TestApi(unittest.TestCase):
             factor = factor / 2
         gen.free()
         pc_orig.free()
+
+    def test_downsample_octree(self):
+        """Check that the octree downsampler returns at most the same number of points and eventually returns 1"""
+        gen = cwipc.cwipc_synthetic()
+        pc_orig = gen.get()
+        count_orig = len(pc_orig.get_points())
+        count_prev = count_orig
+        factor = 1024
+        while factor > 0.0001:
+            pc_filtered = cwipc.cwipc_downsample(pc_orig, -factor)
+            count_filtered = len(pc_filtered.get_points())
+            self.assertGreaterEqual(count_filtered, 1)
+            self.assertLessEqual(count_filtered, count_orig)
+            self.assertEqual(pc_orig.timestamp(), pc_filtered.timestamp())
+            count_prev = count_filtered
+            pc_filtered.free()
+            if count_filtered > count_orig/2:
+                break
+            factor = factor / 2
+        gen.free()
+        pc_orig.free()
         
     def test_downsample_empty(self):
         """Check that the downsample returns an empty pointcloud when passed an empty pointcloud"""
         pc_orig = cwipc.cwipc_from_points([], 0)
         pc_filtered = cwipc.cwipc_downsample(pc_orig, 1)
+        self.assertEqual(len(pc_orig.get_points()), 0)
+        self.assertEqual(len(pc_filtered.get_points()), 0)
+        pc_orig.free()
+        pc_filtered.free()
+        
+    def test_downsample_octree_empty(self):
+        """Check that the octree downsample returns an empty pointcloud when passed an empty pointcloud"""
+        pc_orig = cwipc.cwipc_from_points([], 0)
+        pc_filtered = cwipc.cwipc_downsample(pc_orig, -1)
         self.assertEqual(len(pc_orig.get_points()), 0)
         self.assertEqual(len(pc_filtered.get_points()), 0)
         pc_orig.free()
