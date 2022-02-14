@@ -3,7 +3,7 @@
 #include <chrono>
 
 // Define PERFORMANCE_TEST_COUNT greater than 1 to do the downsample multiple times to test performance
-#define PERFORMANCE_TEST_COUNT 10
+#define PERFORMANCE_TEST_COUNT 1
 
 #include "cwipc_util/api.h"
 
