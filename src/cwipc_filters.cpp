@@ -9,6 +9,8 @@
 #define _CWIPC_UTIL_EXPORT
 #endif
 
+#undef XXXJACK_IGNORE_MASK
+
 #define PCL_NO_PRECOMPILE
 
 #include "cwipc_util/api_pcl.h"
@@ -37,8 +39,13 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 		pcl::VoxelGrid<cwipc_pcl_point> grid;
 		grid.setInputCloud(src);
 		grid.setLeafSize(voxelsize, voxelsize, voxelsize);
+#ifdef XXXJACK_IGNORE_MASK
+		grid.setSaveLeafLayout(false);
+#else
 		grid.setSaveLeafLayout(true);
+#endif
 		grid.filter(*dst);
+#ifndef XXXJACK_IGNORE_MASK
 		// Step 2 - Clear tile numbers in destination
 		for (auto dstpt : dst->points) {
 			dstpt.a = 0;
@@ -49,6 +56,7 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 			auto dstpt = dst->points[dstIndex];
 			dstpt.a |= srcpt.a;
 		}
+#endif
 	} catch (pcl::PCLException& e) {
 		std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
 		return NULL;
