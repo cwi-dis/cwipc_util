@@ -15,6 +15,7 @@
 #include "cwipc_util/api.h"
 
 #include <pcl/point_cloud.h>
+#include <pcl/octree/octree.h>
 #include <pcl/exceptions.h>
 
 #include <pcl/filters/voxel_grid.h>
@@ -44,7 +45,7 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 			pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(voxelsize);
 			octree.setInputCloud(src);
 			octree.addPointsFromInputCloud();
-			for (auto it = octree.leaf_begin(); it != octree.leaf_end(); it++) {
+			for (auto it = octree.leaf_depth_begin(); it != octree.leaf_depth_end(); it++) {
 				const std::vector<int>& indices = it.getLeafContainer().getPointIndicesVector();
 				pcl::CentroidPoint<cwipc_pcl_point> centroid;
 				int mask = 0;
