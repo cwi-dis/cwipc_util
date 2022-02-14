@@ -9,8 +9,6 @@
 #define _CWIPC_UTIL_EXPORT
 #endif
 
-#define _CWIPC_DOWNSAMPLE_USE_OCTREE
-
 #define PCL_NO_PRECOMPILE
 
 #include "cwipc_util/api_pcl.h"
@@ -28,6 +26,8 @@ template class VoxelGrid<cwipc_pcl_point>;
 
 cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 {
+	bool use_octree = (voxelsize < 0);
+	if (use_octree) voxelsize = -voxelsize;
 	if (pc == NULL) return NULL;
 	cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 	if (src == NULL) return NULL;
@@ -36,43 +36,47 @@ cwipc *cwipc_downsample(cwipc *pc, float voxelsize)
 	cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 	// Step 1 - Voxelize
 	try {
-#ifdef _CWIPC_DOWNSAMPLE_USE_OCTREE
-		// 
-		dst->reserve(src->size());
-		pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(voxelsize);
-		octree.setInputCloud(src);
-		octree.addPointsFromInputCloud();
-		for (auto it = octree.leaf_begin(); it != octree.leaf_end(); it++) {
-			const std::vector<int>& indices = it.getLeafContainer().getPointIndicesVector();
-			pcl::CentroidPoint<cwipc_pcl_point> centroid;
-			int mask = 0;
-			for (auto i : indices) {
-				const cwipc_pcl_point& pt = src->points[i];
-				centroid.add(pt);
-				mask |= pt.a;
+		if (use_octree) {
+			// Use an octree for downsampling. This may perform better for voxelsize
+			// that is relatively small compared to pointcloud bounding box, because it does
+			// not allocate a preposterous 3 dimensional grid
+			dst->reserve(src->size());
+			pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(voxelsize);
+			octree.setInputCloud(src);
+			octree.addPointsFromInputCloud();
+			for (auto it = octree.leaf_begin(); it != octree.leaf_end(); it++) {
+				const std::vector<int>& indices = it.getLeafContainer().getPointIndicesVector();
+				pcl::CentroidPoint<cwipc_pcl_point> centroid;
+				int mask = 0;
+				for (auto i : indices) {
+					const cwipc_pcl_point& pt = src->points[i];
+					centroid.add(pt);
+					mask |= pt.a;
+				}
+				cwipc_pcl_point pt;
+				centroid.get(pt);
+				pt.a = mask;
+				dst->push_back(pt);
 			}
-			cwipc_pcl_point pt;
-			centroid.get(pt);
-			pt.a = mask;
-			dst->push_back(pt);
 		}
-#else
-		pcl::VoxelGrid<cwipc_pcl_point> grid;
-		grid.setInputCloud(src);
-		grid.setLeafSize(voxelsize, voxelsize, voxelsize);
-		grid.setSaveLeafLayout(true);
-		grid.filter(*dst);
-		// Step 2 - Clear tile numbers in destination
-		for (auto dstpt : dst->points) {
-			dstpt.a = 0;
+		else {
+			// Use a voxelgrid for downsampling. This could allocate a very large 3d matrix.
+			pcl::VoxelGrid<cwipc_pcl_point> grid;
+			grid.setInputCloud(src);
+			grid.setLeafSize(voxelsize, voxelsize, voxelsize);
+			grid.setSaveLeafLayout(true);
+			grid.filter(*dst);
+			// Step 2 - Clear tile numbers in destination
+			for (auto dstpt : dst->points) {
+				dstpt.a = 0;
+			}
+			// Step 3 - Do OR of all contribution point tile numbers in destination.
+			for (auto srcpt : src->points) {
+				auto dstIndex = grid.getCentroidIndex(srcpt);
+				auto dstpt = dst->points[dstIndex];
+				dstpt.a |= srcpt.a;
+			}
 		}
-		// Step 3 - Do OR of all contribution point tile numbers in destination.
-		for (auto srcpt : src->points) {
-			auto dstIndex = grid.getCentroidIndex(srcpt);
-			auto dstpt = dst->points[dstIndex];
-			dstpt.a |= srcpt.a;
-		}
-#endif // _CWI_DOWNSAMPLE_USE_OCTREE
 	} catch (pcl::PCLException& e) {
 		std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
 		return NULL;
