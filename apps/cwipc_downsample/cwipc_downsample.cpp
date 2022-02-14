@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 // Define PERFORMANCE_TEST_COUNT greater than 1 to do the downsample multiple times to test performance
 #define PERFORMANCE_TEST_COUNT 10
