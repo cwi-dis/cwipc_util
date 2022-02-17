@@ -80,7 +80,8 @@ SYSTEM_PARAMS_KINECT=dict(
     color_saturation="-1",
     color_sharpness="-1",
     color_gain="-1",
-    color_powerline_frequency="-1"
+    color_powerline_frequency="-1",
+    map_color_to_depth="0"
 )
 
 SKELETON_PARAMS_KINECT=dict(

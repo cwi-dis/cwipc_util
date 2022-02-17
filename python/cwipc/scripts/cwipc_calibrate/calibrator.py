@@ -779,11 +779,13 @@ def get_cameras_order(camPositions):
     for i in range(len(camPositions)):
         centroid += camPositions[i]
     centroid /= len(camPositions)
-    v_0 = camPositions[0]-centroid
+    v_0 = camPositions[0]-centroid # first  camera will be always 0. we assume is master
     tup = []
     for i in range(len(camPositions)):
         v1 = camPositions[i]-centroid
         angle = math.degrees(angle_between(v_0,v1))
+        if angle < 0:
+            angle += 360.0
         tup.append((i,angle))
     ordered_tup = sorted(tup, key=lambda x: x[1]) #sort tuple (id,angle) by angle
     return [i[0] for i in ordered_tup]
