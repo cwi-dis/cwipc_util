@@ -71,6 +71,7 @@ SYSTEM_PARAMS_KINECT=dict(
     depth_height="576",
     fps="15",
     sync_master_serial="",
+    single_tile="-1",
     colormaster="1",
     color_exposure_time="-1",
     color_whitebalance="-1",
