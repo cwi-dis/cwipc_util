@@ -6,11 +6,6 @@ project(cwipc_util)
 include(CTest)
 include(GNUInstallDirs)
 
-# Ensure all executable, dll/so and link-library outputs end up in the same directories
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE})
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE})
-
 
 find_package(PCL 1.10 COMPONENTS common io octree filters features)
 find_package(glfw3 3.2)
