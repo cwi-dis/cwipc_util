@@ -100,7 +100,7 @@ if(Python3_FOUND)
 		string(REPLACE ";" "\\;" prevpath "$ENV{PATH}")
 		set_property(
 			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}Release\;${prevpath}"
+			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/;${prevpath}"
 		)
 	endif()
 endif()
