@@ -219,7 +219,7 @@ def _cwipc_util_dll(libname=None):
         if not libname:
             raise RuntimeError('Dynamic library cwipc_util not found')
     assert libname
-    with _cwipc_dll_search_path_collection(_WINDOWS_NEEDED_DLLS):
+    with _cwipc_dll_search_path_collection(None):
         _cwipc_util_dll_reference = ctypes.CDLL(libname)
     
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
