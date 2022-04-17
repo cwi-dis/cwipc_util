@@ -1,12 +1,12 @@
 
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 
 add_executable(cwipc_pcl2dump cwipc_pcl2dump.cpp)
 include_directories(
 	"../../include"
 	${PCL_INCLUDE_DIRS}
 )
-target_link_libraries(cwipc_pcl2dump cwipc_util ${PCL_LIBRARIES})
+target_link_libraries(cwipc_pcl2dump cwipc_util)
 
 install(TARGETS cwipc_pcl2dump RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

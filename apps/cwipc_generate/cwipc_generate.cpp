@@ -1,5 +1,8 @@
 #include <iostream>
 #include <fstream>
+#include "string.h"
+#include <stdlib.h>
+#include <inttypes.h>
 
 #include "cwipc_util/api.h"
 
@@ -22,7 +25,7 @@ int main(int argc, char** argv)
     int ok = 0;
     while (count-- > 0 && ok == 0) {
     	cwipc *pc = generator->get();
-    	snprintf(filename, sizeof(filename), "%s/pointcloud-%llu.ply", argv[2], pc->timestamp());
+    	snprintf(filename, sizeof(filename), "%s/pointcloud-%" PRIu64 ".ply", argv[2], pc->timestamp());
     	ok = cwipc_write(filename, pc, &error);
         pc->free();
     }

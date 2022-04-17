@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 cmake_policy(SET CMP0074 NEW)
 
 project(cwipc_util)
@@ -8,8 +8,9 @@ include(GNUInstallDirs)
 
 
 find_package(PCL 1.10 COMPONENTS common io octree filters features)
-find_package(glfw3 3.2)
+find_package(glfw3 3.2 QUIET)
 if(NOT glfw3_FOUND)
+	message(STATUS "glfw3: Use from third-party/glfw")
 	add_subdirectory("third-party/glfw")
 	include_directories("third-party/glfw/include")
 endif()

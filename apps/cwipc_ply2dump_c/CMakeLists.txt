@@ -1,12 +1,12 @@
 
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 
 add_executable(cwipc_ply2dump_c cwipc_ply2dump_c.c)
 include_directories(
 	"../../include"
 	${PCL_INCLUDE_DIRS}
 )
-target_link_libraries(cwipc_ply2dump_c cwipc_util ${PCL_LIBRARIES})
+target_link_libraries(cwipc_ply2dump_c cwipc_util)
 
 install(TARGETS cwipc_ply2dump_c RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
