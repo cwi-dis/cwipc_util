@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 import warnings
 import os
+import sys
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -52,11 +53,16 @@ CWIPC_API_VERSION = 0x20220126
 # NOTE: this list must be kept up-to-date otherwise loading DLLs will fail with
 # an obscure message "Python could not find module .... or one of its dependencies"
 #
+_CWIPC_DEBUG_DLL_SEARCH_PATH=True
+
 _WINDOWS_NEEDED_DLLS=[
     "pcl_common",
     "vtkCommonCore-8.2",
     "OpenNI2",
 ]
+print(f"xxxjack PATH {os.environ['PATH']}")
+print(f"xxxjack environ keys: {os.environ.keys()}")
+print(f"xxxjack environ: {os.environ}")
 
 class _cwipc_dll_search_path_collection:
     """Hack to ensure the correct DLL search path is used when loading a DLL on Windows"""
@@ -64,6 +70,7 @@ class _cwipc_dll_search_path_collection:
         self.open_dll_dirs = []
         if not hasattr(os, 'add_dll_directory'):
             # Apparently we don't need to do this...
+            if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: not needed", file=sys.stderr)
             return
         if dlls:
             # We implicitly add DLLs needed by cwipc_util
@@ -71,9 +78,14 @@ class _cwipc_dll_search_path_collection:
         else:
             path_string = os.environ.get('PATH')
             path_entries = path_string.split(os.pathsep)
+        if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: {len(path_entries)} on PATH", file=sys.stderr)
         for p in path_entries:
+            if not os.path.exists(p):
+                if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: not found: {p}", file=sys.stderr)
+                continue
             try:
                 self.open_dll_dirs.append(os.add_dll_directory(p))
+                if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add_dll_directory {p}", file=sys.stderr)
             except FileNotFoundError as e:
                 warnings.warn(f'cwipc_dll_search_path_collection: {e}')
     
@@ -214,12 +226,12 @@ def _cwipc_util_dll(libname=None):
     global _cwipc_util_dll_reference
     if _cwipc_util_dll_reference: return _cwipc_util_dll_reference
     
-    if libname == None:
-        libname = ctypes.util.find_library('cwipc_util')
-        if not libname:
-            raise RuntimeError('Dynamic library cwipc_util not found')
-    assert libname
     with _cwipc_dll_search_path_collection(None):
+        if libname == None:
+            libname = ctypes.util.find_library('cwipc_util')
+            if not libname:
+                raise RuntimeError('Dynamic library cwipc_util not found')
+        assert libname
         _cwipc_util_dll_reference = ctypes.CDLL(libname)
     
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]

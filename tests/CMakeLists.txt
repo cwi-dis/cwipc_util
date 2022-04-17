@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 
-set(INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/cwipc_util/tests)
-
-install(DIRECTORY fixtures DESTINATION ${INSTALL_PATH})
+file(COPY fixtures/input/pcl_frame1.ply DESTINATION ${CMAKE_TESTDATA_OUTPUT_DIRECTORY}/fixtures/input/)
+install(FILES fixtures/input/pcl_frame1.ply DESTINATION ${CMAKE_TESTDATA_INSTALL_DIRECTORY}/fixtures/input/)
+message(STATUS "xxxjack copied fixtures to ${CMAKE_TESTDATA_OUTPUT_DIRECTORY}")

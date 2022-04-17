@@ -15,14 +15,8 @@ if [ -f "$installdir/python37embedded/python.exe" ]; then
 	echo 'import sys ; sys.path.insert(0, "")' >> "$installdir/python37embedded/Lib/site-packages/sitecustomize.py"
 fi
 "$python3" -m pip install importlib.metadata
-"$python3" -m pip  install "$sharedir/cwipc_util/python"
-if [ -d "$sharedir/cwipc_realsense2/python" ]; then
-	"$python3" -m pip install "$sharedir/cwipc_realsense2/python"
-fi
-if [ -d "$sharedir/cwipc_kinect/python" ]; then
-	"$python3" -m pip install "$sharedir/cwipc_kinect/python"
-fi
-"$python3" -m pip install "$sharedir/cwipc_codec/python"
+"$python3" -m pip uninstall cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
+"$python3" -m pip  install --upgrade --find-links="$sharedir/cwipc/python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
 #
 # Finally, link python-based programs into bin
 #

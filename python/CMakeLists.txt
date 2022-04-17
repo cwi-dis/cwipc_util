@@ -1,106 +1,101 @@
-cmake_minimum_required(VERSION 3.14.0)
+cmake_minimum_required(VERSION 3.16.0)
 cmake_policy(SET CMP0074 NEW)
-find_package(Python3 COMPONENTS Interpreter)
 
-# Unfortunately Ubuntu 18.04 doesn't have the Python3 package (introduced in cmake 3.12 or so). Work around it.
-if(NOT Python3_FOUND)
-    find_program(PY3INTERPRETER python3)
-    if(PY3INTERPRETER)
-        set(Python3_EXECUTABLE ${PY3INTERPRETER})
-        set(Python3_FOUND TRUE)
-    endif()
-endif()
+# Setup venv-based Python
 
-set(INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/cwipc_util/python)
-set(DEST_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/${INSTALL_PATH})
+include(SetupCwipcPythonVenv)
 
+#
+# It is expected that CMAKE_PYWHEELS_INSTALL_DIRECTORY and CMAKE_PYWHEELS_OUTPUT_DIRECTORY
+# have been set already.
+#
+
+#
+# Building.
+#
+
+# Create Python wheel in the staging area
+
+cwipc_build_wheel(SOURCEDIR ${CMAKE_CURRENT_SOURCE_DIR} WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
+file(COPY test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
+
+#
+# Installation.
+#
+
+# Copy the whole Python staging subdirectory to the installation (so all scripts are available for inspection and testing)
+# Also install the wheel into the current system Python.
+
+install(FILES test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
+cwipc_install_wheel(NAME "cwipc_util" WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
+
+# Install shell and bat scripts
+
+install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(PROGRAMS cwipc_pymodules_install_win.bat DESTINATION bin)
 endif()
-install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	install(PROGRAMS cwipc_osx_clearquarantine.sh DESTINATION bin)
+endif()
 install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 
-install(FILES test_cwipc_util.py setup.py  DESTINATION ${INSTALL_PATH})
-install(DIRECTORY cwipc DESTINATION ${INSTALL_PATH} PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
-if(Python3_FOUND)
-	install(CODE "MESSAGE(\"Installing Python modules with ${DEST_INSTALL_PATH}/setup.py\")")
-	install(CODE "execute_process(COMMAND \"${Python3_EXECUTABLE}\" setup.py install WORKING_DIRECTORY \"${DEST_INSTALL_PATH}\" )")
-else()
-	MESSAGE("Python3 not found. Install python modules manually from ${INSTALL_PATH}")
+#
+# Testing.
+#
+
+# setup test environment (installs module into venv)
+
+add_test(NAME _python_setup_cwipc_util
+	COMMAND ${Python3_EXECUTABLE} setup.py install WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+	)
+set_tests_properties(_python_setup_cwipc_util PROPERTIES FIXTURES_SETUP venv)
+
+# Run the unittests
+
+add_test(NAME cwipc_util_python_tests
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY}/test_cwipc_util.py
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+	)
+cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv)
+
+# Test the various scripts
+
+add_test(NAME cwipc_tilecolor
+	COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
+	)
+cwipc_python_test(TEST cwipc_tilecolor FIXTURES_REQUIRED venv)
+if(DEFINED ENV{OPENGL_IS_BROKEN})
+	# See issue #19
+	set_tests_properties(cwipc_tilecolor PROPERTIES DISABLED True)
 endif()
 
+add_test(NAME cwipc_view
+	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2
+	)
+cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv)
 
-if(Python3_FOUND)
-	set(ALL_PYTHON_TESTS cwipc_util_python_tests cwipc_tilecolor cwipc_view cwipc_calibrate cwipc_grab)
-	#
-	# Create venv for testing, and re-set Python3_EXECUTABLE to that Python.
-	# But: enable use of system-installed packages, because otherwise CI/CD will take forever.
-	#
-    get_filename_component(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv" ABSOLUTE)
-    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv --system-site-packages "${VENV_DIR}")
-    set(ENV{VIRTUAL_ENV} "${VENV_DIR}")
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        set(Python3_BINDIR "${VENV_DIR}/Scripts")
-        set(Python3_EXECUTABLE "${Python3_BINDIR}/python.exe")
-    else()
-        set(Python3_BINDIR "${VENV_DIR}/bin")
-        set(Python3_EXECUTABLE "${Python3_BINDIR}/python")
-    endif()
-    #
-    # Install packages into the venv
-    # (later: but scripts into the normal bin directory)
-    #
-    execute_process(COMMAND ${Python3_EXECUTABLE} -m pip install "${CMAKE_CURRENT_SOURCE_DIR}")
-    #
-    # Run the unittests
-    #
-	#add_test(NAME printenv
-	#	COMMAND ${Python3_EXECUTABLE} -c "import os ; print(os.environ)"
-	#	)
-	add_test(NAME cwipc_util_python_tests
-		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py test
+add_test(NAME cwipc_calibrate
+	COMMAND ${Python3_BINDIR}/cwipc_calibrate --help
 	)
-	#
-	# Test the various scripts
-	#
-	add_test(NAME cwipc_tilecolor
-		COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
-	)
-	add_test(NAME cwipc_view
-		COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2
-	)
-	add_test(NAME cwipc_calibrate
-		COMMAND ${Python3_BINDIR}/cwipc_calibrate --help
-	)
-	add_test(NAME cwipc_forward
-		COMMAND ${Python3_BINDIR}/cwipc_forward --help
-	)
-	add_test(NAME cwipc_toproxy
-		COMMAND ${Python3_BINDIR}/cwipc_toproxy --help
-	)
-	add_test(NAME cwipc_grab
-		COMMAND ${Python3_BINDIR}/cwipc_grab --synthetic --count 2 .
-	)
-	#
-	# Ensure the cwipc_util dynamic library can be found by the tests
-	#
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{DYLD_LIBRARY_PATH}"
-		)
- 	endif()
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}:$ENV{LD_LIBRARY_PATH}"
-		)
-	endif()
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		string(REPLACE ";" "\\;" prevpath "$ENV{PATH}")
-		set_property(
-			TEST ${ALL_PYTHON_TESTS}
-			APPEND PROPERTY ENVIRONMENT "PATH=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}/;${prevpath}"
-		)
-	endif()
+cwipc_python_test(TEST cwipc_calibrate FIXTURES_REQUIRED venv)
+if(DEFINED ENV{OPENGL_IS_BROKEN})
+	# See issue #19
+	set_tests_properties(cwipc_calibrate PROPERTIES DISABLED True)
 endif()
+
+add_test(NAME cwipc_forward
+	COMMAND ${Python3_BINDIR}/cwipc_forward --help
+	)
+cwipc_python_test(TEST cwipc_forward FIXTURES_REQUIRED venv)
+
+add_test(NAME cwipc_toproxy
+	COMMAND ${Python3_BINDIR}/cwipc_toproxy --help
+	)
+cwipc_python_test(TEST cwipc_toproxy FIXTURES_REQUIRED venv)
+
+add_test(NAME cwipc_grab
+	COMMAND ${Python3_BINDIR}/cwipc_grab --synthetic --count 2 .
+	)
+cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv)
+

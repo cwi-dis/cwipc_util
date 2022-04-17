@@ -9,14 +9,8 @@ if exist "%bindir%..\python37embedded\python.exe" (
 	echo "import sys ; sys.path.insert(0,'')" >> "%bindir%../python37embedded/Lib/site-packages/sitecustomize.py"
 )
 %python% -m pip install importlib.metadata
-%python% -m pip install "%bindir%..\share\cwipc_util\python"
-if exist "%bindir%..\share\cwipc_realsense2\python\setup.py" (
-	%python% -m pip install "%bindir%..\share\cwipc_realsense2\python"
-)
-if exist "%bindir%..\share\cwipc_kinect\python\setup.py" (
-	%python% -m pip install "%bindir%..\share\cwipc_kinect\python"
-)
-%python% -m pip install "%bindir%..\share\cwipc_codec\python"
+%python% -m pip uninstall cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
+%python% -m pip install --upgrade --find-links="%bindir%..\cwipc\python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
 pushd %bindir%..
 if exist "%bindir%..\python37embedded\Scripts\" (
     xcopy /y "%bindir%..\python37embedded\Scripts\cwipc_*" "%bindir%..\bin"

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 
 add_library(cwipc_util SHARED cwipc_util.cpp cwipc_synthetic.cpp cwipc_filters.cpp cwipc_window.cpp window_util.cpp cwipc_certh.cpp cwipc_proxy.cpp )
 
@@ -13,10 +13,10 @@ target_include_directories(
     cwipc_util PUBLIC
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include> 
+    ${PCL_INCLUDE_DIRS}
 )
 target_include_directories(
     cwipc_util PRIVATE
-    ${PCL_INCLUDE_DIRS}
     ${glfw_INCLUDE_DIRS}
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -29,14 +29,15 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		${PCL_DEFINITIONS}
 	)
 endif()
-target_link_libraries(cwipc_util PRIVATE ${PCL_LIBRARIES} glfw OpenGL::GL OpenGL::GLU)
+target_link_libraries(cwipc_util PUBLIC ${PCL_LIBRARIES})
+target_link_libraries(cwipc_util PRIVATE glfw OpenGL::GL OpenGL::GLU)
 
 install(TARGETS cwipc_util
     EXPORT cwipc_util
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_PREFIX}/include/cwipc_util"
+    PUBLIC_HEADER DESTINATION include/cwipc_util
 )
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cwipc_util

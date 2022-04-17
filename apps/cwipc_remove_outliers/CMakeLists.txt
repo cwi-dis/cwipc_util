@@ -1,12 +1,12 @@
 
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.16.0)
 
 add_executable(cwipc_remove_outliers cwipc_remove_outliers.cpp)
 include_directories(
 	"../../include"
 	${PCL_INCLUDE_DIRS}
 )
-target_link_libraries(cwipc_remove_outliers cwipc_util ${PCL_LIBRARIES})
+target_link_libraries(cwipc_remove_outliers cwipc_util)
 
 install(TARGETS cwipc_remove_outliers RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
