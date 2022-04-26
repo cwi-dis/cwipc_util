@@ -14,9 +14,10 @@ if [ -f "$installdir/python37embedded/python.exe" ]; then
 	# Workaround for embedded Python: add . to pythonpath
 	echo 'import sys ; sys.path.insert(0, "")' >> "$installdir/python37embedded/Lib/site-packages/sitecustomize.py"
 fi
-"$python3" -m pip install importlib.metadata
-"$python3" -m pip uninstall cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
-"$python3" -m pip  install --upgrade --find-links="$sharedir/cwipc/python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
+set -x
+"$python3" -m pip --quiet install importlib.metadata
+"$python3" -m pip --quiet uninstall --yes cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
+"$python3" -m pip --quiet install --upgrade --find-links="$sharedir/cwipc/python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
 #
 # Finally, link python-based programs into bin
 #
