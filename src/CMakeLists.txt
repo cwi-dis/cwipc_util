@@ -32,6 +32,10 @@ endif()
 target_link_libraries(cwipc_util PUBLIC ${PCL_LIBRARIES})
 target_link_libraries(cwipc_util PRIVATE glfw OpenGL::GL OpenGL::GLU)
 
+if(WIN32)
+	target_link_libraries(cwipc_util PRIVATE wsock32 ws2_32)
+endif()
+
 install(TARGETS cwipc_util
     EXPORT cwipc_util
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
