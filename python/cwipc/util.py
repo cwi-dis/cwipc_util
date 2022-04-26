@@ -53,16 +53,13 @@ CWIPC_API_VERSION = 0x20220126
 # NOTE: this list must be kept up-to-date otherwise loading DLLs will fail with
 # an obscure message "Python could not find module .... or one of its dependencies"
 #
-_CWIPC_DEBUG_DLL_SEARCH_PATH=True
+_CWIPC_DEBUG_DLL_SEARCH_PATH=os.getenv("_CWIPC_DEBUG_DLL_SEARCH_PATH")
 
 _WINDOWS_NEEDED_DLLS=[
     "pcl_common",
     "vtkCommonCore-8.2",
     "OpenNI2",
 ]
-print(f"xxxjack PATH {os.environ['PATH']}")
-print(f"xxxjack environ keys: {os.environ.keys()}")
-print(f"xxxjack environ: {os.environ}")
 
 class _cwipc_dll_search_path_collection:
     """Hack to ensure the correct DLL search path is used when loading a DLL on Windows"""
