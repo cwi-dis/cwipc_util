@@ -14,6 +14,8 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
+#define stringify(x) _stringify(x)
+#define _stringify(x) #x
 
 class cwipc_auxiliary_data_impl : public cwipc_auxiliary_data {
 protected:
@@ -291,6 +293,14 @@ public:
         return m_pc;
     }
 };
+
+const char *cwipc_get_version() {
+#ifdef CWIPC_VERSION
+	return stringify(CWIPC_VERSION);
+#else
+	return "unknown";
+#endif
+}
 
 cwipc *
 cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion)

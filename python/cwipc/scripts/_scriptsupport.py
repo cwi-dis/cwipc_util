@@ -6,7 +6,7 @@ import argparse
 import traceback
 import importlib.util
 
-from .. import playback, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
+from .. import playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -316,6 +316,7 @@ class SourceServer:
 
 def ArgumentParser(*args, **kwargs):
     parser = argparse.ArgumentParser(*args, **kwargs)
+    parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
     parser.add_argument("--debuglibrary", action="store", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
@@ -351,6 +352,9 @@ def ArgumentParser(*args, **kwargs):
     
 def beginOfRun(args):
     """Optionally pause execution"""
+    if args.version:
+        print(cwipc_get_version())
+        sys.exit(0)
     if args.pausefordebug:
         answer=None
         while answer != 'Y':

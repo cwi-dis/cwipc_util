@@ -23,7 +23,7 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION 0x20220126
+#define CWIPC_API_VERSION 0x20220328
 
 /** \brief Version of oldest compatible cwipc API.
 *
@@ -506,6 +506,10 @@ typedef struct _cwipc_auxiliary_data {
 extern "C" {
 #endif
 
+	/** \brief Return version string.
+	 */
+	_CWIPC_UTIL_EXPORT const char *cwipc_get_version();
+	
     /** \brief Read pointcloud from .ply file.
      * \param filename The ply file to read.
      * \param timestamp The timestamp to record in the cwipc object.
