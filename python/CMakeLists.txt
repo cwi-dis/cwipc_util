@@ -49,7 +49,7 @@ install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 add_test(NAME _python_setup_cwipc_util
 	COMMAND ${Python3_EXECUTABLE} -m pip install --upgrade --find-links=${CMAKE_PYWHEELS_OUTPUT_DIRECTORY} cwipc_util
 	)
-set_tests_properties(_python_setup_cwipc_util PROPERTIES FIXTURES_SETUP venv)
+set_tests_properties(_python_setup_cwipc_util PROPERTIES FIXTURES_SETUP venv RUN_SERIAL TRUE)
 
 # Run the unittests
 
