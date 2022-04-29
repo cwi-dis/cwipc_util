@@ -1,6 +1,6 @@
 # CWI Pointcloud utility library
 
-This repository builds a utility library for using `cwipc` objects to represent pointclouds.
+This repository is a utility library for using `cwipc` objects to represent pointclouds. It is part of the `cwipc` suite, <https://github.com/cwi-dis/cwipc>, and should generally be installed or built as part of that suite. 
 
 ## General design considerations
 
