@@ -19,6 +19,7 @@ __all__ = [
     
     'cwipc_point_packetheader',
     
+    'cwipc_get_version',
     'cwipc_read',
     'cwipc_read_debugdump',
     'cwipc_write',
@@ -40,7 +41,7 @@ __all__ = [
     'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20220126
+CWIPC_API_VERSION = 0x20220328
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -230,6 +231,9 @@ def _cwipc_util_dll(libname=None):
                 raise RuntimeError('Dynamic library cwipc_util not found')
         assert libname
         _cwipc_util_dll_reference = ctypes.CDLL(libname)
+    
+    _cwipc_util_dll_reference.cwipc_get_version.argtypes = []
+    _cwipc_util_dll_reference.cwipc_get_version.restype = ctypes.c_char_p
     
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
@@ -613,7 +617,19 @@ class cwipc_auxiliary_data:
         rv = bytearray(c_array)
         return rv
         
-        
+def cwipc_get_version():
+    """Return version information"""
+    c_version = _cwipc_util_dll().cwipc_get_version()
+    version = c_version.decode('utf8')
+    try:
+        import pkg_resources
+        py_version = pkg_resources.require("cwipc_util")[0].version
+        if py_version and py_version != version:
+            version = f'{version} (python wrapper: {py_version})'
+    except ImportError:
+        pass
+    return version
+                 
 def cwipc_read(filename, timestamp):
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
