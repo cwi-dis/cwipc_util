@@ -92,7 +92,21 @@ class _cwipc_dll_search_path_collection:
                 if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add_dll_directory {p}", file=sys.stderr)
             except FileNotFoundError as e:
                 warnings.warn(f'cwipc_dll_search_path_collection: {e}')
-    
+
+    def find_library(self, libname):
+        rv = ctypes.util.find_library(libname)
+        if rv and not os.path.isabs(rv):
+            # Assume we are on Linux (which returns non-absolute paths from find_library)
+            # Attempt to find it on LD_LIBRARY_PATH, which ld.so does not honour changes to during runtime.
+            paths = os.environ.get('LD_LIBRARY_PATH', '')
+            for p in paths.split(':'):
+                if p:
+                    attempt = os.path.join(p, rv)
+                    if os.path.exists(attempt):
+                        rv = attempt
+                        break
+        return rv
+        
     def _darwin_add_dylib_search_path(self):
         """Add lib directories in our ancestors to DYLD_LIBRARY_PATH so _our_ dylibs are found by find_library"""
         if 'DYLD_LIBRARY_PATH' in os.environ:
@@ -267,9 +281,11 @@ def _cwipc_util_dll(libname=None):
     global _cwipc_util_dll_reference
     if _cwipc_util_dll_reference: return _cwipc_util_dll_reference
     
-    with _cwipc_dll_search_path_collection(None):
+    with _cwipc_dll_search_path_collection(None) as loader:
         if libname == None:
-            libname = ctypes.util.find_library('cwipc_util')
+            libname = 'cwipc_util'
+        if not os.path.isabs(libname):
+            libname = loader.find_library(libname)
             if not libname:
                 raise RuntimeError('Dynamic library cwipc_util not found')
         assert libname
