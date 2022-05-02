@@ -65,6 +65,10 @@ _WINDOWS_NEEDED_DLLS=[
 class _cwipc_dll_search_path_collection:
     """Hack to ensure the correct DLL search path is used when loading a DLL on Windows"""
     def __init__(self, dlls=None):
+        # On Darwin we need to add directories to the find_library() search path
+        if os.name == "posix" and sys.platform == "darwin":
+            self._darwin_add_dylib_search_path()
+        # On Windows we may need to add directories with add_dll_directory() so we can find dependent DLLs
         self.open_dll_dirs = []
         if not hasattr(os, 'add_dll_directory'):
             # Apparently we don't need to do this...
@@ -87,7 +91,26 @@ class _cwipc_dll_search_path_collection:
             except FileNotFoundError as e:
                 warnings.warn(f'cwipc_dll_search_path_collection: {e}')
     
+    def _darwin_add_dylib_search_path(self):
+        """Add lib directories in our ancestors to DYLD_LIBRARY_PATH so _our_ dylibs are found by find_library"""
+        if 'DYLD_LIBRARY_PATH' in os.environ:
+            return
+        # Add all "lib" directories found in our ancestors
+        candidates = []
+        basepath = os.path.dirname(__file__)
+        while basepath:
+            libpath = os.path.join(basepath, 'lib')
+            if os.path.isdir(libpath):
+                if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add_dylib_search_directory {libpath}", file=sys.stderr)
+                candidates.append(libpath)
+            nextbasepath = os.path.dirname(basepath)
+            if nextbasepath == basepath:
+                break
+            basepath = nextbasepath
+        os.environ['DYLD_LIBRARY_PATH'] = ':'.join(candidates)
+        
     def _get_dll_directories(self, dlls):
+        """Return a list of directory names that contain all DLLs pased ar argument"""
         done = []
         rv = []
         for dll in dlls:
