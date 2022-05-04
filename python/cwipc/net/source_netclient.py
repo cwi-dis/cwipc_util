@@ -88,6 +88,7 @@ class _NetClientSource(threading.Thread):
                     if not data: break
                     packet += data
                 t2 = time.time()
+                if t2 == t1: t2 = t1 + 0.0005
                 self.times_receive.append(t2-t1)
                 self.sizes_receive.append(len(packet))
                 self.bandwidths_receive.append(len(packet)/(t2-t1))

@@ -61,6 +61,7 @@ class _Sink_NetServer(threading.Thread):
                     connSocket.sendall(data)
                     connSocket.close()
                     t2 = time.time()
+                    if t2 == t1: t2 = t1 + 0.0005
                     connSocket = None
                     self.times_forward.append(t2-t1)
                     datasize = len(data)
