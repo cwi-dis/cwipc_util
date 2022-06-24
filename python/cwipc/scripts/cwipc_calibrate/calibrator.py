@@ -5,6 +5,7 @@ import open3d
 import pprint
 import math
 import cwipc
+import copy
 
 from .pointcloud import Pointcloud
 from .cameraconfig import CameraConfig, DEFAULT_FILENAME
@@ -377,8 +378,19 @@ class Calibrator:
         corr[:,1] = picked_id_target
 
         p2p = open3d.pipelines.registration.TransformationEstimationPointToPoint()
+
+        rmse_ori = p2p.compute_rmse(source.get_o3d(), target.get_o3d(),open3d.utility.Vector2iVector(corr))
+        print(f"RMSE before transform = {rmse_ori}");
+
         trans_init = p2p.compute_transformation(source.get_o3d(), target.get_o3d(),
             open3d.utility.Vector2iVector(corr))
+
+        print("Transformation: ", trans_init);
+
+        pcc = copy.deepcopy(source)
+        new_pc = pcc.get_o3d().transform(trans_init);
+        rmse_aft = p2p.compute_rmse(new_pc, target.get_o3d(),open3d.utility.Vector2iVector(corr))
+        print(f"RMSE after transform = {rmse_aft}");
         
         if not extended:
             return trans_init
