@@ -33,7 +33,8 @@ cwipc_install_wheel(NAME "cwipc_util" WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY
 
 install(PROGRAMS cwipc_pymodules_install.sh DESTINATION bin)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	install(PROGRAMS cwipc_pymodules_install_win.bat DESTINATION bin)
+	install(PROGRAMS cwipc_pymodules_install.bat DESTINATION bin)
+	install(PROGRAMS cwipc_pymodules_install.ps1 DESTINATION bin)
 endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	install(PROGRAMS cwipc_osx_clearquarantine.sh DESTINATION bin)
