@@ -172,7 +172,7 @@ public:
      * You must call free() before calling the destructor (unless you have passed
      * the cwipc object across an implementation language boundary and a reference
      * may still be held there).
-     * / 
+     */ 
     virtual ~cwipc() {};
 
     /** \brief Deallocate the pointcloud data.
@@ -274,7 +274,7 @@ public:
      * You must call free() before calling the destructor (unless you have passed
      * the cwipc object across an implementation language boundary and a reference
      * may still be held there).
-     * / 
+     */ 
     virtual ~cwipc_source() {};
 
     /** \brief Deallocate the pointcloud source.
@@ -385,7 +385,7 @@ public:
      * You must call free() before calling the destructor (unless you have passed
      * the cwipc object across an implementation language boundary and a reference
      * may still be held there).
-     * / 
+     */ 
     virtual ~cwipc_sink() {};
 
     /** \brief Deallocate the pointcloud sink.
