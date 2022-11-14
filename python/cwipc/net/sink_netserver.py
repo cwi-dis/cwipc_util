@@ -5,6 +5,7 @@ import select
 import time
 import queue
 import cwipc
+import struct
 
 class _Sink_NetServer(threading.Thread):
     
@@ -58,7 +59,8 @@ class _Sink_NetServer(threading.Thread):
                     if self.verbose:
                         print(f"netserver: accepted connection from {other}")
                     data = self.queue.get()
-                    connSocket.sendall(data)
+                    hdr = self._gen_header(data)
+                    connSocket.sendall(hdr + data)
                     connSocket.close()
                     t2 = time.time()
                     if t2 == t1: t2 = t1 + 0.0005
@@ -70,7 +72,13 @@ class _Sink_NetServer(threading.Thread):
         finally:
             self.stopped = True
             if self.verbose: print(f"netserver: thread stopping")
-        
+    
+    def _gen_header(self, data):
+        datalen = len(data)
+        fourcc = "0iwc".encode("ascii")
+        timestamp = int(time.time() * 1000)
+        return struct.pack("=4sLQ", fourcc, datalen, timestamp)
+    
     def feed(self, data):
         try:
             if self.nodrop:

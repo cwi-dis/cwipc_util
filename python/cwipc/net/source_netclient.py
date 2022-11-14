@@ -4,6 +4,7 @@ import socket
 import threading
 import queue
 import cwipc
+import struct
 
 class _NetClientSource(threading.Thread):
     
@@ -87,6 +88,12 @@ class _NetClientSource(threading.Thread):
                     data = s.recv(8192)
                     if not data: break
                     packet += data
+                hdr = packet[:16]
+                packet = packet[16:]
+                h_fourcc, h_length, h_timestamp = struct.unpack("=4sLQ", hdr)
+                assert h_fourcc.decode("ascii") == "0iwc"
+                assert h_length == len(packet)
+                # Ignore h_timestamp for now.
                 t2 = time.time()
                 if t2 == t1: t2 = t1 + 0.0005
                 self.times_receive.append(t2-t1)
