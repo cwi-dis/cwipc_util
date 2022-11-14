@@ -7,6 +7,17 @@ import queue
 import cwipc
 import struct
 
+def VRT_4CC(code):
+    """Convert anything reasonable (bytes, string, int) to 4cc integer"""
+    if isinstance(code, int):
+        return code
+    if not isinstance(code, bytes):
+        assert isinstance(code, str)
+        code = code.encode('ascii')
+    assert len(code) == 4
+    rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
+    return rv
+
 class _Sink_NetServer(threading.Thread):
     
     SELECT_TIMEOUT=0.1
@@ -21,6 +32,7 @@ class _Sink_NetServer(threading.Thread):
         self.nodrop = nodrop
         self.stopped = False
         self.started = False
+        self.fourcc = None
         self.times_forward = []
         self.sizes_forward = []
         self.bandwidths_forward = []
@@ -40,6 +52,9 @@ class _Sink_NetServer(threading.Thread):
         if self.started:
             self.join()
         
+    def set_fourcc(self, fourcc):
+        self.fourcc = fourcc
+
     def set_producer(self, producer):
         self.producer = producer
         
@@ -75,9 +90,8 @@ class _Sink_NetServer(threading.Thread):
     
     def _gen_header(self, data):
         datalen = len(data)
-        fourcc = "0iwc".encode("ascii")
         timestamp = int(time.time() * 1000)
-        return struct.pack("=4sLQ", fourcc, datalen, timestamp)
+        return struct.pack("=LLQ", VRT_4CC(self.fourcc), datalen, timestamp)
     
     def feed(self, data):
         try:

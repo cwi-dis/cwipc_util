@@ -6,6 +6,17 @@ import queue
 import cwipc
 import struct
 
+def VRT_4CC(code):
+    """Convert anything reasonable (bytes, string, int) to 4cc integer"""
+    if isinstance(code, int):
+        return code
+    if not isinstance(code, bytes):
+        assert isinstance(code, str)
+        code = code.encode('ascii')
+    assert len(code) == 4
+    rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
+    return rv
+
 class _NetClientSource(threading.Thread):
     
     QUEUE_WAIT_TIMEOUT=1
@@ -90,8 +101,8 @@ class _NetClientSource(threading.Thread):
                     packet += data
                 hdr = packet[:16]
                 packet = packet[16:]
-                h_fourcc, h_length, h_timestamp = struct.unpack("=4sLQ", hdr)
-                assert h_fourcc.decode("ascii") == "0iwc"
+                h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
+                assert VRT_4CC("cwi0") == h_fourcc
                 assert h_length == len(packet)
                 # Ignore h_timestamp for now.
                 t2 = time.time()

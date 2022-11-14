@@ -8,7 +8,7 @@ import cwipc
 
 class _Sink_Passthrough(threading.Thread):
     
-    FOURCC="cwiU"
+    FOURCC="cwi0"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
     
