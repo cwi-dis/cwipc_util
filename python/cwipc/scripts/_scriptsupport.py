@@ -299,6 +299,8 @@ class SourceServer:
             self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
             self.grabber.statistics()
+        if hasattr(self.custom_filter, 'statistics'):
+            self.custom_filter.statistics()
         
     def print1stat(self, name, values, isInt=False):
         count = len(values)
