@@ -1,6 +1,7 @@
 #include <thread>
 #include <chrono>
 #include <condition_variable>
+#include <inttypes.h>
 
 #ifdef WIN32
 #define _CWIPC_UTIL_EXPORT __declspec(dllexport)
@@ -292,7 +293,9 @@ cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion)
 {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
-            *errorMessage = (char *)"cwipc_window: incorrect apiVersion";
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_window: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
         }
         return NULL;
     }

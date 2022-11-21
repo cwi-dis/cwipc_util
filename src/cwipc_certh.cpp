@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
@@ -32,8 +33,10 @@ cwipc_from_certh(void* certhPC, float *origin, float *bbox, uint64_t timestamp, 
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_from_points: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_from_certh: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     struct CerthPointCloud *cpc = (struct CerthPointCloud *)certhPC;

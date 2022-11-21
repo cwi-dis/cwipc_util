@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <sys/types.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -197,8 +198,10 @@ cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_proxy: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_proxy: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     struct addrinfo hints;
@@ -213,23 +216,23 @@ cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion
     if (host != NULL && *host == '\0') host = NULL;
     int status = getaddrinfo(host, portbuf, &hints, &result);
     if (status != 0) {
-        *errorMessage = (char *)gai_strerror(status);
+        if (errorMessage) *errorMessage = (char *)gai_strerror(status);
         return NULL;
     }
     int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (sock < 0) {
-        *errorMessage = strerror(errno);
+        if (errorMessage) *errorMessage = strerror(errno);
         return NULL;
     }
     status = bind(sock, result->ai_addr, result->ai_addrlen);
     if (status < 0) {
-        *errorMessage = strerror(errno);
+        if (errorMessage) *errorMessage = strerror(errno);
         closesocket(sock);
         return NULL;
     }
     status = listen(sock, 1);
     if (status < 0) {
-        *errorMessage = strerror(errno);
+        if (errorMessage) *errorMessage = strerror(errno);
         closesocket(sock);
         return NULL;
     }

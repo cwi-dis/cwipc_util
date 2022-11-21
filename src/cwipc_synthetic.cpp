@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <inttypes.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/common/transforms.h>
@@ -147,8 +148,10 @@ cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion)
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_synthetic: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_synthetic: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
 	return new cwipc_source_synthetic_impl(fps, npoints);

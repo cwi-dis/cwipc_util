@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
@@ -307,8 +308,10 @@ cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_read: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_read_debugdump: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     cwipc_pcl_pointcloud pc = new_cwipc_pcl_pointcloud();
@@ -357,8 +360,10 @@ cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVers
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_read_debugdump: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_read_debugdump: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     FILE *fp = fopen(filename, "rb");
@@ -459,8 +464,10 @@ cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage,
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_from_pcl: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_from_pcl: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     return new cwipc_impl(pc, timestamp);
@@ -471,8 +478,10 @@ cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timesta
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_from_points: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_from_points: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
@@ -489,20 +498,22 @@ cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t ap
 {
 	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
 		if (errorMessage) {
-			*errorMessage = (char *)"cwipc_from_packet: incorrect apiVersion";
-		}
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_from_packet: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            *errorMessage = msgbuf;
+        }
 		return NULL;
 	}
     struct cwipc_cwipcdump_header *header = (struct cwipc_cwipcdump_header *) packet;
     struct cwipc_point *points = (struct cwipc_point *)(packet + sizeof(cwipc_cwipcdump_header));
     if (memcmp(header->hdr, CWIPC_CWIPCDUMP_HEADER, 4) != 0 || header->magic != CWIPC_CWIPCDUMP_VERSION) {
-        *errorMessage = (char *)"cwipc_from_packet: bad packet header";
+        if (errorMessage) *errorMessage = (char *)"cwipc_from_packet: bad packet header";
         return NULL;
     }
     size_t dataSize = size - sizeof(struct cwipc_cwipcdump_header);
     int npoint = header->size / sizeof(cwipc_point);
     if (npoint * sizeof(cwipc_point) != dataSize) {
-        *errorMessage = (char *)"cwipc_from_packet: inconsistent dataSize";
+        if (errorMessage) *errorMessage = (char *)"cwipc_from_packet: inconsistent dataSize";
         return NULL;
     }
     cwipc_uncompressed_impl *rv = new cwipc_uncompressed_impl();
