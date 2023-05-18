@@ -6,6 +6,7 @@ target_sources(cwipc_util
 	PRIVATE
 	"../include/cwipc_util/api.h"
 	"../include/cwipc_util/api_pcl.h"
+	"../include/cwipc_util/internal.h"
 	"window_util.hpp"
 )
 
