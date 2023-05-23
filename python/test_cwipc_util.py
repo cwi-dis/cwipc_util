@@ -271,6 +271,14 @@ class TestApi(unittest.TestCase):
         self.assertEqual(pcs.get_tileinfo_dict(2), {'normal':{'x':0, 'y':0, 'z':-1},'cameraName':b'synthetic-left', 'ncamera':1, 'cameraMask':2})
         pcs.free()
 
+    def test_cwipc_synthetic_config(self):
+        """Is a synthetic pointcloud generator providing the correct config interface?"""
+        pcs = cwipc.cwipc_synthetic()
+        self.assertFalse(pcs.reload_config("auto"))
+        self.assertFalse(pcs.reload_config("{\"dummy\":0}"))
+        self.assertEqual(pcs.get_config(), None)
+        pcs.free()
+
     def test_tilefilter(self):
         """Check that the tilefilter returns the same number of points if not filtering, and correct number if filtering"""
         gen = cwipc.cwipc_synthetic()

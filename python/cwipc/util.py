@@ -41,7 +41,7 @@ __all__ = [
     'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20220328
+CWIPC_API_VERSION = 0x20230523
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -363,6 +363,12 @@ def _cwipc_util_dll(libname=None):
     _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
     _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.restype = ctypes.c_bool
     
+    _cwipc_util_dll_reference.cwipc_tiledsource_reload_config.argtypes = [cwipc_tiledsource_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_tiledsource_reload_config.restype = ctypes.c_bool
+    
+    _cwipc_util_dll_reference.cwipc_tiledsource_get_config.argtypes = [cwipc_tiledsource_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_tiledsource_get_config.restype = ctypes.c_size_t
+    
     _cwipc_util_dll_reference.cwipc_tiledsource_seek.argtypes = [cwipc_tiledsource_p, ctypes.c_uint64]
     _cwipc_util_dll_reference.cwipc_tiledsource_seek.restype = ctypes.c_bool
     
@@ -582,6 +588,24 @@ class cwipc_tiledsource(cwipc_source):
         if _cwipc_tiledsource != None:
             assert isinstance(_cwipc_tiledsource, cwipc_tiledsource_p)
         self._cwipc_source = _cwipc_tiledsource
+        
+    def reload_config(self, config):
+        """Load a config from file or JSON string"""
+        if type(config) == str:
+            config = config.encode('utf8')
+        return _cwipc_util_dll().cwipc_tiledsource_reload_config(self._as_cwipc_source_p(), config)
+        
+    def get_config(self):
+        """Return current capturer cameraconfig as JSON"""
+        nBytes = _cwipc_util_dll().cwipc_tiledsource_get_config(self._as_cwipc_source_p(), None, 0)
+        if nBytes <= 0:
+            return None
+        buffer = bytearray(nBytes)
+        bufferCtypesType = ctypes.c_byte * nBytes
+        bufferArg = bufferCtypesType.from_buffer(buffer)
+        rvNBytes = _cwipc_util_dll().cwipc_tiledsource_get_config(self._as_cwipc_source_p(), bufferArg, nBytes)
+        assert rvNBytes == nBytes
+        return buffer
         
     def seek(self, timestamp):
         """Return true if seek was successfull"""
