@@ -641,6 +641,16 @@ cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name)
     return src->auxiliary_data_requested(name);
 }
 
+bool 
+cwipc_tiledsource_reload_config(cwipc_tiledsource* src, const char* configFile) {
+    return src->reload_config(configFile);
+}
+
+size_t 
+cwipc_tiledsource_get_config(cwipc_tiledsource* src, char* buffer, size_t size) {
+    return src->get_config(buffer, size);
+}
+
 bool
 cwipc_tiledsource_seek(cwipc_tiledsource* src, uint64_t timestamp)
 {

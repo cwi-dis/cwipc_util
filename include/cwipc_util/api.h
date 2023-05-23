@@ -345,6 +345,25 @@ public:
     virtual bool available(bool wait) = 0;
     virtual cwipc* get() = 0;
 
+    /** \brief Reload capturer based on a new configuration
+    * 
+    * Only implemented for actual cameras (realsense, kinect). Closes the cameras and reopens them with a new
+    * configuration.
+    * 
+    * \param configFile The pathname to the new camera configuration or an inline json configuration string.
+    * \return A boolean that is true if the reload was successful.
+    */
+    virtual bool reload_config(const char* configFile) { return false; }
+
+    /** \brief Return current configuration as a JSON string
+    * 
+    * For actual camera capturers this returns the current configuration in a buffer supplied by the caller.
+    * 
+    * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
+    * \param size Size of the buffer.
+    */
+    virtual size_t get_config(char* buffer, size_t size) { return 0; }
+
     /** \brief Performs a seek on the playback.
      * \param timestamp The timestamp wanted
      * \return A boolean that is true if the seek was successful.
@@ -754,7 +773,29 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT bool cwipc_source_auxiliary_data_requested(cwipc_source* src, const char* name);
 
+    /** \brief Reload capturer based on a new configuration
+    *
+    * Only implemented for actual cameras (realsense, kinect). Closes the cameras and reopens them with a new
+    * configuration.
+    *
+    * \param src The cwipc_tiledsource object.
+     * \param configFile The pathname to the new camera configuration or an inline json configuration string.
+    * \return A boolean that is true if the reload was successful.
+    */
+    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_reload_config(cwipc_tiledsource* src, const char* configFile);
+
+    /** \brief Return current configuration as a JSON string
+    *
+    * For actual camera capturers this returns the current configuration in a buffer supplied by the caller.
+    *
+    * \param src The cwipc_tiledsource object.
+    * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
+    * \param size Size of the buffer.
+    */
+    _CWIPC_UTIL_EXPORT size_t cwipc_tiledsource_get_config(cwipc_tiledsource* src, char* buffer, size_t size);
+
     /** \brief Attempt to seek a a specific timestamp in a point cloud stream (C interface).
+     * \param src The cwipc_tiledsource object.
      * \param src The cwipc_tiledsource object.
      * \param timestamp The timestamp wanted.
      * \return True if successful.
