@@ -1,7 +1,26 @@
 import copy
+import json
 import xml.etree.ElementTree as ET
 
-DEFAULT_CONFIGFILE="""<?xml version="1.0" ?>
+DEFAULT_CONFIGFILE_JSON="""
+{
+    "version" : 3,
+    "cameras" : [
+        {
+            "serial" : "0",
+            "type" : "",
+            "trafo" : [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
+            ]
+        }
+    ]
+}
+"""
+
+DEFAULT_CONFIGFILE_XML="""<?xml version="1.0" ?>
 <file>
     <CameraConfig version="2">
         <system  />
@@ -17,6 +36,7 @@ DEFAULT_CONFIGFILE="""<?xml version="1.0" ?>
     </CameraConfig>
 </file>
 """
+
 FILTER_PARAMS_REALSENSE=dict(
     do_threshold="1",
     threshold_near="0.2",
@@ -91,7 +111,7 @@ SKELETON_PARAMS_KINECT=dict(
     model_path=""
 )
 
-DEFAULT_FILENAME="cameraconfig.xml"
+DEFAULT_FILENAME="cameraconfig.json"
 DEFAULT_TYPE="realsense"
 DEFAULT_FILTER_PARAMS=FILTER_PARAMS_REALSENSE
 DEFAULT_SYSTEM_PARAMS=SYSTEM_PARAMS_REALSENSE
@@ -103,8 +123,13 @@ def selectCameraType(cameraType):
     DEFAULT_FILTER_PARAMS = globals()[f'FILTER_PARAMS_{cameraType.upper()}']
     DEFAULT_SYSTEM_PARAMS = globals()[f'SYSTEM_PARAMS_{cameraType.upper()}']
     DEFAULT_SKELETON_PARAMS = globals()[f'SKELETON_PARAMS_{cameraType.upper()}']
-    
-class CameraConfig:
+   
+def use_xml():
+    global DEFAULT_CONFIGFILE, CameraConfig
+    DEFAULT_CONFIGFILE = DEFAULT_CONFIGFILE_XML
+    CameraConfig = CameraConfigXml
+
+class CameraConfigJson:
 
     def __init__(self, confFilename, read=True):
         self.confFilename = confFilename
@@ -116,14 +141,111 @@ class CameraConfig:
             self._parseConf()
         
     def _readConf(self, confFilename):
-        self.tree = ET.parse(confFilename)
+        self.tree = json.load(confFilename)
+
+    def loadConf(self, confString):
+        self.tree = json.loads(confString)
+        self._parseConf()
         
     def copyFrom(self, other):
         self.tree = copy.deepcopy(other.tree)
         self._parseConf()
-        
+    
+    def _ensure(self, *keys):
+        obj = self.tree
+        for k in keys:
+            if not k in obj:
+                obj[k] = {}
+            obj = obj[k]
+        return obj
+    
+    def _setcameratype(self, type):
+        if 'type' in self.tree:
+            assert self.tree['type'] in ('', type)
+        self.tree['type'] = type
+
     def fillDefault(self):
-        root = ET.fromstring(DEFAULT_CONFIGFILE)
+        self.tree = json.loads(DEFAULT_CONFIGFILE_JSON)
+        paramElt = self._ensure('postprocessing', 'depthfilterparameters')
+        for k, v in DEFAULT_FILTER_PARAMS.items():
+            paramElt[k] = v
+        paramElt = self._ensure('system')
+        for k, v in DEFAULT_SYSTEM_PARAMS.items():
+            paramElt[k] = v
+        paramElt = self._ensure('skeleton')
+        for k, v in DEFAULT_SKELETON_PARAMS.items():
+            paramElt[k] = v
+        
+        self._parseConf()
+        
+    def _parseConf(self):
+        for camElt in self.tree['cameras']:
+            serial = camElt['serial']
+            assert serial
+            trafo = camElt['trafo']
+            self.serials.append(serial)
+            self.matrices.append(trafo)
+        
+    def save(self):
+        json.dump(self.tree, open(self.confFilename, 'wb'))
+        
+    def getcount(self):
+        return len(self.serials)
+        
+    def getserials(self):
+        return self.serials
+        
+    def getmatrix(self, tilenum):
+        return self.matrices[tilenum]
+        
+    def addcamera(self, serial):
+        newCamElt = copy.deepcopy(self.tree['cameras'][0])
+        newCamElt['serial'] = serial
+        newCamElt['type'] = DEFAULT_TYPE
+        self.tree['cameras'].append(newCamElt)
+        self.serials.append(serial)
+        matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+        self.matrices.append(matrix)
+        
+        self.setmatrix(len(self.serials)-1, matrix)
+        
+    def setmatrix(self, tilenum, matrix):
+        self.matrices[tilenum] = copy.deepcopy(matrix)
+        self.tree['cameras'][tilenum]['trafo'] = self.matrices[tilenum]
+        
+    def setserial(self, tilenum, serial):
+        oldSerial = self.serials[tilenum]
+        self.serials[tilenum] = serial
+        self.tree['cameras'][tilenum]['serial'] = serial
+        self.tree['cameras'][tilenum]['type'] = DEFAULT_TYPE
+        
+    def setdistance(self, threshold_near, threshold_far):
+        dfElt = self._ensure('postprocessing','depthfilterparameters')
+        dfElt['do_threshold'] = 1
+        dfElt['threshold_near'] = threshold_near
+        dfElt['threshold_far'] = threshold_far
+        
+    def setheight(self, height_min, height_max):
+        ppElt = self._ensure('postprocessing')
+        ppElt['height_min'] = height_min
+        ppElt.set['height_max'] = height_max
+        
+    def setsystemparam(self, name, value):
+        root = self.tree.getroot()
+        sysElt = self._ensure('system')
+        sysElt[name] = value
+        
+    def setfilterparam(self, name, value):
+        dfElt = self._ensure('postprocessing','depthfilterparameters')
+        dfElt[name] = value
+   
+class CameraConfigXml(CameraConfigJson):
+        
+    def _readConf(self, confFilename):
+        self.tree = ET.parse(confFilename)
+ 
+    def fillDefault(self):
+        root = ET.fromstring(DEFAULT_CONFIGFILE_XML)
         paramElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
         for k, v in DEFAULT_FILTER_PARAMS.items():
             paramElt.set(k, v)
@@ -156,15 +278,6 @@ class CameraConfig:
         
     def save(self):
         self.tree.write(self.confFilename)
-        
-    def getcount(self):
-        return len(self.serials)
-        
-    def getserials(self):
-        return self.serials
-        
-    def getmatrix(self, tilenum):
-        return self.matrices[tilenum]
         
     def addcamera(self, serial):
         root = self.tree.getroot()
@@ -237,3 +350,6 @@ class CameraConfig:
         dfElt = root.find('CameraConfig/postprocessing/depthfilterparameters')
         value = str(value)
         dfElt.set(name, value)
+
+DEFAULT_CONFIGFILE = DEFAULT_CONFIGFILE_JSON
+CameraConfig = CameraConfigJson

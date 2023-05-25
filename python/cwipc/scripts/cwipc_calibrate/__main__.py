@@ -1,5 +1,6 @@
 import sys
 import argparse
+import json
 import cwipc
 try:
     import cwipc.realsense2
@@ -26,6 +27,8 @@ def main():
         f1, f2 = s.split(',')
         return float(f1), float(f2)
     parser.add_argument("--auto", action="store_true", help=f"Attempt to auto-install {DEFAULT_FILENAME}, if needed")
+    parser.add_argument("--xml", action="store_true", help="Use old XML cameraconfig in stead of JSON cameraconfig")
+    parser.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json")
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--reuse", action="store_true", help=f"Reuse existing {DEFAULT_FILENAME}")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
@@ -45,7 +48,14 @@ def main():
         for name, target in targets.items():
             print(f'{name}\n\t{target["description"]}')
         sys.exit(0)
+    if args.xml: cameraconfig.use_xml()
     capturerFactory, capturerName = cwipc_genericsource_factory(args)
+    if args.fromxml:
+        # Special case: load XML config file name create JSON config file
+        capturer = capturerFactory("cameraconfig.xml")
+        json_data = capturer.get_config()
+        open('cameraconfig.json', 'wb').write(json_data)
+        return 0
     if not capturerName:
         print(f"{sys.argv[0]}: selected capturer does not need calibration")
         sys.exit(1)
