@@ -326,7 +326,7 @@ def ArgumentParser(*args, **kwargs):
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
     input_selection_args.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
-    input_selection_args.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.xml)")
+    parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.xml)")
     input_selection_args.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
