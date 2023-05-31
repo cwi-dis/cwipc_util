@@ -599,7 +599,7 @@ class cwipc_tiledsource(cwipc_source):
         """Return current capturer cameraconfig as JSON"""
         nBytes = _cwipc_util_dll().cwipc_tiledsource_get_config(self._as_cwipc_source_p(), None, 0)
         if nBytes <= 0:
-            return None
+            raise CwipcError("this cwipc_tiledsource has no camera configuration")
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
