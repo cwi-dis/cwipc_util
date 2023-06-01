@@ -118,7 +118,7 @@ class CameraConfig:
             self._parseConf()
         
     def _readConf(self, confFilename):
-        self.tree = json.load(confFilename)
+        self.tree = json.load(open(confFilename))
 
     def loadConf(self, confString):
         self.tree = json.loads(confString)
@@ -164,7 +164,7 @@ class CameraConfig:
             self.matrices.append(trafo)
         
     def save(self):
-        json.dump(self.tree, open(self.confFilename, 'wb'))
+        json.dump(self.tree, open(self.confFilename, 'w'))
         
     def getcount(self):
         return len(self.serials)
@@ -205,7 +205,7 @@ class CameraConfig:
     def setheight(self, height_min, height_max):
         ppElt = self._ensure('postprocessing')
         ppElt['height_min'] = height_min
-        ppElt.set['height_max'] = height_max
+        ppElt['height_max'] = height_max
         
     def setsystemparam(self, name, value):
         root = self.tree.getroot()
