@@ -56,7 +56,7 @@ def SetupStackDumper():
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args):
+def cwipc_genericsource_factory(args, autoConfig=False):
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
@@ -70,7 +70,9 @@ def cwipc_genericsource_factory(args):
         if kinect == None:
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
-        if args.cameraconfig:
+        if autoConfig:
+            source = lambda : kinect.cwipc_kinect("auto")
+        elif args.cameraconfig:
             source = lambda : kinect.cwipc_kinect(args.cameraconfig)
         else:
             source = kinect.cwipc_kinect
@@ -140,7 +142,9 @@ def cwipc_genericsource_factory(args):
         if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
-        if args.cameraconfig:
+        if autoConfig:
+            source = lambda : realsense2.cwipc_realsense2("auto")
+        elif args.cameraconfig:
             source = lambda : realsense2.cwipc_realsense2(args.cameraconfig)
         else:
             source = realsense2.cwipc_realsense2
