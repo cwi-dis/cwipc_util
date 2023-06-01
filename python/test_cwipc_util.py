@@ -276,7 +276,8 @@ class TestApi(unittest.TestCase):
         pcs = cwipc.cwipc_synthetic()
         self.assertFalse(pcs.reload_config("auto"))
         self.assertFalse(pcs.reload_config("{\"dummy\":0}"))
-        self.assertEqual(pcs.get_config(), None)
+        with self.assertRaises(cwipc.CwipcError):
+            _ = pcs.get_config()
         pcs.free()
 
     def test_tilefilter(self):
