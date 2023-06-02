@@ -4,7 +4,8 @@ import json
 DEFAULT_CONFIGFILE="""
 {
     "version" : 3,
-    "cameras" : [
+    "type" : "",
+    "camera" : [
         {
             "serial" : "0",
             "type" : "",
@@ -20,76 +21,76 @@ DEFAULT_CONFIGFILE="""
 """
 
 FILTER_PARAMS_REALSENSE=dict(
-    do_threshold="1",
-    threshold_near="0.2",
-    threshold_far="4",
+    do_threshold=True,
+    threshold_near=0.2,
+    threshold_far=4,
 
-    depth_x_erosion="2",
-    depth_y_erosion="2",
+    depth_x_erosion=2,
+    depth_y_erosion=2,
     
-    do_decimation="1",
-    decimation_value="2",
+    do_decimation=True,
+    decimation_value=2,
     
-    do_spatial="1",
-    spatial_iterations="1",
-    spatial_alpha="0.5",
-    spatial_delta="20",
-    spatial_filling="1",
+    do_spatial=True,
+    spatial_iterations=1,
+    spatial_alpha=0.5,
+    spatial_delta=20,
+    spatial_filling=1,
     
-    do_temporal="1",
-    temporal_alpha="0.4",
-    temporal_delta="20",
-    temporal_percistency="3",
+    do_temporal=True,
+    temporal_alpha=0.4,
+    temporal_delta=20,
+    temporal_percistency=3,
 )
 
 SYSTEM_PARAMS_REALSENSE=dict(
-    usb2width="640",
-    usb2height="480",
-    usb2fps="15",
-    usb3width="1280",
-    usb3height="720",
-    usb3fps="30",
-    usb2allowed="0",
-    exposure="-1",
-    whitebalance="-1",
-    backlight_compensation="0",
-    laser_power="360",
-    density_preferred="1"
+    usb2width=640,
+    usb2height=480,
+    usb2fps=15,
+    usb3width=1280,
+    usb3height=720,
+    usb3fps=30,
+    usb2allowed=False,
+    exposure=-1,
+    whitebalance=-1,
+    backlight_compensation=False,
+    laser_power=360,
+    density_preferred=True
 )
 
-SKELETON_PARAMS_REALSENSE=dict()
+SKELETON_PARAMS_REALSENSE=None
 
 FILTER_PARAMS_KINECT=dict(
-    do_threshold="1",
-    threshold_near="0.2",
-    threshold_far="4",
+    do_threshold=True,
+    threshold_near=0.2,
+    threshold_far=4,
 
-    depth_x_erosion="1",
-    depth_y_erosion="1",
+    depth_x_erosion=1,
+    depth_y_erosion=1,
 )
 
 SYSTEM_PARAMS_KINECT=dict(
-    color_height="720",
-    depth_height="576",
-    fps="15",
+    color_height=720,
+    depth_height=576,
+    fps=15,
     sync_master_serial="",
-    single_tile="-1",
-    colormaster="1",
-    color_exposure_time="-1",
-    color_whitebalance="-1",
-    color_backlight_compensation="-1",
-    color_brightness="-1",
-    color_contrast="-1",
-    color_saturation="-1",
-    color_sharpness="-1",
-    color_gain="-1",
-    color_powerline_frequency="-1",
-    map_color_to_depth="0"
+    single_tile=-1,
+    colormaster=True,
+    color_exposure_time=-1,
+    color_whitebalance=-1,
+    color_backlight_compensation=-1,
+    color_brightness=-1,
+    color_contrast=-1,
+    color_saturation=-1,
+    color_sharpness=-1,
+    color_gain=-1,
+    color_powerline_frequency=-1,
+    map_color_to_depth=False
 )
 
 SKELETON_PARAMS_KINECT=dict(
-    sensor_orientation="-1",
-    processing_mode="-1",
+    sensor_orientation=-1,
+    processing_mode=-1,
     model_path=""
 )
 
@@ -112,7 +113,7 @@ class CameraConfig:
         self.confFilename = confFilename
         self.serials = []
         self.matrices = []
-        self.tree = None        
+        self.tree = None
         if read:
             self._readConf(self.confFilename)
             self._parseConf()
@@ -149,14 +150,16 @@ class CameraConfig:
         paramElt = self._ensure('system')
         for k, v in DEFAULT_SYSTEM_PARAMS.items():
             paramElt[k] = v
-        paramElt = self._ensure('skeleton')
-        for k, v in DEFAULT_SKELETON_PARAMS.items():
-            paramElt[k] = v
+        if DEFAULT_SKELETON_PARAMS:
+            paramElt = self._ensure('skeleton')
+            for k, v in DEFAULT_SKELETON_PARAMS.items():
+                paramElt[k] = v
         
         self._parseConf()
         
     def _parseConf(self):
-        for camElt in self.tree['cameras']:
+        for camElt in self.tree['camera']:
+            self._setcameratype(camElt['type'])
             serial = camElt['serial']
             assert serial
             trafo = camElt['trafo']
@@ -176,10 +179,11 @@ class CameraConfig:
         return self.matrices[tilenum]
         
     def addcamera(self, serial):
-        newCamElt = copy.deepcopy(self.tree['cameras'][0])
+        newCamElt = copy.deepcopy(self.tree['camera'][0])
         newCamElt['serial'] = serial
         newCamElt['type'] = DEFAULT_TYPE
-        self.tree['cameras'].append(newCamElt)
+        self._setcameratype(DEFAULT_TYPE)
+        self.tree['camera'].append(newCamElt)
         self.serials.append(serial)
         matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
         self.matrices.append(matrix)
@@ -188,17 +192,17 @@ class CameraConfig:
         
     def setmatrix(self, tilenum, matrix):
         self.matrices[tilenum] = copy.deepcopy(matrix)
-        self.tree['cameras'][tilenum]['trafo'] = self.matrices[tilenum]
+        self.tree['camera'][tilenum]['trafo'] = self.matrices[tilenum]
         
     def setserial(self, tilenum, serial):
         oldSerial = self.serials[tilenum]
         self.serials[tilenum] = serial
-        self.tree['cameras'][tilenum]['serial'] = serial
-        self.tree['cameras'][tilenum]['type'] = DEFAULT_TYPE
+        self.tree['camera'][tilenum]['serial'] = serial
+        self.tree['camera'][tilenum]['type'] = DEFAULT_TYPE
         
     def setdistance(self, threshold_near, threshold_far):
         dfElt = self._ensure('postprocessing','depthfilterparameters')
-        dfElt['do_threshold'] = 1
+        dfElt['do_threshold'] = True
         dfElt['threshold_near'] = threshold_near
         dfElt['threshold_far'] = threshold_far
         
