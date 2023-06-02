@@ -47,7 +47,7 @@ def main():
         for name, target in targets.items():
             print(f'{name}\n\t{target["description"]}')
         sys.exit(0)
-    capturerFactory, capturerName = cwipc_genericsource_factory(args)
+    capturerFactory, capturerName = cwipc_genericsource_factory(args, autoConfig=True)
     if args.fromxml:
         # Special case: load XML config file name create JSON config file
         capturer = capturerFactory("cameraconfig.xml")

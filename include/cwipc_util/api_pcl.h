@@ -60,7 +60,7 @@ inline cwipc_pcl_pointcloud new_cwipc_pcl_pointcloud(void) { return cwipc_pcl_po
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
 
 #ifdef _CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
-#warning cwipc_pcl_pointcloud placeholder already defined. Did you include api.h before api_pcl.h?
+#error cwipc_pcl_pointcloud placeholder already defined. Did you include api.h before api_pcl.h?
 #endif //_CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
 
 #include "cwipc_util/api.h"
