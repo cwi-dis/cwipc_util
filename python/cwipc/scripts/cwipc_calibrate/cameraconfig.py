@@ -167,7 +167,7 @@ class CameraConfig:
             self.matrices.append(trafo)
         
     def save(self):
-        json.dump(self.tree, open(self.confFilename, 'w'))
+        json.dump(self.tree, open(self.confFilename, 'w'), indent=2)
         
     def getcount(self):
         return len(self.serials)
