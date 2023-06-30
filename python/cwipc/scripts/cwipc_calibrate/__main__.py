@@ -42,6 +42,7 @@ def main():
     parser.add_argument("--depth", type=twofloats, action="store", metavar="MIN,MAX", help="Near and far distance in meters between camera(s) and subject")
     parser.add_argument("--height", type=twofloats, action="store", metavar="MIN,MAX", help="Min and max Y value in meters, sets height filter for pointclouds")
     args = parser.parse_args()
+    beginOfRun(args)
     bbox = None
     if args.list:
         for name, target in targets.items():
@@ -106,6 +107,7 @@ def main():
         prog.save()
     finally:
         del prog
+        endOfRun(args)
     
 if __name__ == '__main__':
     main()
