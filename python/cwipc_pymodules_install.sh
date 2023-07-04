@@ -18,5 +18,5 @@ if ! $myPython --version >/dev/null 2>&1 ; then
 fi
 set -x
 "$myPython" -m pip --quiet install importlib.metadata
-"$myPython" -m pip --quiet uninstall --yes cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
-"$myPython" -m pip --quiet install --upgrade --find-links="$sharedir/cwipc/python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_codec
+"$myPython" -m pip --quiet uninstall --yes cwipc_util cwipc_codec cwipc_realsense2 cwipc_kinect
+"$myPython" -m pip --quiet install --upgrade --find-links="$sharedir/cwipc/python" cwipc_util cwipc_codec cwipc_realsense2 cwipc_kinect
