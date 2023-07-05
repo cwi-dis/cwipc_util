@@ -1,6 +1,8 @@
 #ifndef _cwipc_util_internal_h_
 #define _cwipc_util_internal_h_
 
+#include "cwipc_util/api_pcl.h"
+#include "cwipc_util/api.h"
 //
 // This file contains definitions of types and functions that are not user-visible,
 // but that are provided by cwipc_util for use by other modules.
