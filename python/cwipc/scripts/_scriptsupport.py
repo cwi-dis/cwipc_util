@@ -6,7 +6,7 @@ import argparse
 import traceback
 import importlib.util
 
-from .. import playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
+from .. import playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -86,7 +86,17 @@ def cwipc_genericsource_factory(args, autoConfig=False):
         else:
             source = kinect.cwipc_k4aoffline
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
-    
+    elif args.realsense:
+        if realsense2 == None:
+            print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
+            sys.exit(-1)
+        if autoConfig:
+            source = lambda : realsense2.cwipc_realsense2("auto")
+        elif args.cameraconfig:
+            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig)
+        else:
+            source = realsense2.cwipc_realsense2
+        name = 'realsense'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
         name = None
@@ -139,16 +149,22 @@ def cwipc_genericsource_factory(args, autoConfig=False):
             )
         name = None
     else:
-        if realsense2 == None:
-            print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
-            sys.exit(-1)
+        # Default case: use the generic capturer.
+        #
+        # First we need to ensure all capturer DLLs are loaded (so they register themselves
+        # with the generic capturer)
+        #
+        if realsense2:
+            realsense2._cwipc_realsense2_dll()
+        if kinect:
+            kinect._cwipc_kinect_dll()
         if autoConfig:
-            source = lambda : realsense2.cwipc_realsense2("auto")
+            source = lambda : cwipc_capturer("auto")
         elif args.cameraconfig:
-            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig)
+            source = lambda : cwipc_capturer(args.cameraconfig)
         else:
-            source = realsense2.cwipc_realsense2
-        name = 'realsense'
+            source = cwipc_capturer
+        name = 'auto'
     return source, name
 
 def _guess_playback_type(filenames):
@@ -328,15 +344,16 @@ def ArgumentParser(*args, **kwargs):
     parser.add_argument("--debuglibrary", action="store", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
-    input_selection_args.add_argument("--kinect", action="store_true", help="View Azure Kinect camera in stead of realsense2 camera")
-    input_selection_args.add_argument("--k4aoffline", action="store_true", help="View Azure Kinect pre-recorded files in stead of realsense2 camera")
-    parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.xml)")
-    input_selection_args.add_argument("--synthetic", action="store_true", help="View synthetic pointcloud in stead of realsense2 camera")
-    input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="View proxyserver pointcloud in stead of realsense2 camera, proxyserver listens on PORT")
-    input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="View netclient compressed pointclouds in stead of realsense2 camera, server runs on port PORT on HOST")
-    input_selection_args.add_argument("--sub", action="store", metavar="URL", help="View DASH compressed pointcloud stream from URL in stead of realsense2 camera")
-    input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Read pointclouds from ply or cwipcdump file or directory (in alphabetical order)")
-    input_selection_args.add_argument("--certh", action="store", metavar="URL", help="View Certh pointcloud in stead of realsense2 camera, captured from Rabbitmq server URL")
+    parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.json). auto for any attached camera without configuration.")
+    input_selection_args.add_argument("--realsense", action="store_true", help="Use Intel Realsense capturer (default: from camera configuration)")
+    input_selection_args.add_argument("--kinect", action="store_true", help="Use Azure Kinect capturer (default: from camera configuration)")
+    input_selection_args.add_argument("--k4aoffline", action="store_true", help="Use Azure Kinect pre-recorded file capturer")
+    input_selection_args.add_argument("--synthetic", action="store_true", help="Use synthetic pointcloud source")
+    input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Use proxyserver pointcloud source server, proxyserver listens on PORT")
+    input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST")
+    input_selection_args.add_argument("--sub", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL")
+    input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Use pointcloud(s) from ply or cwipcdump file or directory (in alphabetical order)")
+    input_selection_args.add_argument("--certh", action="store", metavar="URL", help="Use Certh pointcloud stream from Rabbitmq server URL")
 
     input_args = parser.add_argument_group("input arguments")
     input_args.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --sub (default: compressed with cwipc_codec)")
@@ -344,16 +361,16 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     input_args.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
     input_args.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
-    input_args.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some grabbers)", default=0)
+    input_args.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some capturers)", default=0)
     input_args.add_argument("--retimestamp", action="store_true", help="Set timestamps to wall clock in stead of recorded timestamps (for some grabbers)")
     input_args.add_argument("--count", type=int, action="store", metavar="N", help="Stop after receiving N pointclouds")
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
-    input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for prerecorded capturing.")
-    input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture downsample pointclouds into voxels of size S*S*S")
-    input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
-    input_args.add_argument("--custom_filter", action="store", metavar="filename.py", help="It allows users to use custom filters defined in filename.py files. Please indicate the file to read.")
-    input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="Spatially crop incoming point clouds")
+    input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
+    input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture, downsample pointclouds into voxels of size S*S*S")
+    input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture, remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
+    input_args.add_argument("--custom_filter", action="store", metavar="filename.py", help="After capture, use custom filter defined in filename.py.")
+    input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="After capture, do a spatial crop on the pointcloud")
     return parser
     
 def beginOfRun(args):

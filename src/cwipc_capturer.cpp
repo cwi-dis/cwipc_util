@@ -37,6 +37,9 @@ cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVers
         }
 		return NULL;
 	}
+    if (configFilename == nullptr) {
+        configFilename = "cameraconfig.json";
+    }
     if (strcmp(configFilename, "auto") == 0) {
         // Find any capturer that corresponds to a physical device (i.e. has a count function) that is available
         struct capturer* candidate = nullptr;
@@ -69,9 +72,6 @@ cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVers
         return candidate->factoryFunc(configFilename, errorMessage, apiVersion);
     }
     // Assure we are passed a json cameraconfig
-    if (configFilename == nullptr) {
-        configFilename = "cameraconfig.json";
-    }
     std::string cameraType;
     json json_data;
     if (configFilename[0] == '{') {
@@ -88,32 +88,34 @@ cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVers
             }
             return nullptr;
         }
-    }
-    // Otherwise we check the extension. It can be .xml or .json.
-    const char* extension = strrchr(configFilename, '.');
-    if (strcmp(extension, ".json") == 0) {
-        try {
-            std::ifstream f(configFilename);
-            if (!f.is_open()) {
+    } else {
+        // Otherwise it is a filename. we check the extension. we only support .json.
+        const char* extension = strrchr(configFilename, '.');
+        if (strcmp(extension, ".json") == 0) {
+            try {
+                std::ifstream f(configFilename);
+                if (!f.is_open()) {
+                    if (errorMessage) {
+                        char* msgbuf = (char*)malloc(1024);
+                        snprintf(msgbuf, 1024, "cwipc_capturer: auto: cannot open \"%s\"", configFilename);
+                        *errorMessage = msgbuf;
+                    }
+                    return nullptr;
+                }
+                json_data = json::parse(f);
+
+            }
+            catch (const std::exception& e) {
                 if (errorMessage) {
                     char* msgbuf = (char*)malloc(1024);
-                    snprintf(msgbuf, 1024, "cwipc_capturer: auto: cannot open \"%s\"", configFilename);
+                    snprintf(msgbuf, 1024, "cwipc_capturer: auto: JSON parse error");
                     *errorMessage = msgbuf;
                 }
                 return nullptr;
             }
-            json_data = json::parse(f);
-
-        }
-        catch (const std::exception& e) {
-            if (errorMessage) {
-                char* msgbuf = (char*)malloc(1024);
-                snprintf(msgbuf, 1024, "cwipc_capturer: auto: JSON parse error");
-                *errorMessage = msgbuf;
-            }
-            return nullptr;
         }
     }
+    
     if (!json_data.contains("type")) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);

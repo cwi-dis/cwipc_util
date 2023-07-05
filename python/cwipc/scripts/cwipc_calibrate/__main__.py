@@ -55,8 +55,12 @@ def main():
         json_data = capturer.get_config()
         open('cameraconfig.json', 'wb').write(json_data)
         return 0
+    # xxxjack this will eventually fail for generic capturer
     if not capturerName:
         print(f"{sys.argv[0]}: selected capturer does not need calibration")
+        sys.exit(1)
+    if capturerName == "auto":
+        print(f"{sys.argv[0]}: please specify --kinect or --realsense")
         sys.exit(1)
     cameraconfig.selectCameraType(capturerName)
     if args.bbox:
