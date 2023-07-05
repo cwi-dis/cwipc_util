@@ -280,6 +280,11 @@ class TestApi(unittest.TestCase):
             _ = pcs.get_config()
         pcs.free()
 
+    def test_cwipc_capturer_nonexistent(self):
+        """Check that creating a capturer for a nonexistent camera type fails"""
+        with self.assertRaises(cwipc.CwipcError):
+            pcs = cwipc.cwipc_capturer('{"type":"nonexistent"}')
+        
     def test_tilefilter(self):
         """Check that the tilefilter returns the same number of points if not filtering, and correct number if filtering"""
         gen = cwipc.cwipc_synthetic()

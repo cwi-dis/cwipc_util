@@ -23,7 +23,7 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION ((uint64_t)0x20230523)
+#define CWIPC_API_VERSION ((uint64_t)0x20230605)
 
 /** \brief Version of oldest compatible cwipc API.
 *
@@ -909,6 +909,21 @@ extern "C" {
      * purposes.
      */
     _CWIPC_UTIL_EXPORT cwipc_tiledsource* cwipc_synthetic(int fps, int npoints, char** errorMessage, uint64_t apiVersion);
+
+    /** \brief Capture pointclouds from a RGBD camera.
+     * \param configFilename A string with the filename of the camera configuration file.
+     * \param errorMessage An optional pointer to a string where any error message will be stored.
+     * \param apiVersion Pass in CWIPC_API_VERSION to ensure DLL compatibility.
+     * \return A cwipc_source object.
+
+     * configFilename can be the filename of either a JSON or XML cameraconfig file.
+     * NULL means use cameraconfig.json in the current directory, "auto" will create a capturer for all cameras of
+     * any type that are currently attached (and supported). In inline JSON-encoded configuration can also be passed.
+     *
+     * This function will use the camera type specified in the cameraconfig to create a capturer implementation for the
+     * correct camera type.
+     */
+    _CWIPC_UTIL_EXPORT cwipc_tiledsource* cwipc_capturer(const char *configFilename, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Display a window to show pointclouds.
      * \param Title The title string, to be shown in the title bar of the window.

@@ -29,6 +29,7 @@ __all__ = [
     'cwipc_from_certh',
     
     'cwipc_synthetic',
+    'cwipc_capturer',
     'cwipc_window',
     'cwipc_proxy',
     
@@ -41,7 +42,7 @@ __all__ = [
     'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20230523
+CWIPC_API_VERSION = 0x20230605
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -392,6 +393,9 @@ def _cwipc_util_dll(libname=None):
     
     _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
+
+    _cwipc_util_dll_reference.cwipc_capturer.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_capturer.restype = cwipc_tiledsource_p
 
     _cwipc_util_dll_reference.cwipc_window.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_window.restype = cwipc_sink_p
@@ -808,6 +812,23 @@ def cwipc_synthetic(fps=0, npoints=0):
     if rv:
         return cwipc_tiledsource(rv)
     return None
+    
+def cwipc_capturer(conffile=None):
+    """Returns a cwipc_source object that grabs from a camera and returns cwipc object on every get() call."""
+    errorString = ctypes.c_char_p()
+    if conffile:
+        conffile = conffile.encode('utf8')
+    else:
+        conffile = None
+    rv = _cwipc_util_dll().cwipc_capturer(conffile, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString and not rv:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if errorString:
+        warnings.warn(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_tiledsource(rv)
+    return None
+
     
 def cwipc_window(title):
     """Returns a cwipc_sink object that displays pointclouds in a window"""
