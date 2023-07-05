@@ -32,6 +32,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 target_link_libraries(cwipc_util PUBLIC ${PCL_LIBRARIES})
 target_link_libraries(cwipc_util PRIVATE glfw OpenGL::GL OpenGL::GLU)
+target_link_libraries(cwipc_util PRIVATE nlohmann_json::nlohmann_json)
 
 if(WIN32)
 	target_link_libraries(cwipc_util PRIVATE wsock32 ws2_32)
