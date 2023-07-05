@@ -114,16 +114,35 @@ cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVers
             return nullptr;
         }
     }
+    if (!json_data.contains("type")) {
+        if (errorMessage) {
+            char* msgbuf = (char*)malloc(1024);
+            snprintf(msgbuf, 1024, "cwipc_capturer: auto: cannot determine camera type from \"%s\"", configFilename);
+            *errorMessage = msgbuf;
+        }
+        return nullptr;
+    }
     std::string type;
     json_data.at("type").get_to(type);
+    for (auto& c: all_capturers) {
+        if (c.name == type) {
+            return c.factoryFunc(configFilename, errorMessage, apiVersion);
+        }
+    }
 
-    char* msgbuf = (char*)malloc(1024);
-    snprintf(msgbuf, 1024, "cwipc_capturer: auto: cannot determine camera type from \"%s\"", configFilename);
-    *errorMessage = msgbuf;
+    if (errorMessage) {
+        char* msgbuf = (char*)malloc(1024);
+        snprintf(msgbuf, 1024, "cwipc_capturer: auto: camera type \"%s\" not supported", type.c_str());
+        *errorMessage = msgbuf;
+    }
     return nullptr;
 }
 
 int _cwipc_register_capturer(const char *name, _cwipc_functype_count_devices *countFunc, _cwipc_func_capturer_factory *factoryFunc) {
-    fprintf(stderr, "xxxjack _cwipc_register_capturer(%s, ...)\n", name);
-    return 0;
+    struct capturer new_capturer;
+    new_capturer.name = name;
+    new_capturer.countFunc = countFunc;
+    new_capturer.factoryFunc = factoryFunc;
+    all_capturers.push_back(new_capturer);
+    return 1;
 }
