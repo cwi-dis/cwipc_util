@@ -24,14 +24,18 @@ i             Toggle tile/stream selection tile index mode
 s             Toggle tile/stream selection stream mode
 r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
+c             Reload cameraconfig
 ?,h           Help
 q             Quit
     """
     
-    def __init__(self, verbose=False, nodrop=False):
+    def __init__(self, verbose=False, nodrop=False, args=None):
         self.visualiser = None
         self.producer = None
         self.source = None
+        self.cameraconfig = None
+        if args:
+            self.cameraconfig = args.cameraconfig
         self.queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
@@ -113,7 +117,7 @@ q             Quit
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
-            print(Visualizer.HELP)
+            print(self.HELP)
         elif cmd == "w" and self.cur_pc:
             filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
             cwipc_write(filename, self.cur_pc, True) #writing in binary
@@ -145,10 +149,20 @@ q             Quit
                 print(f'Reached point size min = {cellsize*pow(2,self.point_size_power)}')
         elif cmd == '\0':
             pass
+        elif cmd == 'c':
+            self.reload_cameraconfig()
         else: #c to crash and print stack trace
-            print(HELP, flush=True)
+            print(self.HELP, flush=True)
         return True
-        
+    
+    def reload_cameraconfig(self):
+        try:
+            ok = self.source.reload_config("rabarber.json")
+            if not ok:
+                print("reload_cameraconfig: failed to reload cameraconfig")
+        except Exception as e:
+            print(f"reload_cameraconfig: Exception: {e}")
+    
     def select_mode(self, newmode):
         self.filter_mode = newmode
         print(f"tilefilter mask mode: {self.filter_mode}. Showing all tiles", flush=True)
@@ -204,7 +218,7 @@ def main():
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
     if not args.nodisplay:
-        visualizer = Visualizer(args.verbose, nodrop=args.nodrop)
+        visualizer = Visualizer(args.verbose, nodrop=args.nodrop, args=args)
     else:
         visualizer = None
 

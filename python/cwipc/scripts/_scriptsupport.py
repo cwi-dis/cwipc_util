@@ -199,6 +199,7 @@ class SourceServer:
         self.downsample = args.downsample
         self.spatial_crop = args.spatial_crop
         self.outliers = args.outliers
+        self.cameraconfig = args.cameraconfig
         self.viewer = viewer
         self.times_grab = []
         self.times_downsample = []
@@ -306,7 +307,15 @@ class SourceServer:
                 if self.count <= 0:
                     break
         if self.verbose: print('grab: stopped', flush=True)
-            
+    
+    def reload_cameraconfig(self):
+        try:
+            ok = self.grabber.reload_config(self.cameraconfig)
+            if not ok:
+                print("reload_cameraconfig: failed to reload cameraconfig")
+        except Exception as e:
+            print(f"reload_cameraconfig: Exception: {e}")
+
     def statistics(self):
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
