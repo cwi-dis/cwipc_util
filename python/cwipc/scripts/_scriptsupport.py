@@ -308,14 +308,6 @@ class SourceServer:
                     break
         if self.verbose: print('grab: stopped', flush=True)
     
-    def reload_cameraconfig(self):
-        try:
-            ok = self.grabber.reload_config(self.cameraconfig)
-            if not ok:
-                print("reload_cameraconfig: failed to reload cameraconfig")
-        except Exception as e:
-            print(f"reload_cameraconfig: Exception: {e}")
-
     def statistics(self):
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
@@ -350,7 +342,7 @@ def ArgumentParser(*args, **kwargs):
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
-    parser.add_argument("--debuglibrary", action="append", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
+    parser.add_argument("--debuglibrary", action="append", default=[], metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.json). auto for any attached camera without configuration.")

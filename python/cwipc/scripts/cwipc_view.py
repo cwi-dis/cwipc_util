@@ -157,7 +157,7 @@ q             Quit
     
     def reload_cameraconfig(self):
         try:
-            ok = self.source.reload_config("rabarber.json")
+            ok = self.source.reload_config(self.cameraconfig)
             if not ok:
                 print("reload_cameraconfig: failed to reload cameraconfig")
         except Exception as e:
