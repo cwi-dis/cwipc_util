@@ -350,7 +350,7 @@ def ArgumentParser(*args, **kwargs):
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
-    parser.add_argument("--debuglibrary", action="store", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
+    parser.add_argument("--debuglibrary", action="append", metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.json). auto for any attached camera without configuration.")
@@ -394,11 +394,12 @@ def beginOfRun(args):
             answer = sys.stdin.readline()
             answer = answer.strip()
         print(f"{sys.argv[0]}: started.")
-    if args.debuglibrary:
+    for debuglibrary in args.debuglibrary:
         try:
-            name, path = args.debuglibrary.split('=')
+            name, path = debuglibrary.split('=')
         except ValueError:
             name = path = None
+        print(f"{sys.argv[0]}: load {name} from {path}", file=sys.stderr)
         if name == 'cwipc_util':
             from ..util import _cwipc_util_dll
             _cwipc_util_dll(path)
