@@ -36,7 +36,6 @@ def main():
     parser.add_argument("--list", action="store_true", help="List available targets")
     parser.add_argument("--nocoarse", action="store_true", help="Skip coarse (manual) calibration step")
     parser.add_argument("--nofine", action="store_true", help="Skip fine (automatic) calibration step")
-    parser.add_argument("--bbox", action="store", type=float, nargs=6, metavar="N", help="Set bounding box (in meters, xmin xmax etc) before fine calibration")
     parser.add_argument("--corr", action="store", type=float, metavar="D", help="Set fine calibration max corresponding point distance (Default=0.01)", default=0.01)
     parser.add_argument("--finspect", action="store_true", help="Visually inspect result of each fine calibration step")
     parser.add_argument("--depth", type=twofloats, action="store", metavar="MIN,MAX", help="Near and far distance in meters between camera(s) and subject")
@@ -63,10 +62,6 @@ def main():
         print(f"{sys.argv[0]}: please specify --kinect or --realsense")
         sys.exit(1)
     cameraconfig.selectCameraType(capturerName)
-    if args.bbox:
-        bbox = args.bbox
-        assert len(bbox) == 6
-        assert type(1.0*bbox[0]*bbox[1]*bbox[2]*bbox[3]*bbox[4]*bbox[5]) == float
     refpoints = targets[args.target]["points"]
     prog = Calibrator(refpoints)
     if args.height:
@@ -99,9 +94,6 @@ def main():
                 prog.skip_coarse()
             else:
                 prog.run_coarse()
-            
-            if bbox:
-                prog.apply_bbox(bbox)
             
             if args.nofine: 
                 prog.skip_fine()
