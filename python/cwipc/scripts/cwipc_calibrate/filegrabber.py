@@ -19,7 +19,7 @@ class FileGrabber:
         if not os.path.exists(confFilename):
             print(f'File not found: {confFilename}', file=sys.stderr)
             return False
-        self.cameraconfig = CameraConfig(confFilename)
+        self.cameraconfig = CameraConfig(confFilename, read=True)
         return True
         
     def getcount(self):

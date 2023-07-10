@@ -72,7 +72,6 @@ class Calibrator:
             if self.grabber.getmatrix(0) == [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]:
                 print("* Single camera setup, assume horizontal frontal camera")
                 self.coarse_matrix[0] = FRONTAL_MATRIX
-            # Otherwise presume the matrix has already been set
         else:
             if self.grabber.getmatrix(0) == [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]:
                 # Uninitialized multi-camera setup. Cannot do automatically
@@ -81,14 +80,15 @@ class Calibrator:
         
     def grab(self, noinspect):
         if not self.cameraserial:
-            self.ui.show_error('* No realsense cameras found')
+            self.ui.show_error('* No cameras found')
             return False
         self.ui.show_message('* Grabbing pointclouds')
         self.get_pointclouds()
         if DEBUG:
             for i in range(len(self.pointclouds)):
-                self.ui.show_message('Saving pointcloud {} to file'.format(i))
-                self.pointclouds[i].save('pc-%d.ply' % i, cwipc.CWIPC_FLAGS_BINARY)
+                fn = f'pc-{i}.ply'
+                self.ui.show_message(f'Saving pointcloud {i} to file {fn}')
+                self.pointclouds[i].save(fn, cwipc.CWIPC_FLAGS_BINARY)
         #
         # First show the pointclouds for visual inspection.
         #
@@ -152,15 +152,6 @@ class Calibrator:
                 [0, 0, 0, 1],
             ])
         
-    def apply_bbox(self, bbox):
-        if bbox:
-            # Apply bounding box to pointclouds
-            for i in range(len(self.coarse_calibrated_pointclouds)):
-                self.coarse_calibrated_pointclouds[i] = self.coarse_calibrated_pointclouds[i].bbox(bbox)
-        joined = Pointcloud.from_join(self.coarse_calibrated_pointclouds)
-        self.ui.show_prompt('Inspect pointcloud after applying bounding box')
-        self.ui.show_points('Inspect bounding box result', joined)
-    
     def run_fine(self, correspondance_dist, inspect):
         print("# Starting fine alignment")
         

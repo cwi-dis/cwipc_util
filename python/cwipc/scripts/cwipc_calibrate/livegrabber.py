@@ -21,43 +21,19 @@ class LiveGrabber:
         self.captureCreator = captureCreator
         
     def open(self):
-        if os.path.exists(DEFAULT_FILENAME):
-            self.cameraconfig = CameraConfig(DEFAULT_FILENAME)
-        else:
-            self.cameraconfig = CameraConfig('', read=False)
-            self.cameraconfig.fillDefault()
+        self.cameraconfig = CameraConfig(DEFAULT_FILENAME, read=False)
+        
         try:
             self.grabber = self.captureCreator()
         except cwipc.CwipcError as exc:
             print(f'Error opening camera: {exc}', file=sys.stderr)
             return False
+        jsonConfig = self.grabber.get_config()
+        self.cameraconfig.loadConf(jsonConfig)
         # May need to grab a few combined pointclouds and throw them away
         for i in range(SKIP_FIRST_GRABS):
             pc = self.grabber.get()
             pc.free()
-        # Now we should update cameraconfig, if needed
-        if self.cameraconfig.getserials() == ["0"]:
-            # Default config file just created by us. Overwrite
-            serials = self.getserials()
-            self.cameraconfig.setserial(0, serials[0])
-            for sn in serials[1:]:
-                self.cameraconfig.addcamera(sn)
-        else:
-            # pre-existing. Check that config file and hardware setup match
-            hwSerials = self.getserials()
-            fileSerials = self.cameraconfig.getserials()
-            ok = True
-            for sn in hwSerials:
-                if not sn in fileSerials:
-                    ok = False
-                    print(f'Camera {sn} is attached but not in {DEFAULT_FILENAME}')
-            for sn in fileSerials:
-                if not sn in hwSerials:
-                    ok = False
-                    print(f'Camera {sn} is in {DEFAULT_FILENAME} but not attached')
-            if not ok:
-                print('Use --clean to calibrate this new hardware setup (or attach the right cameras)')
-                return False
         return True
    
     def __del__(self):
