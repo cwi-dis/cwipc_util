@@ -38,8 +38,6 @@ def main():
     parser.add_argument("--nofine", action="store_true", help="Skip fine (automatic) calibration step")
     parser.add_argument("--corr", action="store", type=float, metavar="D", help="Set fine calibration max corresponding point distance (Default=0.01)", default=0.01)
     parser.add_argument("--finspect", action="store_true", help="Visually inspect result of each fine calibration step")
-    parser.add_argument("--depth", type=twofloats, action="store", metavar="MIN,MAX", help="Near and far distance in meters between camera(s) and subject")
-    parser.add_argument("--height", type=twofloats, action="store", metavar="MIN,MAX", help="Min and max Y value in meters, sets height filter for pointclouds")
     args = parser.parse_args()
     beginOfRun(args)
     bbox = None
@@ -64,10 +62,6 @@ def main():
     cameraconfig.selectCameraType(capturerName)
     refpoints = targets[args.target]["points"]
     prog = Calibrator(refpoints)
-    if args.height:
-        prog.setheight(*args.height)
-    if args.depth:
-        prog.setdepth(*args.depth)
     if args.nograb:
         grabber = FileGrabber(args.nograb)
     else:
