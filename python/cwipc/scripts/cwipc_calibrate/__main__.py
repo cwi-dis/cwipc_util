@@ -60,7 +60,6 @@ def main():
     if capturerName == "auto":
         print(f"{sys.argv[0]}: please specify --kinect or --realsense")
         sys.exit(1)
-    cameraconfig.selectCameraType(capturerName)
     refpoints = targets[args.target]["points"]
     prog = Calibrator(refpoints)
     if args.nograb:
