@@ -26,16 +26,17 @@ def main():
     def twofloats(s):
         f1, f2 = s.split(',')
         return float(f1), float(f2)
-    parser.add_argument("--auto", action="store_true", help=f"Attempt to auto-install {DEFAULT_FILENAME}, if needed")
-    parser.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json and exit")
+    operation = parser.add_argument_group("Operation").add_mutually_exclusive_group(required=True)
+    operation.add_argument("--auto", action="store_true", help=f"Auto-create cameraconfig.json, if it doesn't exist, with default position and orientation")
+    operation.add_argument("--coarse", action="store_true", help="Do coarse (manual) calibration step")
+    operation.add_argument("--fine", action="store_true", help="Do fine calibration step")
+    operation.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json and exit")
+    operation.add_argument("--list", action="store_true", help="List available targets for coarse calibration")
+    
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--reuse", action="store_true", help=f"Reuse existing {DEFAULT_FILENAME}")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
-    parser.add_argument("--noinspect", action="store_true", help="Don't inspect pointclouds after grabbing")
     parser.add_argument("--target", action="store", metavar="NAME", default="a4floor", help="Specify which target to use for coarse calibration. --list to see options.")
-    parser.add_argument("--list", action="store_true", help="List available targets")
-    parser.add_argument("--nocoarse", action="store_true", help="Skip coarse (manual) calibration step")
-    parser.add_argument("--nofine", action="store_true", help="Skip fine (automatic) calibration step")
     parser.add_argument("--corr", action="store", type=float, metavar="D", help="Set fine calibration max corresponding point distance (Default=0.01)", default=0.01)
     parser.add_argument("--finspect", action="store_true", help="Visually inspect result of each fine calibration step")
     args = parser.parse_args()
@@ -66,6 +67,7 @@ def main():
         grabber = FileGrabber(args.nograb)
     else:
         grabber = LiveGrabber(capturerFactory)
+    noInspect = args.nograb
     try:
     
         ok = prog.open(grabber, clean=args.clean, reuse=(args.reuse or args.auto))
@@ -78,22 +80,18 @@ def main():
         
         if args.auto:
             prog.auto()
+        elif args.coarse:
+            prog.grab(noInspect)
+            prog.run_coarse()
+            prog.skip_fine()
+        elif args.fine:
+            prog.grab(noInspect)
+            prog.skip_coarse()
+            prog.run_fine(args.corr, args.finspect)
         else:
-            noinspect = args.noinspect
-            if args.nograb and args.nocoarse:
-                noinspect = True
-            prog.grab(noinspect)
-        
-            if args.nocoarse: 
-                prog.skip_coarse()
-            else:
-                prog.run_coarse()
-            
-            if args.nofine: 
-                prog.skip_fine()
-            else:
-                prog.run_fine(args.corr, args.finspect)
-            
+            print(f"{sys.argv[0]}: Specify one of --auto, --coarse, --fine")
+            sys.exit(1)
+
         prog.save()
     finally:
         del prog
