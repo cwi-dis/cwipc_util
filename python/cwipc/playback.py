@@ -1,11 +1,11 @@
 import cwipc
 import time
 import os
-import sys
 import json
+from typing import List, Optional, Any, Iterable
 
 class _Filesource:
-    def __init__(self, filenames, tileInfo=None, loop=False, fps=None, retimestamp=False):
+    def __init__(self, filenames : str | List[str], tileInfo : Optional[List[dict[Any,Any]]]=None, loop : bool=False, fps : Optional[int]=None, retimestamp : bool=False):
         if not tileInfo:
             tileInfo = [{
                 "cameraName" : "None",
@@ -21,16 +21,16 @@ class _Filesource:
         if fps:
             self.delta_t = 1/fps
         
-    def free(self):
+    def free(self) -> None:
         self.filenames = []
         
-    def eof(self):
+    def eof(self) -> bool:
         return not self.filenames
     
-    def available(self, wait=False):
+    def available(self, wait : bool=False) -> bool:
         return not not self.filenames
         
-    def get(self):
+    def get(self) -> Optional[cwipc.cwipc]:
         if not self.filenames:
             return None
         fn = self.filenames.pop(0)
@@ -41,10 +41,10 @@ class _Filesource:
         self.earliest_return = time.time() + self.delta_t
         if self.retimestamp:
             timestamp = int(time.time()*1000)
-            rv._set_timestamp(timestamp)
+            rv._set_timestamp(timestamp) # type: ignore
         return rv
         
-    def _get(self, fn):
+    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
         numbers = ''.join(x for x in fn if x.isdigit())
         if numbers == '':
             numbers = 0
@@ -52,14 +52,14 @@ class _Filesource:
         rv = cwipc.cwipc_read(fn, timestamp)
         return rv     
         
-    def maxtile(self):
+    def maxtile(self) -> int:
         return len(self.tileInfo)
         
-    def get_tileinfo_dict(self, i):
+    def get_tileinfo_dict(self, i : int) -> dict[Any,Any]:
         return self.tileInfo[i]
         
 class _DumpFilesource(_Filesource):
-    def _get(self, fn):
+    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
         rv = cwipc.cwipc_read_debugdump(fn)
         return rv
         
@@ -69,15 +69,16 @@ class _CompressedFilesource(_Filesource):
         from .codec import cwipc_new_decoder
         self.decoder = cwipc_new_decoder()
         
-    def _get(self, fn):
+    def _get(self, fn : str) -> Optional[dict[Any,Any]]:
         with open(fn, 'rb') as fp:
             data = fp.read()
         self.decoder.feed(data)
         return self.decoder.get()
     
-def cwipc_playback(dir_or_files, ext='.ply', loop=False, fps=None, inpoint=None, outpoint=None, retimestamp=False):
+def cwipc_playback(dir_or_files : str | List[str], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint=None, outpoint=None, retimestamp : bool=False) -> _Filesource:
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
+    filenames : Iterable[str]
     if isinstance(dir_or_files, str):
         filenames = filter(lambda fn : fn.lower().endswith(ext), os.listdir(dir_or_files))
         if not filenames:
@@ -98,7 +99,7 @@ def cwipc_playback(dir_or_files, ext='.ply', loop=False, fps=None, inpoint=None,
                 ti = json.load(fp)
                 tileInfo = ti.get('tileInfo')
 
-        filenames = map(lambda fn: os.path.join(dir_or_files, fn), filenames)
+        filenames = map(lambda fn: os.path.join(dir_or_files, fn), filenames) # type: ignore
         filenames = list(filenames)
         dir_or_files = filenames
     if ext == '.ply':

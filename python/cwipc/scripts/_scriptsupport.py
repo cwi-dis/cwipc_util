@@ -393,8 +393,8 @@ def beginOfRun(args):
             name = path = None
         print(f"{sys.argv[0]}: load {name} from {path}", file=sys.stderr)
         if name == 'cwipc_util':
-            from ..util import _cwipc_util_dll
-            _cwipc_util_dll(path)
+            from ..util import cwipc_util_dll_load
+            cwipc_util_dll_load(path)
         elif name == 'cwipc_codec':
             from _cwipc_codec import _cwipc_codec_dll
             _cwipc_codec_dll(path)

@@ -284,7 +284,7 @@ CWIPC_FLAGS_BINARY = 1
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
-def _cwipc_util_dll(libname : Optional[str]=None) -> ctypes.CDLL:
+def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     """Load the cwipc_util DLL and assign the signatures (if not already loaded)"""
     global _cwipc_util_dll_reference
     if _cwipc_util_dll_reference: return _cwipc_util_dll_reference
@@ -483,35 +483,35 @@ class cwipc:
     def free(self) -> None:
         """Delete the opaque pointcloud object (by asking the original creator to do so)"""
         if self._cwipc:
-            _cwipc_util_dll().cwipc_free(self.as_cwipc_p())
+            cwipc_util_dll_load().cwipc_free(self.as_cwipc_p())
         self._cwipc = None
         
     def timestamp(self) -> int:
         """Returns timestamp (microseconds) when this pointcloud was captured (relative to some unspecified origin)"""
-        rv = _cwipc_util_dll().cwipc_timestamp(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_timestamp(self.as_cwipc_p())
         return rv
         
     def cellsize(self) -> float:
         """Returns the size of the cells this pointcloud represents (0 if unknown)"""
-        rv = _cwipc_util_dll().cwipc_cellsize(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_cellsize(self.as_cwipc_p())
         return rv
         
     def _set_cellsize(self, cellsize : float) -> None:
         """Internal use only: set the size of the cells this pointcloud represents"""
-        _cwipc_util_dll().cwipc__set_cellsize(self.as_cwipc_p(), cellsize)
+        cwipc_util_dll_load().cwipc__set_cellsize(self.as_cwipc_p(), cellsize)
         
     def _set_timestamp(self, timestamp : int) -> None:
         """Internal use only: set the size of the cells this pointcloud represents"""
-        _cwipc_util_dll().cwipc__set_timestamp(self.as_cwipc_p(), timestamp)
+        cwipc_util_dll_load().cwipc__set_timestamp(self.as_cwipc_p(), timestamp)
         
     def count(self) -> int:
         """Get the number of points in the pointcloud"""
-        rv = _cwipc_util_dll().cwipc_count(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_count(self.as_cwipc_p())
         return rv
         
     def get_uncompressed_size(self) -> int:
         """Get the size in bytes of the uncompressed pointcloud data"""
-        rv = _cwipc_util_dll().cwipc_get_uncompressed_size(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_get_uncompressed_size(self.as_cwipc_p())
         return rv
         
     def get_points(self) -> ctypes.Array[cwipc_point]:
@@ -529,29 +529,29 @@ class cwipc:
         return self._bytes
         
     def access_auxiliary_data(self):
-        rv_p = _cwipc_util_dll().cwipc_access_auxiliary_data(self.as_cwipc_p())
+        rv_p = cwipc_util_dll_load().cwipc_access_auxiliary_data(self.as_cwipc_p())
         if rv_p:
             return cwipc_auxiliary_data(rv_p)
         return None
         
     def _initialize_points_and_bytes(self) -> None:
         assert self._cwipc
-        nBytes : int = _cwipc_util_dll().cwipc_get_uncompressed_size(self.as_cwipc_p())
+        nBytes : int = cwipc_util_dll_load().cwipc_get_uncompressed_size(self.as_cwipc_p())
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        nPoints = _cwipc_util_dll().cwipc_copy_uncompressed(self.as_cwipc_p(), bufferArg, nBytes)
+        nPoints = cwipc_util_dll_load().cwipc_copy_uncompressed(self.as_cwipc_p(), bufferArg, nBytes)
         points = cwipc_point_array(count=nPoints, values=buffer)
         self._bytes = buffer
         self._points = points
 
     def get_packet(self) -> bytearray:
         assert self._cwipc
-        nBytes : int = _cwipc_util_dll().cwipc_copy_packet(self.as_cwipc_p(), None, 0)
+        nBytes : int = cwipc_util_dll_load().cwipc_copy_packet(self.as_cwipc_p(), None, 0)
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        rvNBytes = _cwipc_util_dll().cwipc_copy_packet(self.as_cwipc_p(), bufferArg, nBytes)
+        rvNBytes = cwipc_util_dll_load().cwipc_copy_packet(self.as_cwipc_p(), bufferArg, nBytes)
         assert rvNBytes == nBytes
         return buffer
 
@@ -572,20 +572,20 @@ class cwipc_source:
     def free(self) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
         if self._cwipc_source:
-            _cwipc_util_dll().cwipc_source_free(self.as_cwipc_source_p())
+            cwipc_util_dll_load().cwipc_source_free(self.as_cwipc_source_p())
         self._cwipc_source = None
         
     def eof(self) -> bool:
         """Return True if no more pointclouds will be forthcoming"""
-        return _cwipc_util_dll().cwipc_source_eof(self.as_cwipc_source_p())
+        return cwipc_util_dll_load().cwipc_source_eof(self.as_cwipc_source_p())
         
     def available(self, wait : bool) -> bool:
         """Return True if a pointcloud is currently available. The wait parameter signals the source may wait a while."""
-        return _cwipc_util_dll().cwipc_source_available(self.as_cwipc_source_p(), wait)
+        return cwipc_util_dll_load().cwipc_source_available(self.as_cwipc_source_p(), wait)
         
     def get(self) -> Optional[cwipc]:
         """Get a cwipc (opaque pointcloud) from this source. Returns None if no more pointcloudes are forthcoming"""
-        rv = _cwipc_util_dll().cwipc_source_get(self.as_cwipc_source_p())
+        rv = cwipc_util_dll_load().cwipc_source_get(self.as_cwipc_source_p())
         if rv:
             return cwipc(rv)
         return None
@@ -593,12 +593,12 @@ class cwipc_source:
     def request_auxiliary_data(self, name : str) -> None:
         """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
         cname = name.encode('utf8')
-        return _cwipc_util_dll().cwipc_source_request_auxiliary_data(self.as_cwipc_source_p(), cname)
+        return cwipc_util_dll_load().cwipc_source_request_auxiliary_data(self.as_cwipc_source_p(), cname)
 
     def auxiliary_data_requested(self, name : str) -> bool:
         """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
         cname = name.encode('utf8')
-        return _cwipc_util_dll().cwipc_source_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
+        return cwipc_util_dll_load().cwipc_source_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
         
         
 class cwipc_tiledsource(cwipc_source):
@@ -614,32 +614,32 @@ class cwipc_tiledsource(cwipc_source):
         """Load a config from file or JSON string"""
         if type(config) == str:
             config = config.encode('utf8')
-        return _cwipc_util_dll().cwipc_tiledsource_reload_config(self.as_cwipc_source_p(), config)
+        return cwipc_util_dll_load().cwipc_tiledsource_reload_config(self.as_cwipc_source_p(), config)
         
     def get_config(self) -> bytes:
         """Return current capturer cameraconfig as JSON"""
-        nBytes = _cwipc_util_dll().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), None, 0)
+        nBytes = cwipc_util_dll_load().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), None, 0)
         if nBytes <= 0:
             raise CwipcError("this cwipc_tiledsource has no camera configuration")
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        rvNBytes = _cwipc_util_dll().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), bufferArg, nBytes)
+        rvNBytes = cwipc_util_dll_load().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), bufferArg, nBytes)
         assert rvNBytes == nBytes
         return buffer
         
     def seek(self, timestamp : int) -> bool:
         """Return true if seek was successfull"""
-        return _cwipc_util_dll().cwipc_tiledsource_seek(self.as_cwipc_source_p(),timestamp)
+        return cwipc_util_dll_load().cwipc_tiledsource_seek(self.as_cwipc_source_p(),timestamp)
     
     def maxtile(self) -> int:
         """Return maximum number of tiles creatable from cwipc objects generated by this source"""
-        return _cwipc_util_dll().cwipc_tiledsource_maxtile(self.as_cwipc_source_p())
+        return cwipc_util_dll_load().cwipc_tiledsource_maxtile(self.as_cwipc_source_p())
 
     def get_tileinfo_raw(self, tilenum : int) -> Optional[cwipc_tileinfo]:
         """Return cwipc_tileinfo for tile tilenum, or None"""
         info = cwipc_tileinfo()
-        rv = _cwipc_util_dll().cwipc_tiledsource_get_tileinfo(self.as_cwipc_source_p(), tilenum, ctypes.byref(info))
+        rv = cwipc_util_dll_load().cwipc_tiledsource_get_tileinfo(self.as_cwipc_source_p(), tilenum, ctypes.byref(info))
         if not rv:
             return None
         return info
@@ -669,22 +669,22 @@ class cwipc_sink:
     def free(self) -> None:
         """Delete the opaque pointcloud sink object (by asking the original creator to do so)"""
         if self._cwipc_sink:
-            _cwipc_util_dll().cwipc_sink_free(self.as_cwipc_sink_p())
+            cwipc_util_dll_load().cwipc_sink_free(self.as_cwipc_sink_p())
         self._cwipc_source = None
         
     def feed(self, pc : cwipc, clear : bool) -> bool:
         cpc = pc.as_cwipc_p() # type: ignore
-        return _cwipc_util_dll().cwipc_sink_feed(self.as_cwipc_sink_p(), cpc, clear)
+        return cwipc_util_dll_load().cwipc_sink_feed(self.as_cwipc_sink_p(), cpc, clear)
         
     def caption(self, caption : str) -> None:
-        return _cwipc_util_dll().cwipc_sink_caption(self.as_cwipc_sink_p(), caption.encode('utf8'))
+        return cwipc_util_dll_load().cwipc_sink_caption(self.as_cwipc_sink_p(), caption.encode('utf8'))
         
     def interact(self, prompt : Optional[str], responses : Optional[str], millis : int) -> str:
         cprompt : Optional[bytes] = None
         cresponses : Optional[bytes] = None
         if prompt != None: cprompt = prompt.encode('utf8')
         if responses != None: cresponses = responses.encode('utf8')
-        rv = _cwipc_util_dll().cwipc_sink_interact(self.as_cwipc_sink_p(), cprompt, cresponses, millis)
+        rv = cwipc_util_dll_load().cwipc_sink_interact(self.as_cwipc_sink_p(), cprompt, cresponses, millis)
         return rv.decode('utf8')
         
 class cwipc_auxiliary_data:
@@ -703,21 +703,21 @@ class cwipc_auxiliary_data:
         return self._cwipc_auxiliary_data
         
     def count(self) -> int:
-        return _cwipc_util_dll().cwipc_auxiliary_data_count(self.as_cwipc_auxiliary_data_p())
+        return cwipc_util_dll_load().cwipc_auxiliary_data_count(self.as_cwipc_auxiliary_data_p())
         
     def name(self, idx : int) -> str:
-        rv = _cwipc_util_dll().cwipc_auxiliary_data_name(self.as_cwipc_auxiliary_data_p(), idx)
+        rv = cwipc_util_dll_load().cwipc_auxiliary_data_name(self.as_cwipc_auxiliary_data_p(), idx)
         return rv.decode('utf8')
         
     def description(self, idx : int) -> str:
-        rv = _cwipc_util_dll().cwipc_auxiliary_data_description(self.as_cwipc_auxiliary_data_p(), idx)
+        rv = cwipc_util_dll_load().cwipc_auxiliary_data_description(self.as_cwipc_auxiliary_data_p(), idx)
         return rv.decode('utf8')
         
     def pointer(self, idx : int) -> ctypes.c_void_p:
-        return _cwipc_util_dll().cwipc_auxiliary_data_pointer(self.as_cwipc_auxiliary_data_p(), idx)
+        return cwipc_util_dll_load().cwipc_auxiliary_data_pointer(self.as_cwipc_auxiliary_data_p(), idx)
         
     def size(self, idx : int) -> int:
-        return _cwipc_util_dll().cwipc_auxiliary_data_size(self.as_cwipc_auxiliary_data_p(), idx)
+        return cwipc_util_dll_load().cwipc_auxiliary_data_size(self.as_cwipc_auxiliary_data_p(), idx)
         
     def data(self, idx : int) -> bytes:
         size = self.size(idx)
@@ -729,7 +729,7 @@ class cwipc_auxiliary_data:
         
 def cwipc_get_version() -> str:
     """Return version information"""
-    c_version = _cwipc_util_dll().cwipc_get_version()
+    c_version = cwipc_util_dll_load().cwipc_get_version()
     version = c_version.decode('utf8')
     try:
         import pkg_resources
@@ -743,7 +743,7 @@ def cwipc_get_version() -> str:
 def cwipc_read(filename : str, timestamp : int) -> cwipc:
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
     if errorString and errorString.value:
@@ -755,7 +755,7 @@ def cwipc_read(filename : str, timestamp : int) -> cwipc:
 def cwipc_write(filename : str, pointcloud : cwipc, flags : int=0) -> int:
     """Write a cwipc object to a .ply file."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_write_ext(filename.encode('utf8'), pointcloud.as_cwipc_p(), flags, ctypes.byref(errorString))
+    rv = cwipc_util_dll_load().cwipc_write_ext(filename.encode('utf8'), pointcloud.as_cwipc_p(), flags, ctypes.byref(errorString))
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     return rv
@@ -768,14 +768,14 @@ def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) ->
     nPoint = len(points)
     nBytes = ctypes.sizeof(points)
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
         return cwipc(rv)
     raise CwipcError("cwipc_from_points: cannot create cwipc from given argument")
     
-def cwipc_from_packet(packet : bytes):
+def cwipc_from_packet(packet : bytes) -> cwipc:
     nBytes = len(packet)
     byte_array_type = ctypes.c_char * nBytes
     try:
@@ -783,14 +783,14 @@ def cwipc_from_packet(packet : bytes):
     except TypeError:
         c_packet = byte_array_type.from_buffer_copy(packet)
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_packet(c_packet, nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_from_packet(c_packet, nBytes, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
         return cwipc(rv)
-    return None
+    raise CwipcError("cwipc_from_packet: no pointcloud read, but no specific error returned from C library")
 
-def cwipc_from_certh(certhPC : ctypes.c_void_p, timestamp : int, origin : Optional[tuple[float, float, float]]=None, bbox : Optional[tuple[float, float, float, float, float, float]]=None):
+def cwipc_from_certh(certhPC : ctypes.c_void_p, timestamp : int, origin : Optional[tuple[float, float, float]]=None, bbox : Optional[tuple[float, float, float, float, float, float]]=None) -> cwipc:
     """Create a cwipc from a CERTH PointCloud structure (address passed as ctypes.c_void_p)"""
     corigin = None
     if origin:
@@ -801,17 +801,17 @@ def cwipc_from_certh(certhPC : ctypes.c_void_p, timestamp : int, origin : Option
         cbbox = (ctypes.c_float*6)(*bbox)
         cbbox = ctypes.cast(cbbox, ctypes.c_void_p)
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_from_certh(certhPC, corigin, cbbox, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_from_certh(certhPC, corigin, cbbox, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
         return cwipc(rv)
-    return None
+    raise CwipcError("cwipc_from_certh: no pointcloud returned, but no specific error returned from C library")
     
 def cwipc_read_debugdump(filename : str) -> cwipc:
     """Return a cwipc object read from a .cwipcdump file."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_read_debugdump(filename.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_read_debugdump(filename.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -822,7 +822,7 @@ def cwipc_read_debugdump(filename : str) -> cwipc:
 def cwipc_write_debugdump(filename : str, pointcloud : cwipc) -> int:
     """Write a cwipc object to a .cwipcdump file."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_write_debugdump(filename.encode('utf8'), pointcloud.as_cwipc_p(), ctypes.byref(errorString))
+    rv = cwipc_util_dll_load().cwipc_write_debugdump(filename.encode('utf8'), pointcloud.as_cwipc_p(), ctypes.byref(errorString))
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     return rv
@@ -830,7 +830,7 @@ def cwipc_write_debugdump(filename : str, pointcloud : cwipc) -> int:
 def cwipc_synthetic(fps : int=0, npoints : int=0) -> cwipc_tiledsource:
     """Returns a cwipc_source object that returns synthetically generated cwipc objects on every get() call."""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_synthetic(fps, npoints, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_synthetic(fps, npoints, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
@@ -843,7 +843,7 @@ def cwipc_capturer(conffile : Optional[str]=None) -> cwipc_tiledsource:
     cconffile = None
     if conffile:
         cconffile = conffile.encode('utf8')
-    rv = _cwipc_util_dll().cwipc_capturer(cconffile, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_capturer(cconffile, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value and not rv:
         raise CwipcError(errorString.value.decode('utf8'))
     if errorString and errorString.value:
@@ -856,23 +856,23 @@ def cwipc_capturer(conffile : Optional[str]=None) -> cwipc_tiledsource:
 def cwipc_window(title : str) -> cwipc_sink:
     """Returns a cwipc_sink object that displays pointclouds in a window"""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_window(title.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_window(title.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
         return cwipc_sink(rv)
     raise CwipcError("cwipc_window: cannot create window, but no specific error returned from C library")
     
-def cwipc_downsample(pc : cwipc, voxelsize : int) -> cwipc:
-    rv = _cwipc_util_dll().cwipc_downsample(pc.as_cwipc_p(), voxelsize)
+def cwipc_downsample(pc : cwipc, voxelsize : float) -> cwipc:
+    rv = cwipc_util_dll_load().cwipc_downsample(pc.as_cwipc_p(), voxelsize)
     return cwipc(rv)
     
 def cwipc_remove_outliers(pc : cwipc, kNeighbors : int, stdDesvMultThresh : float, perTile : bool) -> cwipc:
-    rv = _cwipc_util_dll().cwipc_remove_outliers(pc.as_cwipc_p(), kNeighbors, stdDesvMultThresh, perTile)
+    rv = cwipc_util_dll_load().cwipc_remove_outliers(pc.as_cwipc_p(), kNeighbors, stdDesvMultThresh, perTile)
     return cwipc(rv)
     
 def cwipc_tilefilter(pc : cwipc, tile : int) -> cwipc:
-    rv = _cwipc_util_dll().cwipc_tilefilter(pc.as_cwipc_p(), tile)
+    rv = cwipc_util_dll_load().cwipc_tilefilter(pc.as_cwipc_p(), tile)
     return cwipc(rv)
   
 def cwipc_tilemap(pc : cwipc, mapping : dict[int, int] | bytes) -> cwipc:
@@ -881,26 +881,26 @@ def cwipc_tilemap(pc : cwipc, mapping : dict[int, int] | bytes) -> cwipc:
         for k in mapping:
             m[k] = mapping[k]
         mapping = m
-    rv = _cwipc_util_dll().cwipc_tilemap(pc.as_cwipc_p(), bytes(mapping))
+    rv = cwipc_util_dll_load().cwipc_tilemap(pc.as_cwipc_p(), bytes(mapping))
     return cwipc(rv)
   
 def cwipc_colormap(pc : cwipc, clearBits : int, setBits : int) -> cwipc:
-    rv = _cwipc_util_dll().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
+    rv = cwipc_util_dll_load().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
     return cwipc(rv)
   
-def cwipc_crop(pc : cwipc, bbox : tuple[float, float, float, float, float, float]) -> cwipc:
+def cwipc_crop(pc : cwipc, bbox : tuple[float, float, float, float, float, float] | List[float]) -> cwipc:
     bbox_arg = (ctypes.c_float*6)(*bbox)
-    rv = _cwipc_util_dll().cwipc_crop(pc.as_cwipc_p(), bbox_arg)
+    rv = cwipc_util_dll_load().cwipc_crop(pc.as_cwipc_p(), bbox_arg)
     return cwipc(rv)
   
 def cwipc_join(pc1 : cwipc, pc2 : cwipc) -> cwipc:
-    rv = _cwipc_util_dll().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
+    rv = cwipc_util_dll_load().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
     return cwipc(rv)
   
 def cwipc_proxy(host : str, port : int) -> cwipc_tiledsource:
     """Returns a cwipc_source object that starts a server and receives pointclouds over a socket connection"""
     errorString = ctypes.c_char_p()
-    rv = _cwipc_util_dll().cwipc_proxy(host.encode('utf8'), port, ctypes.byref(errorString), CWIPC_API_VERSION)
+    rv = cwipc_util_dll_load().cwipc_proxy(host.encode('utf8'), port, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
