@@ -98,6 +98,15 @@ class TestApi(unittest.TestCase):
         pcs = cwipc.cwipc_source()
         pcs.free()
     
+    def test_cwipc_from_points_empty(self):
+        """Can we create a cwipc object from a empty list of values"""
+        points = cwipc.cwipc_point_array(values=[])
+        pc = cwipc.cwipc_from_points(points, 0)
+        newpoints = pc.get_points()
+        self.assertEqual(len(points), 0)
+        self.assertEqual(len(newpoints), 0)
+        pc.free()
+    
     def test_cwipc_from_points(self):
         """Can we create a cwipc object from a list of values"""
         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
@@ -115,15 +124,6 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
             self.assertEqual(op.tile, np.tile)
-        pc.free()
-    
-    def test_cwipc_from_points_empty(self):
-        """Can we create a cwipc object from a empty list of values"""
-        points = cwipc.cwipc_point_array(values=[])
-        pc = cwipc.cwipc_from_points(points, 0)
-        newpoints = pc.get_points()
-        self.assertEqual(len(points), 0)
-        self.assertEqual(len(newpoints), 0)
         pc.free()
     
     def test_cwipc_timestamp_cellsize(self):
