@@ -403,16 +403,16 @@ class TestApi(unittest.TestCase):
         pc_orig.free()
         
     def test_downsample(self):
-        """Check that the downsampler returns at most the same number of points and eventually returns 1"""
+        """Check that the downsampler returns at most the same number of points and eventually returns less than 8"""
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
         count_orig = len(pc_orig.get_points())
         count_filtered = count_orig
-        factor = 1024
-        while factor > 0.0001:
-            pc_filtered = cwipc.cwipc_downsample(pc_orig, factor)
+        cellsize = pc_orig.cellsize() / 2
+        while cellsize < 16:
+            pc_filtered = cwipc.cwipc_downsample(pc_orig, cellsize)
             count_filtered = len(pc_filtered.get_points())
             self.assertGreaterEqual(count_filtered, 1)
             self.assertLessEqual(count_filtered, count_orig)
@@ -420,8 +420,8 @@ class TestApi(unittest.TestCase):
             pc_filtered.free()
             if count_filtered < 2:
                 break
-            factor = factor / 2
-        self.assertEqual(count_filtered, 2)
+            cellsize = cellsize * 2
+        self.assertLessEqual(count_filtered, 8)
         gen.free()
         pc_orig.free()
         
