@@ -178,18 +178,23 @@ class CwipcError(RuntimeError):
 _cwipc_util_dll_reference = None
 
 class cwipc_p(ctypes.c_void_p):
+    """ctypes-compatible native pointer to a cwipc object"""
     pass
     
 class cwipc_source_p(ctypes.c_void_p):
+    """ctypes-compatible native pointer to a cwipc_source object"""
     pass
 
 class cwipc_tiledsource_p(cwipc_source_p):
+    """ctypes-compatible native pointer to a cwipc_tiledsource object"""
     pass
 
 class cwipc_sink_p(ctypes.c_void_p):
+    """ctypes-compatible native pointer to a cwipc_sink object"""
     pass
 
 class cwipc_auxiliary_data_p(ctypes.c_void_p):
+    """ctypes-compatible native pointer to a cwipc_auxiliary_data object"""
     pass
 
 #
@@ -223,6 +228,7 @@ class cwipc_point(ctypes.Structure):
                 return True
         return False
 
+# Pythonic representation of a cwipc_point
 cwipc_point_tuple = tuple[float, float, float, int, int, int, int]
 
 #
@@ -285,7 +291,11 @@ CWIPC_FLAGS_BINARY = 1
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
 def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
-    """Load the cwipc_util DLL and assign the signatures (if not already loaded)"""
+    """Load the cwipc_util DLL and assign the signatures (if not already loaded).
+    
+    If you want to load a non-default native library (for example to allow debugging low level code)
+    call this method early, before any other method from this package.
+    """
     global _cwipc_util_dll_reference
     if _cwipc_util_dll_reference: return _cwipc_util_dll_reference
     
@@ -449,7 +459,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
 
     return _cwipc_util_dll_reference
 
-cwipc_point_array_value_type = List[tuple[float, float, float, int, int, int, int]] | bytearray | ctypes.Array[cwipc_point] | None
+cwipc_point_array_value_type = List[tuple[float, float, float, int, int, int, int]] | bytearray | bytes | ctypes.Array[cwipc_point] | None
 def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.Array[cwipc_point]:
     """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
     if count == None:
@@ -457,6 +467,8 @@ def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.
     allocator = cwipc_point * count
     if isinstance(values, bytearray):
         return allocator.from_buffer(values)
+    elif isinstance(values, bytes):
+        return allocator.from_buffer_copy(values)
     if not isinstance(values, tuple):
         values = tuple(values)
     return allocator(*values)
@@ -518,7 +530,7 @@ class cwipc:
         """Get the pointcloud data as a cwipc_point_array"""
         if self._points == None:
             self._initialize_points_and_bytes()
-        assert type(self._points) != None
+        assert self._points != None
         return self._points
         
     def get_bytes(self) -> bytearray:

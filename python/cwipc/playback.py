@@ -64,18 +64,18 @@ class _DumpFilesource(_Filesource):
         return rv
         
 class _CompressedFilesource(_Filesource):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args : Any, **kwargs : Any):
         _Filesource.__init__(self, *args, **kwargs)
         from .codec import cwipc_new_decoder
         self.decoder = cwipc_new_decoder()
         
     def _get(self, fn : str) -> Optional[cwipc.cwipc]:
         with open(fn, 'rb') as fp:
-            data = fp.read()
+            data : bytes = fp.read()
         self.decoder.feed(data)
         return self.decoder.get()
     
-def cwipc_playback(dir_or_files : str | List[str], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint=None, outpoint=None, retimestamp : bool=False) -> _Filesource:
+def cwipc_playback(dir_or_files : str | List[str], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> _Filesource:
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
     filenames : Iterable[str]

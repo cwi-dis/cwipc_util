@@ -155,9 +155,9 @@ def cwipc_genericsource_factory(args, autoConfig=False):
         # with the generic capturer)
         #
         if realsense2:
-            realsense2._cwipc_realsense2_dll()
+            realsense2.cwipc_realsense2_dll_load()
         if kinect:
-            kinect._cwipc_kinect_dll()
+            kinect.cwipc_kinect_dll_load()
         if autoConfig:
             source = lambda : cwipc_capturer("auto")
         elif args.cameraconfig:
@@ -399,11 +399,11 @@ def beginOfRun(args):
             from _cwipc_codec import _cwipc_codec_dll
             _cwipc_codec_dll(path)
         elif name == 'cwipc_realsense2':
-            from _cwipc_realsense2 import _cwipc_realsense2_dll
-            _cwipc_realsense2_dll(path)
+            from _cwipc_realsense2 import cwipc_realsense2_dll_load
+            cwipc_realsense2_dll_load(path)
         elif name == 'cwipc_kinect':
-            from _cwipc_kinect import _cwipc_kinect_dll
-            _cwipc_kinect_dll(path)
+            from _cwipc_kinect import cwipc_kinect_dll_load
+            cwipc_kinect_dll_load(path)
         elif name == 'signals-unity-bridge':
             from ..net.source_sub import _signals_unity_bridge_dll
             _signals_unity_bridge_dll(path)
