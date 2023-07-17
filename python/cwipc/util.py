@@ -518,7 +518,7 @@ class cwipc:
         """Get the pointcloud data as a cwipc_point_array"""
         if self._points == None:
             self._initialize_points_and_bytes()
-        assert self._points
+        assert type(self._points) != None
         return self._points
         
     def get_bytes(self) -> bytearray:
@@ -875,7 +875,7 @@ def cwipc_tilefilter(pc : cwipc, tile : int) -> cwipc:
     rv = cwipc_util_dll_load().cwipc_tilefilter(pc.as_cwipc_p(), tile)
     return cwipc(rv)
   
-def cwipc_tilemap(pc : cwipc, mapping : dict[int, int] | bytes) -> cwipc:
+def cwipc_tilemap(pc : cwipc, mapping : List[int] | dict[int,int] | bytes) -> cwipc:
     if type(mapping) != bytes and type(mapping) != bytearray:
         m = [0]*256
         for k in mapping:

@@ -69,7 +69,7 @@ class _CompressedFilesource(_Filesource):
         from .codec import cwipc_new_decoder
         self.decoder = cwipc_new_decoder()
         
-    def _get(self, fn : str) -> Optional[dict[Any,Any]]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
         with open(fn, 'rb') as fp:
             data = fp.read()
         self.decoder.feed(data)
