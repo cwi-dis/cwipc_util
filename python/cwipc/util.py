@@ -17,6 +17,8 @@ __all__ = [
     
     'cwipc_point',
     'cwipc_point_array',
+
+    'cwipc_tileinfo_pythonic',
     
     'cwipc_point_packetheader',
     
@@ -270,6 +272,7 @@ class cwipc_tileinfo(ctypes.Structure):
         ("cameraMask", ctypes.c_uint8),
     ]
 
+cwipc_tileinfo_pythonic = Optional[dict[str, Any]]
 #
 # C/Python cwipc_point_packetheader structure
 #
@@ -656,7 +659,7 @@ class cwipc_tiledsource(cwipc_source):
             return None
         return info
         
-    def get_tileinfo_dict(self, tilenum : int) -> Optional[dict[str, Any]]:
+    def get_tileinfo_dict(self, tilenum : int) -> cwipc_tileinfo_pythonic:
         """Return tile information for tile tilenum as Python dictionary"""
         info = self.get_tileinfo_raw(tilenum)
         if info == None:
