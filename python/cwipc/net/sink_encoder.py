@@ -11,7 +11,7 @@ class _Sink_Encoder(threading.Thread):
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
 
-    queue : 'queue.Queue[cwipc.cwipc]'
+    queue : 'queue.Queue[cwipc.cwipc_wrapper]'
     pointcounts : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
@@ -99,7 +99,7 @@ class _Sink_Encoder(threading.Thread):
             self.stopped = True
             if self.verbose: print(f"encoder: thread stopping")
         
-    def feed(self, pc : cwipc.cwipc) -> None:
+    def feed(self, pc : cwipc.cwipc_wrapper) -> None:
         try:
             if self.nodrop:
                 self.queue.put(pc)

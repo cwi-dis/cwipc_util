@@ -30,7 +30,7 @@ class _Filesource:
     def available(self, wait : bool=False) -> bool:
         return not not self.filenames
         
-    def get(self) -> Optional[cwipc.cwipc]:
+    def get(self) -> Optional[cwipc.cwipc_wrapper]:
         if not self.filenames:
             return None
         fn = self.filenames.pop(0)
@@ -44,7 +44,7 @@ class _Filesource:
             rv._set_timestamp(timestamp) # type: ignore
         return rv
         
-    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
         numbers = ''.join(x for x in fn if x.isdigit())
         if numbers == '':
             numbers = 0
@@ -59,7 +59,7 @@ class _Filesource:
         return self.tileInfo[i]
         
 class _DumpFilesource(_Filesource):
-    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
         rv = cwipc.cwipc_read_debugdump(fn)
         return rv
         
@@ -69,7 +69,7 @@ class _CompressedFilesource(_Filesource):
         from .codec import cwipc_new_decoder
         self.decoder = cwipc_new_decoder()
         
-    def _get(self, fn : str) -> Optional[cwipc.cwipc]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
         with open(fn, 'rb') as fp:
             data : bytes = fp.read()
         self.decoder.feed(data)
