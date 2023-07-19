@@ -463,7 +463,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
 
     return _cwipc_util_dll_reference
 
-cwipc_point_array_value_type = None | bytearray | bytes | ctypes.Array[cwipc_point] | List[tuple[float, float, float, int, int, int, int]]
+cwipc_point_array_value_type = Optional[bytearray | bytes | ctypes.Array[cwipc_point] | List[tuple[float, float, float, int, int, int, int]]]
 def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.Array[cwipc_point]:
     """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
     if count == None:
