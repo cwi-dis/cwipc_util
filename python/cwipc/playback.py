@@ -2,10 +2,10 @@ import cwipc
 import time
 import os
 import json
-from typing import List, Optional, Any, Iterable
+from typing import List, Optional, Any, Iterable, Union
 
 class _Filesource:
-    def __init__(self, filenames : str | List[str], tileInfo : Optional[List[dict[Any,Any]]]=None, loop : bool=False, fps : Optional[int]=None, retimestamp : bool=False):
+    def __init__(self, filenames : Union[str, List[str]], tileInfo : Optional[List[dict[Any,Any]]]=None, loop : bool=False, fps : Optional[int]=None, retimestamp : bool=False):
         if not tileInfo:
             tileInfo = [{
                 "cameraName" : "None",
@@ -75,7 +75,7 @@ class _CompressedFilesource(_Filesource):
         self.decoder.feed(data)
         return self.decoder.get()
     
-def cwipc_playback(dir_or_files : str | List[str], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> _Filesource:
+def cwipc_playback(dir_or_files : Union[str, List[str]], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> _Filesource:
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
     filenames : Iterable[str]
