@@ -4,7 +4,7 @@ import ctypes.util
 import warnings
 import os
 import sys
-from typing import Optional, List, Type, Any
+from typing import Optional, List, Type, Any, Union
 from .abstract import cwipc_abstract, cwipc_source_abstract
 
 __all__ = [
@@ -464,7 +464,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
 
     return _cwipc_util_dll_reference
 
-cwipc_point_array_value_type = Optional[bytearray | bytes | ctypes.Array[cwipc_point] | List[tuple[float, float, float, int, int, int, int]]]
+cwipc_point_array_value_type = Union[None, bytearray, bytes, ctypes.Array[cwipc_point], List[tuple[float, float, float, int, int, int, int]]]
 def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.Array[cwipc_point]:
     """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
     if count == None:
@@ -627,7 +627,7 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper):
             assert isinstance(_cwipc_tiledsource, cwipc_tiledsource_p)
         self._cwipc_source = _cwipc_tiledsource
         
-    def reload_config(self, config : str | bytes | None) -> None:
+    def reload_config(self, config : Union[str, bytes, None]) -> None:
         """Load a config from file or JSON string"""
         if type(config) == str:
             config = config.encode('utf8')
@@ -892,7 +892,7 @@ def cwipc_tilefilter(pc : cwipc_wrapper, tile : int) -> cwipc_wrapper:
     rv = cwipc_util_dll_load().cwipc_tilefilter(pc.as_cwipc_p(), tile)
     return cwipc_wrapper(rv)
   
-def cwipc_tilemap(pc : cwipc_wrapper, mapping : List[int] | dict[int,int] | bytes) -> cwipc_wrapper:
+def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_wrapper:
     if type(mapping) != bytes and type(mapping) != bytearray:
         m = [0]*256
         for k in mapping:
@@ -905,7 +905,7 @@ def cwipc_colormap(pc : cwipc_wrapper, clearBits : int, setBits : int) -> cwipc_
     rv = cwipc_util_dll_load().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
     return cwipc_wrapper(rv)
   
-def cwipc_crop(pc : cwipc_wrapper, bbox : tuple[float, float, float, float, float, float] | List[float]) -> cwipc_wrapper:
+def cwipc_crop(pc : cwipc_wrapper, bbox : Union[tuple[float, float, float, float, float, float], List[float]]) -> cwipc_wrapper:
     bbox_arg = (ctypes.c_float*6)(*bbox)
     rv = cwipc_util_dll_load().cwipc_crop(pc.as_cwipc_p(), bbox_arg)
     return cwipc_wrapper(rv)
