@@ -11,7 +11,7 @@ class Bin2dashError(RuntimeError):
     pass
 
 vrt_fourcc_type = int | bytes | str
-def VRT_4CC(code : vrt_fourcc_type):
+def VRT_4CC(code : vrt_fourcc_type) -> int:
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""
     if isinstance(code, int):
         return code
@@ -44,7 +44,7 @@ class streamDesc(ctypes.Structure):
     def __init__(self, fourcc : vrt_fourcc_type, *args : Any):
         super(streamDesc, self).__init__(VRT_4CC(fourcc), *args)
     
-def _bin2dash_dll(libname : Optional[str]=None):
+def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     global _bin2dash_dll_reference
     if _bin2dash_dll_reference: return _bin2dash_dll_reference
     
@@ -165,11 +165,12 @@ class _CpcBin2dashSink:
             self.dll.vrt_destroy(self.handle)
             self.handle = None
             
-    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None):
+    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None) -> bool:
         if not self.handle:
             return False
         assert self.dll
         length = len(buffer)
+        ok : bool
         if stream_index == None:
             ok = self.dll.vrt_push_buffer(self.handle, bytes(buffer), length)
         else:

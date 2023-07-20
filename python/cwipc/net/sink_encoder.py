@@ -11,7 +11,7 @@ class _Sink_Encoder(threading.Thread):
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
 
-    queue : 'queue.Queue[cwipc.cwipc_wrapper]'
+    _queue : queue.Queue[cwipc.cwipc_wrapper]
     pointcounts : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
@@ -27,7 +27,7 @@ class _Sink_Encoder(threading.Thread):
             self.sink.set_fourcc(self.FOURCC)
         self.producer = None
         self.nodrop = nodrop
-        self.queue = queue.Queue(maxsize=2)
+        self._queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
@@ -72,7 +72,7 @@ class _Sink_Encoder(threading.Thread):
         if self.verbose: print(f"encoder: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
-                pc = self.queue.get()
+                pc = self._queue.get()
                 if not pc:
                     print(f"encoder: get() returned None")
                     continue
@@ -102,9 +102,9 @@ class _Sink_Encoder(threading.Thread):
     def feed(self, pc : cwipc.cwipc_wrapper) -> None:
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self._queue.put(pc)
             else:
-                self.queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
+                self._queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
             if self.verbose: print(f"encoder: queue full, drop pointcloud")
             pc.free()
