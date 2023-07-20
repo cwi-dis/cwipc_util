@@ -274,7 +274,7 @@ class cwipc_tileinfo(ctypes.Structure):
         ("cameraMask", ctypes.c_uint8),
     ]
 
-cwipc_tileinfo_pythonic = Optional[dict[str, Any]]
+cwipc_tileinfo_pythonic = dict[str, Any]
 #
 # C/Python cwipc_point_packetheader structure
 #
@@ -665,7 +665,7 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper):
         """Return tile information for tile tilenum as Python dictionary"""
         info = self.get_tileinfo_raw(tilenum)
         if info == None:
-            return info
+            raise CwipcError(f"get_tileinfo_raw({tilenum}) returned None")
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
         return dict(normal=normal, cameraName=info.cameraName, ncamera=info.ncamera, cameraMask=info.cameraMask)
         
