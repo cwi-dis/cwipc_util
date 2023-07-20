@@ -13,7 +13,7 @@ if 0:
     # - Attach to python in the XCode debugger
     # - press return to python3.
     import cwipc.util
-    cwipc.util._cwipc_util_dll('/Users/jack/src/VRTogether/cwipc_util/build-xcode/lib/Debug/libcwipc_util.dylib')
+    cwipc.util.cwipc_util_dll_load('/Users/jack/src/VRTogether/cwipc_util/build-xcode/lib/Debug/libcwipc_util.dylib')
     print('Type return after attaching in XCode debugger - ')
     sys.stdin.readline()
 
@@ -23,19 +23,16 @@ if 0:
 if 'CWIPC_TEST_DLL' in os.environ:
 	import cwipc.util
 	filename = os.environ['CWIPC_TEST_DLL']
-	dllobj = cwipc.util._cwipc_util_dll(filename)
+	dllobj = cwipc.util.cwipc_util_dll_load(filename)
 #
 # Find directories for test inputs and outputs
 #
-if 'CWIPC_TEST_DIR' in os.environ:
-    CWIPC_TEST_DIR=os.environ['CWIPC_TEST_DIR']
-else:
-    _thisdir=os.path.dirname(__file__)
-    _topdir=os.path.dirname(_thisdir)
-    TEST_FIXTURES_DIR=os.path.join(_topdir, "tests", "fixtures")
-    TEST_OUTPUT_DIR=os.path.join(TEST_FIXTURES_DIR, "output")
-    if not os.access(TEST_OUTPUT_DIR, os.W_OK):
-        TEST_OUTPUT_DIR=tempfile.mkdtemp('cwipc_util_test')
+_thisdir=os.path.dirname(__file__)
+_topdir=os.path.dirname(_thisdir)
+TEST_FIXTURES_DIR=os.path.join(_topdir, "tests", "fixtures")
+TEST_OUTPUT_DIR=os.path.join(TEST_FIXTURES_DIR, "output")
+if not os.access(TEST_OUTPUT_DIR, os.W_OK):
+    TEST_OUTPUT_DIR=tempfile.mkdtemp('cwipc_util_test') # type: ignore
 PLY_DIRNAME=os.path.join(TEST_FIXTURES_DIR, "input")
 PLY_FILENAME=os.path.join(PLY_DIRNAME, "pcl_frame1.ply")
 
@@ -90,13 +87,22 @@ class TestApi(unittest.TestCase):
         
     def test_cwipc(self):
         """Can we create and free a cwipc object"""
-        pc = cwipc.cwipc()
+        pc = cwipc.cwipc_wrapper()
         pc.free()
         
     def test_cwipc_source(self):
         """Can we create and free a cwipc_source object"""
-        pcs = cwipc.cwipc_source()
+        pcs = cwipc.cwipc_source_wrapper()
         pcs.free()
+    
+    def test_cwipc_from_points_empty(self):
+        """Can we create a cwipc object from a empty list of values"""
+        points = cwipc.cwipc_point_array(values=[])
+        pc = cwipc.cwipc_from_points(points, 0)
+        newpoints = pc.get_points()
+        self.assertEqual(len(points), 0)
+        self.assertEqual(len(newpoints), 0)
+        pc.free()
     
     def test_cwipc_from_points(self):
         """Can we create a cwipc object from a list of values"""
@@ -117,26 +123,17 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.tile, np.tile)
         pc.free()
     
-    def test_cwipc_from_points_empty(self):
-        """Can we create a cwipc object from a empty list of values"""
-        points = cwipc.cwipc_point_array(values=[])
-        pc = cwipc.cwipc_from_points(points, 0)
-        newpoints = pc.get_points()
-        self.assertEqual(len(points), 0)
-        self.assertEqual(len(newpoints), 0)
-        pc.free()
-    
     def test_cwipc_timestamp_cellsize(self):
         """Can we set and retrieve the timestamp and cellsize in a cwipc"""
         timestamp = 0x11223344556677
         pc = cwipc.cwipc_from_points([(0,0,0,0,0,0,1), (1,0,0,0,0,0,1), (2,0,0,0,0,0,1), (3,0,0,0,0,0,1)], timestamp)
         self.assertEqual(pc.timestamp(), timestamp)
-        pc._set_timestamp(timestamp+1)
+        pc._set_timestamp(timestamp+1) # type: ignore
         self.assertEqual(pc.timestamp(), timestamp+1)
         self.assertEqual(pc.cellsize(), 0)
-        pc._set_cellsize(0.1)
+        pc._set_cellsize(0.1) # type: ignore
         self.assertAlmostEqual(pc.cellsize(), 0.1)
-        pc._set_cellsize(-1)
+        pc._set_cellsize(-1) # type: ignore
         self.assertAlmostEqual(pc.cellsize(), 1.0)
         pc.free()
 
@@ -150,7 +147,7 @@ class TestApi(unittest.TestCase):
     def test_cwipc_read_nonexistent(self):
         """When we read a cwipc from a nonexistent ply file do we get an exception?"""
         with self.assertRaises(cwipc.CwipcError):
-            pc = cwipc.cwipc_read(PLY_FILENAME + '.nonexistent', 1234)
+            pc = cwipc.cwipc_read(PLY_FILENAME + '.nonexistent', 1234) # type: ignore
     
     def test_cwipc_write(self):
         """Can we write a cwipc to a ply file and read it back?"""
@@ -219,6 +216,8 @@ class TestApi(unittest.TestCase):
         self.assertTrue(pcs.available(False))
         self.assertFalse(pcs.eof())
         pc = pcs.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
         pc.free()
         pcs.free()
@@ -240,7 +239,11 @@ class TestApi(unittest.TestCase):
         wantTestAngle = pcs.auxiliary_data_requested("test-angle")
         self.assertTrue(wantTestAngle)
         pc = pcs.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         ap = pc.access_auxiliary_data()
+        self.assertIsNotNone(ap)
+        assert ap # Only to keep linters happy
         self.assertEqual(ap.count(), 1)
         self.assertEqual(ap.name(0), "test-angle")
         self.assertEqual(ap.description(0), "")
@@ -258,6 +261,8 @@ class TestApi(unittest.TestCase):
         self.assertTrue(pcs.available(False))
         self.assertFalse(pcs.eof())
         pc = pcs.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
         pc.free()
         pcs.free()
@@ -283,12 +288,14 @@ class TestApi(unittest.TestCase):
     def test_cwipc_capturer_nonexistent(self):
         """Check that creating a capturer for a nonexistent camera type fails"""
         with self.assertRaises(cwipc.CwipcError):
-            pcs = cwipc.cwipc_capturer('{"type":"nonexistent"}')
+            pcs = cwipc.cwipc_capturer('{"type":"nonexistent"}') # type: ignore
         
     def test_tilefilter(self):
         """Check that the tilefilter returns the same number of points if not filtering, and correct number if filtering"""
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
+        self.assertIsNotNone(pc_orig)
+        assert pc_orig # Only to keep linters happy
         pc_filtered = cwipc.cwipc_tilefilter(pc_orig, 0)
         self.assertEqual(len(pc_orig.get_points()), len(pc_filtered.get_points()))
         pc_filtered_1 = cwipc.cwipc_tilefilter(pc_orig, 1)
@@ -315,7 +322,11 @@ class TestApi(unittest.TestCase):
         """Check that joining two pointclouds results in a pointcloud with the correct number of points"""
         gen = cwipc.cwipc_synthetic()
         pc_1 = gen.get()
+        self.assertIsNotNone(pc_1)
+        assert pc_1 # Only to keep linters happy
         pc_2 = gen.get()
+        self.assertIsNotNone(pc_2)
+        assert pc_2 # Only to keep linters happy
         pc_out = cwipc.cwipc_join(pc_1, pc_2)
         self.assertEqual(len(pc_out.get_points()), len(pc_1.get_points()) + len(pc_2.get_points()))
         
@@ -323,6 +334,8 @@ class TestApi(unittest.TestCase):
         """Check that tilemap keeps the correct numer of points in the mapped tiles"""
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
+        self.assertIsNotNone(pc_orig)
+        assert pc_orig # Only to keep linters happy
         pc_filtered_1 = cwipc.cwipc_tilefilter(pc_orig, 1)
         pc_filtered_2 = cwipc.cwipc_tilefilter(pc_orig, 2)
         pc_filtered_5 = cwipc.cwipc_tilefilter(pc_orig, 5)
@@ -341,6 +354,8 @@ class TestApi(unittest.TestCase):
         """Check that colormap keeps all points but gives them the new color"""
         gen = cwipc.cwipc_synthetic()
         pc = gen.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         pc2 = cwipc.cwipc_colormap(pc, 0xffffffff, 0x010203)
         points = pc.get_points()
         points2 = pc2.get_points()
@@ -355,6 +370,8 @@ class TestApi(unittest.TestCase):
         """Check that splitting a pointcloud into two using cropping gives the right number of points"""
         gen = cwipc.cwipc_synthetic()
         pc = gen.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         left_pc = cwipc.cwipc_crop(pc, [-999, 0, -999, 999, -999, 999])
         right_pc = cwipc.cwipc_crop(pc, [0, 999, -999, 999, -999, 999])
         points = pc.get_points()
@@ -374,6 +391,8 @@ class TestApi(unittest.TestCase):
         """Chech that remove_outliers returns less points than the original pc, but still > 0 points."""
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
+        self.assertIsNotNone(pc_orig)
+        assert pc_orig # Only to keep linters happy
         count_orig = len(pc_orig.get_points())
         pc_filtered = cwipc.cwipc_remove_outliers(pc_orig, 30, 1.0, True)
         count_filtered = len(pc_filtered.get_points())
@@ -384,23 +403,25 @@ class TestApi(unittest.TestCase):
         pc_orig.free()
         
     def test_downsample(self):
-        """Check that the downsampler returns at most the same number of points and eventually returns 1"""
+        """Check that the downsampler returns at most the same number of points and eventually returns less than 8"""
         gen = cwipc.cwipc_synthetic()
         pc_orig = gen.get()
+        self.assertIsNotNone(pc_orig)
+        assert pc_orig # Only to keep linters happy
         count_orig = len(pc_orig.get_points())
-        count_prev = count_orig
-        factor = 1024
-        while factor > 0.0001:
-            pc_filtered = cwipc.cwipc_downsample(pc_orig, factor)
+        count_filtered = count_orig
+        cellsize = pc_orig.cellsize() / 2
+        while cellsize < 16:
+            pc_filtered = cwipc.cwipc_downsample(pc_orig, cellsize)
             count_filtered = len(pc_filtered.get_points())
             self.assertGreaterEqual(count_filtered, 1)
             self.assertLessEqual(count_filtered, count_orig)
             self.assertEqual(pc_orig.timestamp(), pc_filtered.timestamp())
-            count_prev = count_filtered
             pc_filtered.free()
-            if count_filtered > count_orig/2:
+            if count_filtered < 2:
                 break
-            factor = factor / 2
+            cellsize = cellsize * 2
+        self.assertLessEqual(count_filtered, 8)
         gen.free()
         pc_orig.free()
         
@@ -417,6 +438,8 @@ class TestApi(unittest.TestCase):
         src = cwipc.playback.cwipc_playback([PLY_FILENAME], loop=False)
         self.assertFalse(src.eof())
         pc = src.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
         pc.free()
         self.assertTrue(src.eof())
@@ -426,6 +449,8 @@ class TestApi(unittest.TestCase):
         src = cwipc.playback.cwipc_playback(PLY_DIRNAME, loop=False)
         self.assertFalse(src.eof())
         pc = src.get()
+        self.assertIsNotNone(pc)
+        assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
         pc.free()
         src.free()
@@ -450,11 +475,12 @@ class TestApi(unittest.TestCase):
         pc = self._build_pointcloud()
         aux = pc.access_auxiliary_data()
         self.assertNotEqual(aux, None)
+        assert aux # Keep linters happy
         nItems = aux.count()
         self.assertEqual(nItems, 0)
         pc.free()
         
-    def _verify_pointcloud(self, pc, tiled=False):
+    def _verify_pointcloud(self, pc : cwipc.cwipc_wrapper, tiled : bool=False):
         points = pc.get_points()
         self.assertGreater(len(points), 1)
         p0 = points[0].x, points[0].y, points[0].z

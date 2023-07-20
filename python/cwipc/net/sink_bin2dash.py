@@ -1,7 +1,7 @@
 import ctypes
 import ctypes.util
-import time
 import os
+from typing import Optional, Any, List
 
 _bin2dash_dll_reference = None
 
@@ -10,7 +10,8 @@ BIN2DASH_API_VERSION = 0x20200327A
 class Bin2dashError(RuntimeError):
     pass
 
-def VRT_4CC(code):
+vrt_fourcc_type = int | bytes | str
+def VRT_4CC(code : vrt_fourcc_type):
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""
     if isinstance(code, int):
         return code
@@ -20,11 +21,7 @@ def VRT_4CC(code):
     assert len(code) == 4
     rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
     return rv
-    
-def repr_4CC(code):
-    bstr = b''
-    
-    
+
 class vrt_handle_p(ctypes.c_void_p):
     pass
     
@@ -44,10 +41,10 @@ class streamDesc(ctypes.Structure):
         ("totalHeight", ctypes.c_uint32),
     ]
 
-    def __init__(self, fourcc, *args):
+    def __init__(self, fourcc : vrt_fourcc_type, *args : Any):
         super(streamDesc, self).__init__(VRT_4CC(fourcc), *args)
     
-def _bin2dash_dll(libname=None):
+def _bin2dash_dll(libname : Optional[str]=None):
     global _bin2dash_dll_reference
     if _bin2dash_dll_reference: return _bin2dash_dll_reference
     
@@ -91,14 +88,18 @@ def _bin2dash_dll(libname=None):
     return _bin2dash_dll_reference
  
 class _CpcBin2dashSink:
-    def __init__(self, url="", *, verbose=False, nodrop=False, streamDescs=None, fourcc=None, seg_dur_in_ms=None, timeshift_buffer_depth_in_ms=None):
+    streamDescs : Optional[List[streamDesc]]
+    dll : ctypes.CDLL
+    fourcc : Optional[vrt_fourcc_type]
+    sizes_forward : List[int]
+
+    def __init__(self, url : str="", *, verbose : bool=False, nodrop : bool=False, streamDescs : Optional[List[streamDesc]]=None, fourcc : Optional[vrt_fourcc_type]=None, seg_dur_in_ms : Optional[int]=None, timeshift_buffer_depth_in_ms : Optional[int]=None):
         if seg_dur_in_ms == None: seg_dur_in_ms=10000
         if timeshift_buffer_depth_in_ms == None: timeshift_buffer_depth_in_ms=30000
         self.verbose = verbose
         self.nodrop = nodrop
         self.producer = None
         self.url = url
-        self.dll = None
         self.handle = None
         self.dll = _bin2dash_dll()
         assert self.dll
@@ -114,7 +115,7 @@ class _CpcBin2dashSink:
     def __del__(self):
         self.free()
         
-    def start(self):
+    def start(self) -> None:
         url = self.url.encode('utf8')
         if self.streamDescs != None:
             streamDescCount = len(self.streamDescs)
@@ -136,34 +137,35 @@ class _CpcBin2dashSink:
                 raise Bin2dashError(f"vrt_create({url}) failed")
         assert self.handle
         
-    def stop(self):
+    def stop(self) -> None:
         pass
         
-    def set_producer(self, producer):
+    def set_producer(self, producer : Any) -> None:
         self.producer = None
         
-    def set_fourcc(self, fourcc):
+    def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         self.fourcc = fourcc
         
-    def _set_streamDescs(self, streamDescs):
+    def _set_streamDescs(self, streamDescs : List[streamDesc]) -> None:
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum, x, y, z):
+    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : int | float) -> int:
         if not self.streamDescs:
             self.streamDescs = []
         if type(x) != int: x = int(x*1000)
         if type(y) != int: y = int(y*1000)
         if type(z) != int: z = int(z*1000)
+        assert self.fourcc
         self.streamDescs.append(streamDesc(self.fourcc, tilenum, x, y, z))
         return len(self.streamDescs)-1
         
-    def free(self):
+    def free(self) -> None:
         if self.handle:
             assert self.dll
             self.dll.vrt_destroy(self.handle)
             self.handle = None
             
-    def feed(self, buffer, stream_index=None):
+    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None):
         if not self.handle:
             return False
         assert self.dll
@@ -178,13 +180,13 @@ class _CpcBin2dashSink:
             raise Bin2dashError(f"vrt_push_buffer(handle, {stream_index}, buffer, {length}) failed")
         return ok
 
-    def canfeed(self, timestamp, wait=True):
+    def canfeed(self, timestamp : int, wait : bool=True) -> bool:
         return not not self.handle
 
-    def statistics(self):
+    def statistics(self) -> None:
         self.print1stat('packetsize', self.sizes_forward)
         
-    def print1stat(self, name, values, isInt=False):
+    def print1stat(self, name : str, values : List[int]|List[float], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('bin2dash: {}: count=0'.format(name))
@@ -198,5 +200,5 @@ class _CpcBin2dashSink:
             fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_bin2dash(url, verbose=False, nodrop=False, **kwargs):
+def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> _CpcBin2dashSink:
     return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)

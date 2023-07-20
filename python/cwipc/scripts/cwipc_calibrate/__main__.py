@@ -5,7 +5,7 @@ import cwipc
 try:
     import cwipc.realsense2
     # Workaround for https://github.com/intel-isl/Open3D/issues/3283
-    _ = cwipc.realsense2._cwipc_realsense2_dll()
+    _ = cwipc.realsense2.cwipc_realsense2_dll_load()
 except ModuleNotFoundError:
     cwipc.realsense2 = None
 try:

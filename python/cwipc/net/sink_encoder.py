@@ -1,23 +1,25 @@
-import os
 import threading
-import socket
-import select
 import time
 import queue
+from typing import Any, Optional, List
 import cwipc
-
-try:
-    import cwipc.codec
-except ModuleNotFoundError:
-    cwipc.codec = None
+import cwipc.codec
 
 class _Sink_Encoder(threading.Thread):
     
     FOURCC="cwi1"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
-    
-    def __init__(self, sink, verbose=False, nodrop=False):
+
+    queue : 'queue.Queue[cwipc.cwipc_wrapper]'
+    pointcounts : List[int]
+    tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
+    encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
+    encoders : List[cwipc.codec.cwipc_encoder_wrapper]
+    times_encode : List[float]
+
+    # xxxjack the Any for sink is a cop-out. Need to define ABCs for all the types.
+    def __init__(self, sink : Any, verbose : bool=False, nodrop : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_Encoder'
         self.sink = sink
@@ -39,26 +41,26 @@ class _Sink_Encoder(threading.Thread):
         self.octree_bits = None
         self.jpeg_quality = None
         
-    def set_encoder_params(self, tiles=False, octree_bits=None, jpeg_quality=None):
+    def set_encoder_params(self, tiles : Optional[List[cwipc.cwipc_tileinfo_pythonic]] = None, octree_bits : Optional[int]=None, jpeg_quality : Optional[int]=None) -> None:
         if tiles == None: tiles = [{}]
         self.tiledescriptions = tiles
         self.octree_bits = octree_bits
         self.jpeg_quality = jpeg_quality
         
-    def start(self):
+    def start(self) -> None:
         self._init_encoders()
         threading.Thread.start(self)
         self.sink.start()
         self.started = True
         
-    def stop(self):
+    def stop(self) -> None:
         if self.verbose: print(f"encoder: stopping thread")
         self.stopped = True
         self.sink.stop()
         if self.started:
             self.join()
         
-    def set_producer(self, producer):
+    def set_producer(self, producer : Any) -> None:
         self.producer = producer
         self.sink.set_producer(producer)
         
@@ -66,6 +68,7 @@ class _Sink_Encoder(threading.Thread):
         return not self.stopped  
         
     def run(self):
+        assert self.encoder_group
         if self.verbose: print(f"encoder: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
@@ -77,7 +80,7 @@ class _Sink_Encoder(threading.Thread):
                 
                 t1 = time.time()
                 self.encoder_group.feed(pc)
-                packets = []
+                packets : List[bytearray] = []
                 for i in range(len(self.encoders)):
                     got_data = self.encoders[i].available(True)
                     assert got_data
@@ -96,7 +99,7 @@ class _Sink_Encoder(threading.Thread):
             self.stopped = True
             if self.verbose: print(f"encoder: thread stopping")
         
-    def feed(self, pc):
+    def feed(self, pc : cwipc.cwipc_wrapper) -> None:
         try:
             if self.nodrop:
                 self.queue.put(pc)
