@@ -27,7 +27,7 @@ class _Sink_NetServer(threading.Thread):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_NetServer'
         self.producer = None
-        self.queue = queue.Queue(maxsize=2)
+        self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
@@ -73,7 +73,7 @@ class _Sink_NetServer(threading.Thread):
                     connSocket, other = self.socket.accept()
                     if self.verbose:
                         print(f"netserver: accepted connection from {other}")
-                    data = self.queue.get()
+                    data = self.input_queue.get()
                     hdr = self._gen_header(data)
                     connSocket.sendall(hdr + data)
                     connSocket.close()
@@ -96,9 +96,9 @@ class _Sink_NetServer(threading.Thread):
     def feed(self, data):
         try:
             if self.nodrop:
-                self.queue.put(data)
+                self.input_queue.put(data)
             else:
-                self.queue.put(data, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.input_queue.put(data, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
             if self.verbose: print(f"netserver: queue full, drop packet")            
     

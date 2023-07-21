@@ -21,7 +21,7 @@ class _Sink_Passthrough(threading.Thread):
             self.sink.set_fourcc(self.FOURCC)
         self.producer = None
         self.nodrop = nodrop
-        self.queue = queue.Queue(maxsize=2)
+        self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
@@ -54,7 +54,7 @@ class _Sink_Passthrough(threading.Thread):
         if self.verbose: print(f"passthrough: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
-                pc = self.queue.get()
+                pc = self.input_queue.get()
                 if not pc:
                     print(f"passthrough: get() returned None")
                     continue
@@ -69,9 +69,9 @@ class _Sink_Passthrough(threading.Thread):
     def feed(self, pc):
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self.input_queue.put(pc)
             else:
-                self.queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.input_queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
             if self.verbose: print(f"passthrough: queue full, drop pointcloud")
             pc.free()

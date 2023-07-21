@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 class _NetDecoder(threading.Thread, cwipc_source_abstract):
     
     QUEUE_WAIT_TIMEOUT=1
-    _queue : queue.Queue[Optional[cwipc_abstract]]
+    output_queue : queue.Queue[Optional[cwipc_abstract]]
 
     def __init__(self, source, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -22,7 +22,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         self.source = source
         self.running = False
         self.verbose = verbose
-        self._queue = queue.Queue()
+        self.output_queue = queue.Queue()
         self.times_decode = []
         self.streamNumber = None
         self._init_tiling()
@@ -54,24 +54,24 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         self.running = False
         if hasattr(self.source, 'stop'):
             self.source.stop()
-        self._queue.put(None)
+        self.output_queue.put(None)
         self.join()
         
     def eof(self) -> bool:
-        return not self.running or self._queue.empty() and self.source.eof()
+        return not self.running or self.output_queue.empty() and self.source.eof()
     
     def available(self, wait : bool=False) -> bool:
         # xxxjack if wait==True should get and put
         if not self.running:
             return False
-        if not self._queue.empty():
+        if not self.output_queue.empty():
             return True
         return self.source.available(wait)
         
     def get(self) -> Optional[cwipc_abstract]:
         if self.eof():
             return None
-        pc = self._queue.get()
+        pc = self.output_queue.get()
         return pc
 
     def _select_stream(self, streamIndex : int) -> None:
@@ -92,7 +92,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             assert pc
             t2 = time.time()
             self.times_decode.append(t2-t1)
-            self._queue.put(pc)
+            self.output_queue.put(pc)
             if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points', flush=True)
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
 

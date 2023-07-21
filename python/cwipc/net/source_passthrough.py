@@ -4,7 +4,7 @@ import socket
 import threading
 import queue
 import cwipc
-from typing import Optional
+from typing import Optional, Union, List
 from abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 try:
@@ -17,7 +17,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
     QUEUE_WAIT_TIMEOUT=1
     
     source : cwipc_rawsource_abstract
-    _queue : queue.Queue[Optional[cwipc_abstract]]
+    output_queue : queue.Queue[Optional[cwipc_abstract]]
 
     def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -25,7 +25,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         self.source = source
         self.running = False
         self.verbose = verbose
-        self._queue = queue.Queue()
+        self.output_queue = queue.Queue()
         
     def free(self) -> None:
         pass
@@ -43,24 +43,24 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         self.running = False
         if hasattr(self.source, 'stop'):
             self.source.stop()
-        self._queue.put(None)
+        self.output_queue.put(None)
         self.join()
         
     def eof(self) -> bool:
-        return not self.running or self._queue.empty() and self.source.eof()
+        return not self.running or self.output_queue.empty() and self.source.eof()
     
     def available(self, wait : bool=False) -> bool:
         # xxxjack if wait==True should get and put
         if not self.running:
             return False
-        if not self._queue.empty():
+        if not self.output_queue.empty():
             return True
         return self.source.available(wait)
         
     def get(self) -> Optional[cwipc_abstract]:
         if self.eof():
             return None
-        pc = self._queue.get()
+        pc = self.output_queue.get()
         return pc
 
     def run(self) -> None:
@@ -71,18 +71,18 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
             cpc = self.source.get()
             if not cpc:
                 print(f'passthrough: source.get returned no data')
-                self._queue.put(None)
+                self.output_queue.put(None)
                 break
             pc = cwipc.cwipc_from_packet(cpc)
-            self._queue.put(pc)
+            self.output_queue.put(pc)
             if self.verbose: print(f'passthrough: decoded pointcloud with {pc.count()} points')
         if self.verbose: print(f"passthrough: thread exiting")
 
-    def statistics(self):
+    def statistics(self) -> None:
         if hasattr(self.source, 'statistics'):
             self.source.statistics()
         
-    def print1stat(self, name, values, isInt=False):
+    def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('passthrough: {}: count=0'.format(name))
@@ -102,7 +102,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
     def auxiliary_data_requested(self, name: str) -> bool:
         return False
     
-def cwipc_source_passthrough(source, verbose=False):
+def cwipc_source_passthrough(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
     """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from another source and returns them"""
     rv = _NetPassthrough(source, verbose=verbose)
     return rv
