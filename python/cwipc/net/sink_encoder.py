@@ -1,16 +1,18 @@
 import threading
 import time
 import queue
-from typing import Any, Optional, List
 import cwipc
 import cwipc.codec
+from typing import Optional, List, Any
+from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract
 
-class _Sink_Encoder(threading.Thread):
+class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     
     FOURCC="cwi1"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
 
+    sink : cwipc_rawsink_abstract
     input_queue : queue.Queue[cwipc.cwipc_wrapper]
     pointcounts : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
@@ -23,8 +25,7 @@ class _Sink_Encoder(threading.Thread):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_Encoder'
         self.sink = sink
-        if hasattr(self.sink, 'set_fourcc'):
-            self.sink.set_fourcc(self.FOURCC)
+        self.sink.set_fourcc(self.FOURCC)
         self.producer = None
         self.nodrop = nodrop
         self.input_queue = queue.Queue(maxsize=2)
@@ -167,7 +168,7 @@ class _Sink_Encoder(threading.Thread):
             fmtstring = 'encoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_encoder(sink, verbose=False, nodrop=False):
+def cwipc_sink_encoder(sink : cwipc_rawsink_abstract, verbose : bool=False, nodrop : bool=False) -> cwipc_sink_abstract:
     """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
     if cwipc.codec == None:
         raise RuntimeError("cwipc_sink_encoder: requires cwipc.codec with is not available")

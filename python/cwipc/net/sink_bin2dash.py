@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 import os
 from typing import Optional, Any, List
+from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC
 
 _bin2dash_dll_reference = None
 
@@ -9,18 +10,6 @@ BIN2DASH_API_VERSION = 0x20200327A
 
 class Bin2dashError(RuntimeError):
     pass
-
-vrt_fourcc_type = int | bytes | str
-def VRT_4CC(code : vrt_fourcc_type) -> int:
-    """Convert anything reasonable (bytes, string, int) to 4cc integer"""
-    if isinstance(code, int):
-        return code
-    if not isinstance(code, bytes):
-        assert isinstance(code, str)
-        code = code.encode('ascii')
-    assert len(code) == 4
-    rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
-    return rv
 
 class vrt_handle_p(ctypes.c_void_p):
     pass
@@ -98,7 +87,6 @@ class _CpcBin2dashSink:
         if timeshift_buffer_depth_in_ms == None: timeshift_buffer_depth_in_ms=30000
         self.verbose = verbose
         self.nodrop = nodrop
-        self.producer = None
         self.url = url
         self.handle = None
         self.dll = _bin2dash_dll()
@@ -140,8 +128,8 @@ class _CpcBin2dashSink:
     def stop(self) -> None:
         pass
         
-    def set_producer(self, producer : Any) -> None:
-        self.producer = None
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
+        pass
         
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         self.fourcc = fourcc

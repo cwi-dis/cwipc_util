@@ -11,6 +11,7 @@ from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
 from ..net import source_sub
+from ..net.abstract import 
 
 try:
     from .. import realsense2
@@ -71,7 +72,7 @@ def cwipc_genericsource_factory(args, autoConfig=False):
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda : kinect.cwipc_kinect("auto")
+            source = lambda : kinect.cwipc_kinect("auto") # type: ignore
         elif args.cameraconfig:
             source = lambda : kinect.cwipc_kinect(args.cameraconfig)
         else:

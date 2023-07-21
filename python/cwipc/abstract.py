@@ -54,3 +54,6 @@ class cwipc_source_abstract(ABC):
     def auxiliary_data_requested(self, name : str) -> bool:
         """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
         ...
+
+class cwipc_sink_abstract(ABC):
+    pass
