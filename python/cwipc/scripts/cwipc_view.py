@@ -6,10 +6,11 @@ import time
 import argparse
 import traceback
 import queue
-from .. import cwipc_window, cwipc_tilefilter, cwipc_write
+from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
 from ._scriptsupport import *
+from ..net.abstract import *
 
-class Visualizer:
+class Visualizer(cwipc_sink_abstract):
     HELP="""
 space         Pause/resume
 mouse_left    Rotate viewpoint
@@ -28,15 +29,16 @@ c             Reload cameraconfig
 ?,h           Help
 q             Quit
     """
-    
-    def __init__(self, verbose=False, nodrop=False, args=None):
+    output_queue : queue.Queue[Optional[cwipc_wrapper]]
+
+    def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None):
         self.visualiser = None
         self.producer = None
         self.source = None
         self.cameraconfig = None
         if args:
             self.cameraconfig = args.cameraconfig
-        self.queue = queue.Queue(maxsize=2)
+        self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
         self.paused = False
@@ -48,22 +50,22 @@ q             Quit
         self.point_size_min = 0.0005
         self.point_size_power = 0
         
-    def set_producer(self, producer):
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
         self.producer = producer
         
-    def set_source(self, source):
+    def set_source(self, source : cwipc_source_abstract) -> None:
         self.source = source
         
-    def is_alive(self):
+    def is_alive(self) -> bool:
         return not self.stopped  
         
-    def run(self):
+    def run(self) -> None:
         while self.producer and self.producer.is_alive():
             try:
                 if self.paused and self.nodrop:
                     ok = self.draw_pc(None)
                     continue
-                pc = self.queue.get(timeout=0.033)
+                pc = self.output_queue.get(timeout=0.033)
                 if self.paused:
                     if pc: pc.free()
                     pc = None
@@ -77,12 +79,12 @@ q             Quit
                 pass
         self.stopped = True
         
-    def feed(self, pc):
+    def feed(self, pc : cwipc_wrapper) -> None:
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self.output_queue.put(pc)
             else:
-                self.queue.put(pc, timeout=0.5)
+                self.output_queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
@@ -93,8 +95,9 @@ q             Quit
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
-    def draw_pc(self, pc):
+    def draw_pc(self, pc : Optional[cwipc_wrapper]) -> bool:
         """Draw pointcloud"""
+        assert self.visualiser               
         cellsize = self.point_size_min
         if pc:
             cellsize = max(pc.cellsize(), cellsize)
@@ -106,7 +109,7 @@ q             Quit
             if self.tilefilter:
                 pc_to_show = cwipc_tilefilter(pc, self.tilefilter)
                 if self.verbose:
-                    print(f'display: selected {pc_to_show.count()} of {pc.count()} points')                  
+                    print(f'display: selected {pc_to_show.count()} of {pc.count()} points')
             ok = self.visualiser.feed(pc_to_show, True)
             if pc_to_show != pc:
                 pc_to_show.free()
@@ -155,9 +158,11 @@ q             Quit
             print(self.HELP, flush=True)
         return True
     
-    def reload_cameraconfig(self):
+    def reload_cameraconfig(self) -> None:
+        assert self.source
+        assert hasattr(self.source, "reload_config")
         try:
-            ok = self.source.reload_config(self.cameraconfig)
+            ok = self.source.reload_config(self.cameraconfig) # type: ignore
             if not ok:
                 print("reload_cameraconfig: failed to reload cameraconfig")
         except Exception as e:
@@ -169,7 +174,8 @@ q             Quit
         self.tilefilter = None
         self.select_tile_or_stream(all=True)
         
-    def select_tile_or_stream(self, *, number=None, all=False, increment=False):
+    def select_tile_or_stream(self, *, number : Optional[int]=None, all=False, increment=False):
+        assert self.source
         if self.filter_mode == 'stream':
             if not hasattr(self.source, 'select_stream'):
                 print('Input does not support stream selection')
@@ -179,7 +185,7 @@ q             Quit
             if number == None:
                 print('Network input only supports numeric stream selection')
                 return
-            ok = self.source.select_stream(number)
+            ok = self.source.select_stream(number) # type: ignore
             if ok:
                 print(f'Selecting input stream {number}')
             else:
@@ -195,6 +201,7 @@ q             Quit
                     self.tilefilter = self.tilefilter + 1
                 print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
             else:
+                assert number != None
                 if number == 0:
                     self.tilefilter = 0
                     print("Showing all tiles", flush=True)

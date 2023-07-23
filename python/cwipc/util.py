@@ -689,8 +689,11 @@ class cwipc_sink_wrapper:
             cwipc_util_dll_load().cwipc_sink_free(self.as_cwipc_sink_p())
         self._cwipc_source = None
         
-    def feed(self, pc : cwipc_wrapper, clear : bool) -> bool:
-        cpc = pc.as_cwipc_p() # type: ignore
+    def feed(self, pc : Optional[cwipc_wrapper], clear : bool) -> bool:
+        if pc == None:
+            cpc = None
+        else:
+            cpc = pc.as_cwipc_p() # type: ignore
         return cwipc_util_dll_load().cwipc_sink_feed(self.as_cwipc_sink_p(), cpc, clear)
         
     def caption(self, caption : str) -> None:

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Union
+import threading
 from ..abstract import *
 
 # 4CC handling doesn't really belong here, but it's convenient.
@@ -42,11 +43,13 @@ class cwipc_rawsource_abstract(ABC):
     def statistics(self) -> None:
         ...
 
-class cwipc_producer_abstract(ABC):
+#class cwipc_producer_abstract(ABC):
+#
+#    @abstractmethod
+#    def is_alive(self) -> bool;
+#        ...
 
-    @abstractmethod
-    def is_alive(self) -> bool;
-        ...
+cwipc_producer_abstract = threading.Thread
 
 class cwipc_rawsink_abstract(ABC):
 

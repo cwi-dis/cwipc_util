@@ -7,16 +7,23 @@ import argparse
 import traceback
 import queue
 import struct
+from typing import Optional, Dict, Any
 import numpy as np
 from PIL import Image
 
-from .. import cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
+from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
+from .. import codec
 from ._scriptsupport import *
+from ..net.abstract import *
 
-class FileWriter:
-    def __init__(self, pcpattern=None, rgbpattern=None, depthpattern=None, skeletonpattern=None, verbose=False, queuesize=2, nodrop=False, flags=0):
+class FileWriter(cwipc_sink_abstract):
+    encoder : Optional[codec.cwipc_encoder_wrapper]
+    producer : Optional[cwipc_producer_abstract]
+    output_queue : queue.Queue[Optional[cwipc_wrapper]]
+
+    def __init__(self, pcpattern : Optional[str]=None, rgbpattern : Optional[str]=None, depthpattern : Optional[str]=None, skeletonpattern : Optional[str]=None, verbose : bool=False, queuesize : int=2, nodrop : bool=False, flags : int=0):
         self.producer = None
-        self.queue = queue.Queue(maxsize=queuesize)
+        self.output_queue = queue.Queue(maxsize=queuesize)
         self.nodrop = nodrop
         self.verbose = verbose
         self.pcpattern = pcpattern
@@ -28,8 +35,7 @@ class FileWriter:
         self.error_encountered = False
         self.encoder = None
         
-    def setup_encoder(self, params):
-        from .. import codec
+    def setup_encoder(self, params : Dict[str, Any]):
         encoder_params = None
         if params:
             encoder_params = codec.cwipc_new_encoder_params()
@@ -47,13 +53,14 @@ class FileWriter:
                 setattr(encoder_params, k, params[k])
         self.encoder = codec.cwipc_new_encoder(params=encoder_params)
         
-    def set_producer(self, producer):
+    def set_producer(self, producer : cwipc_producer_abstract):
         self.producer = producer    
         
     def run(self):
-        while (self.producer and self.producer.is_alive()) or not self.queue.empty():
+        while (self.producer and self.producer.is_alive()) or not self.output_queue.empty():
             try:
-                pc = self.queue.get(timeout=0.5)
+                pc = self.output_queue.get(timeout=0.5)
+                assert pc
                 self.count = self.count + 1
                 ok = self.save_pc(pc)
                 pc.free()
@@ -69,9 +76,9 @@ class FileWriter:
     def feed(self, pc):
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self.output_queue.put(pc)
             else:
-                self.queue.put(pc, timeout=0.5)
+                self.output_queue.put(pc, timeout=0.5)
             if self.verbose:
                 print(f"writer: fed pointcloud {pc.timestamp()} to writer")
         except queue.Full:
@@ -98,6 +105,7 @@ class FileWriter:
                 if self.verbose:
                     print(f"writer: wrote pointcloud to {filename}")
             elif ext == '.cwicpc':
+                assert self.encoder
                 self.encoder.feed(pc)
                 cdata = self.encoder.get_bytes()
                 with open(filename, 'wb') as fp:
@@ -203,6 +211,8 @@ class FileWriter:
                 image_mode = 'RGBA'
             elif attrs['bpp'] == 2:
                 image_mode = 'I;16'
+            else:
+                raise CwipcError("Unexpected bpp in image attrs")
             image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
             return image
         elif 'format' in attrs:
@@ -217,6 +227,8 @@ class FileWriter:
             elif attrs['format'] == 4:
                 image_mode = 'I;16'
                 rgb_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
+            else:
+                raise CwipcError("Unexpected format in image attrs")
             return rgb_image
             
         
