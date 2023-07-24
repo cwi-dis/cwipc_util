@@ -1,3 +1,5 @@
+# type: ignore
+# xxxjack Unfortunately open3d is not type-hinted. If it ever is we should remove the line above and fix the typing.
 import sys
 import os
 import numpy as np
@@ -6,7 +8,9 @@ import pprint
 import math
 import cwipc
 import copy
+from typing import Optional, cast
 
+from .abstract import *
 from .pointcloud import Pointcloud
 from .cameraconfig import CameraConfig, DEFAULT_FILENAME
 from .ui import UI
@@ -19,6 +23,14 @@ FRONTAL_MATRIX = [
     [0, 0, 0, 1]
 ]    
 class Calibrator:
+
+    grabber : Optional[CalibratorGrabberAbstract]
+    cameraserial : List[str]
+    pointclouds : List[Pointcloud]
+    coarse_calibrated_pointclouds : List[Pointcloud]
+    fine_calibrated_pointclouds : List[Pointcloud]
+    refpointcloud : Optional[Pointcloud]
+
     def __init__(self, refpoints):
         self.ui = UI()
         self.cameraserial = []
@@ -37,11 +49,11 @@ class Calibrator:
         
     def __del__(self):
         self.grabber = None
-        self.pointclouds = None
-        self.coarse_calibrated_pointclouds = None
+        self.pointclouds = []
+        self.coarse_calibrated_pointclouds = []
         self.refpointcloud = None
         
-    def open(self, grabber, clean, reuse):
+    def open(self, grabber : CalibratorGrabberAbstract, clean : bool, reuse : bool) -> bool:
         if clean:
             if os.path.exists(DEFAULT_FILENAME):
                 os.unlink(DEFAULT_FILENAME)
@@ -56,16 +68,18 @@ class Calibrator:
             return False
         self.cameraserial = self.grabber.getserials()
         self.cameraconfig = CameraConfig(DEFAULT_FILENAME, read=False)
-        self.cameraconfig.copyFrom(self.grabber.cameraconfig)
+        self.cameraconfig.copyFrom(self.grabber.cameraconfig) # type: ignore
         return True
 
-    def issynthetic(self):
+    def issynthetic(self) -> bool:
+        assert self.grabber
         return self.grabber.getserials()[0] == "synthetic"
         
     def auto(self):
         self.skip_coarse()
         self.skip_fine()
         # If we have a single camera and no matrix we apply the frontal 1m matrix
+        assert self.grabber
         if len(self.cameraserial) == 0:
             pass
         elif len(self.cameraserial) == 1:
@@ -78,10 +92,11 @@ class Calibrator:
                 self.ui.show_error('%s: multi-camera setup, please run calibrator manually' % sys.argv[0])
                 sys.exit(1)
         
-    def grab(self, noinspect):
+    def grab(self, noinspect : bool) -> None:
+        assert self.grabber
         if not self.cameraserial:
             self.ui.show_error('* No cameras found')
-            return False
+            return
         self.ui.show_message('* Grabbing pointclouds')
         self.get_pointclouds()
         if DEBUG:
@@ -142,7 +157,7 @@ class Calibrator:
         joined.save('cwipc_calibrate_coarse.ply', cwipc.CWIPC_FLAGS_BINARY)
         self.ui.show_points('Inspect manual calibration result', joined)
         
-    def skip_coarse(self):
+    def skip_coarse(self) -> None:
         self.coarse_calibrated_pointclouds = self.pointclouds
         for i in range(len(self.cameraserial)):
             self.coarse_matrix.append([
@@ -152,9 +167,9 @@ class Calibrator:
                 [0, 0, 0, 1],
             ])
         
-    def run_fine(self, correspondance_dist, inspect):
+    def run_fine(self, correspondance_dist : float, inspect : bool) -> None:
         print("# Starting fine alignment")
-        
+        assert self.grabber
         camPositions = []
         #Get positions of all camera origins in world coordinates
         for i in range(0, len(self.coarse_calibrated_pointclouds)):
@@ -165,6 +180,7 @@ class Calibrator:
             camPositions.append(camVector)
          
         compute_align_fine = True
+        joined : Optional[Pointcloud] = None
         while compute_align_fine:
             self.fine_matrix = []
             self.fine_calibrated_pointclouds = []
@@ -279,11 +295,11 @@ class Calibrator:
             retry = sys.stdin.readline().strip().lower()
             if retry == 'y':
                 compute_align_fine = False
-        
+        assert joined
         joined.save('cwipc_calibrate_calibrated.ply', cwipc.CWIPC_FLAGS_BINARY)
         print("Result saved as cwipc_calibrate_calibrated.ply")
         
-    def skip_fine(self):
+    def skip_fine(self) -> None:
         for i in range(len(self.cameraserial)):
             self.fine_matrix.append([
                 [1, 0, 0, 0],
@@ -293,20 +309,21 @@ class Calibrator:
             ])
         self.fine_calibrated_pointclouds = self.coarse_calibrated_pointclouds
         
-    def save(self):
+    def save(self) -> None:
         # Open3D Visualiser changes directory (!!?!), so change it back
         os.chdir(self.workdir)
         self.writeconfig()
         self.cleanup()
         
-    def cleanup(self):
+    def cleanup(self) -> None:
         self.pointclouds = []
         self.coarse_calibrated_pointclouds = []
         self.fine_calibrated_pointclouds = []
         self.refpointcloud = None
         self.grabber = None
         
-    def get_pointclouds(self):
+    def get_pointclouds(self) -> None:
+        assert self.grabber
         # Create the canonical pointcloud, which determines the eventual coordinate system
         self.refpointcloud = Pointcloud.from_points(self.refpoints)
         # Get the number of cameras and their tile numbers
@@ -315,6 +332,7 @@ class Calibrator:
         # Grab one combined pointcloud and split it into tiles
         for i in range(10):
             pc = self.grabber.getpointcloud()
+            pc = cast(Pointcloud, pc)
             self.pointclouds = pc.split()
             if len(self.pointclouds) == maxtile: break
             self.ui.show_error(f'Warning: got {len(self.pointclouds)} pointclouds in stead of {maxtile}. Retry.')
@@ -326,7 +344,9 @@ class Calibrator:
         joined = Pointcloud.from_join(self.pointclouds)
         joined.save('cwipc_calibrate_captured.ply', cwipc.CWIPC_FLAGS_BINARY)
     
-    def writeconfig(self):
+    def writeconfig(self) -> None:
+        assert self.grabber
+        assert self.cameraconfig
         allcaminfo = ""
         for i in range(len(self.cameraserial)):
             serial = self.cameraserial[i]
@@ -337,7 +357,7 @@ class Calibrator:
             self.cameraconfig.setmatrix(i, matrix)
         self.cameraconfig.save()
 
-    def align_pair(self, source, picked_id_source, target, picked_id_target, extended=False):
+    def align_pair(self, source : Pointcloud, picked_id_source, target, picked_id_target, extended=False):
         assert(len(picked_id_source)>=3 and len(picked_id_target)>=3)
         assert(len(picked_id_source) == len(picked_id_target))
         corr = np.zeros((len(picked_id_source),2))

@@ -27,7 +27,6 @@ try:
 except ModuleNotFoundError:
     kinect = None
 
-cwipc_abstract_source_factory = Callable[[], cwipc_source_abstract]
 class cwipc_abstract_filter(ABC):
 
     @abstractmethod
@@ -65,13 +64,13 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_abstract_source_factory, Optional[str]]:
+def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
     name : Optional[str] = None
-    source : cwipc_abstract_source_factory
+    source : cwipc_source_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
 
     if args.nodecode:
@@ -87,7 +86,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         elif args.cameraconfig:
             source = lambda : kinect.cwipc_kinect(args.cameraconfig) # type: ignore
         else:
-            source = cast(cwipc_abstract_source_factory, kinect.cwipc_kinect)
+            source = cast(cwipc_source_factory_abstract, kinect.cwipc_kinect)
         name = 'kinect'
     elif args.k4aoffline:
         if kinect == None or not hasattr(kinect, 'cwipc_k4aoffline'):
@@ -96,7 +95,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         if args.cameraconfig:
             source = lambda : kinect.cwipc_k4aoffline(args.cameraconfig)  # type: ignore
         else:
-            source = cast(cwipc_abstract_source_factory, kinect.cwipc_k4aoffline)
+            source = cast(cwipc_source_factory_abstract, kinect.cwipc_k4aoffline)
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
     elif args.realsense:
         if realsense2 == None:
@@ -107,7 +106,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         elif args.cameraconfig:
             source = lambda : realsense2.cwipc_realsense2(args.cameraconfig) # type: ignore
         else:
-            source = cast(cwipc_abstract_source_factory, realsense2.cwipc_realsense2)
+            source = cast(cwipc_source_factory_abstract, realsense2.cwipc_realsense2)
         name = 'realsense'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
@@ -175,7 +174,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         elif args.cameraconfig:
             source = lambda : cwipc_capturer(args.cameraconfig)
         else:
-            source = cast(cwipc_abstract_source_factory, cwipc_capturer)
+            source = cast(cwipc_source_factory_abstract, cwipc_capturer)
         name = 'auto'
         _ = source
     return source, name

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, Callable
 import threading
 from ..abstract import *
 
@@ -16,6 +16,8 @@ def VRT_4CC(code : vrt_fourcc_type) -> int:
     assert len(code) == 4
     rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
     return rv
+
+cwipc_source_factory_abstract = Callable[[], cwipc_source_abstract]
 
 class cwipc_rawsource_abstract(ABC):
     """A source that produces a stream of raw data blocks (as bytes).
