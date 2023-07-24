@@ -4,9 +4,10 @@ import queue
 import cwipc
 import cwipc.codec
 from typing import Optional, List, Any
-from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract
+from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
 class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
+    """A pointcloud sink that compresses pointclouds and forwards them to a rawsink."""
     
     FOURCC="cwi1"
     SELECT_TIMEOUT=0.1
@@ -21,7 +22,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     times_encode : List[float]
 
     # xxxjack the Any for sink is a cop-out. Need to define ABCs for all the types.
-    def __init__(self, sink : Any, verbose : bool=False, nodrop : bool=False):
+    def __init__(self, sink : cwipc_rawsink_abstract, verbose : bool=False, nodrop : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_Encoder'
         self.sink = sink
@@ -140,7 +141,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
                         if not 'normal' in self.tiledescriptions[tile]:
                             print(f'encoder: warning: tile {tile} description has no normal vector: {self.tiledescriptions[tile]}')
                         normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
-                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z'])
+                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z']) # type: ignore
                         if self.verbose:
                             print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
                     else:
@@ -169,7 +170,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
 def cwipc_sink_encoder(sink : cwipc_rawsink_abstract, verbose : bool=False, nodrop : bool=False) -> cwipc_sink_abstract:
-    """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
+    """Create a cwipc_sink object that compresses pointclouds and forward them to a rawsink."""
     if cwipc.codec == None:
         raise RuntimeError("cwipc_sink_encoder: requires cwipc.codec with is not available")
     return _Sink_Encoder(sink, verbose=verbose, nodrop=nodrop)

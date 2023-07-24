@@ -103,7 +103,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         return False
     
 def cwipc_source_passthrough(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
-    """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from another source and returns them"""
+    """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from a rawsource and returns them"""
     rv = _NetPassthrough(source, verbose=verbose)
     return rv
         

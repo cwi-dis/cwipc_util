@@ -2,7 +2,7 @@ import ctypes
 import ctypes.util
 import os
 from typing import Optional, Any, List
-from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC
+from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
 _bin2dash_dll_reference = None
 
@@ -76,7 +76,12 @@ def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     
     return _bin2dash_dll_reference
  
-class _CpcBin2dashSink:
+class _CpcBin2dashSink(cwipc_rawsink_abstract):
+    """A DASH sink that streams multiple data streams to a MotionSpell DASH ingestion server.
+    
+    Uses the bin2dash native implementation under the hood.
+    """
+    
     streamDescs : Optional[List[streamDesc]]
     dll : ctypes.CDLL
     fourcc : Optional[vrt_fourcc_type]
@@ -138,6 +143,7 @@ class _CpcBin2dashSink:
         self.streamDescs = streamDescs
         
     def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : int | float) -> int:
+        """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
         if not self.streamDescs:
             self.streamDescs = []
         if type(x) != int: x = int(x*1000)
@@ -189,5 +195,6 @@ class _CpcBin2dashSink:
             fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> _CpcBin2dashSink:
+def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
+    """Create a sink that transmits to a DASH ingestion server."""
     return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)

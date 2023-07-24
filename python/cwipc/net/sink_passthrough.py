@@ -5,14 +5,16 @@ import select
 import time
 import queue
 import cwipc
+from typing import Optional, List, Any
+from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
-class _Sink_Passthrough(threading.Thread):
+class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
+    """A sink object that serializes pointclouds and forwards them to a rawsink."""
     
     FOURCC="cwi0"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
-    
-    
+
     def __init__(self, sink, verbose=False, nodrop=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._SinkPassthrough'
@@ -29,6 +31,7 @@ class _Sink_Passthrough(threading.Thread):
         self.pointcounts = []
          
     def set_encoder_params(self, **kwargs):
+        """Specify the parameters for the encoder."""
         raise RuntimeError("cwipc_sink_passthrough: no encoder parameters supported")
         
     def start(self):
@@ -95,6 +98,6 @@ class _Sink_Passthrough(threading.Thread):
             fmtstring = 'passthrough: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_passthrough(sink, verbose=False, nodrop=False):
+def cwipc_sink_passthrough(sink : cwipc_rawsink_abstract, verbose=False, nodrop=False) -> cwipc_sink_abstract:
     """Create a cwipc_sink object sends serialized uncompressed pointclouds to another sink"""
     return _Sink_Passthrough(sink, verbose=verbose, nodrop=nodrop)

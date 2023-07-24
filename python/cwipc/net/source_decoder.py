@@ -12,11 +12,12 @@ except ModuleNotFoundError:
     codec = None
 
 class _NetDecoder(threading.Thread, cwipc_source_abstract):
+    """A source that decodes pointclouds gotten from a rawsource."""
     
     QUEUE_WAIT_TIMEOUT=1
     output_queue : queue.Queue[Optional[cwipc_abstract]]
 
-    def __init__(self, source, verbose : bool=False):
+    def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetDecoder'
         self.source = source
@@ -45,9 +46,9 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             self.source.start()
         if hasattr(self.source, 'disable_stream'):
             # For sources with streams per tile disable all tiles except the first one.
-            for i in range(1, self.source.maxtile()):
+            for i in range(1, self.source.maxtile()): # type: ignore
                 print(f'netdecoder: disable tile {i}')
-                self.source.disable_stream(i)
+                self.source.disable_stream(i) # type: ignore
         
     def stop(self) -> None:
         if self.verbose: print('netdecoder: stop', flush=True)
