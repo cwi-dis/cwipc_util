@@ -35,6 +35,12 @@ class FileWriter(cwipc_sink_abstract):
         self.error_encountered = False
         self.encoder = None
         
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
     def setup_encoder(self, params : Dict[str, Any]):
         encoder_params = None
         if params:
@@ -199,7 +205,7 @@ class FileWriter(cwipc_sink_abstract):
         data = data.transpose()
         return Image.fromarray(data)
         
-    def as_image(self, type, description, data):
+    def as_image(self, type, description, data) -> Any:
         attrs = self.parse_description(description)
         #print(f"attrs: {attrs}")
         width = attrs['width']
@@ -229,8 +235,10 @@ class FileWriter(cwipc_sink_abstract):
                 rgb_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
             else:
                 raise CwipcError("Unexpected format in image attrs")
-            return rgb_image
-            
+            return rgb_image 
+
+    def statistics(self) -> None:
+        pass        
         
 def main():
     SetupStackDumper()

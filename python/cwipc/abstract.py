@@ -25,6 +25,8 @@ class cwipc_abstract(ABC):
         
     
 class cwipc_source_abstract(ABC):
+    """A source of pointclouds. This could be a live camera, a file reader or a network receiver."""
+
     @abstractmethod
     def free(self) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
@@ -54,6 +56,3 @@ class cwipc_source_abstract(ABC):
     def auxiliary_data_requested(self, name : str) -> bool:
         """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
         ...
-
-class cwipc_sink_abstract(ABC):
-    pass

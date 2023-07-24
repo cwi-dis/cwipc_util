@@ -8,6 +8,7 @@ import cwipc
 from typing import Optional, List, Any
 from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
+
 class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
     """A sink object that serializes pointclouds and forwards them to a rawsink."""
     

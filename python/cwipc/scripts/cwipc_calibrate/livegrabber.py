@@ -1,13 +1,10 @@
 import sys
 import os
-import cwipc
-from .cameraconfig import DEFAULT_FILENAME
-#
-# Windows search path is horrible. Work around it for testing with an environment variable
-#
-
-from .pointcloud import Pointcloud
 import os.path
+
+from ... import CwipcError
+from .cameraconfig import DEFAULT_FILENAME
+from .pointcloud import Pointcloud
 from .cameraconfig import CameraConfig
 
 DEBUG=False
@@ -25,7 +22,7 @@ class LiveGrabber:
         
         try:
             self.grabber = self.captureCreator()
-        except cwipc.CwipcError as exc:
+        except CwipcError as exc:
             print(f'Error opening camera: {exc}', file=sys.stderr)
             return False
         jsonConfig = self.grabber.get_config()

@@ -50,6 +50,15 @@ q             Quit
         self.point_size_min = 0.0005
         self.point_size_power = 0
         
+    def statistics(self) -> None:
+        pass
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+    
     def set_producer(self, producer : cwipc_producer_abstract) -> None:
         self.producer = producer
         

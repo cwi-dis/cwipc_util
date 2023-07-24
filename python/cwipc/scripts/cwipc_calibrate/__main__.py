@@ -49,7 +49,7 @@ def main():
     capturerFactory, capturerName = cwipc_genericsource_factory(args, autoConfig=True)
     if args.fromxml:
         # Special case: load XML config file name create JSON config file
-        capturer = capturerFactory("cameraconfig.xml")
+        capturer = capturerFactory("cameraconfig.xml") # type: ignore
         json_data = capturer.get_config()
         open('cameraconfig.json', 'wb').write(json_data)
         return 0

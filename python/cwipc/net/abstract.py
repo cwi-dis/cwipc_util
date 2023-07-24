@@ -136,3 +136,26 @@ class cwipc_rawsink_abstract(ABC):
         """Print statistics."""
         ...
 
+
+class cwipc_sink_abstract(ABC):
+    """A sink for pointclouds. They could be shown on-screen, transmitted over the network, etc."""
+    
+    @abstractmethod
+    def start(self) -> None:
+        """Start the sink (if needed). This will start the sender."""
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
+        """Stop the sink."""
+        ...
+
+    @abstractmethod
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
+        """The rawsink will call producer.is_alive() to determine when it should stop transmitting."""
+        ...
+
+    @abstractmethod
+    def statistics(self) -> None:
+        """Print statistics."""
+        ...
