@@ -124,12 +124,12 @@ class cwipc_rawsink_abstract(ABC):
         ...
     
 #    @abstractmethod
-#    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : int | float) -> int:
+#    def add_streamDesc(self, tilenum : int, x : int|float, y : Union[int, float], z : Union[int, float]) -> int:
 #        """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
 #        ...
 
     @abstractmethod
-    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None) -> bool:
+    def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:
         """Feed a data block to the transmitter. For some implementations it is possible to specify the stream index."""
         ...
 
