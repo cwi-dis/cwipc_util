@@ -8,7 +8,7 @@ include(GNUInstallDirs)
 
 
 find_package(PCL 1.10 COMPONENTS common io octree filters features)
-find_package(glfw3 3.2 QUIET)
+find_package(glfw3 3.2)
 if(NOT glfw3_FOUND)
 	message(STATUS "glfw3: Use from third-party/glfw")
 	add_subdirectory("third-party/glfw")
