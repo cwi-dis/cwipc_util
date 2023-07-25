@@ -5,7 +5,7 @@ import warnings
 import os
 import sys
 from typing import Optional, List, Type, Any, Union
-from .abstract import cwipc_abstract, cwipc_source_abstract
+from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_pythonic
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -274,7 +274,6 @@ class cwipc_tileinfo(ctypes.Structure):
         ("cameraMask", ctypes.c_uint8),
     ]
 
-cwipc_tileinfo_pythonic = dict[str, Any]
 #
 # C/Python cwipc_point_packetheader structure
 #
@@ -618,7 +617,7 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         return cwipc_util_dll_load().cwipc_source_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
         
         
-class cwipc_tiledsource_wrapper(cwipc_source_wrapper):
+class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract):
     """Tiled pointcloud sources as opaque object"""
     _cwipc_source : Optional[cwipc_tiledsource_p]
 
@@ -689,8 +688,11 @@ class cwipc_sink_wrapper:
             cwipc_util_dll_load().cwipc_sink_free(self.as_cwipc_sink_p())
         self._cwipc_source = None
         
-    def feed(self, pc : cwipc_wrapper, clear : bool) -> bool:
-        cpc = pc.as_cwipc_p() # type: ignore
+    def feed(self, pc : Optional[cwipc_wrapper], clear : bool) -> bool:
+        if pc == None:
+            cpc = None
+        else:
+            cpc = pc.as_cwipc_p() # type: ignore
         return cwipc_util_dll_load().cwipc_sink_feed(self.as_cwipc_sink_p(), cpc, clear)
         
     def caption(self, caption : str) -> None:

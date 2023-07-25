@@ -6,37 +6,46 @@ import traceback
 import queue
 import socket
 import struct
-from .. import CWIPC_POINT_PACKETHEADER_MAGIC
+from .. import CWIPC_POINT_PACKETHEADER_MAGIC, cwipc_wrapper
+from ..net.abstract import cwipc_producer_abstract, cwipc_sink_abstract
 from ._scriptsupport import *
 
-class Sender:
-    
+class Sender(cwipc_sink_abstract):
+    output_queue : queue.Queue[cwipc_wrapper]
+
     def __init__(self, host, port, verbose=False):
         self.producer = None
-        self.queue = queue.Queue(maxsize=2)
+        self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
+        # xxxjack should these move to start() and then also implement stop()?
         self.socket = socket.socket()
         self.socket.connect((host, port))
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
         
-    def set_producer(self, producer):
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
         self.producer = producer    
         
     def run(self):
         while self.producer and self.producer.is_alive():
             try:
-                pc = self.queue.get(timeout=0.033)
+                pc = self.output_queue.get(timeout=0.033)
                 ok = self.send_pc(pc)
                 pc.free()
             except queue.Empty:
                 pass
         
-    def feed(self, pc):
+    def feed(self, pc : cwipc_wrapper) -> None:
         try:
-            self.queue.put(pc, timeout=0.5)
+            self.output_queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
-    def send_pc(self, pc):
+    def send_pc(self, pc : cwipc_wrapper) -> None:
         data = pc.get_bytes()
         cellsize = pc.cellsize()
         timestamp = pc.timestamp()
@@ -44,7 +53,8 @@ class Sender:
         x = self.socket.send(header)
         y = self.socket.send(data)
 
- 
+    def statistics(self) -> None:
+        pass
 
 def main():
     SetupStackDumper()

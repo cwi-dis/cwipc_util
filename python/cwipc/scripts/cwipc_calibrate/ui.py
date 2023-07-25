@@ -1,5 +1,9 @@
 import sys
+from typing import List
 import open3d
+import open3d.visualization
+
+from .pointcloud import Pointcloud
 
 DRAW_OWN_AXES=True   # Use open3d coordinate drawing when false.
 
@@ -7,7 +11,7 @@ class UI:
     def __init__(self):
         self.winpos = 100
         
-    def show_prompt(self, msg, isedit=False):
+    def show_prompt(self, msg : str, isedit=False):
         stars = '*'*(len(msg)+2)
         print(stars)
         print('* ' + msg)
@@ -21,8 +25,9 @@ class UI:
             print('- ignore selection indicator colors, only the order is important')
         sys.stdout.flush()
         
-    def show_question(self, msg, canretry=False):
+    def show_question(self, msg : str, canretry=False) -> bool:
         answered = False
+        ok = False
         while not answered:
             print('* ', msg)
             if canretry:
@@ -40,14 +45,14 @@ class UI:
                 answered = True
         return ok
 
-    def show_error(self, msg):
+    def show_error(self, msg : str) -> None:
         print(msg)
         
-    def show_message(self, msg):
+    def show_message(self, msg : str) -> None:
         print(msg)
     
-    def pick_points(self, title, pc, from000=False):
-        vis = open3d.visualization.VisualizerWithEditing()
+    def pick_points(self, title : str, pc : Pointcloud, from000 : bool=False) -> List[int]:
+        vis = open3d.visualization.VisualizerWithEditing() # type: ignore
         vis.create_window(window_name=title, width=960, height=540, left=self.winpos, top=self.winpos)
         #self.winpos += 50
         vis.add_geometry(pc.get_o3d())
@@ -60,8 +65,8 @@ class UI:
         vis.destroy_window()
         return vis.get_picked_points()
 
-    def show_points(self, title, pc, from000=False):
-        vis = open3d.visualization.Visualizer()
+    def show_points(self, title : str, pc : Pointcloud, from000=False) -> None:
+        vis = open3d.visualization.Visualizer() # type: ignore
         vis.create_window(window_name=title, width=960, height=540, left=self.winpos, top=self.winpos)
         #self.winpos += 50
         vis.add_geometry(pc.get_o3d())

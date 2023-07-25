@@ -3,8 +3,9 @@ import time
 import os
 import json
 from typing import List, Optional, Any, Iterable, Union
+from .abstract import cwipc_source_abstract
 
-class _Filesource:
+class _Filesource(cwipc_source_abstract):
     def __init__(self, filenames : Union[str, List[str]], tileInfo : Optional[List[dict[Any,Any]]]=None, loop : bool=False, fps : Optional[int]=None, retimestamp : bool=False):
         if not tileInfo:
             tileInfo = [{
@@ -57,6 +58,12 @@ class _Filesource:
         
     def get_tileinfo_dict(self, i : int) -> dict[Any,Any]:
         return self.tileInfo[i]
+    
+    def request_auxiliary_data(self, name: str) -> None:
+        raise cwipc.CwipcError("Not supported for _Filesource")
+    
+    def auxiliary_data_requested(self, name: str) -> bool:
+        return False
         
 class _DumpFilesource(_Filesource):
     def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
@@ -75,7 +82,7 @@ class _CompressedFilesource(_Filesource):
         self.decoder.feed(data)
         return self.decoder.get()
     
-def cwipc_playback(dir_or_files : Union[str, List[str]], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> _Filesource:
+def cwipc_playback(dir_or_files : Union[str, List[str]], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> cwipc_source_abstract:
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
     filenames : Iterable[str]

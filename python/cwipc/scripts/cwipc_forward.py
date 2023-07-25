@@ -66,18 +66,20 @@ def main():
         )
     if args.octree_bits or args.jpeg_quality or args.tiled:
         if args.tiled:
-            tilecount = source.maxtile()
-            td = [source.get_tileinfo_dict(i) for i in range(tilecount)]
+            assert hasattr(source, 'maxtile')
+            tilecount = source.maxtile() # type: ignore
+            td = [source.get_tileinfo_dict(i) for i in range(tilecount)] # type: ignore
             tiledescriptions = filter(lambda e: e['cameraMask'] != 0, td)
             tiledescriptions = list(tiledescriptions)
             if len(tiledescriptions) < len(td):
                 if args.verbose:
                     print(f'cwipc_forward: ignoring full tile', file=sys.stderr)
         elif args.tile:
-            tiledescriptions = [source.get_tileinfo_dict(i) for i in args.tile]
+            tiledescriptions = [source.get_tileinfo_dict(i) for i in args.tile] # type: ignore
         else:
             tiledescriptions = None
-        forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions)
+        assert hasattr(forwarder, 'set_encoder_params')
+        forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions) # type: ignore
 
     sourceServer = SourceServer(source, forwarder, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_forward.SourceServer")

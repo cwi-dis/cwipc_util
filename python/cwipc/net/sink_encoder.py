@@ -1,17 +1,20 @@
 import threading
 import time
 import queue
-from typing import Any, Optional, List
 import cwipc
 import cwipc.codec
+from typing import Optional, List, Any
+from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
-class _Sink_Encoder(threading.Thread):
+class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
+    """A pointcloud sink that compresses pointclouds and forwards them to a rawsink."""
     
     FOURCC="cwi1"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
 
-    queue : 'queue.Queue[cwipc.cwipc_wrapper]'
+    sink : cwipc_rawsink_abstract
+    input_queue : queue.Queue[cwipc.cwipc_wrapper]
     pointcounts : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
@@ -19,15 +22,14 @@ class _Sink_Encoder(threading.Thread):
     times_encode : List[float]
 
     # xxxjack the Any for sink is a cop-out. Need to define ABCs for all the types.
-    def __init__(self, sink : Any, verbose : bool=False, nodrop : bool=False):
+    def __init__(self, sink : cwipc_rawsink_abstract, verbose : bool=False, nodrop : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_Encoder'
         self.sink = sink
-        if hasattr(self.sink, 'set_fourcc'):
-            self.sink.set_fourcc(self.FOURCC)
+        self.sink.set_fourcc(self.FOURCC)
         self.producer = None
         self.nodrop = nodrop
-        self.queue = queue.Queue(maxsize=2)
+        self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
@@ -72,7 +74,7 @@ class _Sink_Encoder(threading.Thread):
         if self.verbose: print(f"encoder: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
-                pc = self.queue.get()
+                pc = self.input_queue.get()
                 if not pc:
                     print(f"encoder: get() returned None")
                     continue
@@ -102,9 +104,9 @@ class _Sink_Encoder(threading.Thread):
     def feed(self, pc : cwipc.cwipc_wrapper) -> None:
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self.input_queue.put(pc)
             else:
-                self.queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.input_queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
             if self.verbose: print(f"encoder: queue full, drop pointcloud")
             pc.free()
@@ -139,7 +141,7 @@ class _Sink_Encoder(threading.Thread):
                         if not 'normal' in self.tiledescriptions[tile]:
                             print(f'encoder: warning: tile {tile} description has no normal vector: {self.tiledescriptions[tile]}')
                         normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
-                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z'])
+                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z']) # type: ignore
                         if self.verbose:
                             print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
                     else:
@@ -167,8 +169,8 @@ class _Sink_Encoder(threading.Thread):
             fmtstring = 'encoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_encoder(sink, verbose=False, nodrop=False):
-    """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
+def cwipc_sink_encoder(sink : cwipc_rawsink_abstract, verbose : bool=False, nodrop : bool=False) -> cwipc_sink_abstract:
+    """Create a cwipc_sink object that compresses pointclouds and forward them to a rawsink."""
     if cwipc.codec == None:
         raise RuntimeError("cwipc_sink_encoder: requires cwipc.codec with is not available")
     return _Sink_Encoder(sink, verbose=verbose, nodrop=nodrop)

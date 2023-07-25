@@ -1,16 +1,21 @@
 import sys
 import os
 import cwipc
+from typing import Optional, List
 
+from .abstract import CalibratorGrabberAbstract
+from ... import cwipc_wrapper
 from .pointcloud import Pointcloud
-from .cameraconfig import CameraConfig, DEFAULT_FILENAME
+from .cameraconfig import CameraConfig, DEFAULT_FILENAME, matrix_type
 
-class FileGrabber:
-    def __init__(self, plyfile):
+class FileGrabber(CalibratorGrabberAbstract):
+    cameraconfig : Optional[CameraConfig]
+
+    def __init__(self, plyfile : str):
         self.pcFilename = plyfile
         self.cameraconfig = None
         
-    def open(self):
+    def open(self) -> bool:
         if not os.path.exists(self.pcFilename):
             print(f'File not found: {self.pcFilename}', file=sys.stderr)
             return False
@@ -22,15 +27,18 @@ class FileGrabber:
         self.cameraconfig = CameraConfig(confFilename, read=True)
         return True
         
-    def getcount(self):
+    def getcount(self) -> int:
+        assert self.cameraconfig
         return self.cameraconfig.getcount()
         
-    def getserials(self):
+    def getserials(self) -> List[str]:
+        assert self.cameraconfig
         return self.cameraconfig.getserials()
         
-    def getmatrix(self, tilenum):
+    def getmatrix(self, tilenum : int) -> matrix_type:
+        assert self.cameraconfig
         return self.cameraconfig.getmatrix(tilenum)
         
-    def getpointcloud(self):
+    def getpointcloud(self) -> Pointcloud:
         pc = cwipc.cwipc_read(self.pcFilename, 0)
         return Pointcloud.from_cwipc(pc)

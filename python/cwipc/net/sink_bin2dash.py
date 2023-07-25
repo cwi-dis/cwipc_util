@@ -1,7 +1,8 @@
 import ctypes
 import ctypes.util
 import os
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Union
+from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
 _bin2dash_dll_reference = None
 
@@ -9,18 +10,6 @@ BIN2DASH_API_VERSION = 0x20200327A
 
 class Bin2dashError(RuntimeError):
     pass
-
-vrt_fourcc_type = int | bytes | str
-def VRT_4CC(code : vrt_fourcc_type):
-    """Convert anything reasonable (bytes, string, int) to 4cc integer"""
-    if isinstance(code, int):
-        return code
-    if not isinstance(code, bytes):
-        assert isinstance(code, str)
-        code = code.encode('ascii')
-    assert len(code) == 4
-    rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
-    return rv
 
 class vrt_handle_p(ctypes.c_void_p):
     pass
@@ -44,7 +33,7 @@ class streamDesc(ctypes.Structure):
     def __init__(self, fourcc : vrt_fourcc_type, *args : Any):
         super(streamDesc, self).__init__(VRT_4CC(fourcc), *args)
     
-def _bin2dash_dll(libname : Optional[str]=None):
+def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     global _bin2dash_dll_reference
     if _bin2dash_dll_reference: return _bin2dash_dll_reference
     
@@ -87,7 +76,12 @@ def _bin2dash_dll(libname : Optional[str]=None):
     
     return _bin2dash_dll_reference
  
-class _CpcBin2dashSink:
+class _CpcBin2dashSink(cwipc_rawsink_abstract):
+    """A DASH sink that streams multiple data streams to a MotionSpell DASH ingestion server.
+    
+    Uses the bin2dash native implementation under the hood.
+    """
+    
     streamDescs : Optional[List[streamDesc]]
     dll : ctypes.CDLL
     fourcc : Optional[vrt_fourcc_type]
@@ -98,7 +92,6 @@ class _CpcBin2dashSink:
         if timeshift_buffer_depth_in_ms == None: timeshift_buffer_depth_in_ms=30000
         self.verbose = verbose
         self.nodrop = nodrop
-        self.producer = None
         self.url = url
         self.handle = None
         self.dll = _bin2dash_dll()
@@ -140,8 +133,8 @@ class _CpcBin2dashSink:
     def stop(self) -> None:
         pass
         
-    def set_producer(self, producer : Any) -> None:
-        self.producer = None
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
+        pass
         
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         self.fourcc = fourcc
@@ -149,7 +142,8 @@ class _CpcBin2dashSink:
     def _set_streamDescs(self, streamDescs : List[streamDesc]) -> None:
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : int | float) -> int:
+    def add_streamDesc(self, tilenum : int, x : Union[int, float], y : Union[int, float], z : Union[int, float]) -> int:
+        """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
         if not self.streamDescs:
             self.streamDescs = []
         if type(x) != int: x = int(x*1000)
@@ -165,11 +159,12 @@ class _CpcBin2dashSink:
             self.dll.vrt_destroy(self.handle)
             self.handle = None
             
-    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None):
+    def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:
         if not self.handle:
             return False
         assert self.dll
         length = len(buffer)
+        ok : bool
         if stream_index == None:
             ok = self.dll.vrt_push_buffer(self.handle, bytes(buffer), length)
         else:
@@ -186,7 +181,7 @@ class _CpcBin2dashSink:
     def statistics(self) -> None:
         self.print1stat('packetsize', self.sizes_forward)
         
-    def print1stat(self, name : str, values : List[int]|List[float], isInt : bool=False) -> None:
+    def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('bin2dash: {}: count=0'.format(name))
@@ -200,5 +195,6 @@ class _CpcBin2dashSink:
             fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> _CpcBin2dashSink:
+def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
+    """Create a sink that transmits to a DASH ingestion server."""
     return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)

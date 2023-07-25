@@ -2,10 +2,16 @@ import cwipc
 import numpy as np
 import open3d
 import copy
+from typing import Optional, Any, Tuple, List
+from ... import cwipc_wrapper
+
+O3dPointcloud = Any
 
 class Pointcloud:
     """A class that handles both cwipc pointclouds and o3d pointclouds and converts between them"""
-    
+    cwipc : Optional[cwipc_wrapper]
+    o3d: O3dPointcloud
+
     def __init__(self):
         self.cwipc = None
         self.o3d = None
@@ -16,18 +22,18 @@ class Pointcloud:
         self.cwipc = None
         self.o3d = None
         
-    def _ensure_cwipc(self):
+    def _ensure_cwipc(self) -> None:
         """Internal - make sure the cwipc is valid"""
         if self.cwipc: return
         tilenum = 1
-        points = self.o3d.points
-        colors = self.o3d.colors
+        points = self.o3d.points # type: ignore
+        colors = self.o3d.colors # type: ignore
         tiles = np.array([[tilenum]]*len(points))
         cwiPoints = np.hstack((points, colors, tiles))
         cwiPoints = list(map(lambda p : (p[0],p[1],p[2],int(p[3]*255),int(p[4]*255),int(p[5]*255), int(p[6])), list(cwiPoints)))
         self.cwipc = cwipc.cwipc_from_points(cwiPoints, 0)
         
-    def _ensure_o3d(self):
+    def _ensure_o3d(self) -> None:
         """internal - make sure the o3d pc is valid"""
         if self.o3d: return
         # Note that this method is inefficient, it can probably be done
@@ -47,40 +53,40 @@ class Pointcloud:
         self.o3d.colors = colors_v
         
     @classmethod
-    def from_cwipc(klass, pc):
+    def from_cwipc(cls, pc : cwipc_wrapper) -> 'Pointcloud':
         """Create Pointcloud from cwipc"""
         assert pc
-        self = klass()
+        self = cls()
         self.cwipc = pc
         return self
 
     @classmethod
-    def from_o3d(klass, o3d):
+    def from_o3d(cls, o3d) -> 'Pointcloud':
         """Create Pointcloud from o3d pc"""
         assert o3d
-        self = klass()
+        self = cls()
         self.o3d = o3d
         return self
         
     @classmethod
-    def from_points(klass, points):
+    def from_points(cls, points) -> 'Pointcloud':
         """Create Pointcloud from list of xyzrgbt tuples"""
         assert points
-        self = klass()
+        self = cls()
         pc = cwipc.cwipc_from_points(points, 0)
         self.cwipc = pc
         return self
         
     @classmethod
-    def from_file(klass, filename):
+    def from_file(cls, filename : str) -> 'Pointcloud':
         """Create Pointcloud from ply file"""
-        self = klass()
-        pc = cwipc.cwipc_read(filename)
+        self = cls()
+        pc = cwipc.cwipc_read(filename, 0)
         self.cwipc = pc
         return self
         
     @classmethod
-    def from_join(klass, pointclouds):
+    def from_join(cls, pointclouds : List['Pointcloud']) -> 'Pointcloud':
         """Create tiled Pointcloud from separate pointclouds"""
         allPoints = []
         tileNum = 1
@@ -90,26 +96,29 @@ class Pointcloud:
             points = map(lambda p : (p.x, p.y, p.z, p.r, p.g, p.b, tileNum), points)
             allPoints += points
             tileNum *= 2
-        return klass.from_points(allPoints)
+        return cls.from_points(allPoints)
         
-    def get_cwipc(self):
+    def get_cwipc(self) -> cwipc_wrapper:
         """Return cwipc object"""
         self._ensure_cwipc()
+        assert self.cwipc
         return self.cwipc
         
-    def get_o3d(self):
+    def get_o3d(self) -> O3dPointcloud:
         """Return o3d pc object"""
         self._ensure_o3d()
         return self.o3d
         
-    def save(self, filename, flags=0):
+    def save(self, filename : str, flags : int=0) -> None:
         """Save to PLY file"""
         self._ensure_cwipc()
+        assert self.cwipc
         cwipc.cwipc_write(filename, self.cwipc, flags)
         
-    def split(self):
+    def split(self) -> List['Pointcloud']:
         """Split into per-tile Pointcloud objects"""
         self._ensure_cwipc()
+        assert self.cwipc
         alltiles = set()
         #
         # This is stupid code, because we should really get a list of tilenumbers as parameter.
@@ -126,11 +135,12 @@ class Pointcloud:
             rv.append(self.__class__.from_cwipc(tile_pc))
         return rv
         
-    def transform(self, matrix):
+    def transform(self, matrix : np.matrix) -> 'Pointcloud':
         """Return pointcloud multiplied by a matrix"""
         # Note that this method is inefficient, it can probably be done
         # in-place with some numpy magic
         self._ensure_cwipc()
+        assert self.cwipc
         pcpoints = self.cwipc.get_points()
         points = []
         colort = []
@@ -149,10 +159,11 @@ class Pointcloud:
             newPoints.append(newPoint)
         return self.__class__.from_points(newPoints)
         
-    def bbox(self, bbox):
+    def bbox(self, bbox : Tuple[float, float, float, float, float, float]) -> 'Pointcloud':
         """Return pointcloud limited to a bounding box"""
         x0, x1, y0, y1, z0, z1 = bbox
         self._ensure_cwipc()
+        assert self.cwipc
         pcpoints = self.cwipc.get_points()
         newPoints = []
         for p in pcpoints:
@@ -165,9 +176,10 @@ class Pointcloud:
             newPoints.append(p)
         return self.__class__.from_points(newPoints)
         
-    def colored(self, rgb):
+    def colored(self, rgb : Tuple[int, int, int]) -> 'Pointcloud':
         r, g, b = rgb
         self._ensure_cwipc()
+        assert self.cwipc
         pcpoints = self.cwipc.get_points()
         pcpoints = copy.deepcopy(pcpoints)
         for p in pcpoints:
@@ -176,12 +188,12 @@ class Pointcloud:
             p.b = b
         return self.__class__.from_points(pcpoints)
     
-    def clean(self):
+    def clean(self) -> 'Pointcloud':
         """Removes statistical outliers (undesired points). Ex. occlusion tales"""
         clean_pc, index = self.get_o3d().remove_statistical_outlier(nb_neighbors=20,std_ratio=2.0)
         return self.__class__.from_o3d(clean_pc)
     
-    def clean_background(self):
+    def clean_background(self) -> 'Pointcloud':
         #Cleaning green background color
         colors = np.asarray(self.get_o3d().colors)
         npoints = len(colors)
@@ -198,7 +210,7 @@ class Pointcloud:
         
         return self.__class__.from_o3d(pc_out)
         
-    def compute_mean_dist_pc(self):
+    def compute_mean_dist_pc(self) -> float:
         """Computes average distance between points in the pointcloud"""
         pc = self.get_o3d()
         pcd_tree = open3d.geometry.KDTreeFlann(pc)
@@ -208,7 +220,7 @@ class Pointcloud:
             p1 = pc.points[i]
             [k, idx, _] = pcd_tree.search_knn_vector_3d(p1, 2)
             p2 = pc.points[idx[1]]
-            dist = np.linalg.norm(p2-p1)
+            dist = float(np.linalg.norm(p2-p1))
             total_dist += dist
         mean_dist = total_dist/n_points
         #print("Mean dist between points:",mean_dist)

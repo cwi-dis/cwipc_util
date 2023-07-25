@@ -5,6 +5,8 @@ import threading
 import queue
 import cwipc
 import struct
+from typing import Optional, Union, List
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 def VRT_4CC(code):
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""
@@ -17,7 +19,7 @@ def VRT_4CC(code):
     rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
     return rv
 
-class _NetClientSource(threading.Thread):
+class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
     
     QUEUE_WAIT_TIMEOUT=1
     
@@ -36,7 +38,7 @@ class _NetClientSource(threading.Thread):
         self.running = False
         self._conn_refused = False
         self.verbose = verbose
-        self.queue = queue.Queue()
+        self.output_queue = queue.Queue()
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -53,22 +55,22 @@ class _NetClientSource(threading.Thread):
     def stop(self):
         if self.verbose: print('netclient: stop')
         self.running = False
-        self.queue.put(None)
+        self.output_queue.put(None)
         self.join()
         
     def eof(self):
-        return self.queue.empty() and self._conn_refused
+        return self.output_queue.empty() and self._conn_refused
     
     def available(self, wait=False):
-        if not self.queue.empty():
+        if not self.output_queue.empty():
             return True
         if not wait or self._conn_refused:
             return False
         # Note: the following code may reorder packets...
         try:
-            packet = self.queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+            packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
             if packet:
-                self.queue.put(packet)
+                self.output_queue.put(packet)
             return not not packet
         except queue.Empty:
             return False
@@ -76,7 +78,7 @@ class _NetClientSource(threading.Thread):
     def get(self):
         if self.eof():
             return None
-        packet = self.queue.get()
+        packet = self.output_queue.get()
         return packet
 
     def run(self):
@@ -111,8 +113,8 @@ class _NetClientSource(threading.Thread):
                 self.sizes_receive.append(len(packet))
                 self.bandwidths_receive.append(len(packet)/(t2-t1))
                 if self.verbose: print(f'netclient: received {len(packet)} bytes')
-                self.queue.put(packet)
-        self.queue.put(None)
+                self.output_queue.put(packet)
+        self.output_queue.put(None)
         if self.verbose: print(f"netclient: thread exiting")
 
     def statistics(self):
@@ -134,7 +136,7 @@ class _NetClientSource(threading.Thread):
             fmtstring = 'netclient: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
     
-def cwipc_source_netclient(address, verbose=False):
+def cwipc_source_netclient(address : str, verbose : bool=False) -> cwipc_rawsource_abstract:
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
     source = _NetClientSource(address, verbose=verbose)
     return source

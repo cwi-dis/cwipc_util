@@ -48,7 +48,7 @@ install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 # setup test environment (installs module into venv)
 
 add_test(NAME _python_setup_cwipc_util
-	COMMAND ${Python3_EXECUTABLE} -m pip install --upgrade --find-links=${CMAKE_PYWHEELS_OUTPUT_DIRECTORY} cwipc_util
+	COMMAND ${Python3_EXECUTABLE} -m pip install --no-cache-dir --upgrade --find-links=${CMAKE_PYWHEELS_OUTPUT_DIRECTORY} cwipc_util
 	)
 set_tests_properties(_python_setup_cwipc_util PROPERTIES FIXTURES_SETUP venv RUN_SERIAL TRUE)
 

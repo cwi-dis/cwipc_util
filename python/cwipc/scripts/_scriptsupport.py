@@ -5,12 +5,14 @@ import signal
 import argparse
 import traceback
 import importlib.util
+from typing import cast, Union, List, Callable
 
-from .. import playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
+from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
 from ..net import source_sub
+from ..net.abstract import *
 
 try:
     from .. import realsense2
@@ -24,6 +26,12 @@ try:
     from .. import kinect
 except ModuleNotFoundError:
     kinect = None
+
+class cwipc_abstract_filter(ABC):
+
+    @abstractmethod
+    def filter(self, pc: cwipc_wrapper) -> cwipc_wrapper:
+        ...
 
 if False:
     # Convoluted code warning: adding ../python directory to path so we can import subsource
@@ -42,7 +50,7 @@ __all__ = [
     "endOfRun"
 ]
 
-def _dump_app_stacks(*args):
+def _dump_app_stacks(*args) -> None:
     """Print stack traces for all threads."""
     print(f"{sys.argv[0]}: QUIT received, dumping all stacks, {len(sys._current_frames())} threads:", file=sys.stderr)
     for threadId, stack in list(sys._current_frames().items()):
@@ -51,17 +59,20 @@ def _dump_app_stacks(*args):
         print(file=sys.stderr)
 
 
-def SetupStackDumper():
+def SetupStackDumper() -> None:
     """Install signal handler so `kill --QUIT` will dump all thread stacks, for debugging."""
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args, autoConfig=False):
+def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
-    name = None
+    name : Optional[str] = None
+    source : cwipc_source_factory_abstract
+    decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
+
     if args.nodecode:
         decoder_factory = source_passthrough.cwipc_source_passthrough
     else:
@@ -71,31 +82,31 @@ def cwipc_genericsource_factory(args, autoConfig=False):
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda : kinect.cwipc_kinect("auto")
+            source = lambda : kinect.cwipc_kinect("auto") # type: ignore
         elif args.cameraconfig:
-            source = lambda : kinect.cwipc_kinect(args.cameraconfig)
+            source = lambda : kinect.cwipc_kinect(args.cameraconfig) # type: ignore
         else:
-            source = kinect.cwipc_kinect
+            source = cast(cwipc_source_factory_abstract, kinect.cwipc_kinect)
         name = 'kinect'
     elif args.k4aoffline:
         if kinect == None or not hasattr(kinect, 'cwipc_k4aoffline'):
             print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
             sys.exit(-1)
         if args.cameraconfig:
-            source = lambda : kinect.cwipc_k4aoffline(args.cameraconfig)
+            source = lambda : kinect.cwipc_k4aoffline(args.cameraconfig)  # type: ignore
         else:
-            source = kinect.cwipc_k4aoffline
+            source = cast(cwipc_source_factory_abstract, kinect.cwipc_k4aoffline)
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
     elif args.realsense:
         if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda : realsense2.cwipc_realsense2("auto")
+            source = lambda : realsense2.cwipc_realsense2("auto") # type: ignore
         elif args.cameraconfig:
-            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig)
+            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig) # type: ignore
         else:
-            source = realsense2.cwipc_realsense2
+            source = cast(cwipc_source_factory_abstract, realsense2.cwipc_realsense2)
         name = 'realsense'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
@@ -107,7 +118,7 @@ def cwipc_genericsource_factory(args, autoConfig=False):
         if certh == None:
             print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
             sys.exit(-1)
-        source = lambda : certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata)
+        source = lambda : certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata) # type: ignore
         name = None
     elif args.playback:
         if not os.path.isdir(args.playback):
@@ -163,11 +174,12 @@ def cwipc_genericsource_factory(args, autoConfig=False):
         elif args.cameraconfig:
             source = lambda : cwipc_capturer(args.cameraconfig)
         else:
-            source = cwipc_capturer
+            source = cast(cwipc_source_factory_abstract, cwipc_capturer)
         name = 'auto'
+        _ = source
     return source, name
 
-def _guess_playback_type(filenames):
+def _guess_playback_type(filenames : List[str]) -> Optional[str]:
     has_ply = False
     has_dump = False
     has_compressed = False
@@ -190,7 +202,9 @@ class SourceServer:
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
     At the end statistics can be printed."""
     
-    def __init__(self, grabber, viewer, args, source_name=None):
+    custom_filter : Optional[cwipc_abstract_filter]
+
+    def __init__(self, grabber : cwipc_source_abstract, viewer, args : argparse.Namespace, source_name : Optional[str]=None):
         self.grabber = grabber
         self.verbose = args.verbose
         self.count = args.count
@@ -213,30 +227,32 @@ class SourceServer:
         self.fps = None
         self.source_name = source_name
         if hasattr(self.grabber, 'start'):
-            self.grabber.start()
+            self.grabber.start() # type: ignore
         self.stopped = False
         self.custom_filter = None
         if args.custom_filter:
             print("Loading custom_filter from " + args.custom_filter)
             spec = importlib.util.spec_from_file_location("module.name", args.custom_filter)
+            assert spec
             foo = importlib.util.module_from_spec(spec)
+            assert spec.loader
             spec.loader.exec_module(foo)
-            self.custom_filter = foo.CustomFilter()
-            print("Loaded successfull")
+            self.custom_filter = cast(cwipc_abstract_filter, foo.CustomFilter())
+            print("Loaded successful")
 
     def __del__(self):
         self.stopped = True
         if self.grabber:
             self.grabber.free()
 
-    def stop(self):
+    def stop(self) -> None:
         if self.stopped: return
         if self.verbose: print("grab: stopping", flush=True)
         if hasattr(self.grabber, 'stop'):
-            self.grabber.stop()
+            self.grabber.stop() # type: ignore
         self.stopped = True
         
-    def grab_pc(self):
+    def grab_pc(self) -> Optional[cwipc_wrapper]:
         if self.lastGrabTime and self.fps:
             nextGrabTime = self.lastGrabTime + 1/self.fps
             if time.time() < nextGrabTime:
@@ -247,12 +263,13 @@ class SourceServer:
                 return None
         pc = self.grabber.get()
         self.lastGrabTime = time.time()
-        return pc
+        return cast(cwipc_wrapper, pc)
         
-    def run(self):
+    def run(self) -> None:
         if self.inpoint:
             if self.source_name and self.source_name == 'k4aoffline':
-                result = self.grabber.seek(self.inpoint)
+                assert hasattr(self.grabber, 'seek')
+                result = self.grabber.seek(self.inpoint) # type: ignore
                 if result:
                     print(f'grab: seek to timestamp {self.inpoint} successfull', flush=True)
                 else:
@@ -308,7 +325,7 @@ class SourceServer:
                     break
         if self.verbose: print('grab: stopped', flush=True)
     
-    def statistics(self):
+    def statistics(self) -> None:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
@@ -319,11 +336,11 @@ class SourceServer:
         if self.pointcounts_downsample:
             self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
-            self.grabber.statistics()
+            self.grabber.statistics() # type: ignore
         if hasattr(self.custom_filter, 'statistics'):
-            self.custom_filter.statistics()
+            self.custom_filter.statistics() # type: ignore
         
-    def print1stat(self, name, values, isInt=False):
+    def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('grab: {}: count=0'.format(name))
@@ -337,7 +354,7 @@ class SourceServer:
             fmtstring = 'grab: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def ArgumentParser(*args, **kwargs):
+def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
@@ -374,7 +391,7 @@ def ArgumentParser(*args, **kwargs):
     input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="After capture, do a spatial crop on the pointcloud")
     return parser
     
-def beginOfRun(args):
+def beginOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
     if args.version:
         print(cwipc_get_version())
@@ -396,8 +413,8 @@ def beginOfRun(args):
             from ..util import cwipc_util_dll_load
             cwipc_util_dll_load(path)
         elif name == 'cwipc_codec':
-            from _cwipc_codec import _cwipc_codec_dll
-            _cwipc_codec_dll(path)
+            from _cwipc_codec import cwipc_codec_dll_load
+            cwipc_codec_dll_load(path)
         elif name == 'cwipc_realsense2':
             from _cwipc_realsense2 import cwipc_realsense2_dll_load
             cwipc_realsense2_dll_load(path)
@@ -415,7 +432,7 @@ def beginOfRun(args):
             print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, signals-unity-bridge, bin2dash")
             sys.exit(1)
             
-def endOfRun(args):
+def endOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
     if args.pausefordebug:
         answer=None

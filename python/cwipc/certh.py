@@ -1,3 +1,4 @@
+# type: ignore
 import ctypes
 import ctypes.util
 import time

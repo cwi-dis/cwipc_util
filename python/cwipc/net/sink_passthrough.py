@@ -5,14 +5,17 @@ import select
 import time
 import queue
 import cwipc
+from typing import Optional, List, Any
+from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
-class _Sink_Passthrough(threading.Thread):
+
+class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
+    """A sink object that serializes pointclouds and forwards them to a rawsink."""
     
     FOURCC="cwi0"
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
-    
-    
+
     def __init__(self, sink, verbose=False, nodrop=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._SinkPassthrough'
@@ -21,7 +24,7 @@ class _Sink_Passthrough(threading.Thread):
             self.sink.set_fourcc(self.FOURCC)
         self.producer = None
         self.nodrop = nodrop
-        self.queue = queue.Queue(maxsize=2)
+        self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
@@ -29,6 +32,7 @@ class _Sink_Passthrough(threading.Thread):
         self.pointcounts = []
          
     def set_encoder_params(self, **kwargs):
+        """Specify the parameters for the encoder."""
         raise RuntimeError("cwipc_sink_passthrough: no encoder parameters supported")
         
     def start(self):
@@ -54,7 +58,7 @@ class _Sink_Passthrough(threading.Thread):
         if self.verbose: print(f"passthrough: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
-                pc = self.queue.get()
+                pc = self.input_queue.get()
                 if not pc:
                     print(f"passthrough: get() returned None")
                     continue
@@ -69,9 +73,9 @@ class _Sink_Passthrough(threading.Thread):
     def feed(self, pc):
         try:
             if self.nodrop:
-                self.queue.put(pc)
+                self.input_queue.put(pc)
             else:
-                self.queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.input_queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
             if self.verbose: print(f"passthrough: queue full, drop pointcloud")
             pc.free()
@@ -95,6 +99,6 @@ class _Sink_Passthrough(threading.Thread):
             fmtstring = 'passthrough: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_passthrough(sink, verbose=False, nodrop=False):
+def cwipc_sink_passthrough(sink : cwipc_rawsink_abstract, verbose=False, nodrop=False) -> cwipc_sink_abstract:
     """Create a cwipc_sink object sends serialized uncompressed pointclouds to another sink"""
     return _Sink_Passthrough(sink, verbose=verbose, nodrop=nodrop)
