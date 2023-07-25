@@ -5,7 +5,7 @@ import threading
 import queue
 import cwipc
 from typing import Optional, Union, List
-from abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 try:
     import cwipc.codec

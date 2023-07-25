@@ -6,7 +6,7 @@ import queue
 import cwipc
 import struct
 from typing import Optional, Union, List
-from abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 def VRT_4CC(code):
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""

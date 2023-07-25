@@ -6,7 +6,7 @@ import sys
 import threading
 import queue
 from typing import Optional, List, Union
-from abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 SUB_API_VERSION = 0x20210729A
 

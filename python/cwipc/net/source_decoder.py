@@ -4,7 +4,7 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union
-from abstract import cwipc_source_abstract, cwipc_abstract, cwipc_rawsource_abstract
+from .abstract import cwipc_source_abstract, cwipc_abstract, cwipc_rawsource_abstract
 
 try:
     from .. import codec
