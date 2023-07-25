@@ -142,7 +142,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def _set_streamDescs(self, streamDescs : List[streamDesc]) -> None:
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : Union[int, float]) -> int:
+    def add_streamDesc(self, tilenum : int, x : Union[int, float], y : Union[int, float], z : Union[int, float]) -> int:
         """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
         if not self.streamDescs:
             self.streamDescs = []
@@ -181,7 +181,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def statistics(self) -> None:
         self.print1stat('packetsize', self.sizes_forward)
         
-    def print1stat(self, name : str, values : List[int]|List[float], isInt : bool=False) -> None:
+    def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('bin2dash: {}: count=0'.format(name))
