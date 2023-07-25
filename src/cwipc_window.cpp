@@ -8,6 +8,7 @@
 #else
 #define _CWIPC_UTIL_EXPORT
 #endif
+
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 #include "window_util.hpp"
@@ -32,6 +33,7 @@ private:
     std::mutex m_last_char_mutex;
     bool m_render_skeleton;
     std::vector<cwipc_skeleton_joint> joints;
+
 public:
     cwipc_sink_window_impl(const char *title)
     :   m_title(title),
@@ -55,46 +57,59 @@ public:
         m_window->on_mouse_scroll = std::bind(&cwipc_sink_window_impl::on_mouse_scroll, this, std::placeholders::_1, std::placeholders::_2);
         m_window->on_character = std::bind(&cwipc_sink_window_impl::on_character, this, std::placeholders::_1);
     }
-    
+
     ~cwipc_sink_window_impl() {
         delete m_window;
     }
-    
+
     void free() {
         delete m_window;
         ::free(m_points);
         m_points = nullptr;
         m_npoints = 0;
     }
-    
+
     bool feed(cwipc *pc, bool clear) {
-        if (m_window == nullptr) return false;
+        if (m_window == nullptr) {
+            return false;
+        }
+
         if (clear) {
             ::free(m_points);
             m_points = nullptr;
             m_npoints = 0;
         }
+
         if (pc) {
             size_t bufferSize = pc->get_uncompressed_size();
             cwipc_point *newBuffer = (cwipc_point *)realloc(m_points, m_npoints*sizeof(cwipc_point)+bufferSize);
-            if (newBuffer == nullptr) return false;
+
+            if (newBuffer == nullptr) {
+                return false;
+            }
+
             m_points = newBuffer;
             newBuffer = m_points + m_npoints;
             int nNewPoints = pc->copy_uncompressed(newBuffer, bufferSize);
             m_npoints += nNewPoints;
             m_pointsize = pc->cellsize();
+
             if (m_render_skeleton) {
                 cwipc_auxiliary_data* auxdata = pc->access_auxiliary_data();
+
                 if (auxdata->count() > 0) {
                     get_skeleton(auxdata);
                 }
             }
         }
+
         m_window->prepare_gl(m_eye_distance*sin(m_eye_angle), m_eye_height, m_eye_distance*cos(m_eye_angle), m_pointsize);
+
         for (int i=0; i<m_npoints; i++) {
             glColor3ub(m_points[i].r, m_points[i].g, m_points[i].b);
             glVertex3f(m_points[i].x, m_points[i].y, m_points[i].z);
         }
+
         glEnd();
 
         //render skeleton
@@ -104,42 +119,47 @@ public:
 
         //clean scene
         m_window->cleanup_gl();
-        if (!*m_window) return false;
+
+        if (!*m_window) {
+            return false;
+        }
+
         return true;
     }
 
     void get_skeleton(cwipc_auxiliary_data* auxdata) {
         bool found_skeleton = false;
+
         for (int i = 0; i < auxdata->count(); i++) {
             void* ptr = auxdata->pointer(i);
+
             if (auxdata->name(i).find("skeleton") != std::string::npos) {
                 if (!found_skeleton) {
-
                     cwipc_skeleton_collection* skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
                     int n_skeletons = skl->n_skeletons;
+
                     if (n_skeletons > 0 && skl->n_joints > 0) {
                         found_skeleton = true;
-
                         joints.clear();
+
                         for (int s = 0; s < skl->n_joints; s++) {
                             cwipc_skeleton_joint joint = skl->joints[s];
                             joints.push_back({ joint.confidence, joint.x, joint.y, joint.z, joint.q_w, joint.q_x, joint.q_y, joint.q_z });
                         }
                     }
-                }
-                else { // multiple cameras = multiple skeletons, so we need to fuse them
+                } else { // multiple cameras = multiple skeletons, so we need to fuse them
                     cwipc_skeleton_collection* new_skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
                     int n_joints = std::min((uint32_t)joints.size(), new_skl->n_joints);
-                    for (int j = 0; j < n_joints; j++)
-                    {
+
+                    for (int j = 0; j < n_joints; j++) {
                         cwipc_skeleton_joint old_joint = joints[j];
                         cwipc_skeleton_joint new_joint = new_skl->joints[j];
+
                         if (old_joint.confidence == new_joint.confidence) { // average positions
                             joints[j].x = (joints[j].x + new_joint.x) / 2;
                             joints[j].y = (joints[j].y + new_joint.y) / 2;
                             joints[j].z = (joints[j].z + new_joint.z) / 2;
-                        }
-                        else if (old_joint.confidence < new_joint.confidence) { // use joint with higher confidence
+                        } else if (old_joint.confidence < new_joint.confidence) { // use joint with higher confidence
                             joints[j] = { new_skl->joints[j].confidence, new_skl->joints[j].x, new_skl->joints[j].y, new_skl->joints[j].z, new_skl->joints[j].q_w, new_skl->joints[j].q_x, new_skl->joints[j].q_y, new_skl->joints[j].q_z };
                         }
                     }
@@ -151,17 +171,20 @@ public:
     void render_skeleton() {
         glPointSize(6.0);
         glBegin(GL_POINTS);
+
         //render joints as points
         for (int i = 0; i < joints.size(); i++) {
             glColor3ub(255, 0, (255 / 3) * joints[i].confidence);
             glVertex3f(joints[i].x, joints[i].y, joints[i].z);
         }
+
         glEnd();
 
         //render bones:
         glLineWidth((GLfloat)5.0f);
         glBegin(GL_LINES);
         glColor3ub(0, 255, 255);
+
         //left leg
         boneline(joints[0], joints[18]);
         boneline(joints[18], joints[19]);
@@ -204,6 +227,7 @@ public:
         boneline(joints[14], joints[15]);
         boneline(joints[15], joints[16]);
         boneline(joints[14], joints[17]);
+
         glEnd();
     }
 
@@ -211,94 +235,112 @@ public:
         glVertex3f(from.x, from.y, from.z);
         glVertex3f(to.x, to.y, to.z);
     }
-    
+
     bool caption(const char *caption) {
-        if (m_window == nullptr) return false;
+        if (m_window == nullptr) {
+            return false;
+        }
+
         GLFWwindow *glfwWin = *m_window;
         std::string newTitle;
+
         if (caption) {
             newTitle = m_title + " - " + std::string(caption);
         } else {
             newTitle = m_title;
         }
+
         glfwSetWindowTitle(glfwWin, newTitle.c_str());
         return true;
     }
-    
+
     char interact(const char *prompt, const char *responses, int32_t millis) {
-        if (m_window == nullptr) return '\0';
+        if (m_window == nullptr) {
+            return '\0';
+        }
+
         caption(prompt);
         m_chars_wanted = responses;
         std::chrono::system_clock::time_point until = std::chrono::system_clock::now();
+
         if (millis >= 0) {
             until += std::chrono::milliseconds(millis);
         } else {
             until += std::chrono::hours(24);
         }
+
         while (std::chrono::system_clock::now() < until && m_chars_wanted.find(m_last_char) == std::string::npos) {
             std::unique_lock<std::mutex> lock(m_last_char_mutex);
-            m_last_char_cv.wait_for(lock, std::chrono::milliseconds(1), [this]{return this->m_last_char; });
-            if (m_last_char) break;
+            m_last_char_cv.wait_for(lock, std::chrono::milliseconds(1), [this]{
+                return this->m_last_char;
+            });
+
+            if (m_last_char) {
+                break;
+            }
+
             feed(nullptr, false);
         }
+
         char rv = m_last_char;
         m_last_char = '\0';
+
         if (rv == 'r') { // Toggle skeleton rendering
             m_render_skeleton = !m_render_skeleton;
             std::cout << (m_render_skeleton?"Enabled":"Disabled") << " skeleton rendering" << std::endl;
         }
+
         return rv;
     }
 
-    
 private:
     void on_left_mouse(bool pressed) {
         m_left_mouse_pressed = pressed;
     }
-    
+
     void on_right_mouse(bool pressed) {
         m_right_mouse_pressed = pressed;
     }
-    
+
     void on_mouse_scroll(double deltax, double deltay) {
         m_eye_distance += deltay / 10;
     }
-    
+
     void on_mouse_move(double x, double y) {
         if (m_left_mouse_pressed) {
             float delta_x = x - m_mouse_x;
             m_eye_angle += delta_x / 100;
         }
+
         if (m_right_mouse_pressed) {
             float delta_y = y - m_mouse_y;
             m_eye_height += delta_y / 100;
         }
-        
+
         m_mouse_x = x;
         m_mouse_y = y;
     }
-    
+
     void on_character(int c) {
-        if (m_chars_wanted.find(c) == std::string::npos) return;
+        if (m_chars_wanted.find(c) == std::string::npos) {
+            return;
+        }
+
         m_last_char = c;
         m_last_char_cv.notify_one();
     }
-    
-
-    
 };
 
-cwipc_sink *
-cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion)
-{
+cwipc_sink* cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
             snprintf(msgbuf, 1024, "cwipc_window: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
             *errorMessage = msgbuf;
         }
+
         return NULL;
     }
+
     return new cwipc_sink_window_impl(title);
 }
-

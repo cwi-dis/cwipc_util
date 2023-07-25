@@ -20,11 +20,13 @@
 #else
 #define _CWIPC_UTIL_EXPORT
 #endif
+
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 
 #ifdef _WIN32
 #include <Windows.h>
+
 inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
     HANDLE threadHandle = static_cast<HANDLE>(thr->native_handle());
     SetThreadDescription(threadHandle, name);
@@ -42,6 +44,7 @@ private:
     std::mutex m_pc_mutex;
     std::condition_variable m_pc_fresh;
     cwipc *m_pc;
+
 public:
     cwipc_source_proxy_impl(int _socket)
     :   m_listen_socket(_socket),
@@ -55,18 +58,26 @@ public:
     }
 
     ~cwipc_source_proxy_impl() {
-    	free();
+        free();
     }
 
     void free() {
         m_running = false;
-        if (m_listen_socket >= 0) closesocket(m_listen_socket);
+
+        if (m_listen_socket >= 0) {
+            closesocket(m_listen_socket);
+        }
+
         m_listen_socket = -1;
-        if (m_socket >= 0) closesocket(m_socket);
+
+        if (m_socket >= 0) {
+            closesocket(m_socket);
+        }
+
         m_socket = -1;
         m_server_thread->join();
     }
-    
+
     void _server_main() {
         while(m_running) {
             //
@@ -75,12 +86,14 @@ public:
             if (m_socket < 0) {
                 std::cerr << "cwipc_proxy: wait for connection" << std::endl;
                 m_socket = accept(m_listen_socket, NULL, 0);
+
                 if (m_socket < 0) {
                     perror("cwipc_proxy: accept");
                     closesocket(m_listen_socket);
                     m_running = false;
                     break;
                 }
+
                 std::cerr << "cwipc_proxy: connection accepted" << std::endl;
             }
             //
@@ -90,12 +103,15 @@ public:
             if (!_recvall((void *)&header, sizeof(header))) {
                 closesocket(m_socket);
                 m_socket = -1;
+
                 continue;
-            };
+            }
+
             if (header.magic != CWIPC_POINT_PACKETHEADER_MAGIC) {
                 std::cerr << "cwpic_proxy: bad magic number: " << header.magic << std::endl;
                 break;
             }
+
             //
             // Get the pointcloud data and convert it
             //
@@ -104,29 +120,36 @@ public:
                 std::cerr << "cwpic_proxy: malloc failed" << std::endl;
                 break;
             }
+
             if (!_recvall((void *)points, header.dataCount)) {
                 closesocket(m_socket);
                 m_socket = -1;
                 continue;
             }
-            char *errorMessage = NULL;
-            cwipc *pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
+
+            char* errorMessage = NULL;
+            cwipc* pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
             ::free(points);
+
             if (pc == NULL) {
                 std::cerr << "cwipc_proxy: cwipc_from_points: " << errorMessage << std::endl;
                 break;
             }
+
             pc->_set_cellsize(header.cellsize);
             //
             // Forward the pointcloud to the consumer
             //
             std::unique_lock<std::mutex> mylock(m_pc_mutex);
+
             if (m_pc) {
                 m_pc->free();
                 m_pc = NULL;
             }
+
             m_pc = pc;
             m_pc_fresh.notify_all();
+
             //
             // Send acknowledgement (if connection still open)
             //
@@ -142,15 +165,17 @@ public:
                 }
             }
         }
+
         if (m_socket >= 0) {
             closesocket(m_socket);
             m_socket = -1;
         }
+
         std::unique_lock<std::mutex> mylock(m_pc_mutex);
         m_running = false;
         m_pc_fresh.notify_all();
     }
-    
+
     bool _recvall(void *buffer, size_t size) {
         int status = recv(m_socket, (char *)buffer, size, MSG_WAITALL);
         if (status < 0) {
@@ -158,83 +183,123 @@ public:
         }
         return status == size;
     }
-    
+
     bool eof() {
-    	return m_listen_socket < 0 && m_socket < 0;
+        return m_listen_socket < 0 && m_socket < 0;
     }
-    
+
     bool available(bool wait) {
         std::unique_lock<std::mutex> mylock(m_pc_mutex);
+
         if (wait) {
             m_pc_fresh.wait(mylock, [this]{return m_pc != NULL || !m_running; });
         }
-    	return m_pc != NULL;
+
+        return m_pc != NULL;
     }
 
     cwipc* get() {
         std::unique_lock<std::mutex> mylock(m_pc_mutex);
-        m_pc_fresh.wait(mylock, [this]{return m_pc != NULL || !m_running; });
+
+        m_pc_fresh.wait(mylock, [this]{
+            return m_pc != NULL || !m_running;
+        });
+
         cwipc *rv = m_pc;
         m_pc = NULL;
+
         return rv;
     }
 
-	int maxtile() { return 1; }
+    int maxtile() {
+        return 1;
+    }
 
     bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
         static cwipc_tileinfo proxyInfo = {{0, 0, 0}, (char *)"proxy", 1, 0};
-		switch(tilenum) {
-		case 0:
-			if (tileinfo) *tileinfo = proxyInfo;
-			return true;
-		}
-		return false;
-	}
+
+        switch(tilenum) {
+        case 0:
+            if (tileinfo) {
+                *tileinfo = proxyInfo;
+            }
+            return true;
+        }
+
+        return false;
+    }
 
 };
 
-cwipc_tiledsource *
-cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion)
-{
-	if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
-		if (errorMessage) {
+cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion) {
+    if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
+        if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
             snprintf(msgbuf, 1024, "cwipc_proxy: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
             *errorMessage = msgbuf;
         }
-		return NULL;
-	}
+
+        return NULL;
+    }
+
     struct addrinfo hints;
     struct addrinfo *result = NULL;
+
     memset(&hints, 0, sizeof(hints));
+
     hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
+
     char portbuf[32];
     snprintf(portbuf, 32, "%d", port);
-    if (host != NULL && *host == '\0') host = NULL;
+
+    if (host != NULL && *host == '\0') {
+        host = NULL;
+    }
+
     int status = getaddrinfo(host, portbuf, &hints, &result);
+
     if (status != 0) {
-        if (errorMessage) *errorMessage = (char *)gai_strerror(status);
+        if (errorMessage) {
+            *errorMessage = (char *)gai_strerror(status);
+        }
+
         return NULL;
     }
+
     int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
     if (sock < 0) {
-        if (errorMessage) *errorMessage = strerror(errno);
+        if (errorMessage) {
+            *errorMessage = strerror(errno);
+        }
+
         return NULL;
     }
+
     status = bind(sock, result->ai_addr, result->ai_addrlen);
+
     if (status < 0) {
-        if (errorMessage) *errorMessage = strerror(errno);
+        if (errorMessage) {
+            *errorMessage = strerror(errno);
+        }
+
         closesocket(sock);
         return NULL;
     }
+
     status = listen(sock, 1);
+
     if (status < 0) {
-        if (errorMessage) *errorMessage = strerror(errno);
+        if (errorMessage) {
+            *errorMessage = strerror(errno);
+        }
+
         closesocket(sock);
         return NULL;
     }
-	return new cwipc_source_proxy_impl(sock);
+
+    return new cwipc_source_proxy_impl(sock);
 }
