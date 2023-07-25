@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from .abstract import matrix_type
 
@@ -23,7 +23,7 @@ class CameraConfig:
     def _readConf(self, confFilename : str) -> None:
         self.tree = json.load(open(confFilename))
 
-    def loadConf(self, confString : str | bytes) -> None:
+    def loadConf(self, confString : Union[str, bytes]) -> None:
         self.tree = json.loads(confString)
         self._parseConf()
         

@@ -1,7 +1,7 @@
 import ctypes
 import ctypes.util
 import os
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Union
 from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
 _bin2dash_dll_reference = None
@@ -142,7 +142,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def _set_streamDescs(self, streamDescs : List[streamDesc]) -> None:
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : int | float) -> int:
+    def add_streamDesc(self, tilenum : int, x : int|float, y : int|float, z : Union[int, float]) -> int:
         """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
         if not self.streamDescs:
             self.streamDescs = []
@@ -159,7 +159,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
             self.dll.vrt_destroy(self.handle)
             self.handle = None
             
-    def feed(self, buffer : bytes | bytearray, stream_index : Optional[int]=None) -> bool:
+    def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:
         if not self.handle:
             return False
         assert self.dll
