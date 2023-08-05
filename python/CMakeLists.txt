@@ -27,6 +27,7 @@ file(COPY test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 # Also install the wheel into the current system Python.
 
 install(FILES test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
+install(DIRECTORY examples DESTINATION  ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
 cwipc_install_wheel(NAME "cwipc_util" WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 
 # Install shell and bat scripts
