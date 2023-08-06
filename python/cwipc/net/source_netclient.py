@@ -102,25 +102,25 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                     raise
                 if self.verbose: print(f'netclient: connected')
                 t1 = time.time()
-                packet = b''
-                while True:
-                    data = s.recv(8192)
-                    if not data: break
-                    packet += data
-                hdr = packet[:16]
-                packet = packet[16:]
+                hdr = s.recv(16, socket.MSG_WAITALL)
+                if len(hdr) != 16:
+                    print(f"netclient: received short header ({len(hdr)} bytes in stead of 16)")
+                assert len(hdr) == 16
                 h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
                 if self.fourcc != None:
                     assert VRT_4CC(self.fourcc) == h_fourcc
-                assert h_length == len(packet)
+                data = s.recv(h_length, socket.MSG_WAITALL)
+                if len(data) != h_length:
+                         print(f"netclient: received data header ({len(data)} bytes in stead of {h_length})")
+                assert h_length == len(data)
                 # Ignore h_timestamp for now.
                 t2 = time.time()
                 if t2 == t1: t2 = t1 + 0.0005
                 self.times_receive.append(t2-t1)
-                self.sizes_receive.append(len(packet))
-                self.bandwidths_receive.append(len(packet)/(t2-t1))
-                if self.verbose: print(f'netclient: received {len(packet)} bytes')
-                self.output_queue.put(packet)
+                self.sizes_receive.append(len(data))
+                self.bandwidths_receive.append(len(data)/(t2-t1))
+                if self.verbose: print(f'netclient: received {len(data)} bytes')
+                self.output_queue.put(data)
         self.output_queue.put(None)
         if self.verbose: print(f"netclient: thread exiting")
 
