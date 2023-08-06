@@ -68,22 +68,29 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                 if self.socket in errorable:
                     continue
                 if self.socket in readable:
-                    t1 = time.time()
                     connSocket, other = self.socket.accept()
                     if self.verbose:
                         print(f"netserver: accepted connection from {other}")
-                    data = self.input_queue.get()
-                    assert data != None
-                    hdr = self._gen_header(data)
-                    connSocket.sendall(hdr + data)
+                    while not self.stopped and self.producer and self.producer.is_alive():
+                        t1 = time.time()
+                        data = self.input_queue.get()
+                        assert data != None
+                        hdr = self._gen_header(data)
+                        try:
+                            connSocket.sendall(hdr + data)
+                        except OSError:
+                            break
+                        t2 = time.time()
+                        if self.verbose:
+                            print(f"netserver: transmitted {len(hdr+data)} bytes")
+                        if t2 == t1: t2 = t1 + 0.0005
+                        self.times_forward.append(t2-t1)
+                        datasize = len(data)
+                        self.sizes_forward.append(datasize)
+                        self.bandwidths_forward.append(datasize/(t2-t1))
                     connSocket.close()
-                    t2 = time.time()
-                    if t2 == t1: t2 = t1 + 0.0005
                     connSocket = None
-                    self.times_forward.append(t2-t1)
-                    datasize = len(data)
-                    self.sizes_forward.append(datasize)
-                    self.bandwidths_forward.append(datasize/(t2-t1))
+                    if self.verbose: print(f"netserver: connection closed")
         finally:
             self.stopped = True
             if self.verbose: print(f"netserver: thread stopping")

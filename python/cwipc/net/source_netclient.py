@@ -101,7 +101,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                     print(f'netclient: connecting to {self.hostname}:{self.port}: {err}')
                     raise
                 if self.verbose: print(f'netclient: connected')
-                while True:
+                while self.running:
                     t1 = time.time()
                     hdr = s.recv(16, socket.MSG_WAITALL)
                     if len(hdr) != 16:
