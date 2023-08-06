@@ -79,6 +79,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
             self.output_queue.put(pc)
             if self.verbose: print(f'passthrough: decoded pointcloud with {pc.count()} points')
         if self.verbose: print(f"passthrough: thread exiting")
+        self.running = False
 
     def statistics(self) -> None:
         if hasattr(self.source, 'statistics'):
