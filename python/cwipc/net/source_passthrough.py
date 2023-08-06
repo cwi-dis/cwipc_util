@@ -11,6 +11,7 @@ try:
     import cwipc.codec
 except ModuleNotFoundError:
     cwipc.codec = None
+FOURCC = "cwi0"
 
 class _NetPassthrough(threading.Thread, cwipc_source_abstract):
     
@@ -23,6 +24,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetPassthrough'
         self.source = source
+        self.source.set_fourcc(FOURCC)
         self.running = False
         self.verbose = verbose
         self.output_queue = queue.Queue()

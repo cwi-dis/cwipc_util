@@ -32,6 +32,11 @@ class cwipc_rawsource_abstract(ABC):
     """
 
     @abstractmethod
+    def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
+        """Set the expected 4CC for this stream. """
+        ...
+
+    @abstractmethod
     def start(self) -> None:
         """Start the source. This will start the receiver or reader."""
         ...

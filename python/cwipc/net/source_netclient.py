@@ -6,6 +6,8 @@ import queue
 import cwipc
 import struct
 from typing import Optional, Union, List
+
+from cwipc.net.abstract import vrt_fourcc_type
 from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
 
 def VRT_4CC(code):
@@ -42,9 +44,13 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
+        self.fourcc : Optional[vrt_fourcc_type] = None
         
     def free(self):
         pass
+
+    def set_fourcc(self, fourcc: vrt_fourcc_type) -> None:
+        self.fourcc = fourcc
         
     def start(self):
         assert not self.running
@@ -104,7 +110,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                 hdr = packet[:16]
                 packet = packet[16:]
                 h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
-                assert VRT_4CC("cwi0") == h_fourcc
+                if self.fourcc != None:
+                    assert VRT_4CC(self.fourcc) == h_fourcc
                 assert h_length == len(packet)
                 # Ignore h_timestamp for now.
                 t2 = time.time()

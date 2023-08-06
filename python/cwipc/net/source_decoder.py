@@ -10,6 +10,7 @@ try:
     from .. import codec
 except ModuleNotFoundError:
     codec = None
+FOURCC = "cwi1"
 
 class _NetDecoder(threading.Thread, cwipc_source_abstract):
     """A source that decodes pointclouds gotten from a rawsource."""
@@ -21,6 +22,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetDecoder'
         self.source = source
+        self.source.set_fourcc(FOURCC)
         self.running = False
         self.verbose = verbose
         self.output_queue = queue.Queue()
