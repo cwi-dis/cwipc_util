@@ -65,6 +65,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
                 self.pointcounts.append(pc.count())
                 cpc = pc.get_packet()
                 self.sink.feed(cpc)
+                if self.verbose: print(f"passthrough: serialized pointcoud with {pc.count()} points timestamp={pc.timestamp()}")
                 pc.free()
         finally:
             self.stopped = True

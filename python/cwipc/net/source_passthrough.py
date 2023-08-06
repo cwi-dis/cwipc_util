@@ -77,7 +77,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
                 break
             pc = cwipc.cwipc_from_packet(cpc)
             self.output_queue.put(pc)
-            if self.verbose: print(f'passthrough: decoded pointcloud with {pc.count()} points')
+            if self.verbose: print(f'passthrough: deserialized pointcloud with {pc.count()} points timestamp={pc.timestamp()}')
         if self.verbose: print(f"passthrough: thread exiting")
         self.running = False
 
