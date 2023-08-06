@@ -101,26 +101,34 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                     print(f'netclient: connecting to {self.hostname}:{self.port}: {err}')
                     raise
                 if self.verbose: print(f'netclient: connected')
-                t1 = time.time()
-                hdr = s.recv(16, socket.MSG_WAITALL)
-                if len(hdr) != 16:
-                    print(f"netclient: received short header ({len(hdr)} bytes in stead of 16)")
-                assert len(hdr) == 16
-                h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
-                if self.fourcc != None:
-                    assert VRT_4CC(self.fourcc) == h_fourcc
-                data = s.recv(h_length, socket.MSG_WAITALL)
-                if len(data) != h_length:
-                         print(f"netclient: received data header ({len(data)} bytes in stead of {h_length})")
-                assert h_length == len(data)
-                # Ignore h_timestamp for now.
-                t2 = time.time()
-                if t2 == t1: t2 = t1 + 0.0005
-                self.times_receive.append(t2-t1)
-                self.sizes_receive.append(len(data))
-                self.bandwidths_receive.append(len(data)/(t2-t1))
-                if self.verbose: print(f'netclient: received {len(data)} bytes')
-                self.output_queue.put(data)
+                while True:
+                    t1 = time.time()
+                    hdr = s.recv(16, socket.MSG_WAITALL)
+                    if len(hdr) != 16:
+                        print(f"netclient: received short header ({len(hdr)} bytes in stead of 16)")
+                        break
+                    assert len(hdr) == 16
+                    h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
+                    if self.fourcc != None:
+                        assert VRT_4CC(self.fourcc) == h_fourcc
+                    data = s.recv(h_length, socket.MSG_WAITALL)
+                    if len(data) == 0:
+                        break
+                    if len(data) != h_length:
+                        print(f"netclient: received data header ({len(data)} bytes in stead of {h_length})")
+                        break
+                    assert h_length == len(data)
+                    # Ignore h_timestamp for now.
+                    t2 = time.time()
+                    if t2 == t1: t2 = t1 + 0.0005
+                    self.times_receive.append(t2-t1)
+                    self.sizes_receive.append(len(data))
+                    self.bandwidths_receive.append(len(data)/(t2-t1))
+                    if self.verbose: print(f'netclient: received {len(data)} bytes')
+                    self.output_queue.put(data)
+                if self.verbose:
+                    print(f'netclient: disconnected')
+
         self.output_queue.put(None)
         if self.verbose: print(f"netclient: thread exiting")
 
