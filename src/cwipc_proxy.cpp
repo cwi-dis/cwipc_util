@@ -75,7 +75,8 @@ public:
         }
 
         m_socket = -1;
-        m_server_thread->join();
+        if (m_server_thread) m_server_thread->join();
+        m_server_thread = nullptr;
     }
 
     void _server_main() {
