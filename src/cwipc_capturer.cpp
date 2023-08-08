@@ -38,7 +38,7 @@ cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVers
         }
 		return NULL;
 	}
-    if (configFilename == nullptr) {
+    if (configFilename == nullptr || *configFilename == '\0') {
         configFilename = "cameraconfig.json";
     }
     if (strcmp(configFilename, "auto") == 0) {
