@@ -3,11 +3,7 @@ cmake_policy(SET CMP0074 NEW)
 
 project(cwipc_util)
 
-include(CTest)
-include(GNUInstallDirs)
-
-
-find_package(PCL 1.10 COMPONENTS common io octree filters features)
+# We need glfw3 and OpenGL (only for cwipc_window())
 find_package(glfw3 3.2)
 if(NOT glfw3_FOUND)
 	message(STATUS "glfw3: Use from third-party/glfw")
