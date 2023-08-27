@@ -82,9 +82,9 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda : kinect.cwipc_kinect("auto") # type: ignore
+            source = lambda config="auto": kinect.cwipc_kinect(config) # type: ignore
         elif args.cameraconfig:
-            source = lambda : kinect.cwipc_kinect(args.cameraconfig) # type: ignore
+            source = lambda config=args.cameraconfig: kinect.cwipc_kinect(config) # type: ignore
         else:
             source = cast(cwipc_source_factory_abstract, kinect.cwipc_kinect)
         name = 'kinect'
@@ -93,7 +93,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
             sys.exit(-1)
         if args.cameraconfig:
-            source = lambda : kinect.cwipc_k4aoffline(args.cameraconfig)  # type: ignore
+            source = lambda config=args.cameraconfig: kinect.cwipc_k4aoffline(config)  # type: ignore
         else:
             source = cast(cwipc_source_factory_abstract, kinect.cwipc_k4aoffline)
         name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
@@ -102,9 +102,9 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda : realsense2.cwipc_realsense2("auto") # type: ignore
+            source = lambda config="auto": realsense2.cwipc_realsense2(config) # type: ignore
         elif args.cameraconfig:
-            source = lambda : realsense2.cwipc_realsense2(args.cameraconfig) # type: ignore
+            source = lambda config=args.cameraconfig: realsense2.cwipc_realsense2(config) # type: ignore
         else:
             source = cast(cwipc_source_factory_abstract, realsense2.cwipc_realsense2)
         name = 'realsense'
