@@ -4,7 +4,6 @@ import time
 import signal
 import argparse
 import traceback
-import importlib.util
 from typing import cast, Union, List, Callable
 
 from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
@@ -13,6 +12,7 @@ from ..net import source_decoder
 from ..net import source_passthrough
 from ..net import source_sub
 from ..net.abstract import *
+from .. import filters
 
 try:
     from .. import realsense2
@@ -26,12 +26,6 @@ try:
     from .. import kinect
 except ModuleNotFoundError:
     kinect = None
-
-class cwipc_abstract_filter(ABC):
-
-    @abstractmethod
-    def filter(self, pc: cwipc_wrapper) -> cwipc_wrapper:
-        ...
 
 if False:
     # Convoluted code warning: adding ../python directory to path so we can import subsource
@@ -202,7 +196,7 @@ class SourceServer:
     run() will send pointclouds to viewer (or other consumer) through a feed() call.
     At the end statistics can be printed."""
     
-    custom_filter : Optional[cwipc_abstract_filter]
+    pc_filters : List[filters.cwipc_abstract_filter]
 
     def __init__(self, grabber : cwipc_source_abstract, viewer, args : argparse.Namespace, source_name : Optional[str]=None):
         self.grabber = grabber
@@ -229,16 +223,14 @@ class SourceServer:
         if hasattr(self.grabber, 'start'):
             self.grabber.start() # type: ignore
         self.stopped = False
-        self.custom_filter = None
-        if args.custom_filter:
-            print("Loading custom_filter from " + args.custom_filter)
-            spec = importlib.util.spec_from_file_location("module.name", args.custom_filter)
-            assert spec
-            foo = importlib.util.module_from_spec(spec)
-            assert spec.loader
-            spec.loader.exec_module(foo)
-            self.custom_filter = cast(cwipc_abstract_filter, foo.CustomFilter())
-            print("Loaded successful")
+        self.pc_filters = []
+        if args.filter:
+            if 'help' in args.filter:
+                filters.help()
+                sys.exit(1)
+            for fdesc in args.filter:
+                filter = filters.factory(fdesc)
+                self.pc_filters.append(filter)
 
     def __del__(self):
         self.stopped = True
@@ -282,8 +274,8 @@ class SourceServer:
             if not pc:
                 continue
             else:
-                if self.custom_filter:
-                    pc = self.custom_filter.filter(pc)
+                for filter in self.pc_filters:
+                    pc = filter.filter(pc)
                 self.pointcounts_grab.append(pc.count())
                 pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
@@ -337,8 +329,9 @@ class SourceServer:
             self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
             self.grabber.statistics() # type: ignore
-        if hasattr(self.custom_filter, 'statistics'):
-            self.custom_filter.statistics() # type: ignore
+        for filter in self.pc_filters:
+            if hasattr(filter, 'statistics'):
+                filter.statistics() # type: ignore
         
     def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
@@ -387,7 +380,7 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
     input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture, downsample pointclouds into voxels of size S*S*S")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture, remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
-    input_args.add_argument("--custom_filter", action="store", metavar="filename.py", help="After capture, use custom filter defined in filename.py.")
+    input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Use --filter help for help. Multiple filters are applied in order.")
     input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="After capture, do a spatial crop on the pointcloud")
     return parser
     
