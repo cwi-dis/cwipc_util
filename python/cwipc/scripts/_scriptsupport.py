@@ -6,7 +6,7 @@ import argparse
 import traceback
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_downsample, cwipc_remove_outliers, cwipc_crop
+from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_remove_outliers, cwipc_crop
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -204,16 +204,13 @@ class SourceServer:
         self.count = args.count
         self.inpoint = args.inpoint
         self.outpoint = args.outpoint
-        self.downsample = args.downsample
         self.spatial_crop = args.spatial_crop
         self.outliers = args.outliers
         self.cameraconfig = args.cameraconfig
         self.viewer = viewer
         self.times_grab = []
-        self.times_downsample = []
         self.times_outliers = []
         self.pointcounts_grab = []
-        self.pointcounts_downsample = []
         self.pointcounts_outliers = []
         self.latency_grab = []
         self.stopped = True
@@ -288,14 +285,6 @@ class SourceServer:
                     t2_o = time.time()
                     self.times_outliers.append(t2_o-t1_o)
                     self.pointcounts_outliers.append(pc.count())
-                if self.downsample:
-                    t1_d = time.time()
-                    downsampled_pc = cwipc_downsample(pc, self.downsample)
-                    pc.free()
-                    pc = downsampled_pc
-                    t2_d = time.time()
-                    self.times_downsample.append(t2_d-t1_d)
-                    self.pointcounts_downsample.append(pc.count())
                 if self.spatial_crop:
                     cropped_pc = cwipc_crop(pc, self.spatial_crop)
                     pc.free()
@@ -321,12 +310,8 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
-        if self.times_downsample:
-            self.print1stat('downsample_duration', self.times_downsample)
         if self.pointcounts_outliers:
             self.print1stat('outliers_pointcount', self.pointcounts_outliers)
-        if self.pointcounts_downsample:
-            self.print1stat('downsample_pointcount', self.pointcounts_downsample)
         if hasattr(self.grabber, 'statistics'):
             self.grabber.statistics() # type: ignore
         for filter in self.pc_filters:
@@ -378,7 +363,6 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
-    input_args.add_argument("--downsample", action="store", type=float, metavar="S", help="After capture, downsample pointclouds into voxels of size S*S*S")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture, remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Use --filter help for help. Multiple filters are applied in order.")
     input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="After capture, do a spatial crop on the pointcloud")
