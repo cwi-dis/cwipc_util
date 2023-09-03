@@ -5,9 +5,9 @@ import importlib
 import importlib.util
 from ..net.abstract import *
 from ..util import cwipc_wrapper
-from . import passthrough, analyze, voxelize, transform, crop
+from . import passthrough, analyze, voxelize, transform, crop, remove_outliers
 
-all_filters = [passthrough, analyze, voxelize, transform, crop]
+all_filters = [passthrough, analyze, voxelize, transform, crop, remove_outliers]
 
 class cwipc_abstract_filter(ABC):
 

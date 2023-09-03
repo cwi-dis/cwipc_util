@@ -6,7 +6,7 @@ import argparse
 import traceback
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_remove_outliers
+from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -204,13 +204,10 @@ class SourceServer:
         self.count = args.count
         self.inpoint = args.inpoint
         self.outpoint = args.outpoint
-        self.outliers = args.outliers
         self.cameraconfig = args.cameraconfig
         self.viewer = viewer
         self.times_grab = []
-        self.times_outliers = []
         self.pointcounts_grab = []
-        self.pointcounts_outliers = []
         self.latency_grab = []
         self.stopped = True
         self.lastGrabTime = None
@@ -276,14 +273,6 @@ class SourceServer:
                 pc_timestamp = pc.timestamp()/1000.0
                 if self.verbose: print(f'grab: captured {pc.count()} points')
                 t1 = time.time()
-                if self.outliers:
-                    t1_o = time.time()
-                    clean_pc = cwipc_remove_outliers(pc, int(self.outliers[0]), float(self.outliers[1]), bool(int(self.outliers[2])))
-                    pc.free()
-                    pc = clean_pc
-                    t2_o = time.time()
-                    self.times_outliers.append(t2_o-t1_o)
-                    self.pointcounts_outliers.append(pc.count())
                 if self.viewer: 
                     t = pc.timestamp()
                     if self.inpoint and t<self.inpoint:
@@ -305,8 +294,6 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
-        if self.pointcounts_outliers:
-            self.print1stat('outliers_pointcount', self.pointcounts_outliers)
         if hasattr(self.grabber, 'statistics'):
             self.grabber.statistics() # type: ignore
         for filter in self.pc_filters:
@@ -358,7 +345,6 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
-    input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture, remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Use --filter help for help. Multiple filters are applied in order.")
     return parser
     
