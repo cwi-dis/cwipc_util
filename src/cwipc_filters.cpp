@@ -145,7 +145,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
     // Apply statistical outlier removal
     try {
         if (perTile) {
-            std::cout << "cwipc_util: cwipc_remove_outliers: Removing outliers per tile" << std::endl;
+            //std::cout << "cwipc_util: cwipc_remove_outliers: Removing outliers per tile" << std::endl;
             std::vector< int > tiles;
 
             for (auto pt : src->points) {
@@ -169,6 +169,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             }
 
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+            rv->_set_cellsize(pc->cellsize());
 
             // copy src auxdata to dst pointcloud
             cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
@@ -177,9 +178,10 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 
             return rv;
         } else {
-            std::cout << "Removing outliers on the full pointcloud" << std::endl;
+            //std::cout << "Removing outliers on the full pointcloud" << std::endl;
             dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+            rv->_set_cellsize(pc->cellsize());
 
             // copy src auxdata to dst pointcloud
             cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
