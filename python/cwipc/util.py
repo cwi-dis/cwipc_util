@@ -883,18 +883,22 @@ def cwipc_window(title : str) -> cwipc_sink_wrapper:
     raise CwipcError("cwipc_window: cannot create window, but no specific error returned from C library")
     
 def cwipc_downsample(pc : cwipc_wrapper, voxelsize : float) -> cwipc_wrapper:
+    """Return a pointcloud voxelized to cubes with the given voxelsize"""
     rv = cwipc_util_dll_load().cwipc_downsample(pc.as_cwipc_p(), voxelsize)
     return cwipc_wrapper(rv)
     
 def cwipc_remove_outliers(pc : cwipc_wrapper, kNeighbors : int, stdDesvMultThresh : float, perTile : bool) -> cwipc_wrapper:
+    """Return a pointcloud with outlier points removed."""
     rv = cwipc_util_dll_load().cwipc_remove_outliers(pc.as_cwipc_p(), kNeighbors, stdDesvMultThresh, perTile)
     return cwipc_wrapper(rv)
     
 def cwipc_tilefilter(pc : cwipc_wrapper, tile : int) -> cwipc_wrapper:
+    """Return pointcloud with only points that have the given tilenumber"""
     rv = cwipc_util_dll_load().cwipc_tilefilter(pc.as_cwipc_p(), tile)
     return cwipc_wrapper(rv)
   
 def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_wrapper:
+    """Retur pointcloud with every point tilenumber changed. Mapping can be a list or bytes with 256 entries or a dictionary."""
     if type(mapping) != bytes and type(mapping) != bytearray:
         m = [0]*256
         for k in mapping:
@@ -904,15 +908,18 @@ def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], 
     return cwipc_wrapper(rv)
   
 def cwipc_colormap(pc : cwipc_wrapper, clearBits : int, setBits : int) -> cwipc_wrapper:
+    """Return pointcloud with every point color changed. clearBits and setBits are bitmasks."""
     rv = cwipc_util_dll_load().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
     return cwipc_wrapper(rv)
   
 def cwipc_crop(pc : cwipc_wrapper, bbox : Union[tuple[float, float, float, float, float, float], List[float]]) -> cwipc_wrapper:
+    """Return pointcloud cropped to a bounding box specified as minx, maxx, miny, maxy, minz, maxz"""
     bbox_arg = (ctypes.c_float*6)(*bbox)
     rv = cwipc_util_dll_load().cwipc_crop(pc.as_cwipc_p(), bbox_arg)
     return cwipc_wrapper(rv)
   
 def cwipc_join(pc1 : cwipc_wrapper, pc2 : cwipc_wrapper) -> cwipc_wrapper:
+    """Return a pointcloud that is the union of the two arguments"""
     rv = cwipc_util_dll_load().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
     return cwipc_wrapper(rv)
   

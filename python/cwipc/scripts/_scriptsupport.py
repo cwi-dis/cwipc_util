@@ -6,7 +6,7 @@ import argparse
 import traceback
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_remove_outliers, cwipc_crop
+from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, cwipc_remove_outliers
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -204,7 +204,6 @@ class SourceServer:
         self.count = args.count
         self.inpoint = args.inpoint
         self.outpoint = args.outpoint
-        self.spatial_crop = args.spatial_crop
         self.outliers = args.outliers
         self.cameraconfig = args.cameraconfig
         self.viewer = viewer
@@ -285,10 +284,6 @@ class SourceServer:
                     t2_o = time.time()
                     self.times_outliers.append(t2_o-t1_o)
                     self.pointcounts_outliers.append(pc.count())
-                if self.spatial_crop:
-                    cropped_pc = cwipc_crop(pc, self.spatial_crop)
-                    pc.free()
-                    pc = cropped_pc
                 if self.viewer: 
                     t = pc.timestamp()
                     if self.inpoint and t<self.inpoint:
@@ -365,7 +360,6 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
     input_args.add_argument("--outliers", action="store", nargs=3,  metavar="O", help="After capture, remove outliers from the pointcloud. 3 arguments: kNeighbors stddevMulThresh perTileBool")
     input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Use --filter help for help. Multiple filters are applied in order.")
-    input_args.add_argument("--spatial_crop", action="store", nargs=6, type=float, metavar=('MINX', 'MAXX', 'MINY', 'MAXY', 'MINZ', 'MAXZ'), help="After capture, do a spatial crop on the pointcloud")
     return parser
     
 def beginOfRun(args : argparse.Namespace) -> None:
