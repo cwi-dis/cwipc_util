@@ -12,13 +12,15 @@ class CustomFilter:
             scale: scale factor to apply (after the offsets)
         The analyze filter will give an educated guess for the parameters, for point clouds of humans.
     """
+    filtername = "transform"
+
     def __init__(self, x : float, y: float, z : float, scale : float):
         self.x = x
         self.y = y
         self.z = z
         self.scale = scale
         self.count = 0
-        self.times_transform = []
+        self.times = []
         
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
@@ -37,25 +39,25 @@ class CustomFilter:
         newpc._set_cellsize(cellsize * self.scale)
         pc.free()
         t2_d = time.time()
-        self.times_transform.append(t2_d-t1_d)
+        self.times.append(t2_d-t1_d)
         return newpc
         
     def statistics(self):
         print(f"transform: count={self.count}")
-        if self.times_transform:
-            self.print1stat('duration', self.times_transform)
+        if self.times:
+            self.print1stat('duration', self.times)
 
 
     def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
-            print(f'transform: {name}: count=0')
+            print(f'{self.filtername}: {name}: count=0')
             return
         minValue = min(values)
         maxValue = max(values)
         avgValue = sum(values) / count
         if isInt:
-            fmtstring = 'transform: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+            fmtstring = '{}: {}: count={}, average={:.3f}, min={:d}, max={:d}'
         else:
-            fmtstring = 'transform: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
-        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
+            fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))

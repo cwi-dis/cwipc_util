@@ -3,6 +3,8 @@ class CustomFilter:
     analyze - a filter that prints min, max and average of X, Y, Z coordinates at end of run.
         Arguments: none.
     """
+    filtername = "analyze"
+
     def __init__(self):
         self.count = 0
         self.min_x = self.min_y = self.min_z = 999999
@@ -37,13 +39,13 @@ class CustomFilter:
         return pc
         
     def statistics(self):
-        print(f"analyze: count={self.count}")
+        print(f"{self.filtername}: count={self.count}")
         avg_x = self.sum_avg_x/self.count
         avg_y = self.sum_avg_y/self.count
         avg_z = self.sum_avg_z/self.count
         height = self.max_y - self.min_y
         height_human = 1.8
-        print(f"analyze: x: min={self.min_x:.3f}, max={self.max_x:.3f}, average centroid={avg_x:.3f}")
-        print(f"analyze: y: min={self.min_y:.3f}, max={self.max_y:.3f}, average centroid={avg_y:.3f}")
-        print(f"analyze: z: min={self.min_z:.3f}, max={self.max_z:.3f}, average centroid={avg_z:.3f}")
-        print(f"analyze: approximate adjustment for humans: --filter 'transform({-avg_x:.6f}, 0, {-avg_z:.6f}, {height_human/height:.6f})'")
+        print(f"{self.filtername}: x: min={self.min_x:.3f}, max={self.max_x:.3f}, average centroid={avg_x:.3f}")
+        print(f"{self.filtername}: y: min={self.min_y:.3f}, max={self.max_y:.3f}, average centroid={avg_y:.3f}")
+        print(f"{self.filtername}: z: min={self.min_z:.3f}, max={self.max_z:.3f}, average centroid={avg_z:.3f}")
+        print(f"{self.filtername}: approximate adjustment for humans: --filter 'transform({-avg_x:.6f}, 0, {-avg_z:.6f}, {height_human/height:.6f})'")
