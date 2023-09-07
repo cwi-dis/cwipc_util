@@ -6,13 +6,13 @@
 
 #include "cwipc_util/api.h"
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     char *message = NULL;
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << "pointcloudfile.ply pointcloudfile.cwipcdump" << std::endl;
         return 2;
     }
+
     //
     // Read pointcloud file
     //
@@ -21,6 +21,7 @@ int main(int argc, char** argv)
         std::cerr << argv[0] << ": Cannot read pointcloud: " << message << std::endl;
         return 1;
     }
+
     //
     // Save
     //
@@ -29,6 +30,7 @@ int main(int argc, char** argv)
         std::cerr << argv[0] << ": Cannot save pointcloud to cwipcdump: " << message << std::endl;
         return 1;
     }
+
     return 0;
 }
 
