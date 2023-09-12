@@ -19,21 +19,21 @@ int main(int argc, char** argv) {
 
     cwipc_source *generator = cwipc_synthetic(0, 0, &error, CWIPC_API_VERSION);
     if (generator == NULL) {
-    	std::cerr << "Error: " << error << std::endl;
-    	return 1;
+        std::cerr << "Error: " << error << std::endl;
+        return 1;
     }
 
     int ok = 0;
     while (count-- > 0 && ok == 0) {
-    	cwipc *pc = generator->get();
-    	snprintf(filename, sizeof(filename), "%s/pointcloud-%" PRIu64 ".ply", argv[2], pc->timestamp());
-    	ok = cwipc_write(filename, pc, &error);
+        cwipc *pc = generator->get();
+        snprintf(filename, sizeof(filename), "%s/pointcloud-%" PRIu64 ".ply", argv[2], pc->timestamp());
+        ok = cwipc_write(filename, pc, &error);
         pc->free();
     }
 
     if (ok < 0) {
-    	std::cerr << "Error: " << error << std::endl;
-    	return 1;
+        std::cerr << "Error: " << error << std::endl;
+        return 1;
     }
 
     return 0;

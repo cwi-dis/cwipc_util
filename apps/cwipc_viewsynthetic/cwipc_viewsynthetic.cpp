@@ -4,14 +4,14 @@
 #include "cwipc_util/api.h"
 
 int main(int argc, char** argv) {
-	int fps = 0;
-	int npoints = 0;
+    int fps = 0;
+    int npoints = 0;
 
-	if (argc >= 2) {
+    if (argc >= 2) {
         fps = atoi(argv[1]);
     }
 
-	if (argc >= 3) {
+    if (argc >= 3) {
         npoints = atoi(argv[2]);
     }
 
@@ -25,8 +25,8 @@ int main(int argc, char** argv) {
 
     cwipc_source *generator = cwipc_synthetic(fps, npoints, &error, CWIPC_API_VERSION);
     if (generator == NULL) {
-    	std::cerr << "Error: " << error << std::endl;
-    	return 1;
+        std::cerr << "Error: " << error << std::endl;
+        return 1;
     }
 
     cwipc_sink *window = cwipc_window("cwipc_viewsynthetic", &error, CWIPC_API_VERSION);
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     }
 
     while (true) {
-    	cwipc *pc = generator->get();
+        cwipc *pc = generator->get();
 
         if (pc == NULL) {
             std::cerr << "Error: generator->get() returned NULL" << std::endl;

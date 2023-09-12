@@ -540,10 +540,9 @@ typedef struct _cwipc_auxiliary_data {
 extern "C" {
 #endif
 
-	/** \brief Return version string.
-	 */
-	_CWIPC_UTIL_EXPORT const char *cwipc_get_version();
-	
+/** \brief Return version string.
+ */
+_CWIPC_UTIL_EXPORT const char *cwipc_get_version();
     /** \brief Read pointcloud from .ply file.
      * \param filename The ply file to read.
      * \param timestamp The timestamp to record in the cwipc object.

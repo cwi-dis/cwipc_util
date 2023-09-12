@@ -4,13 +4,14 @@
 #include "cwipc_util/api.h"
 
 int main(int argc, char** argv) {
-	uint64_t timestamp = 0LL;
+    uint64_t timestamp = 0LL;
+
     if (argc != 4) {
         std::cerr << "Usage: " << argv[0] << " voxelsize pointcloudfile.ply newpointcloudfile.ply" << std::endl;
         return 2;
     }
 
-	float voxelsize = atof(argv[1]);
+    float voxelsize = atof(argv[1]);
 
     //
     // Read pointcloud file
@@ -33,8 +34,8 @@ int main(int argc, char** argv) {
     // Save pointcloud file
     //
     if (cwipc_write(argv[3], new_pc, NULL) < 0) {
-    	std::cerr << argv[0] << ": Error writing PLY file " << argv[3] << std::endl;
-    	return 1;
+      std::cerr << argv[0] << ": Error writing PLY file " << argv[3] << std::endl;
+      return 1;
     }
 
     pc->free();
