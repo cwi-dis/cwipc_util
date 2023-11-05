@@ -13,6 +13,7 @@ endif()
 find_package(OpenGL REQUIRED)
 
 add_subdirectory("src")
+add_subdirectory("apps/cwipc_util_install_check")
 add_subdirectory("apps/cwipc_ply2dump")
 add_subdirectory("apps/cwipc_ply2dump_c")
 add_subdirectory("apps/cwipc_pcl2dump")
