@@ -7,6 +7,6 @@ include_directories(
 )
 target_link_libraries(cwipc_util_install_check cwipc_util)
 
-install(TARGETS cwipc_util_install_check RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+install(TARGETS cwipc_util_install_check RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/cwipc)
 
 add_test(NAME cwipc_util_install_check COMMAND cwipc_util_install_check )
