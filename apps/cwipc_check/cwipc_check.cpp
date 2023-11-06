@@ -13,22 +13,22 @@ int check() {
     int status;
     bool ok = true;
     
-    cmd = libExecDir + "/cwipc_util_install_check";
+    cmd = libExecDir + "/cwipc/cwipc_util_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc_codec_install_check";
+    cmd = libExecDir + "/cwipc/cwipc_codec_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc_realsense2_install_check";
+    cmd = libExecDir + "/cwipc/cwipc_realsense2_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc_kinect_install_check";
+    cmd = libExecDir + "/cwipc/cwipc_kinect_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
@@ -38,14 +38,17 @@ int check() {
 }
 
 int install() {
-    std::string script = libExecDir + "\\cwipc-install-3rdparty-full-win1064.ps1";
-    std::string cmdHead = "CMD /S /C \"powershell -Command \\\"& {$wd = Get-Location; Start-Process powershell.exe -verb RunAs -ArgumentList \"-ExecutionPolicy ByPass -NoExit -Command Set-Location $wd; ";
-    std::string cmdTail = "\" }\\\"\"";
-    std::string cmd = cmdHead + script + cmdTail;
+#ifdef WIN32
+    std::string script = libExecDir + "\\cwipc\\scripts\\install-3rdparty-full-win1064-asadmin.ps1";
+
+    std::string cmd = "powershell -ExecutionPolicy Bypass -File " + script;
     std::cerr << progName << ": execute command: " << cmd << std::endl;
     int status = ::system(cmd.c_str());
-    std::cerr << progName << ": exit status: " << status << std::endl;
     return status;
+#else
+    std::cerr << progName << ": only implemented on Windows. On other platforms use your local package manager (brew, apt, etc)" << std::endl;
+    return -1;
+#endif
 }
 
 int main(int argc, char** argv) {
