@@ -20,7 +20,7 @@ class ColorMap:
 _colorMapTiles = ColorMap()
 _colorMapTiles.add_mapping(1, (1, 0, 0))
 _colorMapTiles.add_mapping(2, (0, 1, 0))
-_colorMapTiles.add_mapping(3, (0, 0, 1))
+_colorMapTiles.add_mapping(4, (0, 0, 1))
 _colorMapTiles.add_mapping(8, (0.5, 0.5, 0))
 _colorMapTiles.add_mapping(16, (0, 0.5, 0.5))
 _colorMapTiles.add_mapping(32, (0.5, 0, 0.5))
