@@ -909,7 +909,7 @@ def cwipc_tilefilter(pc : cwipc_wrapper, tile : int) -> cwipc_wrapper:
   
 def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_wrapper:
     """Retur pointcloud with every point tilenumber changed. Mapping can be a list or bytes with 256 entries or a dictionary."""
-    if type(mapping) != bytes and type(mapping) != bytearray:
+    if type(mapping) != bytes and type(mapping) != bytearray and type(mapping) != list:
         m = [0]*256
         for k in mapping:
             m[k] = mapping[k]
