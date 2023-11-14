@@ -1,4 +1,4 @@
-class CustomFilter:
+class PassthroughFilter:
     """
     passthrough - A filter that does nothing. For debugging only.
         Arguments: none.
@@ -16,3 +16,4 @@ class CustomFilter:
     def statistics(self):
         print(f"{self.filtername}: count={self.count}")
         
+CustomFilter = PassthroughFilter

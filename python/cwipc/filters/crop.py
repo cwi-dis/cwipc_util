@@ -2,7 +2,7 @@ import time
 from typing import Union, List
 from ..util import cwipc_crop, cwipc_wrapper
 
-class CustomFilter:
+class CropFilter:
     """
     crop - Remove points outside a given bounding box
         Arguments:
@@ -55,3 +55,5 @@ class CustomFilter:
         else:
             fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))
+
+CustomFilter = CropFilter

@@ -2,7 +2,7 @@ import time
 from typing import Union, List
 from ..util import cwipc_remove_outliers, cwipc_wrapper
 
-class CustomFilter:
+class RemoveOutliersFilter:
     """
     remove_outliers - Remove outlier points by applying a statistical method on every point.
         See https://pointclouds.org/documentation/classpcl_1_1_statistical_outlier_removal_3_01pcl_1_1_p_c_l_point_cloud2_01_4.html
@@ -57,3 +57,5 @@ class CustomFilter:
         else:
             fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))
+
+CustomFilter = RemoveOutliersFilter

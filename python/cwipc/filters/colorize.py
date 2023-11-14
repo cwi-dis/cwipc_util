@@ -53,7 +53,7 @@ _namedColorMaps=dict(
     contributions=_colorMapContributingCameras
 )
 
-class CustomFilter:
+class ColorizeFilter:
     """
     colorize - Change the color of points in a pointcloud, based on the tile number or mask.
         Arguments:
@@ -129,3 +129,5 @@ class CustomFilter:
         else:
             fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))
+
+CustomFilter=ColorizeFilter
