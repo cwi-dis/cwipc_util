@@ -15,7 +15,8 @@ class RegistrationAnalyzer:
     """
 
     def __init__(self):
-        self.want_plot = False
+        self.want_cumulative_plot = False
+        self.want_histogram_plot = False
         self.histogram_bincount = 400
         self.label : Optional[str] = None
         self.per_camera_tilenum : List[int] = []
@@ -43,7 +44,7 @@ class RegistrationAnalyzer:
     def save_plot(self, png_filename : str, show : bool = False):
         """Seve the resulting plot"""
         # xxxjack This uses the stateful pyplot API. Horrible.
-        assert self.want_plot
+        assert self.want_cumulative_plot or self.want_histogram_plot
         if png_filename:
             plt.savefig(png_filename)
         if show:
@@ -84,10 +85,13 @@ class RegistrationAnalyzerOneToOne(RegistrationAnalyzer):
                 totPoints = cumsum[-1]
                 normsum = cumsum / totPoints
                 self.inter_camera_histograms[cam_i][cam_j] = (normsum, edges)
-                if self.want_plot:
+                if self.want_cumulative_plot:
                     plt.plot(edges[1:], normsum, label=f"{cam_i} - {cam_j} ({totPoints} points)")
-        if self.want_plot:
-            title = "Cumulative point distances between all camera pairs"
+                if self.want_histogram_plot:
+                    plt.plot(edges[1:], histogram, label=f"{cam_i} - {cam_j} ({totPoints} points)")
+        if self.want_cumulative_plot or self.want_histogram_plot:
+            title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
+            title = title + " point distances between all camera pairs"
             if self.label:
                 title = self.label + "\n" + title
             plt.title(title)
@@ -119,10 +123,13 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             totOtherPoints = self.per_camera_kdtree_others[cam_i].data.shape[0]
             normsum = cumsum / totPoints
             self.per_camera_histograms[cam_i] = (normsum, edges)
-            if self.want_plot:
+            if self.want_cumulative_plot:
                 plt.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
-        if self.want_plot:
-            title = "Cumulative point distances between camera and all others"
+            if self.want_histogram_plot:
+                plt.plot(edges[1:], histogram, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+        if self.want_cumulative_plot or self.want_histogram_plot:
+            title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
+            title = title + " point distances between camera and all others"
             if self.label:
                 title = self.label + "\n" + title
             plt.title(title)
