@@ -122,7 +122,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             totPoints = cumsum[-1]
             totOtherPoints = self.per_camera_kdtree_others[cam_i].data.shape[0]
             normsum = cumsum / totPoints
-            self.per_camera_histograms[cam_i] = (normsum, edges)
+            self.per_camera_histograms[cam_i] = (histogram, edges)
             if self.want_cumulative_plot:
                 plt.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
             if self.want_histogram_plot:
@@ -155,4 +155,15 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             kdtree_others : scipy.spatial.KDTree = scipy.spatial.KDTree(other_points)  # type: ignore
             assert kdtree_others
             self.per_camera_kdtree_others.append(kdtree_others)
+
+    def _compute_correspondences(self):
+        nCamera = len(self.per_camera_histograms)
+        self.correspondences = [0.0] * nCamera
+        for histogram, edges in self.per_camera_histograms:
+            # Find the fullest bin, and the corresponding value
+            max_bin_index = int(np.argmax(histogram))
+            max_bin_value = histogram[max_bin_index]
+            # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
+            for corr_bin_index in range(max_bin_index, len(histogram)):
+                pass # xxxjack unfinished
 
