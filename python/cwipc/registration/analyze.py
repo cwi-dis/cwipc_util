@@ -108,12 +108,15 @@ class RegistrationAnalyzerOneToOne(RegistrationAnalyzer):
 
 class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
 
+    # See comment in _compute_corrspondences()
+    BIN_VALUE_DECREASE_FACTOR = 0.5
+
     def run(self):
         """Run the algorithm"""
         assert len(self.per_camera_pointclouds) > 1
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
-
+        self.plot_fig, self.plot_ax = plt.subplots()
         self.per_camera_histograms : List[Any] = [None] * nCamera
         for cam_i in range(nCamera):
             distances, _ = self.per_camera_kdtree_others[cam_i].query(self.per_camera_points_nparray[cam_i])
@@ -124,16 +127,23 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             normsum = cumsum / totPoints
             self.per_camera_histograms[cam_i] = (histogram, edges)
             if self.want_cumulative_plot:
-                plt.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+                self.plot_ax.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
             if self.want_histogram_plot:
-                plt.plot(edges[1:], histogram, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+                self.plot_ax.plot(edges[1:], histogram, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+        self._compute_correspondences()
+        corr_box_text = "Correspondence error:\n"
+        for i in range(len(self.correspondences)):
+            corr_box_text += f"\n{i}: {self.correspondences[i]:.3f}"
+
         if self.want_cumulative_plot or self.want_histogram_plot:
             title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
             title = title + " point distances between camera and all others"
             if self.label:
                 title = self.label + "\n" + title
             plt.title(title)
-            plt.legend()
+            props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+            self.plot_ax.text(0.98, 0.1, corr_box_text, transform=self.plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
+            self.plot_ax.legend()
 
     def _prepare(self):
         self.per_camera_points_nparray = [
@@ -158,12 +168,17 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
 
     def _compute_correspondences(self):
         nCamera = len(self.per_camera_histograms)
-        self.correspondences = [0.0] * nCamera
+        self.correspondences : List[float] = []
         for histogram, edges in self.per_camera_histograms:
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
             max_bin_value = histogram[max_bin_index]
             # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
             for corr_bin_index in range(max_bin_index, len(histogram)):
-                pass # xxxjack unfinished
-
+                if histogram[corr_bin_index] < max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
+                    break
+            else:
+                corr_bin_index = max_bin_index
+            # Now corr_bin_index is where our expected correspondence is
+            corr = edges[corr_bin_index]
+            self.correspondences.append(corr)
