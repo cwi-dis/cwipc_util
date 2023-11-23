@@ -19,22 +19,22 @@ int check() {
     int status;
     bool ok = true;
     
-    cmd = libExecDir + SEP "cwipc" SEP "cwipc_util_install_check";
+    cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_util_install_check" + "\"";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + SEP "cwipc" SEP "cwipc_codec_install_check";
+    cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_codec_install_check" + "\"";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + SEP "cwipc" SEP "cwipc_realsense2_install_check";
+    cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_realsense2_install_check" + "\"";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + SEP "cwipc" SEP "cwipc_kinect_install_check";
+    cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_kinect_install_check" + "\"";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
@@ -45,7 +45,7 @@ int check() {
 
 int install() {
 #ifdef WIN32
-    std::string script = libExecDir + "\\cwipc\\scripts\\install-3rdparty-full-win1064-asadmin.ps1";
+    std::string script = "\"" + libExecDir + "\\cwipc\\scripts\\install-3rdparty-full-win1064-asadmin.ps1" + "\"";
 
     std::string cmd = "powershell -ExecutionPolicy Bypass -File " + script;
     std::cerr << progName << ": execute command: " << cmd << std::endl;
