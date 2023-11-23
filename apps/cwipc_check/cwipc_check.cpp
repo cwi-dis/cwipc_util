@@ -3,8 +3,11 @@
 #include "string.h"
 #include <stdlib.h>
 #include <inttypes.h>
+#ifdef WIN32
+#include <windows.h>
+#endif
 
-const std::string libExecDir(LIBEXECDIR);
+std::string libExecDir(LIBEXECDIR);
 std::string progName;
 
 int check() {
@@ -51,8 +54,47 @@ int install() {
 #endif
 }
 
+#ifdef WIN32
+bool win_get_progname_and_libexec() {
+    TCHAR moduleName[2048];
+    if (!GetModuleFileName(NULL, moduleName, 2048))
+        return false;
+    progName = std::string(moduleName);
+    // Search for last backslash. Note that the progName path is returned by a win32 API call
+    // so we can safely assume it uses backslashes.
+    size_t last_backslash_pos = progName.find_last_of('\\');
+    if (last_backslash_pos == std::string::npos)
+        return false;
+    // We can now get the path to the bin directory.
+    std::string progDir = progName.substr(0, last_backslash_pos);
+    last_backslash_pos = progDir.find_last_of('\\');
+    if (last_backslash_pos == std::string::npos)
+        return false;
+    // We can not get the topdir.
+    std::string topDir;
+    while (last_backslash_pos != std::string::npos) {
+        topDir = progDir.substr(0, last_backslash_pos);
+        // We can now construct the libexec dir.
+        std::string candidateLibexecDir = topDir + "\\libexec";
+        if (GetFileAttributes(candidateLibexecDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            libExecDir = candidateLibexecDir;
+            return true;
+        }
+        // if it didn't exist we go up one directory.
+        last_backslash_pos = topDir.find_last_of('\\');
+    }
+    return false;
+}
+#endif
+
 int main(int argc, char** argv) {
     progName = argv[0];
+#ifdef WIN32
+    if (!win_get_progname_and_libexec()) {
+        std::cerr << progName << ": cannot determine cwipc install directory. Attempting to continue." << std::endl;
+    }
+#endif
+
 
     std::string command = "check";
     if (argc >= 2) {
