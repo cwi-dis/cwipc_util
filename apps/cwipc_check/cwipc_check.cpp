@@ -38,6 +38,16 @@ int check() {
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
+ 
+    cmd = "python --version";
+    status = ::system(cmd.c_str());
+    if (status != 0) ok = false;
+    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
+ 
+    cmd = "python -m cwipc.scripts.cwipc_view --version";
+    status = ::system(cmd.c_str());
+    if (status != 0) ok = false;
+    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
 
     if (!ok) return 1;
     return 0;
@@ -50,7 +60,19 @@ int install() {
     std::string cmd = "powershell -ExecutionPolicy Bypass -File " + script;
     std::cerr << progName << ": execute command: " << cmd << std::endl;
     int status = ::system(cmd.c_str());
-    return status;
+    if (status != 0) {
+        return status;
+    }
+
+    script = "\"" + libExecDir + "\\..\\bin\\cwipc_pymodules_install.ps1" + "\"";
+
+    cmd = "powershell -ExecutionPolicy Bypass -File " + script;
+    std::cerr << progName << ": execute command: " << cmd << std::endl;
+    status = ::system(cmd.c_str());
+    if (status != 0) {
+        return status;
+    }
+    return 0;
 #else
     std::cerr << progName << ": only implemented on Windows. On other platforms use your local package manager (brew, apt, etc)" << std::endl;
     return -1;
