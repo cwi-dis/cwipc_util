@@ -5,6 +5,9 @@
 #include <inttypes.h>
 #ifdef WIN32
 #include <windows.h>
+#define SEP "\\"
+#else
+#define SEP "/"
 #endif
 
 std::string libExecDir(LIBEXECDIR);
@@ -16,22 +19,22 @@ int check() {
     int status;
     bool ok = true;
     
-    cmd = libExecDir + "/cwipc/cwipc_util_install_check";
+    cmd = libExecDir + SEP "cwipc" SEP "cwipc_util_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc/cwipc_codec_install_check";
+    cmd = libExecDir + SEP "cwipc" SEP "cwipc_codec_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc/cwipc_realsense2_install_check";
+    cmd = libExecDir + SEP "cwipc" SEP "cwipc_realsense2_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
     
-    cmd = libExecDir + "/cwipc/cwipc_kinect_install_check";
+    cmd = libExecDir + SEP "cwipc" SEP "cwipc_kinect_install_check";
     status = ::system(cmd.c_str());
     if (status != 0) ok = false;
     std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
