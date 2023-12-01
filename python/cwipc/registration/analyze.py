@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
@@ -125,7 +125,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             totPoints = cumsum[-1]
             totOtherPoints = self.per_camera_kdtree_others[cam_i].data.shape[0]
             normsum = cumsum / totPoints
-            self.per_camera_histograms[cam_i] = (histogram, edges)
+            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum)
             if self.want_cumulative_plot:
                 self.plot_ax.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
             if self.want_histogram_plot:
@@ -145,6 +145,14 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             self.plot_ax.text(0.98, 0.1, corr_box_text, transform=self.plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
             self.plot_ax.legend()
 
+    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+        rv = []
+        for camnum in range(len(self.correspondences)):
+            weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
+            rv.append((self.per_camera_tilenum[camnum], self.correspondences[camnum], weight))
+        rv.sort(key=lambda t:-t[2])
+        return rv
+    
     def _prepare(self):
         self.per_camera_points_nparray = [
             self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds
@@ -169,7 +177,8 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
     def _compute_correspondences(self):
         nCamera = len(self.per_camera_histograms)
         self.correspondences : List[float] = []
-        for histogram, edges in self.per_camera_histograms:
+        self.below_correspondence_counts : List[int] = []
+        for histogram, edges, cumsum in self.per_camera_histograms:
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
             max_bin_value = histogram[max_bin_index]
@@ -181,4 +190,6 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
                 corr_bin_index = max_bin_index
             # Now corr_bin_index is where our expected correspondence is
             corr = edges[corr_bin_index]
+            below_corr_count = cumsum[corr_bin_index]
             self.correspondences.append(corr)
+            self.below_correspondence_counts.append(below_corr_count)
