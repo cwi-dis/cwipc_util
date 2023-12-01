@@ -19,36 +19,81 @@ int check() {
     int status;
     bool ok = true;
     
+    std::cerr << "cwipc_util: checking installation: " << std::endl;
     cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_util_install_check" + "\"";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
+    if (status != 0) {
+        ok = false;
+        std::cerr << "cwipc_util: not ok." << std::endl;
+        std::cerr << "cwipc_util: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else 
+    {
+        std::cerr << "cwipc_util: ok." << std::endl;
+    }
     
+    std::cerr << "cwipc_codec: checking installation: " << std::endl;
     cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_codec_install_check" + "\"";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
-    
+    if (status != 0) {
+        ok = false;
+        std::cerr << "cwipc_codec: not ok." << std::endl;
+        std::cerr << "cwipc_codec: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "cwipc_codec: ok." << std::endl;
+    }
+
+    std::cerr << "cwipc_realsense2: checking installation: " << std::endl;
     cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_realsense2_install_check" + "\"";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
-    
+    if (status != 0) {
+        ok = false;
+        std::cerr << "cwipc_realsense2: not ok." << std::endl;
+        std::cerr << "cwipc_realsense2: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "cwipc_realsense2: ok." << std::endl;
+    }
+
+    std::cerr << "cwipc_kinect: checking installation: " << std::endl;
     cmd = "\"" + libExecDir + SEP "cwipc" SEP "cwipc_kinect_install_check" + "\"";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
- 
+    if (status != 0) {
+        ok = false;
+        std::cerr << "cwipc_kinect: not ok." << std::endl;
+        std::cerr << "cwipc_kinect: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "cwipc_kinect: ok." << std::endl;
+    }
+    std::cerr << "python: determining version:" << std::endl;
     cmd = "python --version";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
- 
+    if (status != 0) {
+        ok = false;
+        std::cerr << "python: not ok." << std::endl;
+        std::cerr << "python: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "python: ok." << std::endl;
+    }
+    std::cerr << "cwipc python modules: determining version:" << std::endl;
     cmd = "python -m cwipc.scripts.cwipc_view --version";
     status = ::system(cmd.c_str());
-    if (status != 0) ok = false;
-    std::cerr << progName << ": " << cmd << ": exit status: " << status << std::endl;
-
+    if (status != 0) {
+        ok = false;
+        std::cerr << "cwipc python modules: not ok." << std::endl;
+        std::cerr << "cwipc python modules: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "cwipc python modules: ok." << std::endl;
+    }
     if (!ok) return 1;
     return 0;
 }
@@ -118,8 +163,11 @@ int main(int argc, char** argv) {
     if (!win_get_progname_and_libexec()) {
         std::cerr << progName << ": cannot determine cwipc install directory. Attempting to continue." << std::endl;
     }
+    else
 #endif
-
+    {
+        std::cerr << progName << ": " << std::endl;
+    }
 
     std::string command = "check";
     if (argc >= 2) {
@@ -127,8 +175,14 @@ int main(int argc, char** argv) {
     }
     if (command == "check") {
         int sts = check();
-        if (sts != 0) {
-            std::cerr << progName << ": Maybe running \"cwipc_check install\" can fix things" << std::endl;
+        if (sts == 0) {
+            std::cerr << std::endl << "Your cwipc installation appears to be fully functional." << std::endl;
+        } else {
+            std::cerr << std::endl << "There are problems with your cwipc installation." << std::endl;
+            std::cerr << "There may be more information above, or you may have seen a dialog box with more information." << std::endl;
+            std::cerr << "Running \"cwipc_check install\" from the command line or \"fix installation\" from the Start menu may fix things." << std::endl;
+            std::cerr << "Otherwise see the readme file for more options." << std::endl;
+
             return sts;
         }
     }
