@@ -121,8 +121,13 @@ class _cwipc_dll_search_path_collection:
         """Add lib directories in our ancestors to DYLD_LIBRARY_PATH so _our_ dylibs are found by find_library"""
         if 'DYLD_LIBRARY_PATH' in os.environ:
             return
-        # Add all "lib" directories found in our ancestors
         candidates : List[str] = []
+        # Add any override directory from the environment (mainly for use from within vscode, for development)
+        if 'CWIPC_LIBRARY_DIR' in os.environ:
+            libpath = os.environ['CWIPC_LIBRARY_DIR']
+            candidates.append(libpath)
+            if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add_dylib_search_directory {libpath} from CWIPC_LIBRARY_DIR", file=sys.stderr)
+        # Add all "lib" directories found in our ancestors
         basepath = os.path.dirname(__file__)
         while basepath:
             libpath = os.path.join(basepath, 'lib')
@@ -139,8 +144,13 @@ class _cwipc_dll_search_path_collection:
         """Add lib directories in our ancestors to LD_LIBRARY_PATH so _our_ shared objects are found by find_library"""
         if 'LD_LIBRARY_PATH' in os.environ:
             return
-        # Add all "lib" directories found in our ancestors
         candidates : List[str] = []
+        # Add any override directory from the environment (mainly for use from within vscode, for development)
+        if 'CWIPC_LIBRARY_DIR' in os.environ:
+            libpath = os.environ['CWIPC_LIBRARY_DIR']
+            candidates.append(libpath)
+            if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add_so_search_directory {libpath} from CWIPC_LIBRARY_DIR", file=sys.stderr)
+        # Add all "lib" directories found in our ancestors
         basepath = os.path.dirname(__file__)
         while basepath:
             libpath = os.path.join(basepath, 'lib')
@@ -899,7 +909,7 @@ def cwipc_tilefilter(pc : cwipc_wrapper, tile : int) -> cwipc_wrapper:
   
 def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_wrapper:
     """Retur pointcloud with every point tilenumber changed. Mapping can be a list or bytes with 256 entries or a dictionary."""
-    if type(mapping) != bytes and type(mapping) != bytearray:
+    if type(mapping) != bytes and type(mapping) != bytearray and type(mapping) != list:
         m = [0]*256
         for k in mapping:
             m[k] = mapping[k]

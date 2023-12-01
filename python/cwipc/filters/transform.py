@@ -2,7 +2,7 @@ import time
 from typing import Union, List
 from ..util import cwipc_wrapper, cwipc_from_points
 
-class CustomFilter:
+class TransformFilter:
     """
     transform - Adjust coordinate system of the point clouds.
         Arguments:
@@ -61,3 +61,5 @@ class CustomFilter:
         else:
             fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))
+
+CustomFilter = TransformFilter

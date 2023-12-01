@@ -1,4 +1,4 @@
-class CustomFilter:
+class AnalyzeFilter:
     """
     analyze - a filter that prints min, max and average of X, Y, Z coordinates at end of run.
         Arguments: none.
@@ -49,3 +49,5 @@ class CustomFilter:
         print(f"{self.filtername}: y: min={self.min_y:.3f}, max={self.max_y:.3f}, average centroid={avg_y:.3f}")
         print(f"{self.filtername}: z: min={self.min_z:.3f}, max={self.max_z:.3f}, average centroid={avg_z:.3f}")
         print(f"{self.filtername}: approximate adjustment for humans: --filter 'transform({-avg_x:.6f}, 0, {-avg_z:.6f}, {height_human/height:.6f})'")
+
+CustomFilter = AnalyzeFilter

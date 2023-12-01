@@ -53,14 +53,14 @@ cwipc* cwipc_downsample(cwipc *pc, float voxelsize) {
         grid.filter(*dst);
 
         // Step 2 - Clear tile numbers in destination
-        for (auto dstpt : dst->points) {
+        for (auto& dstpt : dst->points) {
             dstpt.a = 0;
         }
 
         // Step 3 - Do OR of all contribution point tile numbers in destination.
-        for (auto srcpt : src->points) {
-            auto dstIndex = grid.getCentroidIndex(srcpt);
-            auto dstpt = dst->points[dstIndex];
+        for (auto& srcpt : src->points) {
+            int dstIndex = grid.getCentroidIndex(srcpt);
+            auto& dstpt = dst->points[dstIndex];
             dstpt.a |= srcpt.a;
         }
     } catch (pcl::PCLException& e) {

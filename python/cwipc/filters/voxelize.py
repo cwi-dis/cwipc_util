@@ -2,7 +2,7 @@ import time
 from typing import Union, List
 from ..util import cwipc_downsample, cwipc_wrapper
 
-class CustomFilter:
+class VoxelizeFilter:
     """
     voxelize - Reduce number of points by voxelization (combining points within a cube by their average)
         Arguments:
@@ -51,3 +51,5 @@ class CustomFilter:
         else:
             fmtstring = '{}: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(self.filtername, name, count, avgValue, minValue, maxValue))
+
+CustomFilter = VoxelizeFilter

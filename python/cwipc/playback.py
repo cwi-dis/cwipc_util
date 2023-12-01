@@ -16,6 +16,8 @@ class _Filesource(cwipc_source_abstract):
         self.tileInfo = tileInfo
         self.filenames = list(filenames)
         self.loop = loop
+        self.single_file_mode = self.loop and len(self.filenames) == 1
+        self.single_file_mode_pc : Optional[cwipc.cwipc_wrapper] = None
         self.delta_t = 0
         self.retimestamp = retimestamp
         self.earliest_return = time.time()
@@ -24,19 +26,31 @@ class _Filesource(cwipc_source_abstract):
         
     def free(self) -> None:
         self.filenames = []
+        if self.single_file_mode_pc:
+            self.single_file_mode_pc.free()
+            self.single_file_mode_pc = None
         
     def eof(self) -> bool:
+        if self.single_file_mode_pc != None:
+            return False
         return not self.filenames
     
     def available(self, wait : bool=False) -> bool:
+        if self.single_file_mode_pc:
+            return True
         return not not self.filenames
         
     def get(self) -> Optional[cwipc.cwipc_wrapper]:
         if not self.filenames:
+            if self.single_file_mode_pc:
+                return cwipc.cwipc_from_packet(self.single_file_mode_pc.get_packet())
             return None
         fn = self.filenames.pop(0)
         if self.loop: self.filenames.append(fn)
         rv = self._get(fn)
+        if self.single_file_mode and rv:
+            # xxxjack we miss a clone operation on cwipc_wrapper.
+            self.single_file_mode_pc = cwipc.cwipc_from_packet(rv.get_packet())
         if time.time() < self.earliest_return:
             time.sleep(self.earliest_return - time.time())
         self.earliest_return = time.time() + self.delta_t
