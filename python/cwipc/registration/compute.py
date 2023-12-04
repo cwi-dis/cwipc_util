@@ -20,6 +20,10 @@ class RegistrationComputer(RegistrationAlgorithm):
     def __init__(self):
         self.per_camera_tilenum : List[int] = []
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
+        self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
+
+    def set_correspondence(self, correspondence) -> None:
+        self.correspondence = correspondence
 
     def add_pointcloud(self, pc : cwipc_wrapper) -> int:
         """Add a pointcloud to be used during the algorithm run"""
@@ -127,7 +131,7 @@ class RegistrationComputer_ICP(RegistrationComputer):
             max_correspondence_distance=self._get_max_correspondence_distance(),
             #init=initial_transformation,
             #estimation_method=self._get_estimation_method(),
-            #criteria=self._get_criteria()
+            criteria=self._get_criteria()
         )
 
     def get_result_transformation(self) -> RegistrationTransformation:
@@ -145,8 +149,7 @@ class RegistrationComputer_ICP(RegistrationComputer):
         return target_pointcloud
     
     def _get_max_correspondence_distance(self) -> float:
-        correspondence = 0.028
-        return correspondence
+        return self.correspondence
     
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
         estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPoint
@@ -155,8 +158,8 @@ class RegistrationComputer_ICP(RegistrationComputer):
     
     def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
         criteria = open3d.pipelines.registration.ICPConvergenceCriteria(
-            relative_fitness = 1e-6,
-            relative_rmse = 1e-6,
-            max_iteration = 30
+            relative_fitness = 1e-7,
+            relative_rmse = 1e-7,
+            max_iteration = 60
         )
         return criteria
