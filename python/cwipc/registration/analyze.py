@@ -95,7 +95,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(len(self.correspondences)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            corr_box_text += f"\n{cam_tilenum}: {self.correspondences[cam_i]:.3f}"
+            corr_box_text += f"\n{cam_tilenum}: {self.correspondences[cam_i]:.4f}"
 
         if self.want_cumulative_plot or self.want_histogram_plot:
             title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
