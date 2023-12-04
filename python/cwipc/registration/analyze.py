@@ -3,15 +3,15 @@ from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
-from ..util import cwipc_wrapper, cwipc_tilefilter
+from .. import cwipc_wrapper, cwipc_tilefilter
+from .abstract import *
 
-class RegistrationAnalyzer:
+class RegistrationAnalyzer(RegistrationAlgorithm):
     """Analyzes how good pointclouds are registered.
 
     Create the registrator, add pointclouds, run the algorithm, inspect the results.
     Attributes want_plot, histogram_bincount and label can be changed before running.
 
-    xxxjack No way yet to get simple numbers, after running the algorithm.
     """
 
     def __init__(self):
@@ -22,12 +22,14 @@ class RegistrationAnalyzer:
         self.per_camera_tilenum : List[int] = []
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
 
-    def add_pointcloud(self, pc : cwipc_wrapper):
+    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
         """Add a pointcloud to be used during the algorithm run"""
-        self.per_camera_tilenum.append(1000+len(self.per_camera_pointclouds))
+        tilenum = 1000+len(self.per_camera_pointclouds)
+        self.per_camera_tilenum.append(tilenum)
         self.per_camera_pointclouds.append(pc)
+        return tilenum
         
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper):
+    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         for tilemask in [1,2,4,8,16,32,64,128]:
             tiled_pc = self._get_pc_for_cam(pc, tilemask)
@@ -37,9 +39,6 @@ class RegistrationAnalyzer:
                 continue
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
-
-    def run(self):
-        assert False
 
     def save_plot(self, png_filename : str, show : bool = False):
         """Seve the resulting plot"""
@@ -68,8 +67,9 @@ class RegistrationAnalyzer:
 
 class RegistrationAnalyzerOneToOne(RegistrationAnalyzer):
 
-    def run(self):
+    def run(self, target: Optional[int]=None) -> None:
         """Run the algorithm"""
+        assert target is None
         assert len(self.per_camera_pointclouds) > 1
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
@@ -111,8 +111,9 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
     # See comment in _compute_corrspondences()
     BIN_VALUE_DECREASE_FACTOR = 0.5
 
-    def run(self):
+    def run(self, target: Optional[int]=None) -> None:
         """Run the algorithm"""
+        assert target is None
         assert len(self.per_camera_pointclouds) > 1
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
@@ -146,6 +147,10 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             self.plot_ax.legend()
 
     def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+        """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
+        
+        This is the order in which the camera re-registration should be attempted.
+        """
         rv = []
         for camnum in range(len(self.correspondences)):
             weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
