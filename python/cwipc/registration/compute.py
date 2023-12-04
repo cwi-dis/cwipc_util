@@ -72,7 +72,7 @@ class RegistrationComputer(RegistrationAlgorithm):
         self.our_points_nparray = self._get_nparray_for_pc(self.our_pointcloud)
 
         other_nparrays = [
-            self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds if cam_pc != targetIndex
+            self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds if cam_pc != self.our_pointcloud
         ]
         self.other_points_nparray = np.concatenate(other_nparrays)
 
@@ -131,20 +131,21 @@ class RegistrationComputer_ICP(RegistrationComputer):
         )
 
     def get_result_transformation(self) -> RegistrationTransformation:
+        print(f"xxxjack {self.registration_result}")
         return self.registration_result.transformation
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
         source_pointcloud = open3d.geometry.PointCloud()
-        source_pointcloud.points = open3d.utility.Vector3dVector(self.other_points_nparray)
+        source_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
         return source_pointcloud
     
     def _get_target_pointcloud(self) -> open3d.geometry.PointCloud:
         target_pointcloud = open3d.geometry.PointCloud()
-        target_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
+        target_pointcloud.points = open3d.utility.Vector3dVector(self.other_points_nparray)
         return target_pointcloud
     
     def _get_max_correspondence_distance(self) -> float:
-        correspondence = 0.1
+        correspondence = 0.028
         return correspondence
     
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
