@@ -65,47 +65,6 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
         nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
         return nparray
 
-class RegistrationAnalyzerOneToOne(RegistrationAnalyzer):
-
-    def run(self, target: Optional[int]=None) -> None:
-        """Run the algorithm"""
-        assert target is None
-        assert len(self.per_camera_pointclouds) > 1
-        self._prepare()
-        nCamera = len(self.per_camera_pointclouds)
-
-        self.inter_camera_histograms : List[List[Any]] = [[None] * nCamera] * nCamera
-        for cam_i in range(nCamera):
-            for cam_j in range(cam_i+1, nCamera):
-                distances_forward, _ = self.per_camera_kdtree[cam_j].query(self.per_camera_points_nparray[cam_i])
-                distances_backward, _ = self.per_camera_kdtree[cam_i].query(self.per_camera_points_nparray[cam_j])
-                distances = np.concatenate([distances_forward, distances_backward])
-                histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
-                cumsum = np.cumsum(histogram)
-                totPoints = cumsum[-1]
-                normsum = cumsum / totPoints
-                self.inter_camera_histograms[cam_i][cam_j] = (normsum, edges)
-                if self.want_cumulative_plot:
-                    plt.plot(edges[1:], normsum, label=f"{cam_i} - {cam_j} ({totPoints} points)")
-                if self.want_histogram_plot:
-                    plt.plot(edges[1:], histogram, label=f"{cam_i} - {cam_j} ({totPoints} points)")
-        if self.want_cumulative_plot or self.want_histogram_plot:
-            title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
-            title = title + " point distances between all camera pairs"
-            if self.label:
-                title = self.label + "\n" + title
-            plt.title(title)
-            plt.legend()
-
-    def _prepare(self):
-        self.per_camera_points_nparray = [
-            self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds
-        ]
-        # Create the corresponding kdtrees
-        self.per_camera_kdtree = [
-            scipy.spatial.KDTree(points) for points in self.per_camera_points_nparray
-        ]
-
 class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
 
     # See comment in _compute_corrspondences()
@@ -120,6 +79,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         self.plot_fig, self.plot_ax = plt.subplots()
         self.per_camera_histograms : List[Any] = [None] * nCamera
         for cam_i in range(nCamera):
+            cam_tilenum = self.per_camera_tilenum[cam_i]
             distances, _ = self.per_camera_kdtree_others[cam_i].query(self.per_camera_points_nparray[cam_i])
             histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
             cumsum = np.cumsum(histogram)
@@ -128,13 +88,14 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             normsum = cumsum / totPoints
             self.per_camera_histograms[cam_i] = (histogram, edges, cumsum)
             if self.want_cumulative_plot:
-                self.plot_ax.plot(edges[1:], normsum, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+                self.plot_ax.plot(edges[1:], normsum, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
             if self.want_histogram_plot:
-                self.plot_ax.plot(edges[1:], histogram, label=f"{cam_i} ({totPoints} points to {totOtherPoints})")
+                self.plot_ax.plot(edges[1:], histogram, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
         self._compute_correspondences()
         corr_box_text = "Correspondence error:\n"
-        for i in range(len(self.correspondences)):
-            corr_box_text += f"\n{i}: {self.correspondences[i]:.3f}"
+        for cam_i in range(len(self.correspondences)):
+            cam_tilenum = self.per_camera_tilenum[cam_i]
+            corr_box_text += f"\n{cam_tilenum}: {self.correspondences[cam_i]:.3f}"
 
         if self.want_cumulative_plot or self.want_histogram_plot:
             title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
