@@ -1,12 +1,16 @@
 
 from typing import List, Optional, Any, Tuple
 import numpy as np
+import numpy.typing as npt
 import scipy.spatial
+import open3d
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
 
-RegistrationTransformation = Tuple[float, float, float] # xxxjack for now: translation only
+RegistrationResult = open3d.pipelines.registration.RegistrationResult
+
+RegistrationTransformation = npt.ArrayLike # Should be: NDArray[(4,4), float]
 
 class RegistrationComputer(RegistrationAlgorithm):
     """Compute the registration for a pointcloud.
@@ -73,16 +77,28 @@ class RegistrationComputer(RegistrationAlgorithm):
         self.other_points_nparray = np.concatenate(other_nparrays)
 
     def get_result_transformation(self) -> RegistrationTransformation:
-        return (0.0, 0.0, 0.0)
+        return np.array([
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]
+            ])
     
     def get_result_pointcloud(self) -> cwipc_wrapper:
         pc = self.our_pointcloud
         transform = self.get_result_transformation()
         points = pc.get_points()
         for i in range(len(points)):
-            points[i].x += transform[0]
-            points[i].y += transform[1]
-            points[i].z += transform[2]
+            point = np.array([
+                points[i].x,
+                points[i].y,
+                points[i].z,
+                1
+            ])
+            transformed_point = transform.dot(point) # type: ignore
+            points[i].x = transformed_point[0]
+            points[i].y = transformed_point[1]
+            points[i].z = transformed_point[2]
         new_pc = cwipc_from_points(points, pc.timestamp())
         new_pc._set_cellsize(pc.cellsize())
         return new_pc
@@ -95,3 +111,51 @@ class RegistrationComputer(RegistrationAlgorithm):
                 part_pc.free()
                 part_pc = new_part_pc
         return part_pc
+
+class RegistrationComputer_ICP(RegistrationComputer):
+
+    def run(self, target: Optional[int]=None) -> None:
+        """Run the algorithm"""
+        assert not target is None
+        assert len(self.per_camera_pointclouds) > 1
+        self._prepare(target)
+
+        initial_transformation = np.identity(4)
+        self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
+            source=self._get_source_pointcloud(),
+            target=self._get_target_pointcloud(),
+            max_correspondence_distance=self._get_max_correspondence_distance(),
+            #init=initial_transformation,
+            #estimation_method=self._get_estimation_method(),
+            #criteria=self._get_criteria()
+        )
+
+    def get_result_transformation(self) -> RegistrationTransformation:
+        return self.registration_result.transformation
+    
+    def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
+        source_pointcloud = open3d.geometry.PointCloud()
+        source_pointcloud.points = open3d.utility.Vector3dVector(self.other_points_nparray)
+        return source_pointcloud
+    
+    def _get_target_pointcloud(self) -> open3d.geometry.PointCloud:
+        target_pointcloud = open3d.geometry.PointCloud()
+        target_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
+        return target_pointcloud
+    
+    def _get_max_correspondence_distance(self) -> float:
+        correspondence = 0.1
+        return correspondence
+    
+    def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
+        estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPoint
+        estimation_method.with_scaling = False
+        return estimation_method
+    
+    def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
+        criteria = open3d.pipelines.registration.ICPConvergenceCriteria(
+            relative_fitness = 1e-6,
+            relative_rmse = 1e-6,
+            max_iteration = 30
+        )
+        return criteria
