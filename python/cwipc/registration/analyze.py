@@ -1,5 +1,6 @@
 
 from typing import List, Optional, Any, Tuple
+import math
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
@@ -114,7 +115,14 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         """
         rv = []
         for camnum in range(len(self.correspondences)):
-            weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
+            # Option 1: Use the correspondence as-is
+            #weight = self.correspondences[camnum]
+            # Option 2: multiply by the number of points that were matched
+            #weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
+            # option 3: multiply by the square root of the number of matched points
+            #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
+            # option 4: multiply by the log of the number of matched points
+            weight = self.correspondences[camnum]*math.log(self.below_correspondence_counts[camnum])
             rv.append((self.per_camera_tilenum[camnum], self.correspondences[camnum], weight))
         rv.sort(key=lambda t:-t[2])
         return rv
