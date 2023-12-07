@@ -14,7 +14,7 @@ RegistrationTransformation = npt.ArrayLike # Should be: NDArray[(4,4), float]
 
 class RegistrationComputer(RegistrationAlgorithm):
     """Compute the registration for a pointcloud.
-
+    This is the base class, which actually does nothing and always returns a fixed unit matrix.
     """
 
     def __init__(self):
@@ -116,7 +116,8 @@ class RegistrationComputer(RegistrationAlgorithm):
                 part_pc = new_part_pc
         return part_pc
 
-class RegistrationComputer_ICP(RegistrationComputer):
+class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
+    """Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry."""
 
     def run(self, target: Optional[int]=None) -> None:
         """Run the algorithm"""
@@ -130,12 +131,12 @@ class RegistrationComputer_ICP(RegistrationComputer):
             target=self._get_target_pointcloud(),
             max_correspondence_distance=self._get_max_correspondence_distance(),
             #init=initial_transformation,
-            #estimation_method=self._get_estimation_method(),
+            estimation_method=self._get_estimation_method(),
             criteria=self._get_criteria()
         )
 
     def get_result_transformation(self) -> RegistrationTransformation:
-        print(f"xxxjack {self.registration_result}")
+        print(f"xxxjack {self.__class__.__name__} result: {self.registration_result}")
         return self.registration_result.transformation
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
@@ -152,8 +153,9 @@ class RegistrationComputer_ICP(RegistrationComputer):
         return self.correspondence
     
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
-        estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPoint
-        estimation_method.with_scaling = False
+        estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPoint(
+            with_scaling=False
+        )
         return estimation_method
     
     def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
@@ -163,3 +165,61 @@ class RegistrationComputer_ICP(RegistrationComputer):
             max_iteration = 60
         )
         return criteria
+    
+class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
+    """Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry."""
+
+    def run(self, target: Optional[int]=None) -> None:
+        """Run the algorithm"""
+        assert not target is None
+        assert len(self.per_camera_pointclouds) > 1
+        self._prepare(target)
+
+        initial_transformation = np.identity(4)
+        self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
+            source=self._get_source_pointcloud(),
+            target=self._get_target_pointcloud(),
+            max_correspondence_distance=self._get_max_correspondence_distance(),
+            #init=initial_transformation,
+            estimation_method=self._get_estimation_method(),
+            criteria=self._get_criteria()
+        )
+
+    def get_result_transformation(self) -> RegistrationTransformation:
+        print(f"xxxjack {self.__class__.__name__} result: {self.registration_result}")
+        return self.registration_result.transformation
+    
+    def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
+        source_pointcloud = open3d.geometry.PointCloud()
+        source_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
+        source_pointcloud.estimate_normals(self._get_normal_search_strategy())
+        return source_pointcloud
+    
+    def _get_target_pointcloud(self) -> open3d.geometry.PointCloud:
+        target_pointcloud = open3d.geometry.PointCloud()
+        target_pointcloud.points = open3d.utility.Vector3dVector(self.other_points_nparray)
+        target_pointcloud.estimate_normals(self._get_normal_search_strategy())
+        return target_pointcloud
+    
+    def _get_normal_search_strategy(self):
+        # Jack thinks the 0.02 means "2 cm", which means we're looking for
+        # a plane of about 4 cm diameter, which seems about reasonable for a human body.
+        # The max_nn=30 comes from the default for point2plane, so we'll assume the
+        # open3d people know what they're doing.
+        return open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30)
+    
+    def _get_max_correspondence_distance(self) -> float:
+        return self.correspondence
+    
+    def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
+        estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPlane()
+        return estimation_method
+    
+    def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
+        criteria = open3d.pipelines.registration.ICPConvergenceCriteria(
+            relative_fitness = 1e-7,
+            relative_rmse = 1e-7,
+            max_iteration = 60
+        )
+        return criteria
+    
