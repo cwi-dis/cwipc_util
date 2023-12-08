@@ -158,11 +158,13 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             max_bin_value = histogram[max_bin_index]
             # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
             for corr_bin_index in range(max_bin_index, len(histogram)):
-                if histogram[corr_bin_index] < max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
+                if histogram[corr_bin_index] <= max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
                     break
             else:
-                corr_bin_index = max_bin_index
-            # Now corr_bin_index is where our expected correspondence is
+                corr_bin_index = max_bin_index+1
+            # Now corr_bin_index is *one past* our expected correspondence is
+            # Note that this is important for the edge case (when all points are exactly aligned)
+            corr_bin_index -= 1
             corr = edges[corr_bin_index]
             below_corr_count = cumsum[corr_bin_index]
             self.correspondence_errors.append(corr)
