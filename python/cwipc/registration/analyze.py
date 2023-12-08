@@ -92,11 +92,11 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
                 self.plot_ax.plot(edges[1:], normsum, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
             if self.want_histogram_plot:
                 self.plot_ax.plot(edges[1:], histogram, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
-        self._compute_correspondences()
+        self._compute_correspondence_errors()
         corr_box_text = "Correspondence error:\n"
-        for cam_i in range(len(self.correspondences)):
+        for cam_i in range(len(self.correspondence_errors)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            corr_box_text += f"\n{cam_tilenum}: {self.correspondences[cam_i]:.4f}"
+            corr_box_text += f"\n{cam_tilenum}: {self.correspondence_errors[cam_i]:.4f}"
 
         if self.want_cumulative_plot or self.want_histogram_plot:
             title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
@@ -114,7 +114,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         This is the order in which the camera re-registration should be attempted.
         """
         rv = []
-        for camnum in range(len(self.correspondences)):
+        for camnum in range(len(self.correspondence_errors)):
             # Option 1: Use the correspondence as-is
             #weight = self.correspondences[camnum]
             # Option 2: multiply by the number of points that were matched
@@ -122,8 +122,8 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             # option 3: multiply by the square root of the number of matched points
             #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
             # option 4: multiply by the log of the number of matched points
-            weight = self.correspondences[camnum]*math.log(self.below_correspondence_counts[camnum])
-            rv.append((self.per_camera_tilenum[camnum], self.correspondences[camnum], weight))
+            weight = self.correspondence_errors[camnum]*math.log(self.below_correspondence_error_counts[camnum])
+            rv.append((self.per_camera_tilenum[camnum], self.correspondence_errors[camnum], weight))
         rv.sort(key=lambda t:-t[2])
         return rv
     
@@ -148,10 +148,10 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             assert kdtree_others
             self.per_camera_kdtree_others.append(kdtree_others)
 
-    def _compute_correspondences(self):
+    def _compute_correspondence_errors(self):
         nCamera = len(self.per_camera_histograms)
-        self.correspondences : List[float] = []
-        self.below_correspondence_counts : List[int] = []
+        self.correspondence_errors : List[float] = []
+        self.below_correspondence_error_counts : List[int] = []
         for histogram, edges, cumsum in self.per_camera_histograms:
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
@@ -165,5 +165,5 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             # Now corr_bin_index is where our expected correspondence is
             corr = edges[corr_bin_index]
             below_corr_count = cumsum[corr_bin_index]
-            self.correspondences.append(corr)
-            self.below_correspondence_counts.append(below_corr_count)
+            self.correspondence_errors.append(corr)
+            self.below_correspondence_error_counts.append(below_corr_count)
