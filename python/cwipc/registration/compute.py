@@ -12,6 +12,14 @@ RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
 RegistrationTransformation = npt.ArrayLike # Should be: NDArray[(4,4), float]
 
+def transformation_identity() -> RegistrationTransformation:
+    return np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+
 class RegistrationComputer(RegistrationAlgorithm):
     """Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
@@ -42,7 +50,13 @@ class RegistrationComputer(RegistrationAlgorithm):
                 continue
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
-   
+
+    def get_camera_index(self, tilenum : int) -> int:
+        for i in range(len(self.per_camera_tilenum)):
+            if self.per_camera_tilenum[i] == tilenum:
+                return 1
+        assert False, f"Tilenum {tilenum} not known"
+
     def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
         rv = cwipc_tilefilter(pc, tilemask)
         if rv.count() != 0:
@@ -81,12 +95,7 @@ class RegistrationComputer(RegistrationAlgorithm):
         self.other_points_nparray = np.concatenate(other_nparrays)
 
     def get_result_transformation(self) -> RegistrationTransformation:
-        return np.array([
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]
-            ])
+        return transformation_identity()
     
     def get_result_pointcloud(self) -> cwipc_wrapper:
         pc = self.our_pointcloud

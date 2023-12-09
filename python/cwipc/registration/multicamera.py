@@ -1,0 +1,162 @@
+
+import copy
+import math
+from typing import List, Optional, Any, Tuple
+import numpy as np
+import scipy.spatial
+from matplotlib import pyplot as plt
+from .. import cwipc_wrapper, cwipc_tilefilter
+from .abstract import *
+from .analyze import RegistrationAnalyzer, RegistrationAnalyzerOneToAll
+from .compute import RegistrationTransformation, transformation_identity, RegistrationComputer, RegistrationComputer_ICP_Point2Point
+
+class MultiCamera(RegistrationAlgorithm):
+    """Align multiple cameras.
+    """
+
+    def __init__(self):
+        self.camera_count = 0
+        self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
+
+        self.untiled_pointclouds : List[cwipc_wrapper] = []
+        self.tiled_pointclouds : List[cwipc_wrapper] = []
+        self.transformations : List[RegistrationTransformation] = []
+        self.original_transformations : List[RegistrationTransformation] = []
+        self.results : List[Tuple[int, float, float]] = []
+
+        self.analyzer_class = RegistrationAnalyzerOneToAll
+        self.computer_class = RegistrationComputer_ICP_Point2Point
+
+        self.analyzer : Optional[RegistrationAnalyzer] = None
+        self.computer : Optional[RegistrationComputer] = None
+
+        self.verbose = False
+        self.show_plot = False
+
+    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
+        """Add a pointcloud to be used during the algorithm run"""
+        tilenum = 1000+len(self.untiled_pointclouds)
+        #self.per_camera_tilenum.append(tilenum)
+        self.untiled_pointclouds.append(pc)
+        return tilenum
+        
+    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
+        self.tiled_pointclouds.append(pc)
+
+    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]: # xxxjack needed?
+        rv = cwipc_tilefilter(pc, tilemask)
+        if rv.count() != 0:
+            return rv
+        rv.free()
+        return None
+
+    def _get_nparray_for_pc(self, pc : cwipc_wrapper): # xxxjack needed?
+        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
+        pointarray = np.ctypeslib.as_array(pc.get_points())
+        # Extract the relevant fields (X, Y, Z coordinates)
+        xyzarray = pointarray[['x', 'y', 'z']]
+        # Turn this into an N by 3 2-dimensional array
+        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
+        return nparray
+    
+    def _prepare_analyze(self):
+        self.analyzer = None
+        self.analyzer = self.analyzer_class()
+        for pc in self.untiled_pointclouds:
+            self.analyzer.add_pointcloud(pc)
+        for pc in self.tiled_pointclouds:
+            self.analyzer.add_tiled_pointcloud(pc)
+        if self.show_plot:
+            self.analyzer.want_histogram_plot = True
+
+    def _prepare_compute(self):
+        self.computer = None
+        self.computer = self.computer_class()
+        for pc in self.untiled_pointclouds:
+            self.computer.add_pointcloud(pc)
+        for pc in self.tiled_pointclouds:
+            self.computer.add_tiled_pointcloud(pc)
+
+    def run(self) -> None:
+        """Run the algorithm"""
+        assert len(self.untiled_pointclouds) == 0 # Algorithm not implemented fully for separate ply files
+        assert len(self.tiled_pointclouds) == 1
+        # Initialize the analyzer
+        self._prepare_analyze()
+        assert self.analyzer
+        assert self.analyzer.camera_count() > 0
+        # Initialize matrices, if not done already (by our caller)
+        if len(self.transformations) == 0:
+            for i in range(self.analyzer.camera_count()):
+                self.transformations.append(transformation_identity())
+        self.original_transformations = copy.deepcopy(self.transformations)
+        # Run the analyzer for the first time, on the original pointclouds.
+        self.analyzer.run()
+        self.results = self.analyzer.get_ordered_results()
+        camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate()
+        if self.verbose:
+            print(f"Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            for _camnum, _correspondence, _weight in self.results:
+                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+        if self.show_plot:
+            self.analyzer.save_plot("", True)
+        stepnum = 1
+        while camnum_to_fix != None:
+            if self.verbose:
+                print(f"Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
+            # Prepare the registration computer
+            self._prepare_compute()
+            assert self.computer
+            self.computer.set_correspondence(correspondence)
+            self.computer.run(camnum_to_fix)
+            # Save resultant pointcloud
+            old_pc = self.tiled_pointclouds[0]
+            new_pc = self.computer.get_result_pointcloud_full()
+            old_pc.free()
+            self.tiled_pointclouds[0] = new_pc
+            # Apply new transformation (to the left of the old one)
+            cam_index = self.computer.get_camera_index(camnum_to_fix)
+            old_transform = self.transformations[cam_index]
+            this_transform = self.computer.get_result_transformation()
+            new_transform = np.matmul(this_transform, old_transform)
+            self.transformations[cam_index] = new_transform
+            # Re-initialize analyzer
+            self._prepare_analyze()
+            self.analyzer.run()
+            if self.verbose:
+                print(f"Step {stepnum}: per-camera correspondence, ordered worst-first:")
+                for _camnum, _correspondence, _weight in self.results:
+                    print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            # See results, and whether it's worth it to do another step
+            old_camnum_to_fix = camnum_to_fix
+            old_correspondence = correspondence
+            old_total_correspondence = total_correspondence
+            camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate()
+            # This stop-condition can be improved, in various ways:
+            # - If total_correspondence is worse than previously we should undo this step and try another camera
+            # - We may also want to try another (more expensive) algorithm
+            if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence:
+                break
+            stepnum += 1
+        if self.verbose:
+            print(f"After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            for _camnum, _correspondence, _weight in self.results:
+                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+        
+    def _get_next_candidate(self) -> Tuple[Optional[int], float, float]:
+        camnum_to_fix = None
+        correspondence = self.results[0][1]
+        for i in range(len(self.results)):
+            if self.results[i][1] > self.precision_threshold:
+                camnum_to_fix = self.results[i][0]
+                correspondence = self.results[i][1]
+                break
+        w_sum = 0
+        c_sum = 0
+        for res in self.results:
+            c_sum += res[1] * res[2]
+            w_sum += res[2]
+        if w_sum == 0:
+            w_sum = 1
+        return camnum_to_fix, correspondence, c_sum / w_sum

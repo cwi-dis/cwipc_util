@@ -41,6 +41,10 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
+    def camera_count(self):
+        assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
+        return len(self.per_camera_tilenum)
+    
     def save_plot(self, png_filename : str, show : bool = False):
         """Seve the resulting plot"""
         # xxxjack This uses the stateful pyplot API. Horrible.
@@ -66,6 +70,13 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
         nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
         return nparray
 
+    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+        """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
+        
+        This is the order in which the camera re-registration should be attempted.
+        """
+        return []
+    
 class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
 
     # See comment in _compute_corrspondences()
