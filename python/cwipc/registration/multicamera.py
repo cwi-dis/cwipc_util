@@ -22,6 +22,7 @@ class MultiCamera(RegistrationAlgorithm):
         self.tiled_pointclouds : List[cwipc_wrapper] = []
         self.transformations : List[RegistrationTransformation] = []
         self.original_transformations : List[RegistrationTransformation] = []
+        self.change : List[float] = []
         self.results : List[Tuple[int, float, float]] = []
 
         self.analyzer_class = RegistrationAnalyzerOneToAll
@@ -124,6 +125,7 @@ class MultiCamera(RegistrationAlgorithm):
             # Re-initialize analyzer
             self._prepare_analyze()
             self.analyzer.run()
+            self.results = self.analyzer.get_ordered_results()
             if self.verbose:
                 print(f"Step {stepnum}: per-camera correspondence, ordered worst-first:")
                 for _camnum, _correspondence, _weight in self.results:
@@ -143,7 +145,13 @@ class MultiCamera(RegistrationAlgorithm):
             print(f"After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
-        
+        if self.show_plot:
+            self.analyzer.save_plot("", True)
+        self._compute_change()
+        if self.verbose:
+            for cam_index in range(len(self.change)):
+                print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
+
     def _get_next_candidate(self) -> Tuple[Optional[int], float, float]:
         camnum_to_fix = None
         correspondence = self.results[0][1]
@@ -160,3 +168,24 @@ class MultiCamera(RegistrationAlgorithm):
         if w_sum == 0:
             w_sum = 1
         return camnum_to_fix, correspondence, c_sum / w_sum
+
+    def _compute_change(self):
+        for cam_index in range(len(self.transformations)):
+            orig_transform : np.ndarray = self.original_transformations[cam_index] # type: ignore
+            orig_transform_inv = np.linalg.inv(orig_transform)
+            new_transform : np.ndarray = self.transformations[cam_index] # type: ignore
+            new_transform_inv = np.linalg.inv(new_transform)
+            # Compute how far the point cloud moved
+            # we take four points and compute the average move
+            total_delta = 0.0
+            for point in [
+                    np.array([0, 0, 0, 1]),
+                    np.array([0, 2, 0, 1]),
+                    np.array([[-0.5, 1, 0, 1]]),
+                    np.array([0, 1, 0.5, 1]),
+                    ]:
+                tmp = orig_transform_inv @ point.transpose()
+                new_point = (new_transform @ tmp).transpose()
+                delta : float = np.linalg.norm(point - new_point)
+                total_delta += delta
+            self.change.append(total_delta / 4)
