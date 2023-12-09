@@ -29,6 +29,7 @@ class RegistrationComputer(RegistrationAlgorithm):
         self.per_camera_tilenum : List[int] = []
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
         self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
+        self.verbose = False
 
     def set_correspondence(self, correspondence) -> None:
         self.correspondence = correspondence
@@ -145,7 +146,8 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         )
 
     def get_result_transformation(self) -> RegistrationTransformation:
-        print(f"xxxjack {self.__class__.__name__} result: {self.registration_result}")
+        if self.verbose:
+            print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
         return self.registration_result.transformation
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
