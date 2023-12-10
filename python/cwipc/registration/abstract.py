@@ -16,5 +16,20 @@ class RegistrationAlgorithm(ABC):
         ...
 
     @abstractmethod
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        ...
+
+    @abstractmethod
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
+        ...
+        
+    @abstractmethod
     def run(self, target: Optional[int]=None) -> None:
+        ...
+
+    @abstractmethod
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
+        """Seve the resulting plot"""
         ...

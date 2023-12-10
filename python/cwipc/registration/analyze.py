@@ -16,8 +16,6 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
     """
 
     def __init__(self):
-        self.want_cumulative_plot = False
-        self.want_histogram_plot = False
         self.histogram_bincount = 400
         self.label : Optional[str] = None
         self.per_camera_tilenum : List[int] = []
@@ -41,19 +39,25 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        return self.per_camera_tilenum[cam_index]
+
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
+        for i in range(len(self.per_camera_tilenum)):
+            if self.per_camera_tilenum[i] == tilenum:
+                return i
+        assert False, f"Tilenum {tilenum} not known"
+
     def camera_count(self):
         assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
         return len(self.per_camera_tilenum)
     
-    def save_plot(self, png_filename : str, show : bool = False):
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         """Seve the resulting plot"""
-        # xxxjack This uses the stateful pyplot API. Horrible.
-        assert self.want_cumulative_plot or self.want_histogram_plot
-        if png_filename:
-            plt.savefig(png_filename)
-        if show:
-            plt.show()
-   
+        assert False
+
     def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
         rv = cwipc_tilefilter(pc, tilemask)
         if rv.count() != 0:
@@ -88,7 +92,6 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         assert len(self.per_camera_pointclouds) > 1
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
-        self.plot_fig, self.plot_ax = plt.subplots()
         self.per_camera_histograms : List[Any] = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
@@ -98,27 +101,41 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             totPoints = cumsum[-1]
             totOtherPoints = self.per_camera_kdtree_others[cam_i].data.shape[0]
             normsum = cumsum / totPoints
-            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum)
-            if self.want_cumulative_plot:
-                self.plot_ax.plot(edges[1:], normsum, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
-            if self.want_histogram_plot:
-                self.plot_ax.plot(edges[1:], histogram, label=f"{cam_tilenum} ({totPoints} points to {totOtherPoints})")
+            plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
+            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
         self._compute_correspondence_errors()
+    
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
+        """Seve the resulting plot"""
+        # xxxjack This uses the stateful pyplot API. Horrible.
+        if not filename and not show:
+            return
+        nCamera = len(self.per_camera_pointclouds)
+        self.plot_fig, self.plot_ax = plt.subplots()
+        for cam_i in range(nCamera):
+            cam_tilenum = self.per_camera_tilenum[cam_i]
+            (histogram, edges, cumsum, normsum, plot_label) = self.per_camera_histograms[cam_i]
+            if cumulative:
+                self.plot_ax.plot(edges[1:], normsum, label=plot_label)
+            else:
+                self.plot_ax.plot(edges[1:], histogram, label=plot_label)
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(len(self.correspondence_errors)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             corr_box_text += f"\n{cam_tilenum}: {self.correspondence_errors[cam_i]:.4f}"
-
-        if self.want_cumulative_plot or self.want_histogram_plot:
-            title = "Cumulative" if self.want_cumulative_plot else "Histogram of"
-            title = title + " point distances between camera and all others"
-            if self.label:
-                title = self.label + "\n" + title
-            plt.title(title)
-            props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-            self.plot_ax.text(0.98, 0.1, corr_box_text, transform=self.plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
-            self.plot_ax.legend()
-
+        title = "Cumulative" if cumulative else "Histogram of"
+        title = title + " point distances between camera and all others"
+        if self.label:
+            title = self.label + "\n" + title
+        plt.title(title)
+        props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+        self.plot_ax.text(0.98, 0.1, corr_box_text, transform=self.plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
+        self.plot_ax.legend()
+        if filename:
+            plt.savefig(filename)
+        if show:
+            plt.show()
+   
     def get_ordered_results(self) -> List[Tuple[int, float, float]]:
         """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
         
@@ -163,7 +180,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
         nCamera = len(self.per_camera_histograms)
         self.correspondence_errors : List[float] = []
         self.below_correspondence_error_counts : List[int] = []
-        for histogram, edges, cumsum in self.per_camera_histograms:
+        for histogram, edges, cumsum, normsum, plot_label in self.per_camera_histograms:
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
             max_bin_value = histogram[max_bin_index]

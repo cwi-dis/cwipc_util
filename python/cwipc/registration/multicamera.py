@@ -5,7 +5,7 @@ from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
-from .. import cwipc_wrapper, cwipc_tilefilter
+from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .analyze import RegistrationAnalyzer, RegistrationAnalyzerOneToAll
 from .compute import RegistrationTransformation, transformation_identity, RegistrationComputer, RegistrationComputer_ICP_Point2Point
@@ -24,6 +24,8 @@ class MultiCamera(RegistrationAlgorithm):
         self.original_transformations : List[RegistrationTransformation] = []
         self.change : List[float] = []
         self.results : List[Tuple[int, float, float]] = []
+        self.cellsize_factor = 4 # math.sqrt(2)
+        self.proposed_cellsize = 0
 
         self.analyzer_class = RegistrationAnalyzerOneToAll
         self.computer_class = RegistrationComputer_ICP_Point2Point
@@ -33,6 +35,9 @@ class MultiCamera(RegistrationAlgorithm):
 
         self.verbose = False
         self.show_plot = False
+
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
+        assert False
 
     def add_pointcloud(self, pc : cwipc_wrapper) -> int:
         """Add a pointcloud to be used during the algorithm run"""
@@ -45,6 +50,17 @@ class MultiCamera(RegistrationAlgorithm):
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         self.tiled_pointclouds.append(pc)
 
+
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        assert self.analyzer
+        return self.analyzer.tilenum_for_camera_index(cam_index)
+
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
+        assert self.analyzer
+        return self.analyzer.camera_index_for_tilenum(tilenum)
+    
     def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]: # xxxjack needed?
         rv = cwipc_tilefilter(pc, tilemask)
         if rv.count() != 0:
@@ -68,8 +84,6 @@ class MultiCamera(RegistrationAlgorithm):
             self.analyzer.add_pointcloud(pc)
         for pc in self.tiled_pointclouds:
             self.analyzer.add_tiled_pointcloud(pc)
-        if self.show_plot:
-            self.analyzer.want_histogram_plot = True
 
     def _prepare_compute(self):
         self.computer = None
@@ -101,7 +115,7 @@ class MultiCamera(RegistrationAlgorithm):
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
-            self.analyzer.save_plot("", True)
+            self.analyzer.plot(show=True)
         stepnum = 1
         while camnum_to_fix != None:
             if self.verbose:
@@ -117,10 +131,11 @@ class MultiCamera(RegistrationAlgorithm):
             old_pc.free()
             self.tiled_pointclouds[0] = new_pc
             # Apply new transformation (to the left of the old one)
-            cam_index = self.computer.get_camera_index(camnum_to_fix)
+            cam_index = self.computer.camera_index_for_tilenum(camnum_to_fix)
             old_transform = self.transformations[cam_index]
             this_transform = self.computer.get_result_transformation()
             new_transform = np.matmul(this_transform, old_transform)
+            # print(f"xxxjack camnum_to_fix={camnum_to_fix}, camindex={cam_index}, new_transform={new_transform}")
             self.transformations[cam_index] = new_transform
             # Re-initialize analyzer
             self._prepare_analyze()
@@ -141,16 +156,18 @@ class MultiCamera(RegistrationAlgorithm):
             if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence:
                 break
             stepnum += 1
+        self.proposed_cellsize = total_correspondence*self.cellsize_factor
         if self.verbose:
             print(f"After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
-            self.analyzer.save_plot("", True)
+            self.analyzer.plot(show=True)
         self._compute_change()
         if self.verbose:
             for cam_index in range(len(self.change)):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
+        self._compute_new_tiles()
 
     def _get_next_candidate(self) -> Tuple[Optional[int], float, float]:
         camnum_to_fix = None
@@ -175,6 +192,9 @@ class MultiCamera(RegistrationAlgorithm):
             orig_transform_inv = np.linalg.inv(orig_transform)
             new_transform : np.ndarray = self.transformations[cam_index] # type: ignore
             new_transform_inv = np.linalg.inv(new_transform)
+            #if self.verbose:
+            #    print(f"camindex={cam_index} old: {orig_transform}")
+            #    print(f"camindex={cam_index} new: {new_transform}")
             # Compute how far the point cloud moved
             # we take four points and compute the average move
             total_delta = 0.0
@@ -189,3 +209,21 @@ class MultiCamera(RegistrationAlgorithm):
                 delta : float = np.linalg.norm(point - new_point)
                 total_delta += delta
             self.change.append(total_delta / 4)
+
+    def _compute_new_tiles(self):
+        pc = self.tiled_pointclouds[0]
+        ntiles_orig = len(self.transformations)
+        pc_new = cwipc_downsample(pc, self.proposed_cellsize)
+        cwipc_write("tiled.ply", pc_new)
+        if self.verbose:
+            print(f"Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
+        pointcounts = []
+        for i in range(2**ntiles_orig):
+            pc_tile = cwipc_tilefilter(pc_new, i)
+            pointcount = pc_tile.count()
+            pc_tile.free()
+            pointcounts.append(pointcount)
+        if self.verbose:
+            print(f"Pointcounts per tile, after voxelizing:")
+            for i in range(len(pointcounts)):
+                print(f"\ttile {i}: {pointcounts[i]}")

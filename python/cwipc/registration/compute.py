@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.spatial
 import open3d
-from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
 
@@ -31,6 +30,9 @@ class RegistrationComputer(RegistrationAlgorithm):
         self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.verbose = False
 
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
+        assert False
+    
     def set_correspondence(self, correspondence) -> None:
         self.correspondence = correspondence
 
@@ -52,10 +54,15 @@ class RegistrationComputer(RegistrationAlgorithm):
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
-    def get_camera_index(self, tilenum : int) -> int:
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        return self.per_camera_tilenum[cam_index]
+
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         for i in range(len(self.per_camera_tilenum)):
             if self.per_camera_tilenum[i] == tilenum:
-                return 1
+                return i
         assert False, f"Tilenum {tilenum} not known"
 
     def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
