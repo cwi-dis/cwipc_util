@@ -120,7 +120,7 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['numpy', 'open3d', 'Pillow'],
+    install_requires=['numpy', 'open3d', 'Pillow', 'opencv-python'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
