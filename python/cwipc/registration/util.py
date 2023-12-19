@@ -12,6 +12,12 @@ Point_array_xyz = NDArray[Any]
 Point_array_rgb = NDArray[Any]
 
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
+    """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
+    
+    The point cloud can be either a cwipc or an opend3.geometry.PointCloud.
+
+    The optional from000 argument places the camera at (0, 0, 0).
+    """
     if type(pc) == cwipc_wrapper:
         pc_o3d = o3d_from_cwipc(pc)
         o3d_show_points(title, pc_o3d, from000)
@@ -19,6 +25,7 @@ def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.Point
         o3d_show_points(title, pc, from000)
 
 def o3d_from_cwipc(pc : cwipc_wrapper) -> open3d.geometry.PointCloud:
+    """Convert a cwipc point cloud to a open3d.geometry.PointCloud"""
     np_xyz_array, np_rgb_array = nparrays_from_cwipc(pc)
     points_v = open3d.utility.Vector3dVector(np_xyz_array)
     colors_v = open3d.utility.Vector3dVector(np_rgb_array)
@@ -28,6 +35,7 @@ def o3d_from_cwipc(pc : cwipc_wrapper) -> open3d.geometry.PointCloud:
     return o3d_pc
 
 def nparray_xyz_from_cwipc(pc : cwipc_wrapper) -> Point_array_xyz:
+    """Return the [X, Y, Z] numpy array for a cwipc point cloud"""
     # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
     pointarray = np.ctypeslib.as_array(pc.get_points())
     # Extract the relevant fields (X, Y, Z coordinates)
@@ -37,7 +45,7 @@ def nparray_xyz_from_cwipc(pc : cwipc_wrapper) -> Point_array_xyz:
     return nparray
 
 def nparrays_from_cwipc(pc : cwipc_wrapper) -> Tuple[Point_array_xyz, Point_array_rgb]:
-    """For the cwipc argument, return two numpy arrays: one with the XYZ coordinates, one with the RGB colors."""
+    """For the cwipc argument, return two numpy arrays: one with the XYZ coordinates, one with the RGB colors (as normalized float32)"""
     # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
     pointarray = np.ctypeslib.as_array(pc.get_points())
     # Extract the relevant fields (X, Y, Z coordinates)
@@ -50,6 +58,7 @@ def nparrays_from_cwipc(pc : cwipc_wrapper) -> Tuple[Point_array_xyz, Point_arra
     return np_xyz_array, np_rgb_array
 
 def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool=False) -> List[int]:
+    """Show a window with an open3d.geometry.PointCloud. Let the user pick points and return the list of point indices picked."""
     vis = open3d.visualization.VisualizerWithEditing() # type: ignore
     vis.create_window(window_name=title, width=960, height=540)
     #self.winpos += 50
@@ -64,6 +73,7 @@ def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool
     return vis.get_picked_points()
 
 def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False) -> None:
+    """Show a window with an open3d.geometry.PointCloud. """
     vis = open3d.visualization.Visualizer() # type: ignore
     vis.create_window(window_name=title, width=960, height=540) # xxxjack: , left=self.winpos, top=self.winpos
     #self.winpos += 50
@@ -86,3 +96,12 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False)
     vis.run()
     vis.destroy_window()
     
+def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
+    """Return a list of the tile numbers used in the point cloud"""
+    pointarray = np.ctypeslib.as_array(pc.get_points())
+    # Extract the relevant fields (X, Y, Z coordinates)
+    tilearray = pointarray['tile']
+    unique = np.unique(tilearray)
+    rv = unique.tolist()
+    return rv
+   
