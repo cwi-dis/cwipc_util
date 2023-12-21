@@ -9,14 +9,13 @@ from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity
 from .analyze import RegistrationAnalyzer, RegistrationAnalyzerOneToAll
-from .compute import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
+from .fine import RegistrationComputer_ICP_Point2Point
 
 class MultiCamera(MultiAlignmentAlgorithm):
     """Align multiple cameras.
     """
 
     def __init__(self):
-        self.camera_count = 0
         self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
 
         self.untiled_pointclouds : List[cwipc_wrapper] = []
@@ -29,10 +28,10 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.proposed_cellsize = 0
 
         self.analyzer_class = RegistrationAnalyzerOneToAll
-        self.computer_class = RegistrationComputer_ICP_Point2Point
+        self.aligner_class = RegistrationComputer_ICP_Point2Point
 
-        self.analyzer : Optional[RegistrationAnalyzer] = None
-        self.computer : Optional[RegistrationComputer] = None
+        self.analyzer : Optional[AnalysisAlgorithm] = None
+        self.aligner : Optional[AlignmentAlgorithm] = None
 
         self.verbose = False
         self.show_plot = False
@@ -80,6 +79,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
     
     def _prepare_analyze(self):
         self.analyzer = None
+        assert self.aligner_class
         self.analyzer = self.analyzer_class()
         for pc in self.untiled_pointclouds:
             self.analyzer.add_pointcloud(pc)
@@ -87,12 +87,12 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.analyzer.add_tiled_pointcloud(pc)
 
     def _prepare_compute(self):
-        self.computer = None
-        self.computer = self.computer_class()
+        self.aligner = None
+        self.aligner = self.aligner_class()
         for pc in self.untiled_pointclouds:
-            self.computer.add_pointcloud(pc)
+            self.aligner.add_pointcloud(pc)
         for pc in self.tiled_pointclouds:
-            self.computer.add_tiled_pointcloud(pc)
+            self.aligner.add_tiled_pointcloud(pc)
 
     def run(self) -> bool:
         """Run the algorithm"""
@@ -123,18 +123,18 @@ class MultiCamera(MultiAlignmentAlgorithm):
                 print(f"Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
             # Prepare the registration computer
             self._prepare_compute()
-            assert self.computer
-            self.computer.set_correspondence(correspondence)
-            self.computer.run(camnum_to_fix)
+            assert self.aligner
+            self.aligner.set_correspondence(correspondence)
+            self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
             old_pc = self.tiled_pointclouds[0]
-            new_pc = self.computer.get_result_pointcloud_full()
+            new_pc = self.aligner.get_result_pointcloud_full()
             old_pc.free()
             self.tiled_pointclouds[0] = new_pc
             # Apply new transformation (to the left of the old one)
-            cam_index = self.computer.camera_index_for_tilenum(camnum_to_fix)
+            cam_index = self.aligner.camera_index_for_tilenum(camnum_to_fix)
             old_transform = self.transformations[cam_index]
-            this_transform = self.computer.get_result_transformation()
+            this_transform = self.aligner.get_result_transformation()
             new_transform = np.matmul(this_transform, old_transform)
             # print(f"xxxjack camnum_to_fix={camnum_to_fix}, camindex={cam_index}, new_transform={new_transform}")
             self.transformations[cam_index] = new_transform

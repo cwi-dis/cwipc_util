@@ -25,6 +25,12 @@ class Algorithm(ABC):
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         ...
+   
+    @abstractmethod
+    def camera_count(self) -> int:
+        """Return number of cameras (tiles) in the point clouds"""
+        ...
+        
 
     @abstractmethod
     def tilenum_for_camera_index(self, cam_index : int) -> int:
@@ -55,12 +61,19 @@ class AnalysisAlgorithm(Algorithm):
         The list is sorted by weight (decreasing), so the expectation is that fixing the first one
         will lead to the greatest overall improvement.
         """
+
     @abstractmethod
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         """Seve the resulting plot"""
         ...
 
 class AlignmentAlgorithm(Algorithm):
+
+    @abstractmethod
+    def set_correspondence(self, correspondence) -> None:
+        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+        ...
+
     @abstractmethod
     def get_result_transformation(self) -> RegistrationTransformation:
         """After a successful run(), returns the transformation applied to the tile-under-test"""

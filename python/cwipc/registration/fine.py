@@ -21,9 +21,6 @@ class RegistrationComputer(AlignmentAlgorithm):
         self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.verbose = False
 
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        assert False
-    
     def set_correspondence(self, correspondence) -> None:
         self.correspondence = correspondence
 
@@ -45,6 +42,9 @@ class RegistrationComputer(AlignmentAlgorithm):
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
+    def camera_count(self) -> int:
+        return len(self.per_camera_tilenum)
+    
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         return self.per_camera_tilenum[cam_index]

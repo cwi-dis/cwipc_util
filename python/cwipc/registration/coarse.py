@@ -7,7 +7,7 @@ import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
 from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, transformation_identity, cwipc_transform
-from .compute import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
+from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = Any
 
