@@ -6,6 +6,7 @@ import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
+from .util import get_tiles_used
 
 class RegistrationAnalyzer(RegistrationAlgorithm):
     """Analyzes how good pointclouds are registered.
@@ -30,7 +31,7 @@ class RegistrationAnalyzer(RegistrationAlgorithm):
         
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        for tilemask in [1,2,4,8,16,32,64,128]:
+        for tilemask in get_tiles_used(pc):
             tiled_pc = self._get_pc_for_cam(pc, tilemask)
             if tiled_pc == None:
                 continue
@@ -89,7 +90,15 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
     def run(self, target: Optional[int]=None) -> None:
         """Run the algorithm"""
         assert target is None
-        assert len(self.per_camera_pointclouds) > 1
+        assert len(self.per_camera_pointclouds) > 0
+        if len(self.per_camera_pointclouds) == 1:
+            # If there is only a single tile we have nothing to do.
+            self.per_camera_histograms = [
+                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+            ]
+            self.correspondence_errors : List[float] = [0.0]
+            self.below_correspondence_error_counts : List[int] = [1]
+            return
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
         self.per_camera_histograms : List[Any] = [None] * nCamera
