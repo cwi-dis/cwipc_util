@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Tuple
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper
+from .. import cwipc_wrapper, cwipc_from_points
 import open3d
 import open3d.visualization
 import numpy as np
@@ -10,6 +10,15 @@ from numpy.typing import NDArray
 
 Point_array_xyz = NDArray[Any]
 Point_array_rgb = NDArray[Any]
+
+
+def transformation_identity() -> RegistrationTransformation:
+    return np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
 
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
@@ -105,3 +114,19 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     rv = unique.tolist()
     return rv
    
+def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
+    points = pc.get_points()
+    for i in range(len(points)):
+        point = np.array([
+            points[i].x,
+            points[i].y,
+            points[i].z,
+            1
+        ])
+        transformed_point = transform.dot(point) # type: ignore
+        points[i].x = transformed_point[0]
+        points[i].y = transformed_point[1]
+        points[i].z = transformed_point[2]
+    new_pc = cwipc_from_points(points, pc.timestamp())
+    new_pc._set_cellsize(pc.cellsize())
+    return new_pc

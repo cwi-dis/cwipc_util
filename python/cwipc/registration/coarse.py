@@ -6,12 +6,12 @@ import numpy as np
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points
-from .compute import RegistrationTransformation, transformation_identity, RegistrationComputer, RegistrationComputer_ICP_Point2Point
+from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, transformation_identity, cwipc_transform
+from .compute import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = Any
 
-class MultiCameraCoarse(RegistrationAlgorithm):
+class MultiCameraCoarse(MultiAlignmentAlgorithm):
     """Align multiple cameras.
     """
 
@@ -138,7 +138,7 @@ class MultiCameraCoarse(RegistrationAlgorithm):
         
         for i in indices_to_join:
             partial_pc = cwipc_tilefilter(original_pc, self.per_camera_tilenum[i])
-            transformed_partial_pc = self._transform_partial_pc(partial_pc, self.transformations[i])
+            transformed_partial_pc = cwipc_transform(partial_pc, self.transformations[i])
             partial_pc.free()
             partial_pc = None
             if rv == None:
@@ -151,22 +151,6 @@ class MultiCameraCoarse(RegistrationAlgorithm):
         assert rv
         return rv
 
-    def _transform_partial_pc(self, pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
-        points = pc.get_points()
-        for i in range(len(points)):
-            point = np.array([
-                points[i].x,
-                points[i].y,
-                points[i].z,
-                1
-            ])
-            transformed_point = transform.dot(point) # type: ignore
-            points[i].x = transformed_point[0]
-            points[i].y = transformed_point[1]
-            points[i].z = transformed_point[2]
-        new_pc = cwipc_from_points(points, pc.timestamp())
-        new_pc._set_cellsize(pc.cellsize())
-        return new_pc
     
 class MultiCameraCoarseInteractive(MultiCameraCoarse):
 

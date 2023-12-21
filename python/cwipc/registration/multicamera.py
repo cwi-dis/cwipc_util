@@ -7,10 +7,11 @@ import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
+from .util import transformation_identity
 from .analyze import RegistrationAnalyzer, RegistrationAnalyzerOneToAll
-from .compute import RegistrationTransformation, transformation_identity, RegistrationComputer, RegistrationComputer_ICP_Point2Point
+from .compute import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
-class MultiCamera(RegistrationAlgorithm):
+class MultiCamera(MultiAlignmentAlgorithm):
     """Align multiple cameras.
     """
 

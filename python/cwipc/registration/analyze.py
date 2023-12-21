@@ -8,7 +8,7 @@ from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
 from .util import get_tiles_used
 
-class RegistrationAnalyzer(RegistrationAlgorithm):
+class RegistrationAnalyzer(AnalysisAlgorithm):
     """Analyzes how good pointclouds are registered.
 
     Create the registrator, add pointclouds, run the algorithm, inspect the results.

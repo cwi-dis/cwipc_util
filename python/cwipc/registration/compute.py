@@ -6,20 +6,11 @@ import scipy.spatial
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
+from .util import transformation_identity
 
 RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
-RegistrationTransformation = npt.ArrayLike # Should be: NDArray[(4,4), float]
-
-def transformation_identity() -> RegistrationTransformation:
-    return np.array([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]
-    ])
-
-class RegistrationComputer(RegistrationAlgorithm):
+class RegistrationComputer(AlignmentAlgorithm):
     """Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
     """

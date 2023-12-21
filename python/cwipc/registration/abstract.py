@@ -1,9 +1,20 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, List, Tuple
+import numpy.typing
 from ..abstract import *
 from .. import cwipc_wrapper
 
-class RegistrationAlgorithm(ABC):
+__all__ = [
+    "RegistrationTransformation",
+    "Algorithm",
+    "AnalysisAlgorithm",
+    "AlignmentAlgorithm", 
+    "MultiAlignmentAlgorithm"
+]
+
+RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
+
+class Algorithm(ABC):
 
     @abstractmethod
     def add_pointcloud(self, pc : cwipc_wrapper) -> int:
@@ -27,9 +38,48 @@ class RegistrationAlgorithm(ABC):
         
     @abstractmethod
     def run(self, target: Optional[int]=None) -> bool:
+        """Run the algorithm. Returns false in case of a failure."""
         ...
+    # There are also methods to return the result, but they don't have a fixed signature.
 
+class AnalysisAlgorithm(Algorithm):
+
+    @abstractmethod
+    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+        """Returns a list of (tilenum, epsilon, weight) indicating how each camera is aligned.
+        
+        tilenum is the camera tile number
+        epsilon is a measure (in meters) for how closely this camera tile matches the others
+        weight is based on espilon and the number of points that were matched
+
+        The list is sorted by weight (decreasing), so the expectation is that fixing the first one
+        will lead to the greatest overall improvement.
+        """
     @abstractmethod
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         """Seve the resulting plot"""
         ...
+
+class AlignmentAlgorithm(Algorithm):
+    @abstractmethod
+    def get_result_transformation(self) -> RegistrationTransformation:
+        """After a successful run(), returns the transformation applied to the tile-under-test"""
+        ...
+    
+    def get_result_pointcloud(self) -> cwipc_wrapper:
+        """After a successful run(), returns the point cloud for the tile-under-test after the transformation has been applied"""
+        ...
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+         """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
+         ...
+
+class MultiAlignmentAlgorithm(Algorithm):
+    @abstractmethod
+    def get_result_transformations(self) -> List[RegistrationTransformation]:
+        """After a successful run(), returns the list of transformations applied to each tile"""
+        ...
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+         """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
+         ...
