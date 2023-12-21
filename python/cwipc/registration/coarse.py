@@ -30,7 +30,7 @@ class MultiCameraCoarse(RegistrationAlgorithm):
 
         self.computer : Optional[RegistrationComputer] = None
 
-        self.verbose = False
+        self.verbose = True
   
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         assert False
@@ -73,7 +73,7 @@ class MultiCameraCoarse(RegistrationAlgorithm):
                 self.per_camera_tilenum.append(t)
                 partial_pc.free()
 
-    def run(self) -> None:
+    def run(self) -> bool:
         """Run the algorithm"""
         assert len(self.tiled_pointclouds) == 1
         # Initialize the analyzer
@@ -84,19 +84,22 @@ class MultiCameraCoarse(RegistrationAlgorithm):
             marker_pos = self._find_marker(o3d_pc)
             if not self._check_marker(marker_pos):
                 ok = False
+                return False # Or should we continue for the other point clouds? Interactive: no but otherwise?
             self.markers.append(marker_pos)
-        if not ok:
-            return
+        
         assert len(self.o3d_pointclouds) == len(self.markers)
         indices_to_fix = range(len(self.o3d_pointclouds))
         for i in indices_to_fix:
+            camnum = self.tilenum_for_camera_index(i)
             o3d_pc = self.o3d_pointclouds[i]
             this_marker = self.markers[i]
-            this_transform = self._align_marker(o3d_pc, self.wanted_marker, this_marker)
-            if this_transform == None:
+            this_transform = self._align_marker(camnum, o3d_pc, self.wanted_marker, this_marker)
+            if this_transform is None:
+                print(f"Error: could not find transform for camera {camnum}")
                 ok = False
                 this_transform = transformation_identity()
             self.transformations.append(this_transform)
+        return ok
 
     def _check_marker(self, marker : Optional[MarkerPosition]) -> bool:
         return marker != None
@@ -104,8 +107,24 @@ class MultiCameraCoarse(RegistrationAlgorithm):
     def _find_marker(self, pc : open3d.geometry.PointCloud) -> Optional[MarkerPosition]:
         return None
     
-    def _align_marker(self, pc : open3d.geometry.PointCloud, dst : MarkerPosition, src : MarkerPosition) -> Optional[RegistrationTransformation]:
-        return None
+    def _align_marker(self, camnum : int, pc : open3d.geometry.PointCloud, target : MarkerPosition, dst : MarkerPosition) -> Optional[RegistrationTransformation]:
+        # Create the pointcloud that we want to align to
+        target_pc = open3d.geometry.PointCloud()
+        target_points = open3d.utility.Vector3dVector(target)
+        target_pc.points = target_points
+        # Create the pointcloud that we want to align
+        dst_pc = open3d.geometry.PointCloud()
+        dst_points = open3d.utility.Vector3dVector(dst)
+        dst_pc.points = dst_points
+        # Create the correspondences
+        corr_indices = [(i, i) for i in range(len(dst_points))]
+        corr = open3d.utility.Vector2iVector(corr_indices)
+        estimator = open3d.pipelines.registration.TransformationEstimationPointToPoint()
+        transform = estimator.compute_transformation(dst_pc, target_pc, corr)
+        if self.verbose:
+            rmse = estimator.compute_rmse(dst_pc, target_pc, corr)
+            print(f"cam {camnum}: rmse={rmse}")
+        return transform
 
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         return self.transformations
@@ -116,8 +135,7 @@ class MultiCameraCoarse(RegistrationAlgorithm):
         assert len(self.tiled_pointclouds) == 1
         original_pc = self.tiled_pointclouds[0]
         indices_to_join = range(len(self.per_camera_tilenum))
-        indices_to_join = [0]
-       
+        
         for i in indices_to_join:
             partial_pc = cwipc_tilefilter(original_pc, self.per_camera_tilenum[i])
             transformed_partial_pc = self._transform_partial_pc(partial_pc, self.transformations[i])
@@ -164,8 +182,14 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
 
     def _check_marker(self, marker : Optional[MarkerPosition]) -> bool:
         if marker == None:
+            if self.verbose:
+                print("Error: no marker found")
             return False
-        return len(marker) == 4
+        if len(marker) == 4:
+            return True
+        if self.verbose:
+            print(f"Error: marker has {len(marker)} points, expected 4")
+        return False
     
     def _find_marker(self, pc : open3d.geometry.PointCloud) -> Optional[MarkerPosition]:
         indices = o3d_pick_points(self.prompt, pc, from000=True)

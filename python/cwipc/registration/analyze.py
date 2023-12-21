@@ -87,7 +87,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
     # See comment in _compute_corrspondences()
     BIN_VALUE_DECREASE_FACTOR = 0.5
 
-    def run(self, target: Optional[int]=None) -> None:
+    def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert target is None
         assert len(self.per_camera_pointclouds) > 0
@@ -98,7 +98,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             ]
             self.correspondence_errors : List[float] = [0.0]
             self.below_correspondence_error_counts : List[int] = [1]
-            return
+            return True
         self._prepare()
         nCamera = len(self.per_camera_pointclouds)
         self.per_camera_histograms : List[Any] = [None] * nCamera
@@ -113,6 +113,7 @@ class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
             plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
             self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
         self._compute_correspondence_errors()
+        return True
     
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         """Seve the resulting plot"""

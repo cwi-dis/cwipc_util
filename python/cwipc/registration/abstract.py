@@ -26,7 +26,7 @@ class RegistrationAlgorithm(ABC):
         ...
         
     @abstractmethod
-    def run(self, target: Optional[int]=None) -> None:
+    def run(self, target: Optional[int]=None) -> bool:
         ...
 
     @abstractmethod

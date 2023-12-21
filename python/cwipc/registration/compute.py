@@ -81,12 +81,12 @@ class RegistrationComputer(RegistrationAlgorithm):
         nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
         return nparray
 
-    def run(self, target: Optional[int]=None) -> None:
+    def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert not target is None
         assert len(self.per_camera_pointclouds) > 1
         self._prepare(target)
-        pass
+        return True
 
     def _prepare(self, target : int) -> None:
         for targetIndex in range(len(self.per_camera_tilenum)):
@@ -136,7 +136,7 @@ class RegistrationComputer(RegistrationAlgorithm):
 class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
     """Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry."""
 
-    def run(self, target: Optional[int]=None) -> None:
+    def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert not target is None
         assert len(self.per_camera_pointclouds) > 1
@@ -151,6 +151,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
             estimation_method=self._get_estimation_method(),
             criteria=self._get_criteria()
         )
+        return True
 
     def get_result_transformation(self) -> RegistrationTransformation:
         if self.verbose:
@@ -187,7 +188,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
 class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
     """Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry."""
 
-    def run(self, target: Optional[int]=None) -> None:
+    def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert not target is None
         assert len(self.per_camera_pointclouds) > 1
@@ -202,6 +203,7 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
             estimation_method=self._get_estimation_method(),
             criteria=self._get_criteria()
         )
+        return True
 
     def get_result_transformation(self) -> RegistrationTransformation:
         print(f"xxxjack {self.__class__.__name__} result: {self.registration_result}")

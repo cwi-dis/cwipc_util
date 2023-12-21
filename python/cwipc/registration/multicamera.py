@@ -93,7 +93,7 @@ class MultiCamera(RegistrationAlgorithm):
         for pc in self.tiled_pointclouds:
             self.computer.add_tiled_pointcloud(pc)
 
-    def run(self) -> None:
+    def run(self) -> bool:
         """Run the algorithm"""
         assert len(self.untiled_pointclouds) == 0 # Algorithm not implemented fully for separate ply files
         assert len(self.tiled_pointclouds) == 1
@@ -168,6 +168,7 @@ class MultiCamera(RegistrationAlgorithm):
             for cam_index in range(len(self.change)):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
         self._compute_new_tiles()
+        return True
 
     def _get_next_candidate(self) -> Tuple[Optional[int], float, float]:
         camnum_to_fix = None
@@ -206,7 +207,7 @@ class MultiCamera(RegistrationAlgorithm):
                     ]:
                 tmp = orig_transform_inv @ point.transpose()
                 new_point = (new_transform @ tmp).transpose()
-                delta : float = np.linalg.norm(point - new_point)
+                delta : float = float(np.linalg.norm(point - new_point))
                 total_delta += delta
             self.change.append(total_delta / 4)
 
