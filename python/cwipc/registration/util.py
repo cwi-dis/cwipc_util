@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Tuple
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_tilefilter
 import open3d
 import open3d.visualization
 import numpy as np
@@ -130,3 +130,65 @@ def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -
     new_pc = cwipc_from_points(points, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
+
+
+class BaseAlgorithm(Algorithm):
+    """Base class for most algorithms, both registration and alignment.
+
+    Allows ading point clouds and inspecting them.
+    """
+
+    def __init__(self):
+        self.per_camera_tilenum : List[int] = []
+        self.per_camera_pointclouds : List[cwipc_wrapper] = []
+        self.verbose = False
+
+    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
+        """Add a pointcloud to be used during the algorithm run"""
+        tilenum = 1000+len(self.per_camera_pointclouds)
+        self.per_camera_tilenum.append(tilenum)
+        self.per_camera_pointclouds.append(pc)
+        return tilenum
+        
+    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
+        for tilemask in get_tiles_used(pc):
+            tiled_pc = self._get_pc_for_cam(pc, tilemask)
+            if tiled_pc == None:
+                continue
+            if tiled_pc.count() == 0:
+                continue
+            self.per_camera_pointclouds.append(tiled_pc)
+            self.per_camera_tilenum.append(tilemask)
+
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        return self.per_camera_tilenum[cam_index]
+
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
+        for i in range(len(self.per_camera_tilenum)):
+            if self.per_camera_tilenum[i] == tilenum:
+                return i
+        assert False, f"Tilenum {tilenum} not known"
+
+    def camera_count(self):
+        assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
+        return len(self.per_camera_tilenum)
+
+    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
+        rv = cwipc_tilefilter(pc, tilemask)
+        if rv.count() != 0:
+            return rv
+        rv.free()
+        return None
+
+    def _get_nparray_for_pc(self, pc : cwipc_wrapper):
+        """xxxjack I think this method shoulnd't exist. We should use open3d pointclouds everywhere."""
+        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
+        pointarray = np.ctypeslib.as_array(pc.get_points())
+        # Extract the relevant fields (X, Y, Z coordinates)
+        xyzarray = pointarray[['x', 'y', 'z']]
+        # Turn this into an N by 3 2-dimensional array
+        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
+        return nparray

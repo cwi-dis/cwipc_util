@@ -5,10 +5,12 @@ from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
+
+from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity
-from .analyze import RegistrationAnalyzer, RegistrationAnalyzerOneToAll
+from .analyze import RegistrationAnalyzer, RegistrationAnalyzer
 from .fine import RegistrationComputer_ICP_Point2Point
 
 class MultiCamera(MultiAlignmentAlgorithm):
@@ -27,7 +29,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.cellsize_factor = 4 # math.sqrt(2)
         self.proposed_cellsize = 0
 
-        self.analyzer_class = RegistrationAnalyzerOneToAll
+        self.analyzer_class = RegistrationAnalyzer
         self.aligner_class = RegistrationComputer_ICP_Point2Point
 
         self.analyzer : Optional[AnalysisAlgorithm] = None
@@ -50,7 +52,10 @@ class MultiCamera(MultiAlignmentAlgorithm):
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         self.tiled_pointclouds.append(pc)
 
-
+    def camera_count(self) -> int:
+        assert self.analyzer
+        return self.analyzer.camera_count()
+    
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         assert self.analyzer
@@ -229,3 +234,6 @@ class MultiCamera(MultiAlignmentAlgorithm):
             print(f"Pointcounts per tile, after voxelizing:")
             for i in range(len(pointcounts)):
                 print(f"\ttile {i}: {pointcounts[i]}")
+
+    def get_result_transformations(self) -> List[RegistrationTransformation]:
+        return self.transformations

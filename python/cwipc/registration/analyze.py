@@ -6,9 +6,9 @@ import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
-from .util import get_tiles_used
+from .util import get_tiles_used, BaseAlgorithm
 
-class RegistrationAnalyzer(AnalysisAlgorithm):
+class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """Analyzes how good pointclouds are registered.
 
     Create the registrator, add pointclouds, run the algorithm, inspect the results.
@@ -16,76 +16,13 @@ class RegistrationAnalyzer(AnalysisAlgorithm):
 
     """
 
-    def __init__(self):
-        self.histogram_bincount = 400
-        self.label : Optional[str] = None
-        self.per_camera_tilenum : List[int] = []
-        self.per_camera_pointclouds : List[cwipc_wrapper] = []
-
-    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
-        """Add a pointcloud to be used during the algorithm run"""
-        tilenum = 1000+len(self.per_camera_pointclouds)
-        self.per_camera_tilenum.append(tilenum)
-        self.per_camera_pointclouds.append(pc)
-        return tilenum
-        
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
-        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        for tilemask in get_tiles_used(pc):
-            tiled_pc = self._get_pc_for_cam(pc, tilemask)
-            if tiled_pc == None:
-                continue
-            if tiled_pc.count() == 0:
-                continue
-            self.per_camera_pointclouds.append(tiled_pc)
-            self.per_camera_tilenum.append(tilemask)
-
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
-        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
-        return self.per_camera_tilenum[cam_index]
-
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
-        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
-        for i in range(len(self.per_camera_tilenum)):
-            if self.per_camera_tilenum[i] == tilenum:
-                return i
-        assert False, f"Tilenum {tilenum} not known"
-
-    def camera_count(self):
-        assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
-        return len(self.per_camera_tilenum)
-    
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        """Seve the resulting plot"""
-        assert False
-
-    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
-        rv = cwipc_tilefilter(pc, tilemask)
-        if rv.count() != 0:
-            return rv
-        rv.free()
-        return None
-
-    def _get_nparray_for_pc(self, pc : cwipc_wrapper):
-        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-        pointarray = np.ctypeslib.as_array(pc.get_points())
-        # Extract the relevant fields (X, Y, Z coordinates)
-        xyzarray = pointarray[['x', 'y', 'z']]
-        # Turn this into an N by 3 2-dimensional array
-        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
-        return nparray
-
-    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
-        """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
-        
-        This is the order in which the camera re-registration should be attempted.
-        """
-        return []
-    
-class RegistrationAnalyzerOneToAll(RegistrationAnalyzer):
-
     # See comment in _compute_corrspondences()
     BIN_VALUE_DECREASE_FACTOR = 0.5
+
+    def __init__(self):
+        BaseAlgorithm.__init__(self)
+        self.histogram_bincount = 400
+        self.label : Optional[str] = None
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""

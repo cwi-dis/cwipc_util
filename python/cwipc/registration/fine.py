@@ -6,71 +6,21 @@ import scipy.spatial
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import transformation_identity
+from .util import transformation_identity, BaseAlgorithm
 
 RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
-class RegistrationComputer(AlignmentAlgorithm):
+class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     """Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
     """
 
     def __init__(self):
-        self.per_camera_tilenum : List[int] = []
-        self.per_camera_pointclouds : List[cwipc_wrapper] = []
+        BaseAlgorithm.__init__(self)
         self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
-        self.verbose = False
 
     def set_correspondence(self, correspondence) -> None:
         self.correspondence = correspondence
-
-    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
-        """Add a pointcloud to be used during the algorithm run"""
-        tilenum = 1000+len(self.per_camera_pointclouds)
-        self.per_camera_tilenum.append(tilenum)
-        self.per_camera_pointclouds.append(pc)
-        return tilenum
-        
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
-        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        for tilemask in [1,2,4,8,16,32,64,128]:
-            tiled_pc = self._get_pc_for_cam(pc, tilemask)
-            if tiled_pc == None:
-                continue
-            if tiled_pc.count() == 0:
-                continue
-            self.per_camera_pointclouds.append(tiled_pc)
-            self.per_camera_tilenum.append(tilemask)
-
-    def camera_count(self) -> int:
-        return len(self.per_camera_tilenum)
-    
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
-        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
-        return self.per_camera_tilenum[cam_index]
-
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
-        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
-        for i in range(len(self.per_camera_tilenum)):
-            if self.per_camera_tilenum[i] == tilenum:
-                return i
-        assert False, f"Tilenum {tilenum} not known"
-
-    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
-        rv = cwipc_tilefilter(pc, tilemask)
-        if rv.count() != 0:
-            return rv
-        rv.free()
-        return None
-
-    def _get_nparray_for_pc(self, pc : cwipc_wrapper):
-        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-        pointarray = np.ctypeslib.as_array(pc.get_points())
-        # Extract the relevant fields (X, Y, Z coordinates)
-        xyzarray = pointarray[['x', 'y', 'z']]
-        # Turn this into an N by 3 2-dimensional array
-        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
-        return nparray
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""

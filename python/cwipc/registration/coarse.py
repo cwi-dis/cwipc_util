@@ -6,7 +6,7 @@ import numpy as np
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, transformation_identity, cwipc_transform
+from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, transformation_identity, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = Any
@@ -16,10 +16,8 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
     """
 
     def __init__(self):
-        self.camera_count = 0
-      
-        self.tiled_pointclouds : List[cwipc_wrapper] = []
-        self.o3d_pointclouds : List[open3d.geometry.PointCloud] = []
+        self.original_pointcloud : Optional[cwipc_wrapper] = None
+        self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
         self.transformations : List[RegistrationTransformation] = []
         
@@ -41,9 +39,12 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        self.tiled_pointclouds.append(pc)
+        assert self.original_pointcloud == None
+        self.original_pointcloud = pc
 
-
+    def camera_count(self) -> int:
+        return len(self.per_camera_tilenum)
+    
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         return self.per_camera_tilenum[cam_index]
@@ -64,34 +65,34 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         return None
     
     def _prepare(self):
-        for pc in self.tiled_pointclouds:
-            tilenums = get_tiles_used(pc)
-            for t in tilenums:
-                partial_pc = cwipc_tilefilter(pc, t)
-                o3d_partial_pc = o3d_from_cwipc(partial_pc)
-                self.o3d_pointclouds.append(o3d_partial_pc)
-                self.per_camera_tilenum.append(t)
-                partial_pc.free()
+        assert self.original_pointcloud
+        tilenums = get_tiles_used(self.original_pointcloud)
+        for t in tilenums:
+            partial_pc = cwipc_tilefilter(self.original_pointcloud, t)
+            o3d_partial_pc = o3d_from_cwipc(partial_pc)
+            self.per_camera_o3d_pointclouds.append(o3d_partial_pc)
+            self.per_camera_tilenum.append(t)
+            partial_pc.free()
 
     def run(self) -> bool:
         """Run the algorithm"""
-        assert len(self.tiled_pointclouds) == 1
+        assert self.original_pointcloud
         # Initialize the analyzer
         self._prepare()
         # Find the markers in each of the pointclouds
         ok = True
-        for o3d_pc in self.o3d_pointclouds:
+        for o3d_pc in self.per_camera_o3d_pointclouds:
             marker_pos = self._find_marker(o3d_pc)
             if not self._check_marker(marker_pos):
                 ok = False
                 return False # Or should we continue for the other point clouds? Interactive: no but otherwise?
             self.markers.append(marker_pos)
         
-        assert len(self.o3d_pointclouds) == len(self.markers)
-        indices_to_fix = range(len(self.o3d_pointclouds))
+        assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
+        indices_to_fix = range(len(self.per_camera_o3d_pointclouds))
         for i in indices_to_fix:
             camnum = self.tilenum_for_camera_index(i)
-            o3d_pc = self.o3d_pointclouds[i]
+            o3d_pc = self.per_camera_o3d_pointclouds[i]
             this_marker = self.markers[i]
             this_transform = self._align_marker(camnum, o3d_pc, self.wanted_marker, this_marker)
             if this_transform is None:
@@ -132,12 +133,11 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
         rv : Optional[cwipc_wrapper] = None
         assert len(self.transformations) == len(self.per_camera_tilenum)
-        assert len(self.tiled_pointclouds) == 1
-        original_pc = self.tiled_pointclouds[0]
+        assert self.original_pointcloud
         indices_to_join = range(len(self.per_camera_tilenum))
         
         for i in indices_to_join:
-            partial_pc = cwipc_tilefilter(original_pc, self.per_camera_tilenum[i])
+            partial_pc = cwipc_tilefilter(self.original_pointcloud, self.per_camera_tilenum[i])
             transformed_partial_pc = cwipc_transform(partial_pc, self.transformations[i])
             partial_pc.free()
             partial_pc = None
