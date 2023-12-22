@@ -114,7 +114,7 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     rv = unique.tolist()
     return rv
    
-def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
+def _old_cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
     points = pc.get_points()
     for i in range(len(points)):
         point = np.array([
@@ -128,6 +128,25 @@ def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -
         points[i].y = transformed_point[1]
         points[i].z = transformed_point[2]
     new_pc = cwipc_from_points(points, pc.timestamp())
+    new_pc._set_cellsize(pc.cellsize())
+    return new_pc
+
+def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
+    pc_points = pc.get_points()
+    n_points = len(pc_points)
+    np_points = np.ctypeslib.as_array(pc_points)
+    ones = np.ones(n_points)
+    np_points_xyz1 = np.column_stack([np_points['x'], np_points['y'], np_points['z'], ones])
+    # Obscure code ahead. I ended up with this expression by trial and error. We first transpose
+    # the source array (so it is 4xN shape, then matrix-multiply into the transformation, then transpose again
+    # so we end up with Nx4)
+    np_points_transformed = (transform @ np_points_xyz1.transpose()).transpose()
+    for i in range(n_points):
+        pc_points[i].x = np_points_transformed[i][0]
+        pc_points[i].y = np_points_transformed[i][1]
+        pc_points[i].z = np_points_transformed[i][2]
+
+    new_pc = cwipc_from_points(pc_points, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 

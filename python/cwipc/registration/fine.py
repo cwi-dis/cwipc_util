@@ -6,7 +6,7 @@ import scipy.spatial
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import transformation_identity, BaseAlgorithm
+from .util import transformation_identity, BaseAlgorithm, cwipc_transform
 
 RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
@@ -49,20 +49,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     def get_result_pointcloud(self) -> cwipc_wrapper:
         pc = self.our_pointcloud
         transform = self.get_result_transformation()
-        points = pc.get_points()
-        for i in range(len(points)):
-            point = np.array([
-                points[i].x,
-                points[i].y,
-                points[i].z,
-                1
-            ])
-            transformed_point = transform.dot(point) # type: ignore
-            points[i].x = transformed_point[0]
-            points[i].y = transformed_point[1]
-            points[i].z = transformed_point[2]
-        new_pc = cwipc_from_points(points, pc.timestamp())
-        new_pc._set_cellsize(pc.cellsize())
+        new_pc = cwipc_transform(pc, transform)
         return new_pc
     
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
