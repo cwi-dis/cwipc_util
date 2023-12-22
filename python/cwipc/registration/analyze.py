@@ -2,11 +2,14 @@
 from typing import List, Optional, Any, Tuple
 import math
 import numpy as np
+from numpy.typing import NDArray
 import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
 from .util import get_tiles_used, BaseAlgorithm
+
+KD_TREE_TYPE = scipy.spatial.KDTree
 
 class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """Analyzes how good pointclouds are registered.
@@ -18,7 +21,7 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     # See comment in _compute_corrspondences()
     BIN_VALUE_DECREASE_FACTOR = 0.5
-
+    
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
@@ -41,17 +44,24 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_histograms : List[Any] = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            distances, _ = self.per_camera_kdtree_others[cam_i].query(self.per_camera_points_nparray[cam_i])
+            distances = self._kdtree_get_distances_to_points(self.per_camera_kdtree_others[cam_i], self.per_camera_points_nparray[cam_i])
             histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
             cumsum = np.cumsum(histogram)
             totPoints = cumsum[-1]
-            totOtherPoints = self.per_camera_kdtree_others[cam_i].data.shape[0]
+            totOtherPoints = self._kdtree_count(self.per_camera_kdtree_others[cam_i])
             normsum = cumsum / totPoints
             plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
             self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
         self._compute_correspondence_errors()
         return True
     
+    def _kdtree_get_distances_to_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
+        distances, _ = tree.query(points)
+        return distances
+    
+    def _kdtree_count(self, tree : KD_TREE_TYPE) -> int:
+        return tree.data.shape[0]
+
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         """Seve the resulting plot"""
         # xxxjack This uses the stateful pyplot API. Horrible.
@@ -108,7 +118,7 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         ]
         # Create the corresponding kdtrees, which consists of all points _not_ in this cloud
 
-        self.per_camera_kdtree_others : List[scipy.spatial.KDTree] = []
+        self.per_camera_kdtree_others : List[KD_TREE_TYPE] = []
         for cloud in self.per_camera_points_nparray:
             other_points = None
             for other_cloud in self.per_camera_points_nparray:
@@ -119,7 +129,7 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 else:
                     other_points = np.concatenate([other_points, other_cloud])
             assert not other_points is None
-            kdtree_others : scipy.spatial.KDTree = scipy.spatial.KDTree(other_points)  # type: ignore
+            kdtree_others : KD_TREE_TYPE = KD_TREE_TYPE(other_points)  # type: ignore
             assert kdtree_others
             self.per_camera_kdtree_others.append(kdtree_others)
 
