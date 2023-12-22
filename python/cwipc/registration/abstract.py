@@ -12,7 +12,8 @@ __all__ = [
     "MultiAlignmentAlgorithm"
 ]
 
-RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
+#RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
+RegistrationTransformation = numpy.typing.NDArray[numpy.float64] # Should be: NDArray[(4,4), float]
 
 class Algorithm(ABC):
 
