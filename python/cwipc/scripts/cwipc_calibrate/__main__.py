@@ -22,6 +22,8 @@ from .targets import targets
 from .._scriptsupport import *
 
 def main():
+    print(f"WARNING: {sys.argv[0]} is deprecated. Use cwipc_register.")
+    
     parser = ArgumentParser(description="Calibrate cwipc_realsense2 or cwipc_kinect capturer")
     def twofloats(s):
         f1, f2 = s.split(',')
