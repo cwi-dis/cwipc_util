@@ -59,7 +59,7 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
+def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_tiledsource_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
