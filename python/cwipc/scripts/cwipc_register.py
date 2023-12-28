@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 import json
 from typing import Optional
@@ -34,42 +35,73 @@ def main():
     reg = Registrator(args)
     reg.run()
 
+class CameraConfig:
+    def __init__(self, filename):
+        self.filename = filename
+        self.cameraconfig = dict()
+        oldconfig = self.filename + '~'
+        if os.path.exists(oldconfig):
+            os.unlink(oldconfig)
+
+    def load(self, jsondata : bytes) -> None:
+        self.cameraconfig = json.loads(jsondata)
+
+    def save(self) -> None:
+        # First time keep the original config file
+        oldconfig = self.filename + '~'
+        if os.path.exists(self.filename) and not os.path.exists(oldconfig):
+            os.rename(self.filename, oldconfig)
+        json.dump(self.cameraconfig, open(self.filename, 'w'))
+
+    def get(self) -> bytes:
+        return json.dumps(self.cameraconfig).encode('utf8')
+    
+    def __setitem__(self, key, item):
+        self.cameraconfig[key] = item
+
+    def __getitem__(self, key):
+        return self.cameraconfig[key]
+
+
 class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.args = args
         self.verbose = self.args.verbose
-        self.cameraconfig = self.args.cameraconfig
-        if not self.cameraconfig:
-            self.cameraconfig = DEFAULT_FILENAME
+        if not self.args.cameraconfig:
+            self.args.cameraconfig = DEFAULT_FILENAME
+        self.cameraconfig = CameraConfig(self.args.cameraconfig)
         self.progname = sys.argv[0]
-        self.capturerFactory : Optional[cwipc_source_factory_abstract] = None
+        self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
         self.capturerName = None
         self.capturer = None
         
     def run(self) -> bool:
-        self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args, autoConfig=True)
+        self.args.nodecode = True
+        self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args)
         if self.args.fromxml:
             # Special case: load XML config file name create JSON config file
             self.json_from_xml()
             return True
         if not self.open_capturer():
             return False
+        # Get initial cameraconfig
+        assert self.capturer
+        self.cameraconfig.load(self.capturer.get_config())
+        print(f"xxxjack cameraconfig {self.cameraconfig.get()}")
+        self.cameraconfig.save()
     
         return False
     
     def json_from_xml(self):
         capturer = capturerFactory("cameraconfig.xml") # type: ignore
         json_data = capturer.get_config()
-        open(self.cameraconfig, 'wb').write(json_data)
+        open(self.args.cameraconfig, 'wb').write(json_data)
 
     def open_capturer(self) -> bool:
         assert self.capturerFactory
         # xxxjack this will eventually fail for generic capturer
         if not self.capturerName:
             print(f"{self.progname}: selected capturer does not need calibration")
-            return False
-        if self.capturerName == "auto":
-            print(f"{self.progname}: please specify --kinect or --realsense")
             return False
         # Step one: Try to open with an existing cameraconfig.
         self.capturer = self.capturerFactory()
