@@ -36,8 +36,9 @@ class LiveGrabber:
         # May need to grab a few combined pointclouds and throw them away
         for i in range(SKIP_FIRST_GRABS):
             pc = self.grabber.get()
-            assert pc
-            pc.free()
+            if pc != None:
+                pc.free()
+        self.grabber.get()
         return True
    
     def __del__(self):
