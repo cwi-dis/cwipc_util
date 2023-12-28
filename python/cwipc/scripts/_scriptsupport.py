@@ -4,6 +4,7 @@ import time
 import signal
 import argparse
 import traceback
+import warnings
 from typing import cast, Union, List, Callable
 
 from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer
@@ -63,6 +64,8 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
+    global realsense2
+    global kinect
     name : Optional[str] = None
     source : cwipc_source_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
@@ -160,9 +163,19 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         # with the generic capturer)
         #
         if realsense2:
-            realsense2.cwipc_realsense2_dll_load()
+            try:
+                realsense2.cwipc_realsense2_dll_load()
+            except RuntimeError:
+                # realsense2 support could not be loaded.
+                warnings.warn("realsense2 support disabled: could not load")
+                kinect = None
         if kinect:
-            kinect.cwipc_kinect_dll_load()
+            try:
+                kinect.cwipc_kinect_dll_load()
+            except RuntimeError:
+                # Kinect support could not be loaded.
+                warnings.warn("kinect support disabled: could not load")
+                kinect = None
         if autoConfig:
             source = lambda : cwipc_capturer("auto")
         elif args.cameraconfig:
