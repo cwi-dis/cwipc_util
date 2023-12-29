@@ -20,6 +20,17 @@ def transformation_identity() -> RegistrationTransformation:
         [0, 0, 0, 1]
     ])
 
+def transformation_frompython(trafo : List[List[float]]) -> RegistrationTransformation:
+    rv = np.array(trafo)
+    assert rv.shape == (4, 4)
+    return rv
+
+def transformation_topython(matrix : RegistrationTransformation) -> List[List[float]]:
+    rv = matrix.tolist()
+    assert len(rv) == 4
+    assert len(rv[0]) == 4
+    return rv
+
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
     
