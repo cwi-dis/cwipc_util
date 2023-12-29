@@ -1,15 +1,18 @@
 import sys
 import os
+import time
 import shutil
 import argparse
 import json
-from typing import Optional, List, cast
+from typing import Optional, List, cast, Tuple
 import numpy
 import cwipc
 from cwipc.net.abstract import *
 from ._scriptsupport import *
 from cwipc.registration.abstract import *
 from cwipc.registration.util import *
+import cwipc.registration.coarse
+import cwipc.registration.analyze
 
 try:
     import cwipc.realsense2
@@ -154,6 +157,8 @@ class CameraConfig:
 
 class Registrator:
     def __init__(self, args : argparse.Namespace):
+        self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseInteractive
+        self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
         self.args = args
         self.verbose = self.args.verbose
         self.debug = self.args.debug
@@ -246,12 +251,59 @@ class Registrator:
             
 
     def coarse_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
-        # xxxjack
-        return pc
+        aligner = self.coarse_aligner_class()
+        aligner.add_tiled_pointcloud(pc)
+        start_time = time.time()
+        ok = aligner.run()
+        stop_time = time.time()
+        if self.verbose:
+            print(f"coarse aligner ran for {stop_time-start_time:.3f} seconds")
+        if not ok:
+            print("Could not do coarse registration")
+            sys.exit(1)
+        # Get the resulting transformations, and store them in cameraconfig.
+        transformations = aligner.get_result_transformations()
+        for cam_num in range(len(transformations)):
+            matrix = transformations[cam_num]
+            t = self.cameraconfig.get_transform(cam_num)
+            t.set_matrix(matrix)
+        # Get the newly aligned pointcloud to test for alignment, and return it
+        new_pc = aligner.get_result_pointcloud_full()
+        correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
+        # xxxjack should save correspondence into cameraconfig
+        return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         # xxxjack
         return pc
+    
+    def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
+        analyzer = cwipc.registration.analyze.RegistrationAnalyzer()
+        analyzer.add_tiled_pointcloud(pc)
+        analyzer.label = label
+        start_time = time.time()
+        analyzer.run()
+        stop_time = time.time()
+        print(f"analyzer ran for {stop_time-start_time:.3f} seconds")
+        results = analyzer.get_ordered_results()
+        print(f"Sorted correspondences after {label}")
+        worst_correspondence = 0
+        for camnum, correspondence, weight in results:
+            print(f"\tcamnum={camnum}, correspondence={correspondence}, weight={weight}")
+            if correspondence > worst_correspondence:
+                worst_correspondence = correspondence
+
+        camnum_to_fix = None
+        correspondence = results[0][1]
+        for i in range(len(results)):
+            if results[i][1] >= original_capture_precision:
+                camnum_to_fix = results[i][0]
+                correspondence = results[i][1]
+                break
+        if self.debug:
+            analyzer.plot(filename="", show=True)
+        assert camnum_to_fix
+        return worst_correspondence, camnum_to_fix      
 
 def foo():
     refpoints = targets[args.target]["points"]
