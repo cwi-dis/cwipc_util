@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import argparse
 import json
 from typing import Optional, List, cast
@@ -34,6 +35,9 @@ def main():
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
+    parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
+    parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
+    parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     args = parser.parse_args()
     beginOfRun(args)
     reg = Registrator(args)
@@ -87,7 +91,7 @@ class CameraConfig:
         oldconfig = self.filename + '~'
         if os.path.exists(oldconfig):
             os.unlink(oldconfig)
-        self.init_transforms()
+        self.transforms = []
 
     def init_transforms(self) -> None:
         cameras = self["camera"]
@@ -108,6 +112,12 @@ class CameraConfig:
     def get_transform(self, camnum : int) -> Transform:
         return self.transforms[camnum]
     
+    def refresh_transforms(self) -> None:
+        """Copy transforms back to cameraconfig"""
+        for cam_num in range(len(self.transforms)):
+            trafo = self.transforms[cam_num].get()
+            self.cameraconfig["camera"][cam_num]["trafo"] = trafo
+    
     def is_identity(self) -> bool:
         for t in self.transforms:
             if not t.is_identity():
@@ -116,13 +126,22 @@ class CameraConfig:
 
     def load(self, jsondata : bytes) -> None:
         self.cameraconfig = json.loads(jsondata)
+        self.init_transforms()
 
     def save(self) -> None:
         # First time keep the original config file
+        self.refresh_transforms()
         oldconfig = self.filename + '~'
         if os.path.exists(self.filename) and not os.path.exists(oldconfig):
             os.rename(self.filename, oldconfig)
-        json.dump(self.cameraconfig, open(self.filename, 'w'))
+        json.dump(self.cameraconfig, open(self.filename, 'w'), indent=2)
+        # Mark transforms as not being dirty any longer.
+        for t in self.transforms:
+            t.reset()
+
+    def save_to(self, filename : str) -> None:
+        self.refresh_transforms()
+        json.dump(self.cameraconfig, open(filename, 'w'), indent=2)
 
     def get(self) -> bytes:
         return json.dumps(self.cameraconfig).encode('utf8')
@@ -137,6 +156,8 @@ class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.args = args
         self.verbose = self.args.verbose
+        self.debug = self.args.debug
+        self.dry_run = self.args.dry_run
         if not self.args.cameraconfig:
             self.args.cameraconfig = DEFAULT_FILENAME
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
@@ -144,6 +165,11 @@ class Registrator:
         self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
         self.capturerName = None
         self.capturer = None
+        if self.debug:
+            if os.path.exists("cwipc_register_debug"):
+                shutil.rmtree("cwipc_register_debug")
+            os.mkdir("cwipc_register_debug")
+            print(f"Will produce debug files in cwipc_register_debug")
 
     def prompt(self, message : str):
         print(f"{message}")
@@ -160,23 +186,23 @@ class Registrator:
         # Get initial cameraconfig and save it
         assert self.capturer
         self.cameraconfig.load(self.capturer.get_config())
-        print(f"xxxjack cameraconfig {self.cameraconfig.get()}")
-        self.cameraconfig.save()
+        if not self.dry_run:
+            self.cameraconfig.save()
         if self.args.coarse or self.cameraconfig.is_identity():
             self.prompt("Coarse calibration: capturing aruco/color target")
             pc = self.capture()
-            if self.args.debug:
+            if self.debug:
                 self.save_pc(pc, "step1_capture_coarse")
             new_pc = self.coarse_calibration(pc)
-            if self.args.debug:
+            if self.debug:
                 self.save_pc(new_pc, "step2_after_coarse")
-        if self.args.fine:
+        if not self.args.nofine:
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
-            if self.args.debug:
+            if self.debug:
                 self.save_pc(pc, "step3_capture_fine")
             new_pc = self.fine_calibration(pc)
-            if self.args.debug:
+            if self.debug:
                 self.save_pc(new_pc, "step4_after_fine")
     
         return False
@@ -202,7 +228,7 @@ class Registrator:
             return pc
         else:
             assert self.capturer
-            for i in range(len(10)):
+            for i in range(10):
                 ok = self.capturer.available(True)
                 assert ok
                 pc = self.capturer.get()
@@ -211,8 +237,13 @@ class Registrator:
         assert False       
             
     def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
-        # xxxjack
-        pass
+        if self.debug:
+            filename = f"cwipc_register_debug/{label}-pointcloud.ply"
+            cwipc.cwipc_write(filename, pc)
+            filename = f"cwipc_register_debug/{label}-cameraconfig.json"
+            self.cameraconfig.save_to(filename)
+            print(f"Saved pointcloud and cameraconfig for {label}")
+            
 
     def coarse_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         # xxxjack
