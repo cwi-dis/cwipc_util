@@ -2,9 +2,14 @@ import sys
 import os
 import argparse
 import json
-from typing import Optional
+from typing import Optional, List, cast
+import numpy
 import cwipc
 from cwipc.net.abstract import *
+from ._scriptsupport import *
+from cwipc.registration.abstract import *
+from cwipc.registration.util import *
+
 try:
     import cwipc.realsense2
     # Workaround for https://github.com/intel-isl/Open3D/issues/3283
@@ -15,8 +20,6 @@ try:
     import cwipc.kinect
 except ModuleNotFoundError:
     cwipc.kinect = None
-
-from ._scriptsupport import *
 
 
 DEFAULT_FILENAME = "cameraconfig.json"
@@ -30,18 +33,86 @@ def main():
     
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
+    parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     args = parser.parse_args()
     beginOfRun(args)
     reg = Registrator(args)
     reg.run()
 
+
+PythonTrafo = List[List[float]]
+
+class Transform:
+    """A 4x4 spatial transformation matrix, represented as both a list of lists of floats or a numpy matrix."""
+    trafo : PythonTrafo
+    matrix : RegistrationTransformation
+    changed : bool
+
+    def __init__(self, trafo : PythonTrafo):
+        self._set(trafo)
+        self.changed = False
+
+    def is_dirty(self) -> bool:
+        return self.changed
+    
+    def reset(self) -> None:
+        self.changed = False
+
+    def get(self) -> PythonTrafo:
+        return self.trafo
+    
+    def _set(self, trafo : PythonTrafo) -> None:
+        self.trafo = trafo
+        self.matrix = transformation_frompython(self.trafo)
+
+    def get_matrix(self) -> RegistrationTransformation:
+        return self.matrix
+    
+    def set_matrix(self, matrix : RegistrationTransformation) -> None:
+        if numpy.array_equal(matrix, self.matrix):
+            return
+        self.matrix = matrix
+        self.trafo = transformation_topython(self.matrix)
+        self.changed = True
+
+    def is_identity(self) -> bool:
+        return numpy.array_equal(self.matrix, transformation_identity())
+    
 class CameraConfig:
+    transforms : List[Transform]
+
     def __init__(self, filename):
         self.filename = filename
         self.cameraconfig = dict()
         oldconfig = self.filename + '~'
         if os.path.exists(oldconfig):
             os.unlink(oldconfig)
+        self.init_transforms()
+
+    def init_transforms(self) -> None:
+        cameras = self["camera"]
+        camera_count = len(cameras)
+        self.transforms = [
+            Transform(cam["trafo"]) for cam in cameras
+        ]
+
+    def camera_count(self) -> int:
+        return len(self.transforms)
+    
+    def is_dirty(self) -> bool:
+        for t in self.transforms:
+            if t.is_dirty():
+                return True
+        return False
+    
+    def get_transform(self, camnum : int) -> Transform:
+        return self.transforms[camnum]
+    
+    def is_identity(self) -> bool:
+        for t in self.transforms:
+            if not t.is_identity():
+                return False
+        return True
 
     def load(self, jsondata : bytes) -> None:
         self.cameraconfig = json.loads(jsondata)
@@ -62,7 +133,6 @@ class CameraConfig:
     def __getitem__(self, key):
         return self.cameraconfig[key]
 
-
 class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.args = args
@@ -74,6 +144,9 @@ class Registrator:
         self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
         self.capturerName = None
         self.capturer = None
+
+    def prompt(self, message : str):
+        print(f"{message}")
         
     def run(self) -> bool:
         self.args.nodecode = True
@@ -84,11 +157,27 @@ class Registrator:
             return True
         if not self.open_capturer():
             return False
-        # Get initial cameraconfig
+        # Get initial cameraconfig and save it
         assert self.capturer
         self.cameraconfig.load(self.capturer.get_config())
         print(f"xxxjack cameraconfig {self.cameraconfig.get()}")
         self.cameraconfig.save()
+        if self.args.coarse or self.cameraconfig.is_identity():
+            self.prompt("Coarse calibration: capturing aruco/color target")
+            pc = self.capture()
+            if self.args.debug:
+                self.save_pc(pc, "step1_capture_coarse")
+            new_pc = self.coarse_calibration(pc)
+            if self.args.debug:
+                self.save_pc(new_pc, "step2_after_coarse")
+        if self.args.fine:
+            self.prompt("Fine calibration: capturing human-sized object")
+            pc = self.capture()
+            if self.args.debug:
+                self.save_pc(pc, "step3_capture_fine")
+            new_pc = self.fine_calibration(pc)
+            if self.args.debug:
+                self.save_pc(new_pc, "step4_after_fine")
     
         return False
     
@@ -106,6 +195,32 @@ class Registrator:
         # Step one: Try to open with an existing cameraconfig.
         self.capturer = self.capturerFactory()
         return True
+    
+    def capture(self) -> cwipc.cwipc_wrapper:
+        if self.args.nograb:
+            pc = cwipc.cwipc_read(self.args.nograb, 0)
+            return pc
+        else:
+            assert self.capturer
+            for i in range(len(10)):
+                ok = self.capturer.available(True)
+                assert ok
+                pc = self.capturer.get()
+                if pc != None and pc.count() != 0:
+                    return cast(cwipc.cwipc_wrapper, pc)
+        assert False       
+            
+    def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
+        # xxxjack
+        pass
+
+    def coarse_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        # xxxjack
+        return pc
+
+    def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        # xxxjack
+        return pc
 
 def foo():
     refpoints = targets[args.target]["points"]
