@@ -38,6 +38,7 @@ def main():
     
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
+    parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
@@ -96,6 +97,7 @@ class CameraConfig:
         if os.path.exists(oldconfig):
             os.unlink(oldconfig)
         self.transforms = []
+        self._dirty = False
 
     def init_transforms(self) -> None:
         cameras = self["camera"]
@@ -108,6 +110,8 @@ class CameraConfig:
         return len(self.transforms)
     
     def is_dirty(self) -> bool:
+        if self._dirty:
+            return True
         for t in self.transforms:
             if t.is_dirty():
                 return True
@@ -131,6 +135,7 @@ class CameraConfig:
     def load(self, jsondata : bytes) -> None:
         self.cameraconfig = json.loads(jsondata)
         self.init_transforms()
+        self._dirty = False
         # Workaround for bug (only in realsense_playback?) 2023-12-30
         if self.cameraconfig["type"] == "":
             self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
@@ -145,6 +150,7 @@ class CameraConfig:
         # Mark transforms as not being dirty any longer.
         for t in self.transforms:
             t.reset()
+        self._dirty = False
 
     def save_to(self, filename : str) -> None:
         self.refresh_transforms()
@@ -155,6 +161,7 @@ class CameraConfig:
     
     def __setitem__(self, key, item):
         self.cameraconfig[key] = item
+        self._dirty = True
 
     def __getitem__(self, key):
         return self.cameraconfig[key]
@@ -192,24 +199,33 @@ class Registrator:
             self.json_from_xml()
             return True
         if not self.open_capturer():
-            return False
+            print("Cannot open capturer. Presume missing cameraconfig, try to create it.")
+            self.create_cameraconfig()
+            if not self.open_capturer():
+                print("Still cannot open capturer. Giving up.")
+                return False
         # Get initial cameraconfig and save it
         assert self.capturer
         self.cameraconfig.load(self.capturer.get_config())
         if not self.dry_run:
             self.cameraconfig.save()
         if self.args.coarse or self.cameraconfig.is_identity():
-            self.prompt("Coarse calibration: capturing aruco/color target")
-            pc = self.capture()
-            if self.debug:
-                self.save_pc(pc, "step1_capture_coarse")
-            new_pc = self.coarse_calibration(pc)
-            pc.free()
-            pc = None
+            new_pc = None
+            while new_pc == None:
+                self.prompt("Coarse calibration: capturing aruco/color target")
+                pc = self.capture()
+                if self.debug:
+                    self.save_pc(pc, "step1_capture_coarse")
+                new_pc = self.coarse_calibration(pc)
+                pc.free()
+                pc = None
+            assert new_pc
             if self.debug:
                 self.save_pc(new_pc, "step2_after_coarse")
             new_pc.free()
             new_pc = None
+            if not self.dry_run:
+                self.cameraconfig.save()
         if not self.args.nofine:
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
@@ -222,7 +238,9 @@ class Registrator:
                 self.save_pc(new_pc, "step4_after_fine")
             new_pc.free()
             new_pc = None
-    
+            if not self.dry_run:
+                self.cameraconfig.save()
+        
         return False
     
     def json_from_xml(self):
@@ -237,22 +255,44 @@ class Registrator:
             print(f"{self.progname}: selected capturer does not need calibration")
             return False
         # Step one: Try to open with an existing cameraconfig.
-        self.capturer = self.capturerFactory()
+        try:
+            self.capturer = self.capturerFactory()
+        except cwipc.CwipcError:
+            return False
         return True
     
+    def create_cameraconfig(self) -> None:
+        """Attempt to open a capturer without cameraconfig file. Then save the empty cameraconfig."""
+        tmpFactory, _ = cwipc_genericsource_factory(self.args, autoConfig=True)
+        tmpCapturer = tmpFactory()
+        self.cameraconfig.load(tmpCapturer.get_config())
+        if not self.dry_run:
+            self.cameraconfig.save()
+            if self.verbose:
+                print(f"Saved {self.args.cameraconfig}")
+        else:
+            print(f"Not saving {self.args.cameraconfig}, --dry-run specified.")
+        
+
+
     def capture(self) -> cwipc.cwipc_wrapper:
         if self.args.nograb:
             pc = cwipc.cwipc_read(self.args.nograb, 0)
             return pc
-        else:
-            assert self.capturer
-            for i in range(10):
+        assert self.capturer
+        if self.args.skip:
+            for i in range(self.args.skip):
                 ok = self.capturer.available(True)
-                assert ok
-                pc = self.capturer.get()
-                if pc != None and pc.count() != 0:
-                    return cast(cwipc.cwipc_wrapper, pc)
-        assert False       
+                if ok:
+                    pc = self.capturer.get()
+                    if pc != None:
+                        pc.free()
+        ok = self.capturer.available(True)
+        assert ok
+        pc = self.capturer.get()
+        assert pc
+        assert pc.count() > 0
+        return cast(cwipc.cwipc_wrapper, pc)
             
     def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
         if self.debug:
@@ -263,7 +303,7 @@ class Registrator:
             print(f"Saved pointcloud and cameraconfig for {label}")
             
 
-    def coarse_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+    def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         aligner = self.coarse_aligner_class()
         aligner.add_tiled_pointcloud(pc)
         start_time = time.time()
@@ -273,7 +313,7 @@ class Registrator:
             print(f"coarse aligner ran for {stop_time-start_time:.3f} seconds")
         if not ok:
             print("Could not do coarse registration")
-            sys.exit(1)
+            return None
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = aligner.get_result_transformations()
         for cam_num in range(len(transformations)):
@@ -283,7 +323,7 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
-        # xxxjack should save correspondence into cameraconfig
+        self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
@@ -314,7 +354,8 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         correspondence, _ = self.check_alignment(new_pc, 0, "fine calibration")
-        # xxxjack should save correspondence into cameraconfig
+        correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
+        self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
@@ -345,42 +386,6 @@ class Registrator:
         assert camnum_to_fix
         return worst_correspondence, camnum_to_fix      
 
-def foo():
-    refpoints = targets[args.target]["points"]
-    prog = Calibrator(refpoints)
-    if args.nograb:
-        grabber = FileGrabber(args.nograb)
-    else:
-        grabber = LiveGrabber(capturerFactory)
-    noInspect = args.nograb
-    try:
-    
-        ok = prog.open(grabber, clean=args.clean, reuse=(args.reuse or args.auto))
-        if not ok:
-            # Being unable to open the grabber is not an error for --auto
-            if args.auto:
-                sys.exit(0)
-            else:
-                sys.exit(1)
-        
-        if args.auto:
-            prog.auto()
-        elif args.coarse:
-            prog.grab(noInspect)
-            prog.run_coarse()
-            prog.skip_fine()
-        elif args.fine:
-            prog.grab(noInspect)
-            prog.skip_coarse()
-            prog.run_fine(args.corr, args.finspect)
-        else:
-            print(f"{sys.argv[0]}: Specify one of --auto, --coarse, --fine")
-            sys.exit(1)
-
-        prog.save()
-    finally:
-        del prog
-        endOfRun(args)
     
 if __name__ == '__main__':
     main()
