@@ -5,6 +5,7 @@ from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
+from cwipc import cwipc_wrapper, cwipc_from_packet
 
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
@@ -20,8 +21,8 @@ class MultiCamera(MultiAlignmentAlgorithm):
     def __init__(self):
         self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
 
-        self.untiled_pointclouds : List[cwipc_wrapper] = []
-        self.tiled_pointclouds : List[cwipc_wrapper] = []
+        self.current_pointcloud : Optional[cwipc_wrapper] = None
+        self.current_pointcloud_is_new = False
         self.transformations : List[RegistrationTransformation] = []
         self.original_transformations : List[RegistrationTransformation] = []
         self.change : List[float] = []
@@ -41,16 +42,10 @@ class MultiCamera(MultiAlignmentAlgorithm):
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         assert False
 
-    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
-        """Add a pointcloud to be used during the algorithm run"""
-        tilenum = 1000+len(self.untiled_pointclouds)
-        #self.per_camera_tilenum.append(tilenum)
-        self.untiled_pointclouds.append(pc)
-        return tilenum
-        
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        self.tiled_pointclouds.append(pc)
+        self.current_pointcloud = pc
+        self.current_pointcloud_is_new = False
 
     def camera_count(self) -> int:
         assert self.analyzer
@@ -66,43 +61,32 @@ class MultiCamera(MultiAlignmentAlgorithm):
         assert self.analyzer
         return self.analyzer.camera_index_for_tilenum(tilenum)
     
-    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]: # xxxjack needed?
-        rv = cwipc_tilefilter(pc, tilemask)
-        if rv.count() != 0:
-            return rv
-        rv.free()
-        return None
-
-    def _get_nparray_for_pc(self, pc : cwipc_wrapper): # xxxjack needed?
-        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-        pointarray = np.ctypeslib.as_array(pc.get_points())
-        # Extract the relevant fields (X, Y, Z coordinates)
-        xyzarray = pointarray[['x', 'y', 'z']]
-        # Turn this into an N by 3 2-dimensional array
-        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
-        return nparray
+    def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
+        if self.analyzer == None:
+            self._prepare_analyze()
+        assert self.analyzer
+        assert self.camera_count() > 0
+        if len(self.transformations) == 0:
+            for i in range(self.camera_count()):
+                self.transformations.append(transformation_identity())
+        self.transformations[cam_index] = matrix
     
     def _prepare_analyze(self):
         self.analyzer = None
         assert self.aligner_class
         self.analyzer = self.analyzer_class()
-        for pc in self.untiled_pointclouds:
-            self.analyzer.add_pointcloud(pc)
-        for pc in self.tiled_pointclouds:
-            self.analyzer.add_tiled_pointcloud(pc)
+        assert self.current_pointcloud
+        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
 
     def _prepare_compute(self):
         self.aligner = None
         self.aligner = self.aligner_class()
-        for pc in self.untiled_pointclouds:
-            self.aligner.add_pointcloud(pc)
-        for pc in self.tiled_pointclouds:
-            self.aligner.add_tiled_pointcloud(pc)
+        assert self.current_pointcloud
+        self.aligner.add_tiled_pointcloud(self.current_pointcloud)
 
     def run(self) -> bool:
         """Run the algorithm"""
-        assert len(self.untiled_pointclouds) == 0 # Algorithm not implemented fully for separate ply files
-        assert len(self.tiled_pointclouds) == 1
+        assert self.current_pointcloud
         # Initialize the analyzer
         self._prepare_analyze()
         assert self.analyzer
@@ -132,10 +116,11 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.aligner.set_correspondence(correspondence)
             self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
-            old_pc = self.tiled_pointclouds[0]
+            old_pc = self.current_pointcloud
             new_pc = self.aligner.get_result_pointcloud_full()
             old_pc.free()
-            self.tiled_pointclouds[0] = new_pc
+            self.current_pointcloud = new_pc
+            self.current_pointcloud_is_new = True
             # Apply new transformation (to the left of the old one)
             cam_index = self.aligner.camera_index_for_tilenum(camnum_to_fix)
             old_transform = self.transformations[cam_index]
@@ -218,10 +203,16 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.change.append(total_delta / 4)
 
     def _compute_new_tiles(self):
-        pc = self.tiled_pointclouds[0]
+        assert self.current_pointcloud
+        pc = self.current_pointcloud
         ntiles_orig = len(self.transformations)
-        pc_new = cwipc_downsample(pc, self.proposed_cellsize)
-        cwipc_write("tiled.ply", pc_new)
+        must_free_new = False
+        if self.proposed_cellsize > 0:
+            pc_new = cwipc_downsample(pc, self.proposed_cellsize)
+            must_free_new = True
+        else:
+            pc_new = pc
+            must_free_new = False
         if self.verbose:
             print(f"Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
         pointcounts = []
@@ -234,6 +225,17 @@ class MultiCamera(MultiAlignmentAlgorithm):
             print(f"Pointcounts per tile, after voxelizing:")
             for i in range(len(pointcounts)):
                 print(f"\ttile {i}: {pointcounts[i]}")
+        if must_free_new:
+            pc_new.free()
 
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         return self.transformations
+    
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+        assert self.current_pointcloud
+        if not self.current_pointcloud_is_new:
+            # Do a deep-copy, so our caller can free the pointcloud it passed to us
+            self.current_pointcloud = cwipc_from_packet(self.current_pointcloud.get_packet())
+            self.current_pointcloud_is_new = True
+        return self.current_pointcloud

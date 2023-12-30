@@ -32,10 +32,6 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
   
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         assert False
-
-    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
-        """Add a pointcloud to be used during the algorithm run"""
-        assert False
         
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""

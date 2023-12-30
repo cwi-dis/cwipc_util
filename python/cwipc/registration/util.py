@@ -173,13 +173,6 @@ class BaseAlgorithm(Algorithm):
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
         self.verbose = False
 
-    def add_pointcloud(self, pc : cwipc_wrapper) -> int:
-        """Add a pointcloud to be used during the algorithm run"""
-        tilenum = 1000+len(self.per_camera_pointclouds)
-        self.per_camera_tilenum.append(tilenum)
-        self.per_camera_pointclouds.append(pc)
-        return tilenum
-        
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         for tilemask in get_tiles_used(pc):
