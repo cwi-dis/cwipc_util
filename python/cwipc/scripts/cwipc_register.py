@@ -131,6 +131,9 @@ class CameraConfig:
     def load(self, jsondata : bytes) -> None:
         self.cameraconfig = json.loads(jsondata)
         self.init_transforms()
+        # Workaround for bug (only in realsense_playback?) 2023-12-30
+        if self.cameraconfig["type"] == "":
+            self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
 
     def save(self) -> None:
         # First time keep the original config file
