@@ -13,6 +13,7 @@ from cwipc.registration.abstract import *
 from cwipc.registration.util import *
 import cwipc.registration.coarse
 import cwipc.registration.analyze
+import cwipc.registration.multicamera
 
 try:
     import cwipc.realsense2
@@ -158,6 +159,7 @@ class CameraConfig:
 class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseInteractive
+        self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
         self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
         self.args = args
         self.verbose = self.args.verbose
@@ -199,16 +201,24 @@ class Registrator:
             if self.debug:
                 self.save_pc(pc, "step1_capture_coarse")
             new_pc = self.coarse_calibration(pc)
+            pc.free()
+            pc = None
             if self.debug:
                 self.save_pc(new_pc, "step2_after_coarse")
+            new_pc.free()
+            new_pc = None
         if not self.args.nofine:
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
             if self.debug:
                 self.save_pc(pc, "step3_capture_fine")
             new_pc = self.fine_calibration(pc)
+            pc.free()
+            pc = None
             if self.debug:
                 self.save_pc(new_pc, "step4_after_fine")
+            new_pc.free()
+            new_pc = None
     
         return False
     
@@ -274,9 +284,36 @@ class Registrator:
         return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
-        # xxxjack
-        return pc
-    
+        aligner = self.fine_aligner_class()
+        # This number sets a threashold for the best possible alignment.
+        # xxxjack it should be computed from the source point clouds
+        original_capture_precision = 0.001
+
+        aligner.verbose = True
+        aligner.show_plot = False
+        aligner.add_tiled_pointcloud(pc)
+        for cam_index in range(self.cameraconfig.camera_count()):
+            aligner.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
+        start_time = time.time()
+        ok = aligner.run()
+        stop_time = time.time()
+        if self.verbose:
+            print(f"fine aligner ran for {stop_time-start_time:.3f} seconds")
+        if not ok:
+            print("Could not do fine registration")
+            sys.exit(1)
+        # Get the resulting transformations, and store them in cameraconfig.
+        transformations = aligner.get_result_transformations()
+        for cam_num in range(len(transformations)):
+            matrix = transformations[cam_num]
+            t = self.cameraconfig.get_transform(cam_num)
+            t.set_matrix(matrix)
+        # Get the newly aligned pointcloud to test for alignment, and return it
+        new_pc = aligner.get_result_pointcloud_full()
+        correspondence, _ = self.check_alignment(new_pc, 0, "fine calibration")
+        # xxxjack should save correspondence into cameraconfig
+        return new_pc
+
     def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
         analyzer = cwipc.registration.analyze.RegistrationAnalyzer()
         analyzer.add_tiled_pointcloud(pc)
