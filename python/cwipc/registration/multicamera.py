@@ -27,7 +27,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.original_transformations : List[RegistrationTransformation] = []
         self.change : List[float] = []
         self.results : List[Tuple[int, float, float]] = []
-        self.cellsize_factor = 4 # math.sqrt(2)
+        self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
 
         self.analyzer_class = RegistrationAnalyzer
