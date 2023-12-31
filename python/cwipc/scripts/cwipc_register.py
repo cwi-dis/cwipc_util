@@ -211,6 +211,9 @@ class Registrator:
             self.json_from_xml()
             return True
         if not self.open_capturer():
+            if self.args.recording:
+                print(f"Cannot open capturer, probably an issue with {self.args.cameraconfig}")
+                return False
             print("Cannot open capturer. Presume missing cameraconfig, try to create it.")
             self.create_cameraconfig()
             if not self.open_capturer():
@@ -260,23 +263,25 @@ class Registrator:
     def initialize_recording(self) -> bool:
         if os.path.exists(self.args.cameraconfig):
             return True
-        kinect_files = []
-        realsense_files = []
+        allfiles = []
+        is_kinect = False
+        is_realsense = False
         for fn in os.listdir(self.args.recording):
             if fn.lower().endswith(".mkv"):
-                kinect_files.append(fn)
+                allfiles.append(fn)
+                is_kinect = True
             if fn.lower().endswith(".bag"):
-                realsense_files.append(fn)
-        if kinect_files and realsense_files:
+                allfiles.append(fn)
+                is_realsense = True
+        if is_realsense and is_kinect:
             print(f"Directory {self.args.recording} contains both .mkv and .bag files")
             return False
-        if not kinect_files and not realsense_files:
+        if not is_realsense and not is_kinect:
             print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
             return False
         camtype = "kinect_offline"
-        if realsense_files:
+        if is_realsense:
             camtype = "realsense_playback"
-        allfiles = kinect_files + realsense_files
         # Create the camera definitions
         camera = [
             dict(filename=fn, type=camtype)
@@ -293,6 +298,8 @@ class Registrator:
             ),
             camera=camera
         )
+        if is_kinect:
+            cameraconfig["skeleton"] = {}
         json.dump(cameraconfig, open(self.args.cameraconfig, "w"), indent=4)
         if self.verbose:
             print(f"Created {self.args.cameraconfig}")
