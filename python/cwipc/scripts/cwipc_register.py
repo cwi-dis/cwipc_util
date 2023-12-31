@@ -41,8 +41,10 @@ def main():
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
+    parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
+    parser.add_argument("recording", nargs='?', help="A directory with recordings (realsense or kinect) for which to do registration")
     args = parser.parse_args()
     beginOfRun(args)
     reg = Registrator(args)
@@ -175,6 +177,11 @@ class Registrator:
         self.verbose = self.args.verbose
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
+        if self.args.recording:
+            if self.args.cameraconfig:
+                print("Cannot use --cameraconfig with a recording")
+                sys.exit(1)
+            self.args.cameraconfig = os.path.realpath(os.path.join(self.args.recording, DEFAULT_FILENAME))
         if not self.args.cameraconfig:
             self.args.cameraconfig = DEFAULT_FILENAME
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
@@ -192,6 +199,11 @@ class Registrator:
         print(f"{message}")
         
     def run(self) -> bool:
+        if self.args.recording:
+            # Special case: register a recording. First make sure we actually have a
+            # cameraconfig file, otherwise generate it.
+            if not self.initialize_recording():
+                return False
         self.args.nodecode = True
         self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args)
         if self.args.fromxml:
@@ -209,6 +221,8 @@ class Registrator:
         self.cameraconfig.load(self.capturer.get_config())
         if not self.dry_run:
             self.cameraconfig.save()
+        if self.args.noregister:
+            return True
         if self.args.coarse or self.cameraconfig.is_identity():
             new_pc = None
             while new_pc == None:
@@ -242,6 +256,47 @@ class Registrator:
                 self.cameraconfig.save()
         
         return False
+    
+    def initialize_recording(self) -> bool:
+        if os.path.exists(self.args.cameraconfig):
+            return True
+        kinect_files = []
+        realsense_files = []
+        for fn in os.listdir(self.args.recording):
+            if fn.lower().endswith(".mkv"):
+                kinect_files.append(fn)
+            if fn.lower().endswith(".bag"):
+                realsense_files.append(fn)
+        if kinect_files and realsense_files:
+            print(f"Directory {self.args.recording} contains both .mkv and .bag files")
+            return False
+        if not kinect_files and not realsense_files:
+            print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
+            return False
+        camtype = "kinect_offline"
+        if realsense_files:
+            camtype = "realsense_playback"
+        allfiles = kinect_files + realsense_files
+        # Create the camera definitions
+        camera = [
+            dict(filename=fn, type=camtype)
+                for fn in allfiles
+        ]
+        cameraconfig = dict(
+            version=3,
+            type=camtype,
+            system=dict(),
+            postprocessing=dict(
+                depthfilterparameters=dict(
+
+                )
+            ),
+            camera=camera
+        )
+        json.dump(cameraconfig, open(self.args.cameraconfig, "w"), indent=4)
+        if self.verbose:
+            print(f"Created {self.args.cameraconfig}")
+        return True
     
     def json_from_xml(self):
         capturer = capturerFactory("cameraconfig.xml") # type: ignore
