@@ -139,8 +139,8 @@ class CameraConfig:
         self.init_transforms()
         self._dirty = False
         # Workaround for bug (only in realsense_playback?) 2023-12-30
-        if self.cameraconfig["type"] == "":
-            self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
+        # Actually bug also exists, but differently, for kinect_offline.
+        self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
 
     def save(self) -> None:
         # First time keep the original config file
@@ -416,7 +416,6 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         correspondence, _ = self.check_alignment(new_pc, 0, "fine calibration")
-        correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
