@@ -195,6 +195,11 @@ class Registrator:
             os.mkdir("cwipc_register_debug")
             print(f"Will produce debug files in cwipc_register_debug")
 
+    def __del__(self):
+        if self.capturer != None:
+            self.capturer.free()
+            self.capturer = None
+
     def prompt(self, message : str):
         print(f"{message}")
         
@@ -317,6 +322,9 @@ class Registrator:
             print(f"{self.progname}: selected capturer does not need calibration")
             return False
         # Step one: Try to open with an existing cameraconfig.
+        if self.capturer != None:
+            self.capturer.free()
+            self.capturer = None
         try:
             self.capturer = self.capturerFactory()
         except cwipc.CwipcError:
@@ -364,7 +372,6 @@ class Registrator:
             self.cameraconfig.save_to(filename)
             print(f"Saved pointcloud and cameraconfig for {label}")
             
-
     def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         aligner = self.coarse_aligner_class()
         aligner.add_tiled_pointcloud(pc)
