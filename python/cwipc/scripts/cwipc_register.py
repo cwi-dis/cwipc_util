@@ -224,8 +224,21 @@ class Registrator:
             if not self.open_capturer():
                 print("Still cannot open capturer. Giving up.")
                 return False
-        # Get initial cameraconfig and save it
         assert self.capturer
+        # Capture some frames (so we know get_config() will have obtained all parameters).
+        # Get initial cameraconfig and save it
+        gotframes = 0
+        while gotframes < 3:
+            ok = self.capturer.available(True)
+            if ok:
+                pc = self.capturer.get()
+                if pc != None:
+                    print(f"xxxjack pc has {pc.count()} points")
+                    pc.free()
+                    pc= None
+
+                    gotframes += 1
+                    
         self.cameraconfig.load(self.capturer.get_config())
         if not self.dry_run:
             self.cameraconfig.save()
@@ -335,7 +348,10 @@ class Registrator:
         """Attempt to open a capturer without cameraconfig file. Then save the empty cameraconfig."""
         tmpFactory, _ = cwipc_genericsource_factory(self.args, autoConfig=True)
         tmpCapturer = tmpFactory()
-        self.cameraconfig.load(tmpCapturer.get_config())
+        new_config = tmpCapturer.get_config()
+        self.cameraconfig.load(new_config)
+        tmpCapturer.free()
+        tmpCapturer = None
         if not self.dry_run:
             self.cameraconfig.save()
             if self.verbose:
