@@ -56,7 +56,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         # xxxjack This uses the stateful pyplot API. Horrible.
         if not filename and not show:
             return
-        nCamera = len(self.per_camera_pointclouds)
+        nCamera = len(self.per_camera_histograms)
         plot_fig, plot_ax = plt.subplots()
         ax_cum = None
         if cumulative:
@@ -156,6 +156,60 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             below_corr_count = cumsum[corr_bin_index]
             self.correspondence_errors.append(corr)
             self.below_correspondence_error_counts.append(below_corr_count)
+
+class RegistrationPairFinder(BaseRegistrationAnalyzer):
+
+    def __init__(self):
+        BaseRegistrationAnalyzer.__init__(self)
+        self.plot_title = "Histogram of point distances between camera pairs"
+
+
+    def _prepare(self):
+        self._prepare_nparrays()
+        self._prepare_kdtrees()
+
+    def run(self, target: Optional[int]=None) -> bool:
+        """Run the algorithm"""
+        assert target is None
+        assert len(self.per_camera_pointclouds) > 0
+        if len(self.per_camera_pointclouds) == 1:
+            # If there is only a single tile we have nothing to do.
+            self.per_camera_histograms = [
+                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+            ]
+            self.correspondence_errors : List[float] = [0.0]
+            self.below_correspondence_error_counts : List[int] = [1]
+            return True
+        self._prepare()
+        # Ensure we have the arrays and kdtrees we need
+        assert self.per_camera_nparray
+        assert self.per_camera_kdtree
+
+        nCamera = len(self.per_camera_pointclouds)
+        nPairs = (nCamera * (nCamera-1)) // 2
+        self.per_camera_histograms : List[Any] = [None] * nPairs
+        combined_tilenum : List[int] = [0] * nPairs
+        idx = 0
+        for cam_i in range(nCamera):
+            cam_tilenum = self.per_camera_tilenum[cam_i]
+            src_points = self.per_camera_nparray[cam_i]
+            for cam_j in range(cam_i+1, nCamera):
+                dst_tilenum = self.per_camera_tilenum[cam_j]
+                new_tilenum = cam_tilenum | dst_tilenum
+                dst_kdtree = self.per_camera_kdtree[cam_j]
+                distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+                histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
+                cumsum = np.cumsum(histogram)
+                totPoints = cumsum[-1]
+                totOtherPoints = self._kdtree_count(dst_kdtree)
+                normsum = cumsum / totPoints
+                plot_label = f"{new_tilenum} ({totPoints} points to {totOtherPoints})"
+                self.per_camera_histograms[idx] = (histogram, edges, cumsum, normsum, plot_label)
+                combined_tilenum[idx] = new_tilenum
+                idx += 1
+        self.per_camera_tilenum = combined_tilenum
+        self._compute_correspondence_errors()
+        return True
 
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     """Compute registration by checking the distances from every point in this tile pointcloud to the nearest in any other pointcloud"""
