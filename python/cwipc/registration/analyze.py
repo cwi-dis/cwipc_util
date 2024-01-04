@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Any, Tuple
+from typing import List, Optional, Any, Tuple, cast
 import math
 import numpy as np
 from numpy.typing import NDArray
@@ -10,6 +10,7 @@ from .abstract import *
 from .util import get_tiles_used, BaseAlgorithm
 
 KD_TREE_TYPE = scipy.spatial.KDTree
+PLOT_COLORS = ["r", "g", "b", "y", "m", "c"]
 
 class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """Analyzes how good pointclouds are registered.
@@ -26,6 +27,9 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
         self.label : Optional[str] = None
+        self.plot_ax : Optional[plt.axes.Axes] = None
+        self.plot_fix : Optional[plt.figure.Figure] = None
+        
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
@@ -73,9 +77,9 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             (histogram, edges, cumsum, normsum, plot_label) = self.per_camera_histograms[cam_i]
             if cumulative:
-                self.plot_ax.plot(edges[1:], normsum, label=plot_label)
+                self.plot_ax.plot(edges[1:], normsum, label=plot_label, color=PLOT_COLORS[cam_i])
             else:
-                self.plot_ax.plot(edges[1:], histogram, label=plot_label)
+                self.plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(len(self.correspondence_errors)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
