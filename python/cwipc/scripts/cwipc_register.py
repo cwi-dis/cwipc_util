@@ -445,7 +445,7 @@ class Registrator:
     def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
         analyzer = cwipc.registration.analyze.RegistrationAnalyzer()
         analyzer.add_tiled_pointcloud(pc)
-        analyzer.label = label
+        analyzer.plot_label = label
         start_time = time.time()
         analyzer.run()
         stop_time = time.time()

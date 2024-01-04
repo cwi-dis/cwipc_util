@@ -1,6 +1,7 @@
 
 from typing import List, Optional, Any, Tuple, cast
 import math
+import copy
 import numpy as np
 from numpy.typing import NDArray
 import scipy.spatial
@@ -10,7 +11,7 @@ from .abstract import *
 from .util import get_tiles_used, BaseAlgorithm
 
 KD_TREE_TYPE = scipy.spatial.KDTree
-PLOT_COLORS = ["r", "g", "b", "y", "m", "c"]
+PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
 
 class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """Analyzes how good pointclouds are registered.
@@ -26,11 +27,13 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
-        self.label : Optional[str] = None
-        self.plot_ax : Optional[plt.axes.Axes] = None
-        self.plot_fix : Optional[plt.figure.Figure] = None
-        
-
+        self.plot_label : Optional[str] = None
+        self.plot_title = "Histogram of point distances between camera and all others"
+        self.per_camera_nparray : List[NDArray[Any]]= []    # numpy array of all points in this tile
+        self.per_camera_nparray_others : List[NDArray[Any]]= [] # numpy array of all points in all other tiles
+        self.per_camera_kdtree : List[KD_TREE_TYPE] = []    # kdtree of this tile
+        self.per_camera_kdtree_others : List[KD_TREE_TYPE] = [] # kdtree of all other tiles combined
+       
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert target is None
@@ -44,15 +47,21 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.below_correspondence_error_counts : List[int] = [1]
             return True
         self._prepare()
+        # Ensure we have the arrays and kdtrees we need
+        assert self.per_camera_nparray
+        assert self.per_camera_kdtree_others
+
         nCamera = len(self.per_camera_pointclouds)
         self.per_camera_histograms : List[Any] = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            distances = self._kdtree_get_distances_to_points(self.per_camera_kdtree_others[cam_i], self.per_camera_points_nparray[cam_i])
+            src_points = self.per_camera_nparray[cam_i]
+            dst_kdtree = self.per_camera_kdtree_others[cam_i]
+            distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
             histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
             cumsum = np.cumsum(histogram)
             totPoints = cumsum[-1]
-            totOtherPoints = self._kdtree_count(self.per_camera_kdtree_others[cam_i])
+            totOtherPoints = self._kdtree_count(dst_kdtree)
             normsum = cumsum / totPoints
             plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
             self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
@@ -72,26 +81,28 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         if not filename and not show:
             return
         nCamera = len(self.per_camera_pointclouds)
-        self.plot_fig, self.plot_ax = plt.subplots()
+        plot_fig, plot_ax = plt.subplots()
+        ax_cum = None
+        if cumulative:
+            ax_cum = plot_ax.twinx()
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             (histogram, edges, cumsum, normsum, plot_label) = self.per_camera_histograms[cam_i]
+            plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
             if cumulative:
-                self.plot_ax.plot(edges[1:], normsum, label=plot_label, color=PLOT_COLORS[cam_i])
-            else:
-                self.plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
+                assert ax_cum
+                ax_cum.plot(edges[1:], normsum, linestyle="dotted", label="_nolegend_", color=PLOT_COLORS[cam_i])
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(len(self.correspondence_errors)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             corr_box_text += f"\n{cam_tilenum}: {self.correspondence_errors[cam_i]:.4f}"
-        title = "Cumulative" if cumulative else "Histogram of"
-        title = title + " point distances between camera and all others"
-        if self.label:
-            title = self.label + "\n" + title
+        title = self.plot_title
+        if self.plot_label:
+            title = self.plot_label + "\n" + title
         plt.title(title)
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-        self.plot_ax.text(0.98, 0.1, corr_box_text, transform=self.plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
-        self.plot_ax.legend()
+        plot_ax.text(0.98, 0.1, corr_box_text, transform=plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
+        plot_ax.legend()
         if filename:
             plt.savefig(filename)
         if show:
@@ -117,25 +128,37 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         return rv
     
     def _prepare(self):
-        self.per_camera_points_nparray = [
+        self._prepare_nparrays()
+        self._prepare_kdtrees_others()
+
+    def _prepare_nparrays(self):
+        assert self.per_camera_nparray == []
+        self.per_camera_nparray = [
             self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds
         ]
-        # Create the corresponding kdtrees, which consists of all points _not_ in this cloud
+    
+    def _prepare_kdtrees(self):
+        assert self.per_camera_kdtree == []
+        self.per_camera_kdtree = [ # type: ignore
+            KD_TREE_TYPE(points) for points in self.per_camera_nparray
+        ]
 
-        self.per_camera_kdtree_others : List[KD_TREE_TYPE] = []
-        for cloud in self.per_camera_points_nparray:
-            other_points = None
-            for other_cloud in self.per_camera_points_nparray:
-                if other_cloud is cloud:
-                    continue
-                if other_points is None:
-                    other_points = other_cloud
-                else:
-                    other_points = np.concatenate([other_points, other_cloud])
-            assert not other_points is None
-            kdtree_others : KD_TREE_TYPE = KD_TREE_TYPE(other_points)  # type: ignore
-            assert kdtree_others
-            self.per_camera_kdtree_others.append(kdtree_others)
+    def _prepare_nparrays_others(self):
+        assert self.per_camera_nparray_others == []
+        for camnum in range(len(self.per_camera_nparray)):
+            # Create an array of all points except the ones for camnum
+            tmp = copy.copy(self.per_camera_nparray)
+            del tmp[camnum]
+            other_points = np.concatenate(tmp)
+            self.per_camera_nparray_others.append(other_points)
+
+    def _prepare_kdtrees_others(self):
+        assert self.per_camera_kdtree_others == []
+        if self.per_camera_nparray_others == []:
+            self._prepare_nparrays_others()
+        self.per_camera_kdtree_others = [ # type: ignore
+            KD_TREE_TYPE(points) for points in self.per_camera_nparray_others
+        ]
 
     def _compute_correspondence_errors(self):
         nCamera = len(self.per_camera_histograms)
@@ -158,3 +181,47 @@ class RegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             below_corr_count = cumsum[corr_bin_index]
             self.correspondence_errors.append(corr)
             self.below_correspondence_error_counts.append(below_corr_count)
+
+class RegistrationAnalyzerReverse(RegistrationAnalyzer):
+    def __init__(self):
+        RegistrationAnalyzer.__init__(self)
+        self.plot_title = "Histogram of point distances between all others and camera"
+        
+    def _prepare(self):
+        self._prepare_nparrays()
+        self._prepare_nparrays_others()
+        self._prepare_kdtrees()
+
+    def run(self, target: Optional[int]=None) -> bool:
+        """Run the algorithm"""
+        assert target is None
+        assert len(self.per_camera_pointclouds) > 0
+        if len(self.per_camera_pointclouds) == 1:
+            # If there is only a single tile we have nothing to do.
+            self.per_camera_histograms = [
+                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+            ]
+            self.correspondence_errors : List[float] = [0.0]
+            self.below_correspondence_error_counts : List[int] = [1]
+            return True
+        self._prepare()
+        # Ensure we have the arrays and kdtrees we need
+        assert self.per_camera_nparray_others
+        assert self.per_camera_kdtree
+
+        nCamera = len(self.per_camera_pointclouds)
+        self.per_camera_histograms : List[Any] = [None] * nCamera
+        for cam_i in range(nCamera):
+            cam_tilenum = self.per_camera_tilenum[cam_i]
+            src_points = self.per_camera_nparray_others[cam_i]
+            dst_kdtree = self.per_camera_kdtree[cam_i]
+            distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+            histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
+            cumsum = np.cumsum(histogram)
+            totPoints = cumsum[-1]
+            totOtherPoints = self._kdtree_count(dst_kdtree)
+            normsum = cumsum / totPoints
+            plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
+            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
+        self._compute_correspondence_errors()
+        return True
