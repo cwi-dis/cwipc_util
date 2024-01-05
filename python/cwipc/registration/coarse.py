@@ -75,9 +75,9 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         ok = True
         for o3d_pc in self.per_camera_o3d_pointclouds:
             marker_pos = self._find_marker(o3d_pc)
-            if not self._check_marker(marker_pos):
-                ok = False
-                return False # Or should we continue for the other point clouds? Interactive: no but otherwise?
+            while not self._check_marker(marker_pos):
+                print(f"Please try again")
+                marker_pos = self._find_marker(o3d_pc)
             self.markers.append(marker_pos)
         
         assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
@@ -174,6 +174,7 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
         points = []
         for i in indices:
             point = pc.points[i]
+            print(f"find_marker: corner: {point}")
             points.append(point)
         rv = points
         return rv
@@ -234,7 +235,7 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
         depth_scale = 1
         cx, cy = o3d_intrinsic.get_focal_length()
         fx, fy = o3d_intrinsic.get_principal_point()
-        print(f"depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
+        print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
         # Now get the depth image
         o3d_depth_image_float = vis.capture_depth_float_buffer()
         np_depth_image_float = np.asarray(o3d_depth_image_float)
@@ -245,13 +246,21 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             v = int(v)
             d = np_depth_image_float[v, u]
             d = float(d)
-            print(f"u={u}, v={v}, d={d}")
+            print(f"deproject: corner: u={u}, v={v}, d={d} in 2D space")
             
             z = d / depth_scale
             x = (u-cx) * z / fx
             y = (v-cy) * z / fy
-            print(f"x={x}, y={y}, z={z}")
-            rv.append((x, y, z))
+            print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space")
+            np_point = np.array([x, -y, -z, 1])
+            transform = np.asarray(o3d_extrinsic).transpose()
+            np_point_transformed = (transform @ np_point.transpose()).transpose()
+
+            px = float(np_point_transformed[0])
+            py = float(np_point_transformed[1])
+            pz = float(np_point_transformed[2])
+            print(f"deproject: corner: x={px}, y={py}, z={pz} in 3D pointcloud space")
+            rv.append((px, py, pz))
         return rv
     
     def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[Sequence[cv2.Mat], cv2.Mat]:
