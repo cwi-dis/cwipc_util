@@ -80,13 +80,13 @@ def nparrays_from_cwipc(pc : cwipc_wrapper) -> Tuple[Point_array_xyz, Point_arra
 def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool=False) -> List[int]:
     """Show a window with an open3d.geometry.PointCloud. Let the user pick points and return the list of point indices picked."""
     vis = open3d.visualization.VisualizerWithEditing() # type: ignore
-    vis.create_window(window_name=title, width=960, height=540)
+    vis.create_window(window_name=title, width=1280, height=720)
     #self.winpos += 50
     vis.add_geometry(pc)
     if from000:
         viewControl = vis.get_view_control()
         pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
-        pinholeCamera.extrinsics = transformation_identity()
+        pinholeCamera.extrinsic = transformation_identity()
         viewControl.convert_from_pinhole_camera_parameters(pinholeCamera)
     vis.run() # user picks points
     vis.destroy_window()
@@ -96,7 +96,7 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False,
     """Show a window with an open3d.geometry.PointCloud. """
     # vis = open3d.visualization.VisualizerWithKeyCallback() # type: ignore
     vis = open3d.visualization.Visualizer() # type: ignore
-    vis.create_window(window_name=title, width=960, height=540) # xxxjack: , left=self.winpos, top=self.winpos
+    vis.create_window(window_name=title, width=1280, height=720) # xxxjack: , left=self.winpos, top=self.winpos
     #self.winpos += 50
     vis.add_geometry(pc)
     DRAW_OWN_AXES = True
