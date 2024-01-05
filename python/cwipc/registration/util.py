@@ -85,15 +85,16 @@ def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool
     vis.add_geometry(pc)
     if from000:
         viewControl = vis.get_view_control()
-        viewControl.set_up([0, -1, 0])
-        viewControl.set_front([0, 0, -1])
-        viewControl.set_lookat([0, 0, 0])
+        pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
+        pinholeCamera.extrinsics = transformation_identity()
+        viewControl.convert_from_pinhole_camera_parameters(pinholeCamera)
     vis.run() # user picks points
     vis.destroy_window()
     return vis.get_picked_points()
 
-def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False) -> None:
+def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False, keepopen=False) -> Optional[open3d.visualization.Visualizer]:
     """Show a window with an open3d.geometry.PointCloud. """
+    # vis = open3d.visualization.VisualizerWithKeyCallback() # type: ignore
     vis = open3d.visualization.Visualizer() # type: ignore
     vis.create_window(window_name=title, width=960, height=540) # xxxjack: , left=self.winpos, top=self.winpos
     #self.winpos += 50
@@ -110,12 +111,15 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False)
     vis.add_geometry(axes)
     if from000:
         viewControl = vis.get_view_control()
-        viewControl.set_up([0, -1, 0])
-        viewControl.set_front([0, 0, -1])
-        viewControl.set_lookat([0, 0, 0])
+        pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
+        pinholeCamera.extrinsic = transformation_identity()
+        viewControl.convert_from_pinhole_camera_parameters(pinholeCamera)
     vis.run()
+    if keepopen:
+        return vis
     vis.destroy_window()
-    
+    return None
+
 def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     """Return a list of the tile numbers used in the point cloud"""
     pointarray = np.ctypeslib.as_array(pc.get_points())

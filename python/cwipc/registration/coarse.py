@@ -1,12 +1,15 @@
 
 import copy
 import math
-from typing import List, Optional, Any, Tuple
+from typing import List, Optional, Any, Tuple, Sequence
 import numpy as np
+from numpy.typing import NDArray
 import open3d
+import cv2.typing
+import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, transformation_identity, cwipc_transform, BaseAlgorithm
+from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, o3d_show_points, transformation_identity, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = Any
@@ -52,13 +55,6 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
                 return i
         assert False, f"Tilenum {tilenum} not known"
 
-    
-    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]: # xxxjack needed?
-        rv = cwipc_tilefilter(pc, tilemask)
-        if rv.count() != 0:
-            return rv
-        rv.free()
-        return None
     
     def _prepare(self):
         assert self.original_pointcloud
@@ -149,6 +145,8 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
 
     
 class MultiCameraCoarseInteractive(MultiCameraCoarse):
+    """Do coarse point cloud alignment interactively. The user is presented with a 3D view of each point cloud
+    and should select the 4 points of the marker"""
 
     def __init__(self):
         MultiCameraCoarse.__init__(self)
@@ -180,3 +178,151 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
         rv = points
         return rv
     
+class MultiCameraCoarsePointcloud(MultiCameraCoarse):
+
+
+    ARUCO_PARAMETERS = cv2.aruco.DetectorParameters()
+    ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
+    ARUCO_DETECTOR = cv2.aruco.ArucoDetector(ARUCO_DICT, ARUCO_PARAMETERS)
+
+    def __init__(self):
+        MultiCameraCoarse.__init__(self)
+        # The Aruco is about 14x14cm
+        self.wanted_marker = [
+            [-0.07, 0, +0.07],   # topleft, blue
+            [+0.07, 0, +0.07],   # topright, red
+            [+0.07, 0, -0.07],  # botright, yellow
+            [-0.07, 0, -0.07],  # botleft, pink
+        ]
+        self.prompt = "Select blue, red, yellow and pink corners (in that order)"
+
+    def _check_marker(self, marker : Optional[MarkerPosition]) -> bool:
+        if marker is None:
+            if self.verbose:
+                print("Error: no marker found")
+            return False
+        if len(marker) == 4:
+            return True
+        if self.verbose:
+            print(f"Error: marker has {len(marker)} points, expected 4")
+        return False
+    
+    def _find_marker(self, pc : open3d.geometry.PointCloud) -> Optional[MarkerPosition]:
+        vis = o3d_show_points(self.prompt, pc, from000=True, keepopen=True)
+        o3d_rgb_image_float = vis.capture_screen_float_buffer()
+        np_rgb_image_float = np.asarray(o3d_rgb_image_float)
+        np_rgb_image = (np_rgb_image_float * 255).astype(np.uint8)
+        areas, ids = self._find_aruco_in_image(np_rgb_image)
+        rv = None
+        if ids != None:
+            for i in range(len(ids)):
+                if ids[i] == 0:
+                    corners = areas[i][0]
+                    points = self._deproject(vis, corners)
+                    rv = points
+                    break
+        vis.destroy_window()
+        return rv
+
+    def _deproject(self, vis, corners : cv2.Mat) -> Optional[MarkerPosition]:
+        # First get the camera parameters
+        viewControl = vis.get_view_control()
+        pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
+        o3d_extrinsic = pinholeCamera.extrinsic
+        o3d_intrinsic = pinholeCamera.intrinsic
+        # Get camera parameters
+        depth_scale = 1
+        cx, cy = o3d_intrinsic.get_focal_length()
+        fx, fy = o3d_intrinsic.get_principal_point()
+        print(f"depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
+        # Now get the depth image
+        o3d_depth_image_float = vis.capture_depth_float_buffer()
+        np_depth_image_float = np.asarray(o3d_depth_image_float)
+        rv = []
+        for pt in corners:
+            u, v = pt
+            u = int(u)
+            v = int(v)
+            d = np_depth_image_float[v, u]
+            d = float(d)
+            print(f"u={u}, v={v}, d={d}")
+            
+            z = d / depth_scale
+            x = (u-cx) * z / fx
+            y = (v-cy) * z / fy
+            print(f"x={x}, y={y}, z={z}")
+            rv.append((x, y, z))
+        return rv
+    
+    def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[Sequence[cv2.Mat], cv2.Mat]:
+        corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
+        print("corners", corners)
+        print("ids", ids)
+        print("rejected", rejected)
+        if True:
+            outputImage = img.copy()
+            cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
+            cv2.imshow("Detected markers", outputImage)
+            while True:
+                ch = cv2.waitKey()
+                if ch == 27:
+                    break
+                print(f"ignoring key {ch}")
+        return corners, ids
+
+    def _project_pointcloud_to_images(self, pc : open3d.geometry.PointCloud, width : int, height : int, rotation: List[float]) -> Tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
+
+        img_bgr = np.zeros(shape=(width, height, 3), dtype=np.uint8)
+        img_xyz = np.zeros(shape=(width, height, 3), dtype=np.float32)
+        
+        xyz_array_orig = pc.points
+        rgb_array = pc.colors
+        xyz_pointcloud = open3d.geometry.PointCloud()
+        xyz_pointcloud.points = open3d.utility.Vector3dVector(xyz_array_orig)
+        xyz_pointcloud.colors = open3d.utility.Vector3dVector(rgb_array)
+        # xxxjack should do transformation here
+        angles = xyz_pointcloud.get_rotation_matrix_from_xyz(rotation)
+        xyz_pointcloud.rotate(angles, center=[0, 0, 0])
+        xyz_array = np.asarray(xyz_pointcloud.points)
+        x_array = xyz_array[:,0]
+        y_array = xyz_array[:,1]
+        min_x = np.min(x_array)
+        max_x = np.max(x_array)
+        min_y = np.min(y_array)
+        max_y = np.max(y_array)
+        print(f"x range: {min_x}..{max_x}, y range: {min_y}..{max_y}")
+        x_factor = (width-1) / (max_x - min_x)
+        y_factor = (height-1) / (max_y - min_y)
+        # I have _absolutely_ no idea why X has to be inverted....
+        # Or is this yet another case of left-handed versus right-handed coordinate systems?
+        invert_x = True
+        invert_y = False
+        # xxxjack should do this with numpy
+        passes = (1,)
+        for pass_ in passes:
+            for i in range(len(xyz_array)):
+                xyz = xyz_array[i]
+                xyz_orig = xyz_array_orig[i] # Note: this is the original point, before any transformation 
+                rgb = rgb_array[i]
+                bgr = rgb[[2,1,0]]
+                x = xyz[0]
+                y = xyz[1]
+                z = xyz[2]
+                if z < 0:
+                    continue
+                img_x = int((x-min_x) * x_factor)
+                img_y = int((y-min_y) * y_factor)
+                if invert_x:
+                    img_x = width-1-img_x
+                if invert_y:
+                    img_y = height-1-img_y
+                if pass_ == 0:
+                    for iix in range(max(0, img_x-2), min(width-1, img_x+2)):
+                        for iiy in range(max(0, img_y-2), min(height-1, img_y+2)):
+                                img_bgr[iiy][iix] = bgr
+                                img_xyz[iiy][iix] = xyz_orig
+                else:
+                    img_bgr[img_y][img_x] = bgr
+                    img_xyz[img_y][img_x] = xyz_orig
+        return img_bgr, img_xyz
+
