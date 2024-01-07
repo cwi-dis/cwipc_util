@@ -96,10 +96,10 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False,
     """Show a window with an open3d.geometry.PointCloud. """
     # vis = open3d.visualization.VisualizerWithKeyCallback() # type: ignore
     vis = open3d.visualization.Visualizer() # type: ignore
-    vis.create_window(window_name=title, width=1280, height=720) # xxxjack: , left=self.winpos, top=self.winpos
+    vis.create_window(window_name=title) # xxxjack: , left=self.winpos, top=self.winpos
     #self.winpos += 50
     vis.add_geometry(pc)
-    DRAW_OWN_AXES = True
+    DRAW_OWN_AXES = False
     if DRAW_OWN_AXES:
         # Draw 1 meter axes (x=red, y=green, z=blue)
         axes = open3d.geometry.LineSet()
