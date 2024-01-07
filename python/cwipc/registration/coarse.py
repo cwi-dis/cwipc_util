@@ -5,6 +5,7 @@ from typing import List, Optional, Any, Tuple, Sequence
 import numpy as np
 from numpy.typing import NDArray
 import open3d
+import open3d.visualization
 import cv2.typing
 import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
@@ -73,6 +74,13 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self._prepare()
         # Find the markers in each of the pointclouds
         ok = True
+        # xxxjack this should be done differently. This is an all-or-nothing strategy, where we find the
+        # markers in all captures or we fail.
+        #
+        # In stead we should be happy with partial matches, for some captures, and align those. We can then
+        # do another grab and maybe fix the missing ones.
+        #
+        # Also, this would help a lot with detecting non-overlap[ping captures with multiple markers.
         for o3d_pc in self.per_camera_o3d_pointclouds:
             marker_pos = self._find_marker(o3d_pc)
             while not self._check_marker(marker_pos):
@@ -181,7 +189,6 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
     
 class MultiCameraCoarsePointcloud(MultiCameraCoarse):
 
-
     ARUCO_PARAMETERS = cv2.aruco.DetectorParameters()
     ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
     ARUCO_DETECTOR = cv2.aruco.ArucoDetector(ARUCO_DICT, ARUCO_PARAMETERS)
@@ -210,25 +217,29 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
     
     def _find_marker(self, pc : open3d.geometry.PointCloud) -> Optional[MarkerPosition]:
         vis = o3d_show_points(self.prompt, pc, from000=True, keepopen=True)
-        o3d_rgb_image_float = vis.capture_screen_float_buffer()
-        np_rgb_image_float = np.asarray(o3d_rgb_image_float)
+        o3d_bgr_image_float = vis.capture_screen_float_buffer()
+        np_bgr_image_float = np.asarray(o3d_bgr_image_float)
+        np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]
         np_rgb_image = (np_rgb_image_float * 255).astype(np.uint8)
         areas, ids = self._find_aruco_in_image(np_rgb_image)
         rv = None
         if ids != None:
+            viewControl = vis.get_view_control()
+            pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
+            o3d_depth_image_float = vis.capture_depth_float_buffer()
             for i in range(len(ids)):
                 if ids[i] == 0:
                     corners = areas[i][0]
-                    points = self._deproject(vis, corners)
+                    points = self._deproject(corners, pinholeCamera, o3d_depth_image_float)
                     rv = points
                     break
         vis.destroy_window()
         return rv
-
-    def _deproject(self, vis, corners : cv2.Mat) -> Optional[MarkerPosition]:
+    
+    def _deproject(self, corners : cv2.Mat, pinholeCamera, o3d_depth_image_float) -> Optional[MarkerPosition]:
         # First get the camera parameters
-        viewControl = vis.get_view_control()
-        pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
+        # viewControl = vis.get_view_control()
+        # pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
         o3d_extrinsic = pinholeCamera.extrinsic
         o3d_intrinsic = pinholeCamera.intrinsic
         # Get camera parameters
@@ -237,13 +248,25 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
         fx, fy = o3d_intrinsic.get_principal_point()
         print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
         # Now get the depth image
-        o3d_depth_image_float = vis.capture_depth_float_buffer()
+        # o3d_depth_image_float = vis.capture_depth_float_buffer()
         np_depth_image_float = np.asarray(o3d_depth_image_float)
+        height, width = np_depth_image_float.shape
+        min_depth = np.min(np_depth_image_float)
+        max_depth = np.max(np_depth_image_float)
+        print(f"deproject: depth range {min_depth} to {max_depth}")
         rv = []
+        min_u = min_v = 9999
+        max_u = max_v = 0
         for pt in corners:
             u, v = pt
+            # opencv uses y-down, open3d uses y-up. So convert the v value
+            # v = height - v
             u = int(u)
             v = int(v)
+            if u < min_u: min_u = u
+            if u > max_u: max_u = u
+            if v < min_v: min_v = v
+            if v > max_v: max_v = v
             d = np_depth_image_float[v, u]
             d = float(d)
             print(f"deproject: corner: u={u}, v={v}, d={d} in 2D space")
@@ -252,7 +275,7 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             x = (u-cx) * z / fx
             y = (v-cy) * z / fy
             print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space")
-            np_point = np.array([x, -y, -z, 1])
+            np_point = np.array([x, y, z, 1])
             transform = np.asarray(o3d_extrinsic).transpose()
             np_point_transformed = (transform @ np_point.transpose()).transpose()
 
@@ -261,6 +284,33 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             pz = float(np_point_transformed[2])
             print(f"deproject: corner: x={px}, y={py}, z={pz} in 3D pointcloud space")
             rv.append((px, py, pz))
+        # Display the point cloud with the rectangle found
+        if True:
+            # Clear out unused sections of depth matrix
+            np_depth_image_float = np.asarray(o3d_depth_image_float)
+            w, h = np_depth_image_float.shape
+            for v in range(w):
+                for u in range(h):
+                    if min_u < u and u < max_u and min_v < v and v < max_v:
+                        np_depth_image_float[v, u] = 9
+                        pass
+                    else:
+                        pass
+            cropped_img = open3d.geometry.Image(np_depth_image_float)
+            o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
+            tmpvis = open3d.visualization.Visualizer() # type: ignore
+            tmpvis.create_window(window_name="Result marker", width=1280, height=720) # xxxjack: , left=self.winpos, top=self.winpos
+            tmpvis.add_geometry(o3dpc)
+            box = open3d.geometry.LineSet()
+            box.points = open3d.utility.Vector3dVector(rv)
+            box.lines = open3d.utility.Vector2iVector([[0,1], [1,2], [2,3], [3, 0], [0, 2], [1, 3]])
+            color = [0.4, 0.4, 0]
+            box.colors = open3d.utility.Vector3dVector([color, color, color, color, color, color])
+            tmpvis.add_geometry(box)
+            axes = open3d.geometry.TriangleMesh.create_coordinate_frame()
+            tmpvis.add_geometry(axes)
+            tmpvis.run()
+            tmpvis.destroy_window()
         return rv
     
     def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[Sequence[cv2.Mat], cv2.Mat]:
@@ -279,7 +329,7 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
                 print(f"ignoring key {ch}")
         return corners, ids
 
-    def _project_pointcloud_to_images(self, pc : open3d.geometry.PointCloud, width : int, height : int, rotation: List[float]) -> Tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
+    def _old_project_pointcloud_to_images(self, pc : open3d.geometry.PointCloud, width : int, height : int, rotation: List[float]) -> Tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
 
         img_bgr = np.zeros(shape=(width, height, 3), dtype=np.uint8)
         img_xyz = np.zeros(shape=(width, height, 3), dtype=np.float32)
@@ -334,4 +384,3 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
                     img_bgr[img_y][img_x] = bgr
                     img_xyz[img_y][img_x] = xyz_orig
         return img_bgr, img_xyz
-
