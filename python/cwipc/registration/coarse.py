@@ -197,10 +197,10 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
         MultiCameraCoarse.__init__(self)
         # The Aruco is about 14x14cm
         self.wanted_marker = [
-            [-0.07, 0, +0.07],   # topleft, blue
             [+0.07, 0, +0.07],   # topright, red
-            [+0.07, 0, -0.07],  # botright, yellow
+            [-0.07, 0, +0.07],   # topleft, blue
             [-0.07, 0, -0.07],  # botleft, pink
+            [+0.07, 0, -0.07],  # botright, yellow
         ]
         self.prompt = "Select blue, red, yellow and pink corners (in that order)"
 
@@ -257,6 +257,16 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
         rv = []
         min_u = min_v = 9999
         max_u = max_v = 0
+        orig_transform = np.asarray(o3d_extrinsic)
+        orig_matrix = orig_transform[:3, :3]
+        orig_translation = orig_transform[:3, 3]
+        inv_matrix = orig_matrix.T
+        inv_translation = -inv_matrix @ orig_translation
+        transform = np.empty((4, 4))
+        transform[:3, :3] = inv_matrix
+        transform[:3, 3] = inv_translation
+        transform[3, :] = [0, 0, 0, 1]
+        print(f"deproject: transform={transform}")
         for pt in corners:
             u, v = pt
             # opencv uses y-down, open3d uses y-up. So convert the v value
@@ -274,28 +284,25 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             z = d / depth_scale
             x = (u-cx) * z / fx
             y = (v-cy) * z / fy
-            print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space")
             np_point = np.array([x, y, z, 1])
-            transform = np.asarray(o3d_extrinsic).transpose()
-            np_point_transformed = (transform @ np_point.transpose()).transpose()
+            print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space (pt={np_point})")
+            
+            np_point_transformed = (transform @ np_point)
 
             px = float(np_point_transformed[0])
             py = float(np_point_transformed[1])
             pz = float(np_point_transformed[2])
-            print(f"deproject: corner: x={px}, y={py}, z={pz} in 3D pointcloud space")
+            fourth = float(np_point_transformed[3])
+            print(f"deproject: corner: x={px}, y={py}, z={pz}, fourth={fourth} in 3D pointcloud space (pt={np_point_transformed})")
             rv.append((px, py, pz))
         # Display the point cloud with the rectangle found
         if True:
-            # Clear out unused sections of depth matrix
+            # Move matched section of depth map 5 meters further away.
             np_depth_image_float = np.asarray(o3d_depth_image_float)
             w, h = np_depth_image_float.shape
-            for v in range(w):
-                for u in range(h):
-                    if min_u < u and u < max_u and min_v < v and v < max_v:
-                        np_depth_image_float[v, u] = 9
-                        pass
-                    else:
-                        pass
+            for v in range(min_v, max_v):
+                for u in range(min_u, max_u):
+                    np_depth_image_float[v, u] *= 1.2
             cropped_img = open3d.geometry.Image(np_depth_image_float)
             o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
             tmpvis = open3d.visualization.Visualizer() # type: ignore
