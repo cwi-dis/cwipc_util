@@ -124,7 +124,7 @@ setup(
     # xxxjack: the pinning of open3d is frowned upon, but I don't know a better solution right now.
     # open3d 0.17 and 0.18 are broken: the visualizer camera cannot be repositioned programmatically.
     # This makes registration become very troublesome.
-    install_requires=['numpy', 'open3d==0.16.1', 'Pillow', 'opencv-python', 'scipy', 'matplotlib'],
+    install_requires=['numpy', 'open3d~=0.16.0', 'Pillow', 'opencv-python', 'scipy', 'matplotlib'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
