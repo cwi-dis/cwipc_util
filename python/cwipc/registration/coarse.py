@@ -244,8 +244,8 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
         o3d_intrinsic = pinholeCamera.intrinsic
         # Get camera parameters
         depth_scale = 1
-        cx, cy = o3d_intrinsic.get_focal_length()
-        fx, fy = o3d_intrinsic.get_principal_point()
+        fx, fy = o3d_intrinsic.get_focal_length()
+        cx, cy = o3d_intrinsic.get_principal_point()
         print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
         # Now get the depth image
         # o3d_depth_image_float = vis.capture_depth_float_buffer()
@@ -306,7 +306,7 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             cropped_img = open3d.geometry.Image(np_depth_image_float)
             o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
             tmpvis = open3d.visualization.Visualizer() # type: ignore
-            tmpvis.create_window(window_name="Result marker", width=1280, height=720) # xxxjack: , left=self.winpos, top=self.winpos
+            tmpvis.create_window(window_name="Result marker") # xxxjack: , left=self.winpos, top=self.winpos
             tmpvis.add_geometry(o3dpc)
             box = open3d.geometry.LineSet()
             box.points = open3d.utility.Vector3dVector(rv)
@@ -316,6 +316,11 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             tmpvis.add_geometry(box)
             axes = open3d.geometry.TriangleMesh.create_coordinate_frame()
             tmpvis.add_geometry(axes)
+            tmpViewControl = tmpvis.get_view_control()
+            pinholeCamera = tmpViewControl.convert_to_pinhole_camera_parameters()
+            pinholeCamera.extrinsic = transformation_identity()
+            tmpViewControl.convert_from_pinhole_camera_parameters(pinholeCamera)
+
             tmpvis.run()
             tmpvis.destroy_window()
         return rv
