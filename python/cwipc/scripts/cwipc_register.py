@@ -40,6 +40,7 @@ def main():
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
+    parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
     parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
@@ -170,7 +171,10 @@ class CameraConfig:
 
 class Registrator:
     def __init__(self, args : argparse.Namespace):
-        self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseInteractive
+        if args.no_aruco:
+            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
+        else:
+            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
         self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
         self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
         self.args = args

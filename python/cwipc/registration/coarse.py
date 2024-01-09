@@ -154,9 +154,9 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         return rv
 
     
-class MultiCameraCoarseInteractive(MultiCameraCoarse):
+class MultiCameraCoarseColorTarget(MultiCameraCoarse):
     """Do coarse point cloud alignment interactively. The user is presented with a 3D view of each point cloud
-    and should select the 4 points of the marker"""
+    and should select the 4 points of the marker."""
 
     def __init__(self):
         MultiCameraCoarse.__init__(self)
@@ -190,7 +190,9 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
         rv = points
         return rv
     
-class MultiCameraCoarsePointcloud(MultiCameraCoarse):
+class MultiCameraCoarseAruco(MultiCameraCoarse):
+    """Do coarse point cloud alignment using Aruco markers. The user is presented with a 3D view of each point cloud
+    and should orient it so the Aruco makers are visible. The rest is automatic."""
 
     ARUCO_PARAMETERS = cv2.aruco.DetectorParameters()
     ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
