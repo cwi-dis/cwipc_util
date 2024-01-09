@@ -20,6 +20,23 @@ def transformation_identity() -> RegistrationTransformation:
         [0, 0, 0, 1]
     ])
 
+def transformation_invert(orig_transform : RegistrationTransformation) -> RegistrationTransformation:
+    """Invert an affine transformation"""
+    # Get the 3x3 linear transformation and the translation vector
+    orig_matrix = orig_transform[:3, :3]
+    orig_translation = orig_transform[:3, 3]
+    # Get the inverse linear transformation and the inverse translation
+    # Note that we can invert the matrix by transposing because we know it is size-preserving.
+    # Also note that the translation vector is in "new coordinates"
+    inv_matrix = orig_matrix.T
+    inv_translation = -inv_matrix @ orig_translation
+    # Put everything together into a 4x4 matrix
+    transform = np.empty((4, 4))
+    transform[:3, :3] = inv_matrix
+    transform[:3, 3] = inv_translation
+    transform[3, :] = [0, 0, 0, 1]
+    return transform
+
 def transformation_frompython(trafo : List[List[float]]) -> RegistrationTransformation:
     rv = np.array(trafo)
     assert rv.shape == (4, 4)
@@ -94,10 +111,8 @@ def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool
 
 def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False, keepopen=False) -> Optional[open3d.visualization.Visualizer]:
     """Show a window with an open3d.geometry.PointCloud. """
-    # vis = open3d.visualization.VisualizerWithKeyCallback() # type: ignore
     vis = open3d.visualization.Visualizer() # type: ignore
-    vis.create_window(window_name=title) # xxxjack: , left=self.winpos, top=self.winpos
-    #self.winpos += 50
+    vis.create_window(window_name=title) 
     vis.add_geometry(pc)
     DRAW_OWN_AXES = False
     if DRAW_OWN_AXES:

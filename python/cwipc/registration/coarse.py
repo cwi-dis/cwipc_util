@@ -1,7 +1,7 @@
 
 import copy
 import math
-from typing import List, Optional, Any, Tuple, Sequence
+from typing import List, Optional, Any, Tuple, Sequence, cast
 import numpy as np
 from numpy.typing import NDArray
 import open3d
@@ -10,7 +10,7 @@ import cv2.typing
 import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from .abstract import *
-from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, o3d_show_points, transformation_identity, cwipc_transform, BaseAlgorithm
+from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = Any
@@ -20,6 +20,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
     """
 
     def __init__(self):
+        self.debug = False
         self.original_pointcloud : Optional[cwipc_wrapper] = None
         self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
@@ -124,7 +125,8 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         transform = estimator.compute_transformation(dst_pc, target_pc, corr)
         if self.verbose:
             rmse = estimator.compute_rmse(dst_pc, target_pc, corr)
-            print(f"cam {camnum}: rmse={rmse}")
+            if self.verbose:
+                print(f"_align_marker: cam {camnum}: rmse={rmse}")
         return transform
 
     def get_result_transformations(self) -> List[RegistrationTransformation]:
@@ -164,7 +166,7 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
             [+0.105, 0, -0.148],  # botright, yellow
             [-0.105, 0, -0.148],  # botleft, pink
         ]
-        self.prompt = "Select blue, red, yellow and pink corners (in that order)"
+        self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
 
     def _check_marker(self, marker : Optional[MarkerPosition]) -> bool:
         if marker == None:
@@ -182,7 +184,8 @@ class MultiCameraCoarseInteractive(MultiCameraCoarse):
         points = []
         for i in indices:
             point = pc.points[i]
-            print(f"find_marker: corner: {point}")
+            if self.debug:
+                print(f"find_marker: corner: {point}")
             points.append(point)
         rv = points
         return rv
@@ -202,17 +205,17 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             [-0.07, 0, -0.07],  # botleft, pink
             [+0.07, 0, -0.07],  # botright, yellow
         ]
-        self.prompt = "Select blue, red, yellow and pink corners (in that order)"
+        self.prompt = "Ensure aruco markers are visible. Then type ESC."
 
     def _check_marker(self, marker : Optional[MarkerPosition]) -> bool:
         if marker is None:
             if self.verbose:
-                print("Error: no marker found")
+                print("check_marker: Error: no marker found")
             return False
         if len(marker) == 4:
             return True
         if self.verbose:
-            print(f"Error: marker has {len(marker)} points, expected 4")
+            print(f"check_marker: Error: marker has {len(marker)} points, expected 4")
         return False
     
     def _find_marker(self, pc : open3d.geometry.PointCloud) -> Optional[MarkerPosition]:
@@ -238,35 +241,30 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
     
     def _deproject(self, corners : cv2.Mat, pinholeCamera, o3d_depth_image_float) -> Optional[MarkerPosition]:
         # First get the camera parameters
-        # viewControl = vis.get_view_control()
-        # pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
         o3d_extrinsic = pinholeCamera.extrinsic
         o3d_intrinsic = pinholeCamera.intrinsic
-        # Get camera parameters
         depth_scale = 1
         fx, fy = o3d_intrinsic.get_focal_length()
         cx, cy = o3d_intrinsic.get_principal_point()
-        print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
+        if self.debug:
+            print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
         # Now get the depth image
-        # o3d_depth_image_float = vis.capture_depth_float_buffer()
         np_depth_image_float = np.asarray(o3d_depth_image_float)
         height, width = np_depth_image_float.shape
         min_depth = np.min(np_depth_image_float)
         max_depth = np.max(np_depth_image_float)
-        print(f"deproject: depth range {min_depth} to {max_depth}")
+        if self.debug:
+            print(f"deproject: depth range {min_depth} to {max_depth}, width={width}, height={height}")
         rv = []
-        min_u = min_v = 9999
-        max_u = max_v = 0
         orig_transform = np.asarray(o3d_extrinsic)
-        orig_matrix = orig_transform[:3, :3]
-        orig_translation = orig_transform[:3, 3]
-        inv_matrix = orig_matrix.T
-        inv_translation = -inv_matrix @ orig_translation
-        transform = np.empty((4, 4))
-        transform[:3, :3] = inv_matrix
-        transform[:3, 3] = inv_translation
-        transform[3, :] = [0, 0, 0, 1]
-        print(f"deproject: transform={transform}")
+        transform = transformation_invert(orig_transform)
+        if self.debug:
+            print(f"deproject: transform={transform}")
+        # We want the bounding box (in the D image) for debugging
+        assert corners.any()
+        min_u = max_u = int(corners[0][0])
+        min_v = max_v = int(corners[0][1])
+
         for pt in corners:
             u, v = pt
             # opencv uses y-down, open3d uses y-up. So convert the v value
@@ -279,13 +277,15 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             if v > max_v: max_v = v
             d = np_depth_image_float[v, u]
             d = float(d)
-            print(f"deproject: corner: u={u}, v={v}, d={d} in 2D space")
+            if self.debug:
+                print(f"deproject: corner: u={u}, v={v}, d={d} in 2D space")
             
             z = d / depth_scale
             x = (u-cx) * z / fx
             y = (v-cy) * z / fy
             np_point = np.array([x, y, z, 1])
-            print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space (pt={np_point})")
+            if self.debug:
+                print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space (pt={np_point})")
             
             np_point_transformed = (transform @ np_point)
 
@@ -293,11 +293,14 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             py = float(np_point_transformed[1])
             pz = float(np_point_transformed[2])
             fourth = float(np_point_transformed[3])
-            print(f"deproject: corner: x={px}, y={py}, z={pz}, fourth={fourth} in 3D pointcloud space (pt={np_point_transformed})")
+            if self.debug:
+                print(f"deproject: corner: x={px}, y={py}, z={pz}, fourth={fourth} in 3D pointcloud space (pt={np_point_transformed})")
             rv.append((px, py, pz))
         # Display the point cloud with the rectangle found
-        if True:
-            # Move matched section of depth map 5 meters further away.
+        if self.debug:
+            # Show the depth-only pointcloud for visual inspection.
+            # We move the recangular bound box a little bit away, and we also show
+            # in true 3D coorinates where the actual marker is.
             np_depth_image_float = np.asarray(o3d_depth_image_float)
             w, h = np_depth_image_float.shape
             for v in range(min_v, max_v):
@@ -306,16 +309,20 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             cropped_img = open3d.geometry.Image(np_depth_image_float)
             o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
             tmpvis = open3d.visualization.Visualizer() # type: ignore
-            tmpvis.create_window(window_name="Result marker") # xxxjack: , left=self.winpos, top=self.winpos
+            tmpvis.create_window(window_name="Detected markers in 3D space, ESC to close")
+            # Add the depth point cloud, with the bounding box cutout
             tmpvis.add_geometry(o3dpc)
+            # Add the marker box
             box = open3d.geometry.LineSet()
             box.points = open3d.utility.Vector3dVector(rv)
             box.lines = open3d.utility.Vector2iVector([[0,1], [1,2], [2,3], [3, 0], [0, 2], [1, 3]])
             color = [0.4, 0.4, 0]
             box.colors = open3d.utility.Vector3dVector([color, color, color, color, color, color])
             tmpvis.add_geometry(box)
+            # Add a coordinate frame
             axes = open3d.geometry.TriangleMesh.create_coordinate_frame()
             tmpvis.add_geometry(axes)
+            # Set camera position to where the physical camera was
             tmpViewControl = tmpvis.get_view_control()
             pinholeCamera = tmpViewControl.convert_to_pinhole_camera_parameters()
             pinholeCamera.extrinsic = transformation_identity()
@@ -325,74 +332,18 @@ class MultiCameraCoarsePointcloud(MultiCameraCoarse):
             tmpvis.destroy_window()
         return rv
     
-    def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[Sequence[cv2.Mat], cv2.Mat]:
+    def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[Sequence[cv2.typing.MatLike], cv2.typing.MatLike]:
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
-        print("corners", corners)
-        print("ids", ids)
-        print("rejected", rejected)
-        if True:
+        if self.debug:
+            print("find_aruco_in_image: corners:", corners)
+            print("find_aruco_in_image: ids:", ids)
+        if self.debug:
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
-            cv2.imshow("Detected markers", outputImage)
+            cv2.imshow("Detected markers in 2D image. ESC to close.", outputImage)
             while True:
                 ch = cv2.waitKey()
                 if ch == 27:
                     break
                 print(f"ignoring key {ch}")
         return corners, ids
-
-    def _old_project_pointcloud_to_images(self, pc : open3d.geometry.PointCloud, width : int, height : int, rotation: List[float]) -> Tuple[cv2.typing.MatLike, cv2.typing.MatLike]:
-
-        img_bgr = np.zeros(shape=(width, height, 3), dtype=np.uint8)
-        img_xyz = np.zeros(shape=(width, height, 3), dtype=np.float32)
-        
-        xyz_array_orig = pc.points
-        rgb_array = pc.colors
-        xyz_pointcloud = open3d.geometry.PointCloud()
-        xyz_pointcloud.points = open3d.utility.Vector3dVector(xyz_array_orig)
-        xyz_pointcloud.colors = open3d.utility.Vector3dVector(rgb_array)
-        # xxxjack should do transformation here
-        angles = xyz_pointcloud.get_rotation_matrix_from_xyz(rotation)
-        xyz_pointcloud.rotate(angles, center=[0, 0, 0])
-        xyz_array = np.asarray(xyz_pointcloud.points)
-        x_array = xyz_array[:,0]
-        y_array = xyz_array[:,1]
-        min_x = np.min(x_array)
-        max_x = np.max(x_array)
-        min_y = np.min(y_array)
-        max_y = np.max(y_array)
-        print(f"x range: {min_x}..{max_x}, y range: {min_y}..{max_y}")
-        x_factor = (width-1) / (max_x - min_x)
-        y_factor = (height-1) / (max_y - min_y)
-        # I have _absolutely_ no idea why X has to be inverted....
-        # Or is this yet another case of left-handed versus right-handed coordinate systems?
-        invert_x = True
-        invert_y = False
-        # xxxjack should do this with numpy
-        passes = (1,)
-        for pass_ in passes:
-            for i in range(len(xyz_array)):
-                xyz = xyz_array[i]
-                xyz_orig = xyz_array_orig[i] # Note: this is the original point, before any transformation 
-                rgb = rgb_array[i]
-                bgr = rgb[[2,1,0]]
-                x = xyz[0]
-                y = xyz[1]
-                z = xyz[2]
-                if z < 0:
-                    continue
-                img_x = int((x-min_x) * x_factor)
-                img_y = int((y-min_y) * y_factor)
-                if invert_x:
-                    img_x = width-1-img_x
-                if invert_y:
-                    img_y = height-1-img_y
-                if pass_ == 0:
-                    for iix in range(max(0, img_x-2), min(width-1, img_x+2)):
-                        for iiy in range(max(0, img_y-2), min(height-1, img_y+2)):
-                                img_bgr[iiy][iix] = bgr
-                                img_xyz[iiy][iix] = xyz_orig
-                else:
-                    img_bgr[img_y][img_x] = bgr
-                    img_xyz[img_y][img_x] = xyz_orig
-        return img_bgr, img_xyz
