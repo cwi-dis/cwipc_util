@@ -202,10 +202,10 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         MultiCameraCoarse.__init__(self)
         # The Aruco is about 14x14cm
         self.wanted_marker = [
-            [+0.07, 0, +0.07],   # topright, red
-            [-0.07, 0, +0.07],   # topleft, blue
-            [-0.07, 0, -0.07],  # botleft, pink
-            [+0.07, 0, -0.07],  # botright, yellow
+            [+0.087, 0, +0.087],   # topright, red
+            [-0.087, 0, +0.087],   # topleft, blue
+            [-0.087, 0, -0.087],  # botleft, pink
+            [+0.087, 0, -0.087],  # botright, yellow
         ]
         self.prompt = "Ensure aruco markers are visible. Then type ESC."
 
