@@ -282,7 +282,11 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             # We move the recangular bound box a little bit away, and we also show
             # in true 3D coorinates where the actual marker is.
             np_depth_image_float = np.asarray(o3d_depth_image_float)
-        for area_2d in areas_2d:
+        for idx in range(len(ids)):
+            #for area_2d in areas_2d:
+            area_2d = areas_2d[idx]
+            if self.debug:
+                print(f"deproject: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
             npoints = len(area_2d)
             assert npoints == 4
             orig_transform = np.asarray(o3d_extrinsic)
@@ -397,4 +401,14 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 if ch == 27:
                     break
                 print(f"ignoring key {ch}")
-        return corners[0].tolist(), list(ids[0])
+        # Th way the aruco detector returns information is weird. Sometimes it is a single numpy matrix, sometimes a list or tuple of vectors...
+        rv_corners : List[List[float]] = []
+        rv_ids : List[int] = []
+        for i in range(len(ids)):
+            rv_ids.append(int(ids[i]))
+            area = corners[i]
+            if area.shape == (1, 4, 2):
+                area = area[0]
+            rv_corners.append(area.tolist())
+
+        return rv_corners, rv_ids
