@@ -45,7 +45,9 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self.original_pointcloud = pc
 
     def camera_count(self) -> int:
-        return len(self.per_camera_tilenum)
+        count = len(self.per_camera_tilenum)
+        assert count > 0 # Otherwise this has been called too early
+        return count
     
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
@@ -58,6 +60,25 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
                 return i
         assert False, f"Tilenum {tilenum} not known"
 
+    def _init_transformations(self) -> None:
+        # Initialize transformations if not already done
+        if self.transformations == []:
+            for i in range(self.camera_count()):
+                self.transformations.append(transformation_identity())
+
+    def set_transformation(self, tilenum : int, trafo : RegistrationTransformation) -> None:
+        self._init_transformations()
+        self.transformations[tilenum] = trafo
+    
+    def _get_unregistered_tiles(self) -> List[int]:
+        """Return list of all tilenum that still have an identity transform (and therefore need to be fixed)"""
+        rv = []
+        self._init_transformations()
+        identity = transformation_identity()
+        for i in range(len(self.transformations)):
+            if (self.transformations[i] == identity).all():
+                rv.append(i)
+        return rv
     
     def _prepare(self):
         """From the point cloud added prepare the data structures to run the algorithm"""
@@ -69,6 +90,10 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
             self.per_camera_o3d_pointclouds.append(o3d_partial_pc)
             self.per_camera_tilenum.append(t)
             partial_pc.free()
+        self._init_transformations()
+        assert len(tilenums) == len(self.per_camera_o3d_pointclouds)
+        assert len(tilenums) == len(self.per_camera_tilenum)
+        assert len(tilenums) == len(self.transformations)
 
     def run(self) -> bool:
         """Run the algorithm"""
@@ -77,51 +102,83 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self._prepare()
         # Find the markers in each of the pointclouds
         ok = True
-        # xxxjack this should be done differently. This is an all-or-nothing strategy, where we find the
-        # markers in all captures or we fail.
-        #
-        # In stead we should be happy with partial matches, for some captures, and align those. We can then
-        # do another grab and maybe fix the missing ones.
-        #
-        # Also, this would help a lot with detecting non-overlap[ping captures with multiple markers.
-        for o3d_pc in self.per_camera_o3d_pointclouds:
-            markers = self._find_markers(o3d_pc)
-            self.markers.append(markers)
+        self._find_markers_all_tiles()
         
-        assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
-        indices_to_fix = range(len(self.per_camera_o3d_pointclouds))
-        for i in indices_to_fix:
-            camnum = self.tilenum_for_camera_index(i)
-            o3d_pc = self.per_camera_o3d_pointclouds[i]
-            this_markers = self.markers[i]
-            assert self.known_marker_positions
-            found_new_markers = False
-            found_existing_markers = False
-            for id, area in this_markers.items():
-                if not self._check_marker(area):
-                    continue
-                if id in self.known_marker_positions:
-                    # This is a marker we know. Align it.
-                    wanted_marker_corners = self.known_marker_positions[id]
-                    this_marker_corners = area
-                    this_transform = self._align_marker(camnum, o3d_pc, wanted_marker_corners, this_marker_corners)
-                    if not this_transform is None:
-                        if found_existing_markers:
-                            # We already found one....
-                            print("Warning: found another marker that we already know")
-                        else:
-                            found_existing_markers = True
-                            self.transformations.append(this_transform)
-                else:
-                    print(f"Found a new marker with id={id}")
-                    found_new_markers = True
-            if found_new_markers and found_existing_markers:
-                print(f"xxxjack Found new markers. Should add them to our collection")
-            if not found_existing_markers:
-                # Nothing found. Add idnetity transformation
-                self.transformations.append(transformation_identity())
-        return ok
+        assert self.known_marker_positions
 
+        another_pass_wanted = True
+        while another_pass_wanted:
+            another_pass_wanted = False # Will be set to True if we find any new information, which will help another pass
+            tilenums_to_register = self._get_unregistered_tiles()
+            if self.verbose:
+                print(f"coarse: attempting to register tiles {tilenums_to_register}")
+            # But there are some tiles not in tilenums_to_register that we still want to make a pass over, 
+            # because in the previous pass they were registered, and they may have information on markers we have not seen yet.
+            tilenums_to_register = range(len(self.per_camera_o3d_pointclouds))
+            for tilenum in tilenums_to_register:
+                camnum = self.tilenum_for_camera_index(tilenum)
+                o3d_pc = self.per_camera_o3d_pointclouds[tilenum]
+                this_tile_markers = self.markers[tilenum]
+                for id, area in this_tile_markers.items():
+                    if not self._check_marker(area):
+                        continue
+                    if id in self.known_marker_positions:
+                        #
+                        # This is a marker we know. Align it.
+                        #
+                        wanted_marker_corners = self.known_marker_positions[id]
+                        this_marker_corners = area
+                        this_transform = self._align_marker(camnum, o3d_pc, wanted_marker_corners, this_marker_corners)
+                        if this_transform is None:
+                            continue
+                        old_transform = self.transformations[tilenum]
+                        had_transform = not (old_transform == transformation_identity()).all() # Can happen if we found one for a previous marker
+                        if had_transform:
+                            # See how much they differ
+                            delta_mat = np.abs(this_transform - old_transform)
+                            delta = np.add.reduce(delta_mat, None)
+                            if self.verbose:
+                                print(f"coarse: tile {tilenum}: marker {id}: new registration matrix differs {delta} from old one")
+                        else:
+                            if self.verbose:
+                                print(f"coarse: tile {tilenum}: marker {id}: created transformation matrix")
+                            self.transformations[tilenum] = this_transform
+                    else:
+                        if self.verbose:
+                            print(f"coarse: tile {tilenum}: marker {id}: unknown marker found")
+                        # If we have a transformation we can compute the 3D position of this new marker
+                        tile_transform = self.transformations[tilenum]
+                        tile_transform_valid = not (tile_transform == transformation_identity()).all()
+                        if tile_transform_valid:
+                            # Good! We have found a marker we didn't know about.
+                            # Convert the camera-local coordinates to world coordinates
+                            new_area : MarkerPosition = []
+                            for cam_point in area:
+                                x = float(cam_point[0])
+                                y = float(cam_point[1])
+                                z = float(cam_point[2])
+                                np_point = np.array([x, y, z, 1])
+                                np_point_transformed = (tile_transform @ np_point)
+                                x = float(np_point_transformed[0])
+                                y = float(np_point_transformed[1])
+                                z = float(np_point_transformed[2])
+                                new_area.append((x, y, z))
+                            if self.verbose:
+                                print(f"coarse: tile {tilenum}: marker {id}: corners {new_area}")
+                            self.known_marker_positions[id] = new_area
+                            # We want to do another round over all tiles, maybe this marker helps adjustment.
+                            another_pass_wanted = True
+        return self._get_unregistered_tiles() == []
+
+    def _find_markers_all_tiles(self) -> None:
+        self.markers = []
+        for idx in range(len(self.per_camera_o3d_pointclouds)):
+            o3d_pc = self.per_camera_o3d_pointclouds[idx]
+            camnum = self.per_camera_tilenum[idx]
+            markers = self._find_markers(0, camnum, o3d_pc)
+            self.markers.append(markers)
+        assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
+        
     def _check_marker(self, marker : MarkerPosition) -> bool:
         """Return False if the MarkerPosition cannot be a valid marker"""
         if len(marker) == 4:
@@ -129,7 +186,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         print(f"Error: marker has {len(marker)} corners in stead of 4")
         return False
     
-    def _find_markers(self, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         return {}
     
@@ -199,11 +256,11 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         }
         self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
     
-    def _find_markers(self, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID, which is always 9999).
         The markers are "found" by having the user select the points in 3D space.
         """
-        indices = o3d_pick_points(self.prompt, pc, from000=True)
+        indices = o3d_pick_points(f"Cam {tilenum}: {self.prompt}", pc, from000=True)
         points = []
         for i in indices:
             point = pc.points[i]
@@ -232,26 +289,25 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 (+0.087, 0, -0.087),  # botright, yellow
             ]
         }
-        self.prompt = "Ensure aruco markers are visible. Then type ESC."
     
-    def _find_markers(self, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)
         The markers are found by mapping the point cloud to a color image and depth image, then finding Aruco markers
         in that color image, then using the depth image to compute the 3D coordinates.
         """
 
-        vis = o3d_show_points(self.prompt, pc, from000=True, keepopen=True)
+        vis = o3d_show_points(f"Pass {passnum} tile {tilenum}: Ensure markers are visible. ESC to close.", pc, from000=True, keepopen=True)
         o3d_bgr_image_float = vis.capture_screen_float_buffer()
         np_bgr_image_float = np.asarray(o3d_bgr_image_float)
         np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]
         np_rgb_image = (np_rgb_image_float * 255).astype(np.uint8)
-        areas_2d, ids = self._find_aruco_in_image(np_rgb_image)
+        areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
         rv : MarkerPositions = {}
         if not ids is None:
             viewControl = vis.get_view_control()
             pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
             o3d_depth_image_float = vis.capture_depth_float_buffer()
-            areas_3d = self._deproject(ids, areas_2d, pinholeCamera, o3d_depth_image_float)
+            areas_3d = self._deproject(passnum, tilenum, ids, areas_2d, pinholeCamera, o3d_depth_image_float)
             for i in range(len(ids)):
                 id = ids[i]
                 area_3d = areas_3d[i]
@@ -259,7 +315,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         vis.destroy_window()
         return rv
     
-    def _deproject(self, ids : Sequence[int], areas_2d : List[List[Sequence[float]]], pinholeCamera, o3d_depth_image_float) -> List[MarkerPosition]:
+    def _deproject(self, passnum : int, camnum : int, ids : Sequence[int], areas_2d : List[List[Sequence[float]]], pinholeCamera, o3d_depth_image_float) -> List[MarkerPosition]:
         # First get the camera parameters
         o3d_extrinsic = pinholeCamera.extrinsic
         o3d_intrinsic = pinholeCamera.intrinsic
@@ -369,7 +425,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             cropped_img = open3d.geometry.Image(np_depth_image_float)
             o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
             tmpvis = open3d.visualization.Visualizer() # type: ignore
-            tmpvis.create_window(window_name="Detected markers in 3D space, ESC to close")
+            tmpvis.create_window(window_name=f"Pass {passnum} cam {camnum}: 3D depthmap of markers found. ESC to close.")
             # Add the depth point cloud, with the bounding box cutout
             tmpvis.add_geometry(o3dpc)
             for box in boxes:
@@ -387,7 +443,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             tmpvis.destroy_window()
         return areas_3d
     
-    def _find_aruco_in_image(self, img : cv2.typing.MatLike) -> Tuple[List[List[float]], List[int]]:
+    def _find_aruco_in_image(self, passnum : int, tilenum : int, img : cv2.typing.MatLike) -> Tuple[List[List[float]], List[int]]:
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
         if self.debug:
             print("find_aruco_in_image: corners:", corners)
@@ -395,7 +451,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         if self.debug:
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
-            cv2.imshow("Detected markers in 2D image. ESC to close.", outputImage)
+            cv2.imshow(f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close.", outputImage)
             while True:
                 ch = cv2.waitKey()
                 if ch == 27:
