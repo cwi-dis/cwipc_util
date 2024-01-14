@@ -203,11 +203,11 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 if self.verbose:
                     print(f"camera {tilenum}: {filterstep} filters: mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
                 # Create an array of booleans for all distances we want to keep, and filter on that.
-                filter = np.logical_and(overlap_distances < (mean+stddev), overlap_distances > (mean-stddev))
+                filter = np.logical_and(overlap_distances <= (mean+stddev), overlap_distances >= (mean-stddev))
                 overlap_distances = overlap_distances[filter]
             # Last step: see how many points are below our new-found correspondence
             corr = mean
-            filter = raw_distances < corr
+            filter = raw_distances <= corr
             matched_point_count = np.count_nonzero(filter)
             self.correspondence_errors.append(corr)
             self.matched_point_counts.append(matched_point_count)
