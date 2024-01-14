@@ -23,20 +23,48 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """
 
     # See comment in _compute_corrspondences()
-    BIN_VALUE_DECREASE_FACTOR = 0.5
+    #: Magic number that governs how far beyond the peak we consider the correspondence
+    BIN_VALUE_DECREASE_FACTOR : float = 0.5
+
+    #: Number of bins we want in the histogram
+    histogram_bincount : int
+    #: Minimum distance between points (we will not search for nearer points once we found one within eps)
+    eps : float
+    #: Maximum distance between points that could potentially match.
+    distance_upper_bound : float
+    #: Label for the plot
+    plot_label : Optional[str] 
+    #: Title for the plot (usually determined by this class)
+    plot_title : str
+    #: Internal variable, may be useful for inspection: numpy array of all points in this tile
+    per_camera_nparray : List[NDArray[Any]]
+    #: Internal variable, may be useful for inspection: numpy array of all points in all other tiles
+    per_camera_nparray_others : List[NDArray[Any]]
+    #: Internal variable, may be useful for inspection: kdtree of this tile
+    per_camera_kdtree : List[KD_TREE_TYPE]
+    #: Internal variable, may be useful for inspection: kdtree of all other tiles 
+    per_camera_kdtree_others : List[KD_TREE_TYPE]
+    #: Internal variable, may be useful for inspection: histogram results. List of tuples with histogram-data, edges, histogram-cumulative, histogram-cumulative-normalized, plot_label, raw-distance-data
+    per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
+    # Internal variable: (per-camera) computed correspondence error
+    correspondence_errors : List[float]
+    # Internal variable: (per-camera) count of points that have a distance below correspondence_error
+    below_correspondence_error_counts : List[int]
     
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
         self.eps = 0.0
         self.distance_upper_bound = 10.0
-        self.plot_label : Optional[str] = None
+        self.plot_label = None
         self.plot_title = "Unknown RegistrationAnalyzer"
-        self.per_camera_nparray : List[NDArray[Any]]= []    # numpy array of all points in this tile
-        self.per_camera_nparray_others : List[NDArray[Any]]= [] # numpy array of all points in all other tiles
-        self.per_camera_kdtree : List[KD_TREE_TYPE] = []    # kdtree of this tile
-        self.per_camera_kdtree_others : List[KD_TREE_TYPE] = [] # kdtree of all other tiles combined
-        self.per_camera_histograms : List[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str]]
+        self.per_camera_nparray = []
+        self.per_camera_nparray_others = []
+        self.per_camera_kdtree  = []
+        self.per_camera_kdtree_others = [] 
+        self.per_camera_histograms = []
+        self.correspondence_errors : List[float] = []
+        self.below_correspondence_error_counts : List[int] = []
 
     def run(self, target: Optional[int]=None) -> bool:
         assert False
@@ -63,7 +91,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             ax_cum = plot_ax.twinx()
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            (histogram, edges, cumsum, normsum, plot_label) = self.per_camera_histograms[cam_i]
+            (histogram, edges, cumsum, normsum, plot_label, raw_distances) = self.per_camera_histograms[cam_i]
             plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
             if cumulative:
                 assert ax_cum
@@ -137,9 +165,15 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _compute_correspondence_errors(self):
         nCamera = len(self.per_camera_histograms)
-        self.correspondence_errors : List[float] = []
-        self.below_correspondence_error_counts : List[int] = []
-        for histogram, edges, cumsum, normsum, plot_label in self.per_camera_histograms:
+        assert self.correspondence_errors == []
+        assert self.below_correspondence_error_counts == []
+        for cam_i in range(nCamera):
+            tilenum = self.per_camera_tilenum[cam_i]
+            hdata = self.per_camera_histograms[cam_i]
+            assert hdata
+            histogram, edges, cumsum, normsum, plot_label, raw_distances = hdata
+            mean = np.mean(raw_distances)
+            stddev = np.std(raw_distances)
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
             max_bin_value = histogram[max_bin_index]
@@ -156,6 +190,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             below_corr_count = cumsum[corr_bin_index]
             self.correspondence_errors.append(corr)
             self.below_correspondence_error_counts.append(below_corr_count)
+            if self.verbose:
+                print(f"camera {tilenum}: mean={mean}, std={stddev}, peak={edges[max_bin_index]}, corr={corr}")
 
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
 
@@ -175,7 +211,7 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
         if len(self.per_camera_pointclouds) == 1:
             # If there is only a single tile we have nothing to do.
             self.per_camera_histograms = [
-                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+                (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
             self.correspondence_errors : List[float] = [0.0]
             self.below_correspondence_error_counts : List[int] = [1]
@@ -186,9 +222,9 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
         assert self.per_camera_kdtree
 
         nCamera = len(self.per_camera_pointclouds)
-        nPairs = (nCamera * (nCamera-1)) // 2
-        self.per_camera_histograms : List[Any] = [None] * nPairs
+        nPairs = (nCamera * (nCamera-1)) // 2   # That is not a comment, that is an integer divide:-)
         combined_tilenum : List[int] = [0] * nPairs
+        self.per_camera_histograms = [None]*nPairs
         idx = 0
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
@@ -204,7 +240,7 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
                 totOtherPoints = self._kdtree_count(dst_kdtree)
                 normsum = cumsum / totPoints
                 plot_label = f"{new_tilenum} ({totPoints} points to {totOtherPoints})"
-                self.per_camera_histograms[idx] = (histogram, edges, cumsum, normsum, plot_label)
+                self.per_camera_histograms[idx] = (histogram, edges, cumsum, normsum, plot_label, distances)
                 combined_tilenum[idx] = new_tilenum
                 idx += 1
         self.per_camera_tilenum = combined_tilenum
@@ -229,10 +265,10 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         if len(self.per_camera_pointclouds) == 1:
             # If there is only a single tile we have nothing to do.
             self.per_camera_histograms = [
-                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+                (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
-            self.correspondence_errors : List[float] = [0.0]
-            self.below_correspondence_error_counts : List[int] = [1]
+            self.correspondence_errors = [0.0]
+            self.below_correspondence_error_counts = [1]
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
@@ -240,7 +276,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         assert self.per_camera_kdtree_others
 
         nCamera = len(self.per_camera_pointclouds)
-        self.per_camera_histograms : List[Any] = [None] * nCamera
+        self.per_camera_histograms  = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             src_points = self.per_camera_nparray[cam_i]
@@ -252,7 +288,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
             totOtherPoints = self._kdtree_count(dst_kdtree)
             normsum = cumsum / totPoints
             plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
-            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
+            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label, distances)
         self._compute_correspondence_errors()
         return True
 
@@ -265,7 +301,12 @@ class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
     def _prepare(self):
         self._prepare_nparrays()
         self._prepare_kdtrees()
+        self._prepare_kdtrees_others()
         self._filter_nparrays()
+        # Now the nparrays have been filtered. Recompute the kdtrees.
+        self.per_camera_kdtree = []
+        self.per_camera_kdtree_others = []
+        self._prepare_kdtrees()
         self._prepare_kdtrees_others()
 
     def _filter_nparrays(self):
@@ -279,6 +320,8 @@ class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
             bitmap = np.isfinite(distances)
             filtered_nparray = orig_nparray[bitmap]
             self.per_camera_nparray[camnum] = filtered_nparray
+            if self.verbose:
+                print(f"filter_nparrays: camera {camnum}: from {orig_nparray.shape[0]} to {filtered_nparray.shape[0]} points, distance={self.distance_upper_bound}")
                     
 
 class RegistrationAnalyzerReverse(RegistrationAnalyzer):
@@ -300,10 +343,10 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
         if len(self.per_camera_pointclouds) == 1:
             # If there is only a single tile we have nothing to do.
             self.per_camera_histograms = [
-                ([1], [0,1], [1], [1], f"single tile {self.per_camera_tilenum[0]}")
+                (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
-            self.correspondence_errors : List[float] = [0.0]
-            self.below_correspondence_error_counts : List[int] = [1]
+            self.correspondence_errors = [0.0]
+            self.below_correspondence_error_counts = [1]
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
@@ -311,7 +354,7 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
         assert self.per_camera_kdtree
 
         nCamera = len(self.per_camera_pointclouds)
-        self.per_camera_histograms : List[Any] = [None] * nCamera
+        self.per_camera_histograms = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             src_points = self.per_camera_nparray_others[cam_i]
@@ -323,7 +366,7 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
             totOtherPoints = self._kdtree_count(dst_kdtree)
             normsum = cumsum / totPoints
             plot_label = f"{cam_tilenum} ({totPoints} points to {totOtherPoints})"
-            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label)
+            self.per_camera_histograms[cam_i] = (histogram, edges, cumsum, normsum, plot_label, distances)
         self._compute_correspondence_errors()
         return True
     
