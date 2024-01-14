@@ -48,8 +48,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
     # Internal variable: (per-camera) computed correspondence error
     correspondence_errors : List[float]
-    # Internal variable: (per-camera) count of points that have a distance below correspondence_error
-    below_correspondence_error_counts : List[int]
+    # Internal variable: (per-camera) count of points that are considered to be mappable to the other cloud
+    matched_point_counts : List[int]
     
     def __init__(self):
         BaseAlgorithm.__init__(self)
@@ -64,7 +64,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
         self.correspondence_errors : List[float] = []
-        self.below_correspondence_error_counts : List[int] = []
+        self.matched_point_counts : List[int] = []
 
     def run(self, target: Optional[int]=None) -> bool:
         assert False
@@ -99,7 +99,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(len(self.correspondence_errors)):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            corr_box_text += f"\n{cam_tilenum}: {self.correspondence_errors[cam_i]:.4f}"
+            corr = self.correspondence_errors[cam_i]
+            count = self.matched_point_counts[cam_i]
+            corr_box_text += f"\n{cam_tilenum}: {corr:.4f} ({count} points)"
         title = self.plot_title
         if self.plot_label:
             title = self.plot_label + "\n" + title
@@ -126,7 +128,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             # option 3: multiply by the square root of the number of matched points
             #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
             # option 4: multiply by the log of the number of matched points
-            weight = self.correspondence_errors[camnum]*math.log(self.below_correspondence_error_counts[camnum])
+            weight = self.correspondence_errors[camnum]*math.log(self.matched_point_counts[camnum])
             rv.append((self.per_camera_tilenum[camnum], self.correspondence_errors[camnum], weight))
         rv.sort(key=lambda t:-t[2])
         return rv
@@ -164,57 +166,54 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         ]
 
     def _compute_correspondence_errors(self):
+        N_FILTERING_STEPS = 4
         nCamera = len(self.per_camera_histograms)
         assert self.correspondence_errors == []
-        assert self.below_correspondence_error_counts == []
+        assert self.matched_point_counts == []
         for cam_i in range(nCamera):
             tilenum = self.per_camera_tilenum[cam_i]
             hdata = self.per_camera_histograms[cam_i]
             assert hdata
             histogram, edges, cumsum, normsum, plot_label, raw_distances = hdata
-            # Find the fullest bin, and the corresponding value
-            max_bin_index = int(np.argmax(histogram))
-            max_bin_value = histogram[max_bin_index]
-            # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
-            for corr_bin_index in range(max_bin_index, len(histogram)):
-                if histogram[corr_bin_index] <= max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
-                    break
-            else:
-                corr_bin_index = max_bin_index+1
-            # Now corr_bin_index is *one past* our expected correspondence is
-            # Note that this is important for the edge case (when all points are exactly aligned)
-            corr_bin_index -= 1
-            corr = edges[corr_bin_index]
-            below_corr_count = cumsum[corr_bin_index]
+            if False:
+                # Find the fullest bin, and the corresponding value
+                max_bin_index = int(np.argmax(histogram))
+                max_bin_value = histogram[max_bin_index]
+                # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
+                for corr_bin_index in range(max_bin_index, len(histogram)):
+                    if histogram[corr_bin_index] <= max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
+                        break
+                else:
+                    corr_bin_index = max_bin_index+1
+                # Now corr_bin_index is *one past* our expected correspondence is
+                # Note that this is important for the edge case (when all points are exactly aligned)
+                corr_bin_index -= 1
+                corr = edges[corr_bin_index]
+                matched_point_count = cumsum[corr_bin_index]
+                self.correspondence_errors.append(corr)
+                self.matched_point_counts.append(matched_point_count)
+                if self.verbose:
+                    print(f"camera {tilenum}: peak={edges[max_bin_index]}, corr={corr}")
+            overlap_distances = copy.deepcopy(raw_distances)
+            mean = 0
+            stddev = 0
+            for filterstep in range(N_FILTERING_STEPS):
+                mean = float(np.mean(overlap_distances))
+                stddev = float(np.std(overlap_distances))
+                if self.verbose:
+                    print(f"camera {tilenum}: {filterstep} filters: mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+                # Create an array of booleans for all distances we want to keep, and filter on that.
+                filter = np.logical_and(overlap_distances < (mean+stddev), overlap_distances > (mean-stddev))
+                overlap_distances = overlap_distances[filter]
+            # Last step: see how many points are below our new-found correspondence
+            corr = mean
+            filter = raw_distances < corr
+            matched_point_count = np.count_nonzero(filter)
             self.correspondence_errors.append(corr)
-            self.below_correspondence_error_counts.append(below_corr_count)
-            if self.verbose:
-                print(f"camera {tilenum}: peak={edges[max_bin_index]}, corr={corr}")
-            mean = float(np.mean(raw_distances))
-            stddev = float(np.std(raw_distances))
-            if self.verbose:
-                print(f"camera {tilenum}: 0 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
-            # Create an array of booleans for all distances we want to keep, and filter on that.
-            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
-            raw_distances = raw_distances[filter]
-            mean = float(np.mean(raw_distances))
-            stddev = float(np.std(raw_distances))
-            if self.verbose:
-                print(f"camera {tilenum}: 1 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
-            # Create an array of booleans for all distances we want to keep, and filter on that.
-            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
-            raw_distances = raw_distances[filter]
-            mean = float(np.mean(raw_distances))
-            stddev = float(np.std(raw_distances))
-            if self.verbose:
-                print(f"camera {tilenum}: 2 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
-            # Create an array of booleans for all distances we want to keep, and filter on that.
-            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
-            raw_distances = raw_distances[filter]
-            mean = float(np.mean(raw_distances))
-            stddev = float(np.std(raw_distances))
-            if self.verbose:
-                print(f"camera {tilenum}: 3 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
+            self.matched_point_counts.append(matched_point_count)
+
+
+
 
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
 
@@ -291,7 +290,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
                 (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
             self.correspondence_errors = [0.0]
-            self.below_correspondence_error_counts = [1]
+            self.matched_point_counts = [1]
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
@@ -369,7 +368,7 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
                 (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
             self.correspondence_errors = [0.0]
-            self.below_correspondence_error_counts = [1]
+            self.matched_point_counts = [1]
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
