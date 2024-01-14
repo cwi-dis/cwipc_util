@@ -172,8 +172,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             hdata = self.per_camera_histograms[cam_i]
             assert hdata
             histogram, edges, cumsum, normsum, plot_label, raw_distances = hdata
-            mean = np.mean(raw_distances)
-            stddev = np.std(raw_distances)
             # Find the fullest bin, and the corresponding value
             max_bin_index = int(np.argmax(histogram))
             max_bin_value = histogram[max_bin_index]
@@ -191,7 +189,32 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.correspondence_errors.append(corr)
             self.below_correspondence_error_counts.append(below_corr_count)
             if self.verbose:
-                print(f"camera {tilenum}: mean={mean}, std={stddev}, peak={edges[max_bin_index]}, corr={corr}")
+                print(f"camera {tilenum}: peak={edges[max_bin_index]}, corr={corr}")
+            mean = float(np.mean(raw_distances))
+            stddev = float(np.std(raw_distances))
+            if self.verbose:
+                print(f"camera {tilenum}: 0 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
+            # Create an array of booleans for all distances we want to keep, and filter on that.
+            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
+            raw_distances = raw_distances[filter]
+            mean = float(np.mean(raw_distances))
+            stddev = float(np.std(raw_distances))
+            if self.verbose:
+                print(f"camera {tilenum}: 1 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
+            # Create an array of booleans for all distances we want to keep, and filter on that.
+            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
+            raw_distances = raw_distances[filter]
+            mean = float(np.mean(raw_distances))
+            stddev = float(np.std(raw_distances))
+            if self.verbose:
+                print(f"camera {tilenum}: 2 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
+            # Create an array of booleans for all distances we want to keep, and filter on that.
+            filter = np.logical_and(raw_distances < (mean+stddev), raw_distances > (mean-stddev))
+            raw_distances = raw_distances[filter]
+            mean = float(np.mean(raw_distances))
+            stddev = float(np.std(raw_distances))
+            if self.verbose:
+                print(f"camera {tilenum}: 3 filters: mean={mean}, std={stddev}, nPoint={len(raw_distances)}")
 
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
 
