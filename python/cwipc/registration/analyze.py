@@ -48,8 +48,10 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
     # Internal variable: (per-camera) computed correspondence error
     correspondence_errors : List[float]
-    # Internal variable: (per-camera) count of points that are considered to be mappable to the other cloud
+    # Internal variable: (per-camera, or pair-wise) count of points that are considered to be mappable to the other cloud
     matched_point_counts : List[int]
+    # Internal variable: (per-camera, or pair-wise) fraction of all points that are considered to be mappable
+    matched_point_fractions : List[float]
     
     def __init__(self):
         BaseAlgorithm.__init__(self)
@@ -63,14 +65,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree  = []
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
-        self.correspondence_errors : List[float] = []
-        self.matched_point_counts : List[int] = []
+        self.correspondence_errors = []
+        self.matched_point_counts  = []
+        self.matched_point_fractions = []
 
     def run(self, target: Optional[int]=None) -> bool:
         assert False
 
 
     def _kdtree_get_distances_to_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
+        self.distance_upper_bound = np.inf # Quick hack: otherwise the counts are broken.
         distances, _ = tree.query(points, eps=self.eps, distance_upper_bound=self.distance_upper_bound)
         bitmap = np.isfinite(distances)
         filtered_distances = distances[bitmap]
@@ -91,7 +95,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             ax_cum = plot_ax.twinx()
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            (histogram, edges, cumsum, normsum, plot_label, raw_distances) = self.per_camera_histograms[cam_i]
+            h_data = self.per_camera_histograms[cam_i]
+            assert h_data
+            (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
             plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
             if cumulative:
                 assert ax_cum
@@ -101,7 +107,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             corr = self.correspondence_errors[cam_i]
             count = self.matched_point_counts[cam_i]
-            corr_box_text += f"\n{cam_tilenum}: {corr:.4f} ({count} points)"
+            percentage = int(self.matched_point_fractions[cam_i] * 100)
+            corr_box_text += f"\n{cam_tilenum}: {corr:.4f} ({count} points, {percentage}%)"
         title = self.plot_title
         if self.plot_label:
             title = self.plot_label + "\n" + title
@@ -170,6 +177,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         nCamera = len(self.per_camera_histograms)
         assert self.correspondence_errors == []
         assert self.matched_point_counts == []
+        assert self.matched_point_fractions == []
         for cam_i in range(nCamera):
             tilenum = self.per_camera_tilenum[cam_i]
             hdata = self.per_camera_histograms[cam_i]
@@ -211,6 +219,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             matched_point_count = np.count_nonzero(filter)
             self.correspondence_errors.append(corr)
             self.matched_point_counts.append(matched_point_count)
+            total_point_count = len(raw_distances)
+            fraction = matched_point_count/(total_point_count-matched_point_count)
+            self.matched_point_fractions.append(fraction)
 
 
 
@@ -251,15 +262,19 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             src_points = self.per_camera_nparray[cam_i]
+            src_kdtree = self.per_camera_kdtree[cam_i]
             for cam_j in range(cam_i+1, nCamera):
                 dst_tilenum = self.per_camera_tilenum[cam_j]
                 new_tilenum = cam_tilenum | dst_tilenum
                 dst_kdtree = self.per_camera_kdtree[cam_j]
-                distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+                dst_points = self.per_camera_nparray[cam_j]
+                distances_1 = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+                distances_2 = self._kdtree_get_distances_to_points(src_kdtree, dst_points)
+                distances = np.concatenate((distances_1, distances_2))
                 histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
                 cumsum = np.cumsum(histogram)
-                totPoints = cumsum[-1]
-                totOtherPoints = self._kdtree_count(dst_kdtree)
+                totPoints = src_points.shape[0]
+                totOtherPoints = dst_points.shape[0]
                 normsum = cumsum / totPoints
                 plot_label = f"{new_tilenum} ({totPoints} points to {totOtherPoints})"
                 self.per_camera_histograms[idx] = (histogram, edges, cumsum, normsum, plot_label, distances)
