@@ -214,13 +214,15 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 filter = np.logical_and(overlap_distances <= (mean+stddev), overlap_distances >= (mean-stddev))
                 overlap_distances = overlap_distances[filter]
             # Last step: see how many points are below our new-found correspondence
-            corr = mean
+            corr = mean + stddev
             filter = raw_distances <= corr
             matched_point_count = np.count_nonzero(filter)
             self.correspondence_errors.append(corr)
             self.matched_point_counts.append(matched_point_count)
             total_point_count = len(raw_distances)
-            fraction = matched_point_count/(total_point_count-matched_point_count)
+            fraction = matched_point_count/total_point_count
+            if self.verbose:
+                print(f"camera {tilenum}: corr={corr}, matched={matched_point_count}, total={total_point_count}, fraction={fraction}")
             self.matched_point_fractions.append(fraction)
 
 
@@ -268,14 +270,22 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
                 new_tilenum = cam_tilenum | dst_tilenum
                 dst_kdtree = self.per_camera_kdtree[cam_j]
                 dst_points = self.per_camera_nparray[cam_j]
+                # Compute symmetric distances
                 distances_1 = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
                 distances_2 = self._kdtree_get_distances_to_points(src_kdtree, dst_points)
+                # Now remove distances from the largest pointcloud (because they are bullshit)
+                count_1 = distances_1.shape[0]
+                count_2 = distances_2.shape[0]
+                shortest_count = min(count_1, count_2)
+                distances_1 = distances_1[:shortest_count]
+                distances_2 = distances_2[:shortest_count]
                 distances = np.concatenate((distances_1, distances_2))
                 histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
                 cumsum = np.cumsum(histogram)
                 totPoints = src_points.shape[0]
                 totOtherPoints = dst_points.shape[0]
-                normsum = cumsum / totPoints
+                totDistances = distances.shape[0]
+                normsum = cumsum / totDistances
                 plot_label = f"{new_tilenum} ({totPoints} points to {totOtherPoints})"
                 self.per_camera_histograms[idx] = (histogram, edges, cumsum, normsum, plot_label, distances)
                 combined_tilenum[idx] = new_tilenum
