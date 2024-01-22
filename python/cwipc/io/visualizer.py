@@ -1,12 +1,13 @@
 import os
+from typing import Dict, Any
 import time
-import threading
 import time
 import argparse
-import traceback
 import queue
 from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
 from ..net.abstract import *
+import cv2
+import numpy as np
 
 class Visualizer(cwipc_sink_abstract):
     HELP="""
@@ -34,8 +35,10 @@ q             Quit
         self.producer = None
         self.source = None
         self.cameraconfig = None
+        self.show_rgb = False
         if args:
             self.cameraconfig = args.cameraconfig
+            self.show_rgb = args.rgb
         self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
@@ -104,9 +107,12 @@ q             Quit
 
     def draw_pc(self, pc : Optional[cwipc_wrapper]) -> bool:
         """Draw pointcloud"""
-        assert self.visualiser               
+        assert self.visualiser
         cellsize = self.point_size_min
         if pc:
+            # First show RGB, if wanted
+            if self.show_rgb:
+                self.draw_rgb(pc)
             cellsize = max(pc.cellsize(), cellsize)
             pc._set_cellsize(cellsize*pow(2,self.point_size_power))
             pc_to_show = pc
@@ -164,6 +170,62 @@ q             Quit
         else: #c to crash and print stack trace
             print(self.HELP, flush=True)
         return True
+    
+    def draw_rgb(self, pc : cwipc_wrapper) -> None:
+        auxdata = pc.access_auxiliary_data()
+        if not auxdata:
+            return
+        for aux_index in range(auxdata.count()):
+            aux_name = auxdata.name(aux_index)
+            aux_description = auxdata.description(aux_index)
+            aux_ptr = auxdata.pointer(aux_index)
+            aux_size = auxdata.size(aux_index)
+            print(f"xxxjack: auxdata[{aux_index}]: name={aux_name}, description={aux_description}, size={aux_size}")
+            if not aux_name.startswith("rgb"):
+                return
+            image_descr = self._parse_aux_description(aux_description)
+            image_width = image_descr['width']
+            image_height = image_descr['height']
+            image_stride = image_descr['stride']
+            if 'bpp' in image_descr:
+                image_bpp = image_descr['bpp']
+            elif 'format' in image_descr:
+                image_format = image_descr['format']
+                if image_format == 2:
+                    image_bpp = 3 # RGB
+                elif image_format == 3:
+                    image_bpp = 4 # RGBA
+                elif image_format == 4:
+                    image_bpp = 2 # 16-bit grey
+                else:
+                    assert False, "Unknown format in auxdata format specifier"
+            else:
+                assert False, "Missing both bpp and format in auxdata description"
+            # We can only handle RGB and RGBA for now
+            assert image_bpp == 3 or image_bpp == 4
+            image_data = auxdata.data(aux_index)
+            np_image_data_bytes = np.array(image_data)
+            np_image_data = np.reshape(np_image_data_bytes, (image_height, image_width, image_bpp))
+            if image_bpp == 4:
+                # Remove the A data
+                np_image_data = np_image_data[:,:,:3]
+            assert np_image_data.shape == (image_height, image_width, 3)
+            cv2.imshow("RGB", np_image_data)
+            cv2.waitKey(1)
+
+        pass
+
+    def _parse_aux_description(self, description : str) -> Dict[str, Any]:
+        rv = {}
+        fields = description.split(',')
+        for f in fields:
+            k, v = f.split('=')
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+            rv[k] = v
+        return rv
     
     def reload_cameraconfig(self) -> None:
         assert self.source
