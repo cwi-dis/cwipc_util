@@ -36,9 +36,13 @@ q             Quit
         self.source = None
         self.cameraconfig = None
         self.show_rgb = False
+        self.rgb_cw = False
+        self.rgb_ccw = False
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
+            self.rgb_cw = args.rgb_cw
+            self.rgb_ccw = args.rgb_ccw
         self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
@@ -209,10 +213,29 @@ q             Quit
             np_image_data = np.reshape(np_image_data_bytes, (image_height, image_width, image_bpp))
             # Select B, G, R channels
             np_image_data = np_image_data[:,:,[2,1,0]]
-            assert np_image_data.shape == (image_height, image_width, 3)
+            if self.rgb_cw:
+                np_image_data = cv2.rotate(np_image_data, cv2.ROTATE_90_CLOCKWISE)
+            elif self.rgb_ccw:
+                np_image_data = cv2.rotate(np_image_data, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            if self.rgb_cw or self.rgb_ccw:
+                assert np_image_data.shape == (image_width, image_height, 3)
+            else:
+                assert np_image_data.shape == (image_height, image_width, 3)
             all_images.append(np_image_data)
         if len(all_images) > 0:
-            full_image = cv2.vconcat(all_images)
+            if self.rgb_cw or self.rgb_ccw:
+                full_image = cv2.hconcat(all_images)
+            else:
+                full_image = cv2.vconcat(all_images)
+            # Scale to something reasonable
+            h, w, _ = full_image.shape
+            hscale = 1024 / h
+            wscale = 1024 / w
+            scale = min(hscale, wscale)
+            if scale < 1:
+                new_h = int(h*scale)
+                new_w = int(w*scale)
+                full_image = cv2.resize(full_image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
             cv2.imshow("RGB", full_image)
             cv2.waitKey(1)
 
