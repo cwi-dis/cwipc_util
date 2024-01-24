@@ -12,6 +12,8 @@ import numpy as np
 class Visualizer(cwipc_sink_abstract):
     HELP="""
 space         Pause/resume
+.             Single step (for recordings)
+<             Rewind (for recordings)
 mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
@@ -47,6 +49,7 @@ q             Quit
         self.verbose = verbose
         self.cur_pc = None
         self.paused = False
+        self.single_step = False
         self.nodrop = nodrop
         self.tilefilter = None
         self.filter_mode = 'mask'
@@ -89,6 +92,10 @@ q             Quit
                         self.cur_pc.free()
                     self.cur_pc = pc
                 if not ok: break
+                if self.single_step and pc != None:
+                    print("xxxjack single step done")
+                    self.paused = True
+                    self.single_step = False
             except queue.Empty:
                 pass
         self.stopped = True
@@ -133,7 +140,7 @@ q             Quit
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
-        cmd = self.visualiser.interact(None, "?hq +-cwamirsn0123456789", 30)
+        cmd = self.visualiser.interact(None, "?hq .<+-cwamirsn0123456789", 30)
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
@@ -144,6 +151,14 @@ q             Quit
             print(f'Saved as {filename} in {os.getcwd()}')
         elif cmd == " ":
             self.paused = not self.paused
+        elif cmd == ".":
+            self.single_step = True
+            self.paused = False
+            print("xxxjack single step requested")
+        elif cmd == "<":
+            if not self.source.seek(0):
+                print("Input source does not support seek")
+
         elif cmd == 'a':
             self.select_tile_or_stream(all=True)
         elif cmd == 'm':
@@ -185,7 +200,6 @@ q             Quit
             aux_description = auxdata.description(aux_index)
             aux_ptr = auxdata.pointer(aux_index)
             aux_size = auxdata.size(aux_index)
-            print(f"xxxjack: auxdata[{aux_index}]: name={aux_name}, description={aux_description}, size={aux_size}")
             if not aux_name.startswith("rgb"):
                 return
             image_descr = self._parse_aux_description(aux_description)
