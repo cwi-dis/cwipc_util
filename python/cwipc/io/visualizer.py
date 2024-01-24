@@ -81,24 +81,36 @@ q             Quit
             try:
                 if self.paused and self.nodrop:
                     ok = self.draw_pc(None)
+                    if not ok:
+                        break
                     continue
                 pc = self.output_queue.get(timeout=0.033)
                 if self.paused:
                     if pc: pc.free()
                     pc = None
                 ok = self.draw_pc(pc)
+                if not ok: break
                 if not self.paused:
                     if self.cur_pc:
                         self.cur_pc.free()
                     self.cur_pc = pc
-                if not ok: break
                 if self.single_step and pc != None:
                     print("xxxjack single step done")
                     self.paused = True
                     self.single_step = False
             except queue.Empty:
                 pass
+        if self.cur_pc:
+            self.cur_pc.free()
+            self.cur_pc = None
         self.stopped = True
+        # Empty queue
+        try:
+            while True:
+                pc = self.output_queue.get(block=False)
+        except queue.Empty:
+            pass
+        self.nodrop = False
         
     def feed(self, pc : cwipc_wrapper) -> None:
         try:
