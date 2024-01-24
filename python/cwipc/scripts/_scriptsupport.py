@@ -265,14 +265,17 @@ class SourceServer:
         
     def run(self) -> None:
         if self.inpoint:
-            if self.source_name and self.source_name == 'k4aoffline':
-                assert hasattr(self.grabber, 'seek')
+            if hasattr(self.grabber, 'seek'):
                 result = self.grabber.seek(self.inpoint) # type: ignore
                 if result:
-                    print(f'grab: seek to timestamp {self.inpoint} successfull', flush=True)
+                    print(f'grab: seek to timestamp {self.inpoint} successful', flush=True)
                 else:
-                    print(f'grab: ERRROR : seek to timestamp {self.inpoint} failed', flush=True)
+                    print(f'grab: Error: seek to timestamp {self.inpoint} failed', flush=True)
                     sys.exit(-1)
+            else:
+                print(f"grab: grabber does not support seek")
+                sys.exit(-1)
+                
         if self.verbose: print('grab: started', flush=True)
         while not self.stopped and not self.grabber.eof():
             t0 = time.time()
