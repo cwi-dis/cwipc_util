@@ -175,6 +175,7 @@ q             Quit
         auxdata = pc.access_auxiliary_data()
         if not auxdata:
             return
+        all_images = []
         for aux_index in range(auxdata.count()):
             aux_name = auxdata.name(aux_index)
             aux_description = auxdata.description(aux_index)
@@ -206,11 +207,13 @@ q             Quit
             image_data = auxdata.data(aux_index)
             np_image_data_bytes = np.array(image_data)
             np_image_data = np.reshape(np_image_data_bytes, (image_height, image_width, image_bpp))
-            if image_bpp == 4:
-                # Remove the A data
-                np_image_data = np_image_data[:,:,:3]
+            # Select B, G, R channels
+            np_image_data = np_image_data[:,:,[2,1,0]]
             assert np_image_data.shape == (image_height, image_width, 3)
-            cv2.imshow("RGB", np_image_data)
+            all_images.append(np_image_data)
+        if len(all_images) > 0:
+            full_image = cv2.vconcat(all_images)
+            cv2.imshow("RGB", full_image)
             cv2.waitKey(1)
 
         pass
