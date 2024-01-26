@@ -460,11 +460,12 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         # Th way the aruco detector returns information is weird. Sometimes it is a single numpy matrix, sometimes a list or tuple of vectors...
         rv_corners : List[List[float]] = []
         rv_ids : List[int] = []
-        for i in range(len(ids)):
-            rv_ids.append(int(ids[i]))
-            area = corners[i]
-            if area.shape == (1, 4, 2):
-                area = area[0]
-            rv_corners.append(area.tolist())
+        if ids != None:
+            for i in range(len(ids)):
+                rv_ids.append(int(ids[i]))
+                area = corners[i]
+                if area.shape == (1, 4, 2):
+                    area = area[0]
+                rv_corners.append(area.tolist())
 
         return rv_corners, rv_ids
