@@ -23,7 +23,7 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION ((uint64_t)0x20230605)
+#define CWIPC_API_VERSION ((uint64_t)0x20240128)
 
 /** \brief Version of oldest compatible cwipc API.
 *
@@ -324,6 +324,21 @@ public:
      */
     bool auxiliary_data_requested(const std::string& name) {
         return auxiliary_data_wanted.find(name) != auxiliary_data_wanted.end();
+    }
+
+    /** \brief Do an auxiliary operation.
+     * \param op The operation to perform
+     * \param inbuf Buffer with parameters to the operation
+     * \param insize Size of inbuf
+     * \param outbuf Buffer for results of the operation
+     * \param outsize Size of outbuf
+     * \returns success indicator.
+     * 
+     * Operations could be things like mapping 2D coordinates to 3D coordinates, or
+     * getting camera metadata.
+     */
+    virtual bool auxiliary_operation(const std::string op, void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+        return false;
     }
 private:
     std::set<std::string> auxiliary_data_wanted;
