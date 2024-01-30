@@ -772,6 +772,10 @@ bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct 
   return src->get_tileinfo(tilenum, tileinfo);
 }
 
+bool cwipc_tiledsource_auxiliary_operation(cwipc_tiledsource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+    return src->auxiliary_operation(std::string(op), inbuf, insize, outbuf, outsize);
+}
+
 void cwipc_sink_free(cwipc_sink *sink) {
     sink->free();
 }

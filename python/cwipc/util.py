@@ -47,7 +47,7 @@ __all__ = [
     'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20230605
+CWIPC_API_VERSION = 0x20240128
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -409,6 +409,9 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     
     _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
     _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
+
+    _cwipc_util_dll_reference.cwipc_tiledsource_auxiliary_operation.argtypes = [cwipc_source_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_tiledsource_auxiliary_operation.restype = ctypes.c_bool
     
     _cwipc_util_dll_reference.cwipc_sink_free.argtypes = [cwipc_sink_p]
     _cwipc_util_dll_reference.cwipc_sink_free.restype = None
@@ -678,6 +681,17 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
         return dict(normal=normal, cameraName=info.cameraName, ncamera=info.ncamera, cameraMask=info.cameraMask)
         
+    def auxiliary_operation(self, op : str, inbuf : bytes, outbuf : bytearray) -> bool:
+        """Perform operation in the capturer."""
+        c_op = op.encode('utf8')
+        c_inbuf_size = len(inbuf)
+        c_inbuf_type = ctypes.c_byte * c_inbuf_size
+        c_inbuf = c_inbuf_type.from_buffer_copy(inbuf)
+        c_outbuf_size = len(outbuf)
+        c_outbuf_type = ctypes.c_byte * c_outbuf_size
+        c_outbuf = c_outbuf_type.from_buffer(outbuf)
+        return cwipc_util_dll_load().cwipc_tiledsource_auxiliary_operation(self.as_cwipc_source_p(), c_op, c_inbuf, c_inbuf_size, c_outbuf, c_outbuf_size)
+   
 class cwipc_sink_wrapper:
     """Pointcloud sink as an opaque object"""
     _cwipc_sink : Optional[cwipc_sink_p]

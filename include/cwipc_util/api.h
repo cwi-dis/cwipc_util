@@ -337,7 +337,7 @@ public:
      * Operations could be things like mapping 2D coordinates to 3D coordinates, or
      * getting camera metadata.
      */
-    virtual bool auxiliary_operation(const std::string op, void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+    virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
         return false;
     }
 private:
@@ -837,6 +837,20 @@ _CWIPC_UTIL_EXPORT const char *cwipc_get_version();
      * Tile number 0 is a special case, representing the whole pointcloud.
      */
     _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource* src, int tilenum, struct cwipc_tileinfo* tileinfo);
+
+    /** \brief Do an auxiliary operation (C interface).
+     * \param op The operation to perform
+     * \param inbuf Buffer with parameters to the operation
+     * \param insize Size of inbuf
+     * \param outbuf Buffer for results of the operation
+     * \param outsize Size of outbuf
+     * \returns success indicator.
+     * 
+     * Operations could be things like mapping 2D coordinates to 3D coordinates, or
+     * getting camera metadata.
+     */
+    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_auxiliary_operation(cwipc_tiledsource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize);
+
 
     /** \brief Deallocate the pointcloud sink (C interface).
      *

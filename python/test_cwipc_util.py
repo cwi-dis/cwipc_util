@@ -4,6 +4,7 @@ import cwipc.playback
 import os
 import sys
 import tempfile
+import struct
 if 0:
     # This code can be used to debug the C++ code in XCode:
     # - build for XCode with cmake
@@ -223,7 +224,7 @@ class TestApi(unittest.TestCase):
         pcs.free()
         
     def test_cwipc_synthetic_nonexistent_auxdata(self):
-        """Can we request auxiliary data on a cwipc_source"""
+        """If we request nonexistent auxiliary data on a cwipc_source do we get an error?"""
         pcs = cwipc.cwipc_synthetic()
         wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
         self.assertFalse(wantUnknown)
@@ -253,7 +254,28 @@ class TestApi(unittest.TestCase):
         self.assertNotEqual(data, b'\0\0\0\0')
         pc.free()
         pcs.free()
+
+    def test_cwipc_synthetic_nonexistent_auxiliary_operation(self):
+        """If we request a nonexistent auxiliary operation on a cwipc_source do we get an error?"""
+        pcs = cwipc.cwipc_synthetic()
+        inbuf = bytes()
+        outbuf = bytearray(4)
+        wantUnknown = pcs.auxiliary_operation("nonexistent-auxop", inbuf, outbuf)
+        self.assertFalse(wantUnknown)
+        pcs.free()
     
+    def test_cwipc_synthetic_auxiliary_operation(self):
+        """Can we request an auxiliary operation on a cwipc_source"""
+        pcs = cwipc.cwipc_synthetic()
+        angle = 42.0
+        inbuf = struct.pack("f", angle)
+        outbuf = bytearray(struct.pack("f", 0))
+        ok = pcs.auxiliary_operation("test-setangle", inbuf, outbuf)
+        self.assertTrue(ok)
+        newAngle = struct.unpack("f", outbuf)
+        self.assertEqual(angle, newAngle)
+        pcs.free()
+
     def test_cwipc_synthetic_args(self):
         """Can we create a synthetic pointcloud with fps and npoints arguments?"""
         pcs = cwipc.cwipc_synthetic(10, 1000)
