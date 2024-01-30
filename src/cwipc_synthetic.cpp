@@ -122,6 +122,19 @@ public:
         return false;
     }
 
+    bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+        // For test purposes, really...
+        if (op != "test-setangle") return false;
+        if (inbuf == nullptr || insize != sizeof(float)) return false;
+        if (outbuf == nullptr || outsize != sizeof(float)) return false;
+        float *infloat = (float *)inbuf;
+        float *outfloat = (float *)outbuf;
+        m_angle = *infloat;
+        *outfloat = m_angle;
+        return true;
+
+    }
+
 private:
     void generate_points() {
         const float pi=3.14159265358979f;

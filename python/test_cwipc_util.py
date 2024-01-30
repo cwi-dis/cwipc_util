@@ -272,7 +272,7 @@ class TestApi(unittest.TestCase):
         outbuf = bytearray(struct.pack("f", 0))
         ok = pcs.auxiliary_operation("test-setangle", inbuf, outbuf)
         self.assertTrue(ok)
-        newAngle = struct.unpack("f", outbuf)
+        newAngle, = struct.unpack("f", outbuf)
         self.assertEqual(angle, newAngle)
         pcs.free()
 
