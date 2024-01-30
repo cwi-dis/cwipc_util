@@ -132,7 +132,6 @@ public:
         m_angle = *infloat;
         *outfloat = m_angle;
         return true;
-
     }
 
 private:
