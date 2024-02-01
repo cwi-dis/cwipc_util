@@ -14,6 +14,7 @@ from cwipc.registration.util import *
 import cwipc.registration.coarse
 import cwipc.registration.analyze
 import cwipc.registration.multicamera
+from cwipc.io.visualizer import Visualizer
 
 try:
     import cwipc.realsense2
@@ -29,6 +30,12 @@ except ModuleNotFoundError:
 
 DEFAULT_FILENAME = "cameraconfig.json"
 
+class RegistrationVisualizer(Visualizer):
+
+    def write_current_pointcloud(self):
+        print(f"xxxjack should do something with {self.cur_pc}")
+        time.sleep(2)
+
 def main():
     parser = ArgumentParser(description="Register cwipc cameras (realsense, kinect, virtual) so they produce overlapping point clouds.")
     def twofloats(s):
@@ -37,6 +44,7 @@ def main():
     parser.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json and exit")
     
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
+    parser.add_argument("--interactive", action="store_true", help="Interactive mode: show pointclouds and RGB images. w command will attempt registration.")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
