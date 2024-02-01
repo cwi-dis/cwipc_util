@@ -32,7 +32,7 @@ q             Quit
     """
     output_queue : queue.Queue[Optional[cwipc_wrapper]]
 
-    def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None):
+    def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None, **kwargs):
         self.visualiser = None
         self.producer = None
         self.source = None
@@ -45,6 +45,9 @@ q             Quit
             self.show_rgb = args.rgb
             self.rgb_cw = args.rgb_cw
             self.rgb_ccw = args.rgb_ccw
+        for k in kwargs:
+            # Should only be the ones that can also be in args, but hey...
+            setattr(self, k, kwargs[k])
         self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
@@ -129,7 +132,9 @@ q             Quit
         self.visualiser.feed(None, True)
 
     def draw_pc(self, pc : Optional[cwipc_wrapper]) -> bool:
-        """Draw pointcloud"""
+        """Draw pointcloud and interact with the visualizer.
+        If None is passed as the pointcloud it will only interact (keeping the previous pointcloud visible)
+        """
         assert self.visualiser
         cellsize = self.point_size_min
         if pc:
@@ -152,15 +157,18 @@ q             Quit
             if not ok: 
                 print('display: window.feed() returned False')
                 return False
+        return self.interact_visualiser() # Note we pass the original pc to interact, not the modified pc.
+
+    def interact_visualiser(self) -> bool:
+        """Allow user interaction with the visualizer."""
+        assert self.visualiser
         cmd = self.visualiser.interact(None, "?hq .<+-cwamirsn0123456789", 30)
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
             print(self.HELP)
         elif cmd == "w" and self.cur_pc:
-            filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-            cwipc_write(filename, self.cur_pc, True) #writing in binary
-            print(f'Saved as {filename} in {os.getcwd()}')
+            self.write_current_pointcloud()
         elif cmd == " ":
             self.paused = not self.paused
         elif cmd == ".":
@@ -187,22 +195,26 @@ q             Quit
             self.select_tile_or_stream(number=int(cmd))
         elif cmd == '+':
             self.point_size_power += 1
-            print(f'Changed point size = {cellsize*pow(2,self.point_size_power)}')
         elif cmd == '-':
             if self.point_size_power>0:
                 self.point_size_power -= 1
-                print(f'Changed point size = {cellsize*pow(2,self.point_size_power)}')
-            else:
-                print(f'Reached point size min = {cellsize*pow(2,self.point_size_power)}')
         elif cmd == '\0':
             pass
         elif cmd == 'c':
             self.reload_cameraconfig()
-        else: #c to crash and print stack trace
+        else:
             print(self.HELP, flush=True)
         return True
+
+    def write_current_pointcloud(self):
+        """Save the current point cloud. May be overridden in subclasses to do something else."""
+        assert self.cur_pc
+        filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
+        cwipc_write(filename, self.cur_pc, True) #writing in binary
+        print(f'Saved as {filename} in {os.getcwd()}')
     
     def draw_rgb(self, pc : cwipc_wrapper) -> None:
+        """Draw a window with the RGB data of all cameras."""
         auxdata = pc.access_auxiliary_data()
         if not auxdata:
             return
@@ -268,6 +280,7 @@ q             Quit
         pass
 
     def _parse_aux_description(self, description : str) -> Dict[str, Any]:
+        """Helper method: parse an auxdata description string"""
         rv = {}
         fields = description.split(',')
         for f in fields:
@@ -280,6 +293,7 @@ q             Quit
         return rv
     
     def reload_cameraconfig(self) -> None:
+        """Reload the cameras. Call after changing cameraconfig.json."""
         assert self.source
         assert hasattr(self.source, "reload_config")
         try:
