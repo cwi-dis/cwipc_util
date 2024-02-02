@@ -415,6 +415,9 @@ class Registrator:
         sourceServer.stop()
         sourceServer.grabber = None # type: ignore
         sourceThread.join()
+        del visualizer
+        del sourceServer
+        del sourceThread
         assert captured_pc
         return captured_pc
 
