@@ -451,12 +451,14 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         if self.debug:
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
-            cv2.imshow(f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close.", outputImage)
+            winTitle = f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close."
+            cv2.imshow(winTitle, outputImage)
             while True:
                 ch = cv2.waitKey()
                 if ch == 27:
                     break
                 print(f"ignoring key {ch}")
+            cv2.destroyWindow(winTitle)
         # Th way the aruco detector returns information is weird. Sometimes it is a single numpy matrix, sometimes a list or tuple of vectors...
         rv_corners : List[List[float]] = []
         rv_ids : List[int] = []
