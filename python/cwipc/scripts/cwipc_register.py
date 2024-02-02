@@ -404,7 +404,7 @@ class Registrator:
         return cast(cwipc.cwipc_wrapper, pc)
     
     def interactive_capture(self) -> cwipc.cwipc_wrapper:
-        visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args)
+        visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args, title="cwipc_register")
         sourceServer = SourceServer(cast(cwipc_source_abstract, self.capturer), visualizer, self.args)
         sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
         visualizer.set_producer(sourceThread)
