@@ -32,7 +32,8 @@ q             Quit
     """
     output_queue : queue.Queue[Optional[cwipc_wrapper]]
 
-    def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None, **kwargs):
+    def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None, title="cwipc_view", **kwargs):
+        self.title = title
         self.visualiser = None
         self.producer = None
         self.source = None
@@ -126,6 +127,9 @@ q             Quit
         self.nodrop = False
         if self.show_rgb:
             cv2.destroyWindow("RGB")
+        if self.visualiser:
+            self.visualiser.free()
+        self.visualiser = None
         
     def feed(self, pc : cwipc_wrapper) -> None:
         try:
@@ -138,7 +142,7 @@ q             Quit
             
     def start_window(self):
         cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
-        self.visualiser = cwipc_window("cwipc_view")
+        self.visualiser = cwipc_window(self.title)
         os.chdir(cwd)
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
