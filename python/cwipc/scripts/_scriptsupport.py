@@ -255,10 +255,14 @@ class SourceServer:
             nextGrabTime = self.lastGrabTime + 1/self.fps
             if time.time() < nextGrabTime:
                 time.sleep(nextGrabTime - time.time())
+        if not self.grabber:
+            return None
         if not self.grabber.available(True):
-                print('grab: no pointcloud available')
-                time.sleep(1)
-                return None
+            print('grab: no pointcloud available')
+            time.sleep(1)
+            return None
+        if not self.grabber:
+            return None
         pc = self.grabber.get()
         self.lastGrabTime = time.time()
         return cast(cwipc_wrapper, pc)

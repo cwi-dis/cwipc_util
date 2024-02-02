@@ -58,6 +58,7 @@ q             Quit
         self.filter_mode = 'mask'
         self.start_window()
         self.stopped = False
+        self.stop_requested = False
         self.point_size_min = 0.0005
         self.point_size_power = 0
         
@@ -68,7 +69,7 @@ q             Quit
         pass
 
     def stop(self) -> None:
-        pass
+        self.stop_requested = True
     
     def set_producer(self, producer : cwipc_producer_abstract) -> None:
         self.producer = producer
@@ -79,8 +80,17 @@ q             Quit
     def is_alive(self) -> bool:
         return not self.stopped  
         
+    def _continue_running(self) -> bool:
+        if self.stop_requested:
+            return False
+        if self.producer:
+            return self.producer.is_alive()
+        if self.source:
+            return not self.source.eof()
+        return False
+    
     def run(self) -> None:
-        while self.producer and self.producer.is_alive():
+        while self._continue_running():
             try:
                 if self.paused and self.nodrop:
                     ok = self.draw_pc(None)
@@ -163,6 +173,7 @@ q             Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         cmd = self.visualiser.interact(None, "?hq .<+-cwamirsn0123456789", 30)
+        print(f"xxxjack cmd={cmd}")
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
