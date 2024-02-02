@@ -124,6 +124,8 @@ q             Quit
         except queue.Empty:
             pass
         self.nodrop = False
+        if self.show_rgb:
+            cv2.destroyWindow("RGB")
         
     def feed(self, pc : cwipc_wrapper) -> None:
         try:
@@ -236,7 +238,7 @@ q             Quit
             aux_ptr = auxdata.pointer(aux_index)
             aux_size = auxdata.size(aux_index)
             if not aux_name.startswith("rgb"):
-                return
+                continue
             image_descr = self._parse_aux_description(aux_description)
             image_width = image_descr['width']
             image_height = image_descr['height']
