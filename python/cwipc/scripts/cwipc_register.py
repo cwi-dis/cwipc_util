@@ -31,10 +31,15 @@ except ModuleNotFoundError:
 DEFAULT_FILENAME = "cameraconfig.json"
 
 class RegistrationVisualizer(Visualizer):
+    def __init__(self, *args, **kwargs):
+        Visualizer.__init__(self, *args, **kwargs)
+        self.captured_pc : Optional[cwipc_wrapper] = None
 
     def write_current_pointcloud(self):
-        print(f"xxxjack should do something with {self.cur_pc}")
-        time.sleep(2)
+        print(f"xxxjack captured {self.cur_pc}")
+        self.captured_pc = self.cur_pc
+        self.cur_pc = None
+        self.stop()
 
 def main():
     parser = ArgumentParser(description="Register cwipc cameras (realsense, kinect, virtual) so they produce overlapping point clouds.")
@@ -44,7 +49,10 @@ def main():
     parser.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json and exit")
     
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
-    parser.add_argument("--interactive", action="store_true", help="Interactive mode: show pointclouds and RGB images. w command will attempt registration.")
+    parser.add_argument("--interactive", action="store_true", help="Interactive mode: show pointclouds (and optional RGB images). w command will attempt registration.")
+    parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
+    parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
+    parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
@@ -179,7 +187,8 @@ class CameraConfig:
 
 class Registrator:
     def __init__(self, args : argparse.Namespace):
-        if args.no_aruco:
+        self.no_aruco = args.no_aruco
+        if self.no_aruco:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
         else:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
@@ -354,6 +363,8 @@ class Registrator:
             self.capturer = self.capturerFactory()
         except cwipc.CwipcError:
             return False
+        self.capturer.request_auxiliary_data("rgb")
+        self.capturer.request_auxiliary_data("depth")
         return True
     
     def create_cameraconfig(self) -> None:
@@ -371,13 +382,13 @@ class Registrator:
         else:
             print(f"Not saving {self.args.cameraconfig}, --dry-run specified.")
         
-
-
     def capture(self) -> cwipc.cwipc_wrapper:
         if self.args.nograb:
             pc = cwipc.cwipc_read(self.args.nograb, 0)
             return pc
         assert self.capturer
+        if self.args.interactive:
+            return self.interactive_capture()
         if self.args.skip:
             for i in range(self.args.skip):
                 ok = self.capturer.available(True)
@@ -391,7 +402,22 @@ class Registrator:
         assert pc
         assert pc.count() > 0
         return cast(cwipc.cwipc_wrapper, pc)
-            
+    
+    def interactive_capture(self) -> cwipc.cwipc_wrapper:
+        visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args)
+        sourceServer = SourceServer(cast(cwipc_source_abstract, self.capturer), visualizer, self.args)
+        sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
+        visualizer.set_producer(sourceThread)
+        visualizer.set_source(cast(cwipc_source_abstract, self.capturer))
+        sourceThread.start()
+        visualizer.run()
+        captured_pc = visualizer.captured_pc
+        sourceServer.stop()
+        sourceServer.grabber = None # type: ignore
+        sourceThread.join()
+        assert captured_pc
+        return captured_pc
+
     def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
         if self.debug:
             filename = f"cwipc_register_debug/{label}-pointcloud.ply"
