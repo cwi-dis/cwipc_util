@@ -176,6 +176,8 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
             o3d_pc = self.per_camera_o3d_pointclouds[idx]
             camnum = self.per_camera_tilenum[idx]
             markers = self._find_markers(0, camnum, o3d_pc)
+            if self.verbose:
+                print(f"find_markers_all_tiles: camera={camnum}: {markers}q")
             self.markers.append(markers)
         assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
         
@@ -316,6 +318,8 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         return rv
     
     def _deproject(self, passnum : int, camnum : int, ids : Sequence[int], areas_2d : List[List[Sequence[float]]], pinholeCamera, o3d_depth_image_float) -> List[MarkerPosition]:
+        show_depth_map = self.debug
+
         # First get the camera parameters
         o3d_extrinsic = pinholeCamera.extrinsic
         o3d_intrinsic = pinholeCamera.intrinsic
@@ -333,7 +337,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             print(f"deproject: depth range {min_depth} to {max_depth}, width={width}, height={height}")
         areas_3d : List[List[Tuple[float, float, float]]] = []  # Will be filled with 3D areas
         boxes : List[Any] = [] # Will be filled with open3d boxes (if we want to display them)
-        if self.debug:
+        if show_depth_map:
             # Show the depth-only pointcloud for visual inspection.
             # We move the recangular bound box a little bit away, and we also show
             # in true 3D coorinates where the actual marker is.
@@ -404,7 +408,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             # If we need it for display, slightly offset the depth for the bounding box,
             # and compute the geomtry of the actual marker (in 3D)
             #
-            if self.debug:
+            if show_depth_map:
                 # We move the recangular bound box a little bit away, and we also show
                 # in true 3D coorinates where the actual marker is.
                 for v in range(min_v, max_v):
@@ -421,7 +425,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         # All boxes hapve been mapped to 3D.
         #
         # Display the point cloud with the all the rectangles for the markers found
-        if self.debug:
+        if show_depth_map:
             cropped_img = open3d.geometry.Image(np_depth_image_float)
             o3dpc = open3d.geometry.PointCloud.create_from_depth_image(cropped_img, o3d_intrinsic, o3d_extrinsic, depth_scale=1.0)
             tmpvis = open3d.visualization.Visualizer() # type: ignore
@@ -444,11 +448,12 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         return areas_3d
     
     def _find_aruco_in_image(self, passnum : int, tilenum : int, img : cv2.typing.MatLike) -> Tuple[List[List[float]], List[int]]:
+        show_aruco_results = self.verbose
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
         if self.debug:
             print("find_aruco_in_image: corners:", corners)
             print("find_aruco_in_image: ids:", ids)
-        if self.debug:
+        if show_aruco_results:
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
             winTitle = f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close."

@@ -198,6 +198,7 @@ class Registrator:
         self.verbose = self.args.verbose
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
+        self.check_coarse_alignment = False # This can be a very expensive operation...
         if self.args.recording:
             if self.args.cameraconfig:
                 print("Cannot use --cameraconfig with a recording")
@@ -281,7 +282,12 @@ class Registrator:
             new_pc.free()
             new_pc = None
             if not self.dry_run:
+                if self.verbose:
+                    print(f"cwipc_register: save {self.cameraconfig.filename}")
                 self.cameraconfig.save()
+                self.capturer.reload_config(self.cameraconfig.filename)
+                if self.verbose:
+                    print(f"cwipc_register: reload {self.cameraconfig.filename}")
         if not self.args.nofine:
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
@@ -431,6 +437,8 @@ class Registrator:
             
     def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         aligner = self.coarse_aligner_class()
+        aligner.verbose = self.verbose
+        aligner.debug = self.debug
         aligner.add_tiled_pointcloud(pc)
         start_time = time.time()
         ok = aligner.run()
@@ -448,12 +456,15 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
-        correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
-        self.cameraconfig["correspondence"] = correspondence
+        if self.check_coarse_alignment:
+            correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
+            self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         aligner = self.fine_aligner_class()
+        aligner.verbose = self.verbose
+        # aligner.debug = self.debug
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001
