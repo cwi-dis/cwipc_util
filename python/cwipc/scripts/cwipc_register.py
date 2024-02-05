@@ -4,7 +4,7 @@ import time
 import shutil
 import argparse
 import json
-from typing import Optional, List, cast, Tuple
+from typing import Optional, List, cast, Tuple, Dict
 import numpy
 import cwipc
 from cwipc.net.abstract import *
@@ -151,6 +151,19 @@ class CameraConfig:
                 return False
         return True
 
+    def get_serial_dict(self) -> Dict[int, str]:
+        """Return a mapping from tilemask to camera serial number"""
+        rv = {}
+        if len(self.cameraconfig) == 1:
+            mask = 0
+        else:
+            mask = 1
+        for cam in self.cameraconfig["camera"]:
+            serial = cam["serial"]
+            rv[mask] = serial
+            mask <<= 1
+        return rv
+
     def load(self, jsondata : bytes) -> None:
         self.cameraconfig = json.loads(jsondata)
         self.init_transforms()
@@ -190,6 +203,8 @@ class Registrator:
         self.no_aruco = args.no_aruco
         if self.no_aruco:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
+        elif args.rgb:
+            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseArucoRgb
         else:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
         self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
@@ -393,15 +408,17 @@ class Registrator:
             pc = cwipc.cwipc_read(self.args.nograb, 0)
             return pc
         assert self.capturer
-        if self.args.interactive:
-            return self.interactive_capture()
         if self.args.skip:
+            if self.verbose:
+                print(f"cwipc_register: skipping {self.args.skip} captures")
             for i in range(self.args.skip):
                 ok = self.capturer.available(True)
                 if ok:
                     pc = self.capturer.get()
                     if pc != None:
                         pc.free()
+        if self.args.interactive:
+            return self.interactive_capture()
         ok = self.capturer.available(True)
         assert ok
         pc = self.capturer.get()
@@ -436,10 +453,14 @@ class Registrator:
             print(f"Saved pointcloud and cameraconfig for {label}")
             
     def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
+        if self.verbose:
+            print(f"cwipc_register: Use coarse alignment class {self.coarse_aligner_class.__name__}")
         aligner = self.coarse_aligner_class()
         aligner.verbose = self.verbose
         aligner.debug = self.debug
         aligner.add_tiled_pointcloud(pc)
+        serial_dict = self.cameraconfig.get_serial_dict()
+        aligner.set_serial_dict(serial_dict)
         start_time = time.time()
         ok = aligner.run()
         stop_time = time.time()
@@ -462,6 +483,8 @@ class Registrator:
         return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        if self.verbose:
+            print(f"cwipc_register: Use coarse alignment class {self.fine_aligner_class.__name__}")
         aligner = self.fine_aligner_class()
         aligner.verbose = self.verbose
         # aligner.debug = self.debug

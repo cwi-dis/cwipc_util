@@ -25,6 +25,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self.original_pointcloud : Optional[cwipc_wrapper] = None
         self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
+        self.serial_for_tilenum : Dict[int, str] = {}
         self.transformations : List[RegistrationTransformation] = []
         
         self.known_marker_positions : MarkerPositions = dict()
@@ -49,6 +50,9 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         assert count > 0 # Otherwise this has been called too early
         return count
     
+    def set_serial_dict(self, sd : Dict[int, str]) -> None:
+        self.serial_for_tilenum = sd
+        
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         return self.per_camera_tilenum[cam_index]
@@ -175,7 +179,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         for idx in range(len(self.per_camera_o3d_pointclouds)):
             o3d_pc = self.per_camera_o3d_pointclouds[idx]
             camnum = self.per_camera_tilenum[idx]
-            markers = self._find_markers(0, camnum, o3d_pc)
+            markers = self._find_markers(0, idx)
             if self.verbose:
                 print(f"find_markers_all_tiles: camera={camnum}: {markers}q")
             self.markers.append(markers)
@@ -188,7 +192,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         print(f"Error: marker has {len(marker)} corners in stead of 4")
         return False
     
-    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         return {}
     
@@ -258,14 +262,16 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         }
         self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
     
-    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID, which is always 9999).
         The markers are "found" by having the user select the points in 3D space.
         """
-        indices = o3d_pick_points(f"Cam {tilenum}: {self.prompt}", pc, from000=True)
+        o3dpc = self.per_camera_o3d_pointclouds[idx]
+        tilenum = self.per_camera_tilenum[idx]
+        indices = o3d_pick_points(f"Cam {tilenum}: {self.prompt}", o3dpc, from000=True)
         points = []
         for i in indices:
-            point = pc.points[i]
+            point = o3dpc.points[i]
             if self.debug:
                 print(f"find_marker: corner: {point}")
             points.append(point)
@@ -292,13 +298,15 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             ]
         }
     
-    def _find_markers(self, passnum : int, tilenum : int, pc : open3d.geometry.PointCloud) -> MarkerPositions:
+    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)
         The markers are found by mapping the point cloud to a color image and depth image, then finding Aruco markers
         in that color image, then using the depth image to compute the 3D coordinates.
         """
-
-        vis = o3d_show_points(f"Pass {passnum} tile {tilenum}: Ensure markers are visible. ESC to close.", pc, from000=True, keepopen=True)
+        o3dpc = self.per_camera_o3d_pointclouds[idx]
+        tilenum = self.per_camera_tilenum[idx]
+            
+        vis = o3d_show_points(f"Pass {passnum} tile {tilenum}: Ensure markers are visible. ESC to close.", o3dpc, from000=True, keepopen=True)
         o3d_bgr_image_float = vis.capture_screen_float_buffer()
         np_bgr_image_float = np.asarray(o3d_bgr_image_float)
         np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]
@@ -476,3 +484,6 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 rv_corners.append(area.tolist())
 
         return rv_corners, rv_ids
+
+class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
+    pass
