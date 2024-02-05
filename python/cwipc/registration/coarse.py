@@ -455,7 +455,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             tmpvis.destroy_window()
         return areas_3d
     
-    def _find_aruco_in_image(self, passnum : int, tilenum : int, img : cv2.typing.MatLike) -> Tuple[List[List[float]], List[int]]:
+    def _find_aruco_in_image(self, passnum : int, tilenum : int, img : cv2.typing.MatLike) -> Tuple[List[List[List[float]]], List[int]]:
         show_aruco_results = self.verbose
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
         if self.debug:
@@ -473,7 +473,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 print(f"ignoring key {ch}")
             cv2.destroyWindow(winTitle)
         # Th way the aruco detector returns information is weird. Sometimes it is a single numpy matrix, sometimes a list or tuple of vectors...
-        rv_corners : List[List[float]] = []
+        rv_corners : List[List[List[float]]] = []
         rv_ids : List[int] = []
         if ids != None:
             for i in range(len(ids)):
@@ -497,9 +497,33 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
         rv : MarkerPositions = {}
         print(f"xxxjack areas_2d: {areas_2d}, ids {ids}")
-        return rv        
-        
+        for idx in range(len(ids)):
+            area_2d = areas_2d[idx]
+            if self.debug:
+                print(f"find_markers: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
+            npoints = len(area_2d)
+            assert npoints == 4
+            for corner_2d in area_2d:
+                u, v = corner_2d
+                # opencv uses y-down, open3d uses y-up. So convert the v value
+                # v = height - v
+                u = int(u)
+                v = int(v)
+                d = self._get_depth_value(np_depth_image, u, v)
+                print(f"find_markers: u,v,d={(u, v, d)}")
+        return rv
+    
+    def _get_depth_value(self, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
+        """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
+        rv = int(np_depth_image[y, x])
+        if rv != 0:
+            return rv
+        if self.verbose:
+            print(f"Warning: need to interpolate depth value for {(x, y)}")
+        return 0
+    
     def _get_rgb_depth_images(self, tilenum : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
+        """Return the RGB and Depth images for a given tile, from the point cloud auxiliary data."""
         serial = self.serial_for_tilenum.get(tilenum)
         if not serial:
             print(f"getrgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
