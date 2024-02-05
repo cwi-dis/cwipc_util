@@ -224,10 +224,18 @@ cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
+#ifdef cwipc_old_move_auxdata
+    // For some reason, at some point we thought it would be a good idea to
+    // move the auxiliary data to the new point cloud. It isn't at least not
+    // for tilefilter.
+    // Maybe this was just because the code was copied from some other method, where
+    // it probably is a good idea?
+    //
     // copy src auxdata to dst pointcloud
     cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
     cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
     src_ad->_move(dst_ad);
+#endif
 
     return rv;
 }
