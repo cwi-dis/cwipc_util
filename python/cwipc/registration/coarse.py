@@ -491,7 +491,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         tilenum = self.per_camera_tilenum[idx]
         np_rgb_image, np_depth_image = self._get_rgb_depth_images(tilenum)
-        if np_rgb_image == None or np_depth_image == None:
+        if np_rgb_image is None or np_depth_image is None:
             print(f"Warning: RGB or Depth image not captured. Revert to interactive image capture.")
             return MultiCameraCoarseAruco._find_markers(self, passnum, idx)
         areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
@@ -506,8 +506,9 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
             return None, None
         assert self.original_pointcloud
         auxdata = self.original_pointcloud.access_auxiliary_data()
-        if not auxdata:
-            print(f"get_rgb_deth_images: tilenum {tilenum}: no auxdata")
+        if not auxdata or auxdata.count() == 0:
+            print(f"get_rgb_depth_images: tilenum {tilenum}: no auxdata")
+            assert 0
             return None, None
         depth_image : Optional[cv2.typing.MatLike] = None
         rgb_image : Optional[cv2.typing.MatLike] = None
@@ -557,7 +558,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                         depth_bpp = 2 # 16-bit grey
                     else:
                         assert False, "Unknown format in Depth auxdata format specifier"
-                assert depth_bpp in (3, 4)
+                assert depth_bpp ==2
                 depth_data = auxdata.data(aux_index)
                 np_depth_data_bytes = np.array(depth_data)
                 np_depth_data = np.reshape(np_depth_data_bytes, (depth_height, depth_width, depth_bpp))
