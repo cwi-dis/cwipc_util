@@ -1,6 +1,7 @@
 
 import copy
 import math
+import struct
 from typing import List, Optional, Any, Tuple, Sequence, cast, Dict
 import numpy as np
 from numpy.typing import NDArray
@@ -9,6 +10,7 @@ import open3d.visualization
 import cv2.typing
 import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
+from ..abstract import cwipc_tiledsource_abstract
 from .abstract import *
 from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
@@ -26,6 +28,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
         self.serial_for_tilenum : Dict[int, str] = {}
+        self.grabber : Optional[cwipc_tiledsource_abstract] = None
         self.transformations : List[RegistrationTransformation] = []
         
         self.known_marker_positions : MarkerPositions = dict()
@@ -52,6 +55,10 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
     
     def set_serial_dict(self, sd : Dict[int, str]) -> None:
         self.serial_for_tilenum = sd
+
+    def set_grabber(self, grabber : cwipc_tiledsource_abstract) -> None:
+        assert self.grabber == None
+        self.grabber = grabber
 
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
@@ -511,15 +518,24 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 u = int(u)
                 v = int(v)
                 d = self._get_depth_value(np_depth_image, u, v)
-                print(f"find_markers: u,v,d={(u, v, d)}")
+                print(f"xxxjack find_markers: u,v,d={(u, v, d)}")
                 corner_3d = self._map_2d_to_3d(tilenum, u, v, d)
+                print(f"xxxjack find_markers: 3d={corner_3d}")
                 area_3d.append(corner_3d)
             rv[ids[idx]] = area_3d
         return rv
     
     def _map_2d_to_3d(self, tilenum : int, u : int, v : int, d : int) -> Tuple[float, float, float]:
-        return (float(u), float(v), float(d))
-    
+        assert self.grabber
+        inargs = struct.pack("ffff", float(tilenum), float(u), float(v), float(d))
+        outargs = bytearray(12)
+        ok = self.grabber.auxiliary_operation("map2d3d", inargs, outargs)
+        if not ok:
+            print("map2d3d failed")
+            assert False
+        rv_x, rv_y, rv_z = struct.unpack("fff", outargs)
+        return rv_x, rv_y, rv_z
+        
     def _get_depth_value(self, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
         """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
         rv = int(np_depth_image[y, x])

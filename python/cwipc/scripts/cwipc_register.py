@@ -461,6 +461,7 @@ class Registrator:
         aligner.add_tiled_pointcloud(pc)
         serial_dict = self.cameraconfig.get_serial_dict()
         aligner.set_serial_dict(serial_dict)
+        aligner.set_grabber(self.capturer)
         start_time = time.time()
         ok = aligner.run()
         stop_time = time.time()
