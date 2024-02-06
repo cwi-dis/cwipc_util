@@ -503,6 +503,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 print(f"find_markers: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
             npoints = len(area_2d)
             assert npoints == 4
+            area_3d = []
             for corner_2d in area_2d:
                 u, v = corner_2d
                 # opencv uses y-down, open3d uses y-up. So convert the v value
@@ -511,7 +512,13 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 v = int(v)
                 d = self._get_depth_value(np_depth_image, u, v)
                 print(f"find_markers: u,v,d={(u, v, d)}")
+                corner_3d = self._map_2d_to_3d(tilenum, u, v, d)
+                area_3d.append(corner_3d)
+            rv[ids[idx]] = area_3d
         return rv
+    
+    def _map_2d_to_3d(self, tilenum : int, u : int, v : int, d : int) -> Tuple[float, float, float]:
+        return (float(u), float(v), float(d))
     
     def _get_depth_value(self, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
         """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
@@ -520,6 +527,26 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
             return rv
         if self.verbose:
             print(f"Warning: need to interpolate depth value for {(x, y)}")
+        distance = 1
+        while distance < 10: # Arbitrary value, really...
+            d_sum = 0
+            d_count = 0
+            for tx in range(x-distance, x+distance+1):
+                if tx < 0 or tx >= np_depth_image.shape[1]:
+                    continue
+                for ty in range(y-distance, y+distance+1):
+                    if ty < 0 or ty >= np_depth_image.shape[0]:
+                        continue
+                    td = int(np_depth_image[ty, tx])
+                    if td > 0:
+                        d_sum += td
+                        d_count += 1
+            if d_count > 0:
+                if self.verbose:
+                    print(f"Interpolated {d_sum//d_count} from {d_count} points at distance {distance}")
+                return d_sum // d_count
+            distance += 1
+        print(f"Error: failed to find any depth points within {distance} pixels")
         return 0
     
     def _get_rgb_depth_images(self, tilenum : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
