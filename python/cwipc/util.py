@@ -16,6 +16,7 @@ __all__ = [
     
     'cwipc_wrapper',
     'cwipc_source_wrapper',
+    'cwipc_tiledsource_wrapper',
     
     'cwipc_point',
     'cwipc_point_array',
