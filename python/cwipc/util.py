@@ -80,6 +80,13 @@ class _cwipc_dll_search_path_collection:
             self._darwin_add_dylib_search_path()
         if os.name == "posix" and sys.platform == "linux":
             self._linux_add_so_search_path()
+
+        additional_path_entries = []
+        if 'CWIPC_LIBRARY_DIR' in os.environ:
+            libpath = os.environ['CWIPC_LIBRARY_DIR']
+            additional_path_entries.append(libpath)
+            if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: add {libpath} from CWIPC_LIBRARY_DIR", file=sys.stderr)
+
         # On Windows we may need to add directories with add_dll_directory() so we can find dependent DLLs
         self.open_dll_dirs = []
         if not hasattr(os, 'add_dll_directory'):
@@ -92,7 +99,7 @@ class _cwipc_dll_search_path_collection:
         else:
             path_string = os.environ.get('PATH')
             assert path_string
-            path_entries = path_string.split(os.pathsep)
+            path_entries = additional_path_entries + path_string.split(os.pathsep)
         if _CWIPC_DEBUG_DLL_SEARCH_PATH: print(f"_cwipc_dll_search_path_collection: {len(path_entries)} on PATH", file=sys.stderr)
         for p in path_entries:
             if not os.path.exists(p):
