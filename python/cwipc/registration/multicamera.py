@@ -99,7 +99,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run()
         self.results = self.analyzer.get_ordered_results()
-        camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate()
+        camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate([])
         if self.verbose:
             print(f"Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
@@ -107,6 +107,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         if self.show_plot:
             self.analyzer.plot(show=True)
         stepnum = 1
+        camnums_already_fixed = []
         while camnum_to_fix != None:
             if self.verbose:
                 print(f"Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
@@ -115,6 +116,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             assert self.aligner
             self.aligner.set_correspondence(correspondence)
             self.aligner.run(camnum_to_fix)
+            camnums_already_fixed.append(camnum_to_fix)
             # Save resultant pointcloud
             old_pc = self.current_pointcloud
             new_pc = self.aligner.get_result_pointcloud_full()
@@ -140,11 +142,13 @@ class MultiCamera(MultiAlignmentAlgorithm):
             old_camnum_to_fix = camnum_to_fix
             old_correspondence = correspondence
             old_total_correspondence = total_correspondence
-            camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate()
+            camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate(camnums_already_fixed)
             # This stop-condition can be improved, in various ways:
             # - If total_correspondence is worse than previously we should undo this step and try another camera
             # - We may also want to try another (more expensive) algorithm
-            if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence:
+            if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence-0.0001:
+                if self.verbose:
+                    print(f"Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
                 break
             stepnum += 1
         self.proposed_cellsize = total_correspondence*self.cellsize_factor
@@ -161,14 +165,20 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self._compute_new_tiles()
         return True
 
-    def _get_next_candidate(self) -> Tuple[Optional[int], float, float]:
+    def _get_next_candidate(self, camnums_already_fixed : List[int]) -> Tuple[Optional[int], float, float]:
         camnum_to_fix = None
         correspondence = self.results[0][1]
         for i in range(len(self.results)):
+            if self.results[i][0] in camnums_already_fixed:
+                continue
             if self.results[i][1] > self.precision_threshold:
                 camnum_to_fix = self.results[i][0]
                 correspondence = self.results[i][1]
                 break
+        if camnum_to_fix == None:
+            # Apparently all cameras have been done at least once.
+            camnum_to_fix = self.results[0][0]
+            correspondence = self.results[0][1]
         w_sum = 0
         c_sum = 0
         for res in self.results:
