@@ -59,6 +59,7 @@ def main():
     parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
     parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
+    parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     parser.add_argument("recording", nargs='?', help="A directory with recordings (realsense or kinect) for which to do registration")
@@ -197,6 +198,21 @@ class CameraConfig:
 
     def __getitem__(self, key):
         return self.cameraconfig[key]
+    
+    def set_entry_from_string(self, arg : str) -> bool:
+        key, value = arg.split('=')
+        value = eval(value)
+        key_list = key.split(".")
+        d = self.cameraconfig
+        for k in key_list[:-1]:
+            d = d[k]
+        k = key_list[-1]
+        if d.get(k) != value:
+            d[k] = value
+            self._dirty = 1
+            return True
+        return False
+
 
 class Registrator:
     def __init__(self, args : argparse.Namespace):
@@ -278,7 +294,17 @@ class Registrator:
                     
         self.cameraconfig.load(self.capturer.get_config())
         if not self.dry_run:
+            anyChanged = False
+            if self.args.conf_init:
+                for setting in self.args.conf_init:
+                    if self.cameraconfig.set_entry_from_string(setting):
+                        anyChanged = True
             self.cameraconfig.save()
+            if anyChanged:
+                # Need to reload camera config if we made changes
+                if self.verbose:
+                    print(f"cwipc_register: reload cameraconfig after applying conf_init settings")
+                self.capturer.reload_config(self.cameraconfig.filename)
         if self.args.noregister:
             return True
         if self.args.coarse or self.cameraconfig.is_identity():
