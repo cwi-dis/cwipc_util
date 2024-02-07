@@ -353,6 +353,8 @@ class Registrator:
         is_kinect = False
         is_realsense = False
         for fn in os.listdir(self.args.recording):
+            if fn.startswith("."):
+                continue
             if fn.lower().endswith(".mkv"):
                 allfiles.append(fn)
                 is_kinect = True

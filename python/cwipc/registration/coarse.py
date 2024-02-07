@@ -45,7 +45,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        assert self.original_pointcloud == None
+        assert self.original_pointcloud is None
         self.original_pointcloud = pc
 
     def camera_count(self) -> int:
@@ -57,7 +57,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         self.serial_for_tilenum = sd
 
     def set_grabber(self, grabber : cwipc_tiledsource_abstract) -> None:
-        assert self.grabber == None
+        assert self.grabber is None
         self.grabber = grabber
 
     def tilenum_for_camera_index(self, cam_index : int) -> int:
@@ -242,7 +242,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
             transformed_partial_pc = cwipc_transform(partial_pc, self.transformations[i])
             partial_pc.free()
             partial_pc = None
-            if rv == None:
+            if rv is None:
                 rv = transformed_partial_pc
             else:
                 new_rv = cwipc_join(rv, transformed_partial_pc)
@@ -482,7 +482,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         # Th way the aruco detector returns information is weird. Sometimes it is a single numpy matrix, sometimes a list or tuple of vectors...
         rv_corners : List[List[List[float]]] = []
         rv_ids : List[int] = []
-        if ids != None:
+        if not ids is None:
             for i in range(len(ids)):
                 rv_ids.append(int(ids[i]))
                 area = corners[i]
@@ -581,7 +581,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         rgb_image : Optional[cv2.typing.MatLike] = None
         for aux_index in range(auxdata.count()):
             if auxdata.name(aux_index) == "rgb." + serial:
-                assert rgb_image == None
+                assert rgb_image is None
                 depth_descr = self._parse_aux_description(auxdata.description(aux_index))
                 depth_width = depth_descr['width']
                 image_height = depth_descr['height']
@@ -607,7 +607,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 np_image_data = np_image_data[:,:,[2,1,0]]
                 rgb_image = np_image_data
             if auxdata.name(aux_index) == "depth." + serial:
-                assert depth_image == None
+                assert depth_image is None
                 depth_descr = self._parse_aux_description(auxdata.description(aux_index))
                 depth_width = depth_descr['width']
                 depth_height = depth_descr['height']
