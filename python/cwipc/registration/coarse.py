@@ -505,6 +505,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         rv : MarkerPositions = {}
         print(f"xxxjack areas_2d: {areas_2d}, ids {ids}")
         for idx in range(len(ids)):
+            marker_id = ids[idx]
             area_2d = areas_2d[idx]
             if self.debug:
                 print(f"find_markers: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
@@ -522,7 +523,23 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 corner_3d = self._map_2d_to_3d(tilenum, u, v, d)
                 print(f"xxxjack find_markers: 3d={corner_3d}")
                 area_3d.append(corner_3d)
-            rv[ids[idx]] = area_3d
+            if not marker_id in rv:
+                rv[marker_id] = area_3d
+            else:
+                # Duplicate marker found. This has happend in real life (when an unused one
+                # happened to be lying around in view of one of the cameras).
+                # Use the closest one.
+                old_area_3d = rv[marker_id]
+                new_corner = area_3d[0]
+                old_corner = old_area_3d[0]
+                new_distance = np.linalg.norm(new_corner)
+                old_distance = np.linalg.norm(old_corner)
+                if new_distance < old_distance:
+                    print(f"Warning: duplicate marker {marker_id}. Use new at distance {new_distance}, old was at {old_distance}")
+                    rv[marker_id] = area_3d
+                else:
+                    print(f"Warning: duplicate marker {marker_id}. Keep old at distance {old_distance}, new was at {new_distance}")
+
         return rv
     
     def _map_2d_to_3d(self, tilenum : int, u : int, v : int, d : int) -> Tuple[float, float, float]:
