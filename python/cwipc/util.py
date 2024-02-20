@@ -485,6 +485,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     return _cwipc_util_dll_reference
 
 cwipc_point_array_value_type = Union[None, bytearray, bytes, ctypes.Array[cwipc_point], List[tuple[float, float, float, int, int, int, int]]]
+
 def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.Array[cwipc_point]:
     """Create an array of cwipc_point elements. `count` can be specified, or `values` can be a tuple or list of tuples (x, y, z, r, g, b, tile), or both"""
     if count == None:
@@ -498,6 +499,9 @@ def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.
         values = tuple(values)
     return allocator(*values)
     
+cwipc_point_numpy_array_value_type = "NDType[Any]"
+cwipc_point_numpy_matrix_value_type = "NDType[float]"
+
 class cwipc_wrapper(cwipc_abstract):
     """Pointcloud as an opaque object."""
     
@@ -558,6 +562,36 @@ class cwipc_wrapper(cwipc_abstract):
         assert self._points != None
         return self._points
         
+    def get_numpy_array(self) -> cwipc_point_numpy_array_value_type:
+        """Return the pointcloud data as a numpy array of records"""
+        import numpy as np
+        points = self.get_points()
+        np_points = np.ctypeslib.as_array(points)
+        return np_points
+    
+    def get_numpy_matrix(self) -> cwipc_point_numpy_matrix_value_type:
+        """Return the pointcloud as a numpy matrix of floats, shape Nx7, columns x, y, z, r, g, b, tile"""
+        import numpy as np
+        points = self.get_points()
+        np_points = np.ctypeslib.as_array(points)
+        np_shape = (np_points.shape[0], 7)
+        np_matrix = np.zeros(np_shape, np.float32)
+
+        np_rgbt_shape = (np_points.shape[0], 4)
+        np_rgbt = np.zeros(np_rgbt_shape, np.uint8)
+        np_rgbt[:,0] = np_points['r']
+        np_rgbt[:,1] = np_points['g']
+        np_rgbt[:,2] = np_points['b']
+        np_rgbt[:,3] = np_points['tile']
+        
+        np_rgbt_float = np_rgbt.astype(np.float32)
+        np_matrix[..., 0] = np_points['x']
+        np_matrix[..., 1] = np_points['y']
+        np_matrix[..., 2] = np_points['z']
+        np_matrix[..., 3:] = np_rgbt_float
+        return np_matrix
+
+
     def get_bytes(self) -> bytearray:
         """Get the pointcloud data as Python bytes"""
         if self._bytes == None:
@@ -825,7 +859,18 @@ def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) ->
     if rv:
         return cwipc_wrapper(rv)
     raise CwipcError("cwipc_from_points: cannot create cwipc from given argument")
-    
+
+def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, timestamp : int) -> cwipc_wrapper:
+    """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
+    import numpy as np
+    points = np.ctypeslib.as_ctypes(np_points)
+    rv = cwipc_from_points(points, timestamp)
+    return rv
+
+
+def cwipc_from_numpy_matrix(points : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_wrapper:
+    """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
+
 def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
     nBytes = len(packet)
     byte_array_type = ctypes.c_char * nBytes
