@@ -20,6 +20,7 @@ __all__ = [
     
     'cwipc_point',
     'cwipc_point_array',
+    'cwipc_point_numpy_dtype',
 
     'cwipc_tileinfo_pythonic',
     
@@ -33,6 +34,8 @@ __all__ = [
     'cwipc_from_points',
     'cwipc_from_packet',
     'cwipc_from_certh',
+    'cwipc_from_numpy_array',
+    'cwipc_from_numpy_matrix',
     
     'cwipc_synthetic',
     'cwipc_capturer',
@@ -252,6 +255,8 @@ class cwipc_point(ctypes.Structure):
 
 # Pythonic representation of a cwipc_point
 cwipc_point_tuple = tuple[float, float, float, int, int, int, int]
+# Numpy dtype definition of a cwipc_point
+cwipc_point_numpy_dtype = [('x', '<f4'), ('y', '<f4'), ('z', '<f4'), ('r', 'u1'), ('g', 'u1'), ('b', 'u1'), ('tile', 'u1')]
 
 #
 # C/Python cwipc_vector (x/y/z).
@@ -863,13 +868,33 @@ def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) ->
 def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, timestamp : int) -> cwipc_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
     import numpy as np
-    points = np.ctypeslib.as_ctypes(np_points)
-    rv = cwipc_from_points(points, timestamp)
-    return rv
+    nPoint = np_points.shape[0]
+    addr = np_points.ctypes.data_as(ctypes.POINTER(cwipc_point))
+    nBytes = nPoint * np_points.strides[0]
+    errorString = ctypes.c_char_p()
+    rv = cwipc_util_dll_load().cwipc_from_points(addr, nBytes, nPoint, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
+    if errorString and errorString.value:
+        raise CwipcError(errorString.value.decode('utf8'))
+    if rv:
+        return cwipc_wrapper(rv)
+    raise CwipcError("cwipc_from_numpy_array: cannot create cwipc from given argument")
 
 
-def cwipc_from_numpy_matrix(points : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_wrapper:
+def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
+    import numpy as np
+    count = np_points_matrix.shape[0]
+    assert np_points_matrix.shape == (count, 7)
+    assert np_points_matrix.dtype == np.float32
+    np_points = np.zeros(count, cwipc_point_numpy_dtype)
+    np_points['x'] = np_points_matrix[:,0]
+    np_points['y'] = np_points_matrix[:,1]
+    np_points['z'] = np_points_matrix[:,2]
+    np_points['r'] = np_points_matrix[:,3].astype(np.uint8)
+    np_points['g'] = np_points_matrix[:,4].astype(np.uint8)
+    np_points['b'] = np_points_matrix[:,5].astype(np.uint8)
+    np_points['tile'] = np_points_matrix[:,6].astype(np.uint8)
+    return cwipc_from_numpy_array(np_points, timestamp)
 
 def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
     nBytes = len(packet)
