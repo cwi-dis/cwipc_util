@@ -36,6 +36,7 @@ __all__ = [
     'cwipc_from_certh',
     'cwipc_from_numpy_array',
     'cwipc_from_numpy_matrix',
+    'cwipc_from_o3d_pointcloud',
     
     'cwipc_synthetic',
     'cwipc_capturer',
@@ -596,7 +597,17 @@ class cwipc_wrapper(cwipc_abstract):
         np_matrix[..., 3:] = np_rgbt_float
         return np_matrix
 
-
+    def get_o3d_pointcloud(self) -> "open3d.geometry.PointCloud":
+        """Returns an Open3D PointCloud representing this cwipc pointcloud"""
+        import open3d
+        np_matrix = self.get_numpy_matrix()
+        points = np_matrix[:,0:3]
+        colors = np_matrix[:,3:6] / 255.0
+        o3d_pc = open3d.geometry.PointCloud()
+        o3d_pc.points = open3d.utility.Vector3dVector(points)
+        o3d_pc.colors = open3d.utility.Vector3dVector(colors)
+        return o3d_pc
+        
     def get_bytes(self) -> bytearray:
         """Get the pointcloud data as Python bytes"""
         if self._bytes == None:
@@ -885,7 +896,7 @@ def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_ty
     import numpy as np
     count = np_points_matrix.shape[0]
     assert np_points_matrix.shape == (count, 7)
-    assert np_points_matrix.dtype == np.float32
+    assert np_points_matrix.dtype in (np.float32, np.float64)
     np_points = np.zeros(count, cwipc_point_numpy_dtype)
     np_points['x'] = np_points_matrix[:,0]
     np_points['y'] = np_points_matrix[:,1]
@@ -895,6 +906,17 @@ def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_ty
     np_points['b'] = np_points_matrix[:,5].astype(np.uint8)
     np_points['tile'] = np_points_matrix[:,6].astype(np.uint8)
     return cwipc_from_numpy_array(np_points, timestamp)
+
+def cwipc_from_o3d_pointcloud(o3d_pc : "open3d.geometry.PointCloud", timestamp : int) -> cwipc_wrapper:
+    import numpy as np
+    points = np.asarray(o3d_pc.points)
+    colors = np.asarray(o3d_pc.colors)
+    nPoints = points.shape[0]
+    np_matrix = np.zeros((nPoints, 7))
+    np_matrix[..., 0:3] = points
+    np_matrix[..., 3:6] = colors * 256
+    # We have no way to construct tilenum
+    return cwipc_from_numpy_matrix(np_matrix, timestamp)
 
 def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
     nBytes = len(packet)

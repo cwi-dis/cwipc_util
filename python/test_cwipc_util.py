@@ -179,7 +179,34 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.tile, np.tile)
         pc.free()
         new_pc.free()
-    
+
+    def test_cwipc_o3d_pointcloud(self):
+        """Can we round-trip between a cwipc and an open3d point cloud"""
+        # Create cwipc from Python list of points.
+        points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
+        pc = cwipc.cwipc_from_points(points, 0)
+        self.assertEqual(pc.count(), len(points))
+        # Get the pointcloud as an open3d point cloud (except tile)
+        o3d_pc = pc.get_o3d_pointcloud()
+        # xxxjack self.assertEqual(o3d_pc.num_points, pc.count())
+        # Create a new pointcloud from the o3d pointcloud
+        new_pc = cwipc.cwipc_from_o3d_pointcloud(o3d_pc, 0)
+        # Get the points from the new pointcloud
+        newpoints = new_pc.get_points()
+        self.assertEqual(len(points), len(newpoints))
+        for i in range(len(points)):
+            op = points[i]
+            np = newpoints[i]
+            self.assertEqual(op.x, np.x)
+            self.assertEqual(op.y, np.y)
+            self.assertEqual(op.z, np.z)
+            self.assertEqual(op.r, np.r)
+            self.assertEqual(op.g, np.g)
+            self.assertEqual(op.b, np.b)
+            # Not round tripped: self.assertEqual(op.tile, np.tile)
+        pc.free()
+        new_pc.free()
+
     def test_cwipc_timestamp_cellsize(self):
         """Can we set and retrieve the timestamp and cellsize in a cwipc"""
         timestamp = 0x11223344556677

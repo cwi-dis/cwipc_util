@@ -72,27 +72,16 @@ def o3d_from_cwipc(pc : cwipc_wrapper) -> open3d.geometry.PointCloud:
     return o3d_pc
 
 def nparray_xyz_from_cwipc(pc : cwipc_wrapper) -> Point_array_xyz:
-    """Return the [X, Y, Z] numpy array for a cwipc point cloud"""
-    # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-    pointarray = np.ctypeslib.as_array(pc.get_points())
-    # Extract the relevant fields (X, Y, Z coordinates)
-    xyzarray = pointarray[['x', 'y', 'z']]
-    # Turn this into an N by 3 2-dimensional array
-    nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
-    return nparray
+    """Return the [X, Y, Z] numpy array for a cwipc point cloud. (obsolete)"""
+    full_npmatrix = pc.get_numpy_matrix()
+    return full_npmatrix[:,0:2]
 
 def nparrays_from_cwipc(pc : cwipc_wrapper) -> Tuple[Point_array_xyz, Point_array_rgb]:
-    """For the cwipc argument, return two numpy arrays: one with the XYZ coordinates, one with the RGB colors (as normalized float32)"""
-    # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-    pointarray = np.ctypeslib.as_array(pc.get_points())
-    # Extract the relevant fields (X, Y, Z coordinates)
-    xyzarray = pointarray[['x', 'y', 'z']]
-    
-    # Turn this into an N by 3 2-dimensional array
-    np_xyz_array = np.column_stack([pointarray['x'], pointarray['y'], pointarray['z']])
-    np_rgb_array_u8 = np.column_stack([pointarray['r'], pointarray['g'], pointarray['b']])
-    np_rgb_array = np_rgb_array_u8.astype(np.float32) / 255.0
-    return np_xyz_array, np_rgb_array
+    """For the cwipc argument, return two numpy arrays: one with the XYZ coordinates, one with the RGB colors (as normalized float32). (obsolete)"""
+    full_npmatrix = pc.get_numpy_matrix()
+    points = full_npmatrix[:,0:2]
+    colors = full_npmatrix[:,3:6] / 255.0
+    return points, colors
 
 def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool=False) -> List[int]:
     """Show a window with an open3d.geometry.PointCloud. Let the user pick points and return the list of point indices picked."""
