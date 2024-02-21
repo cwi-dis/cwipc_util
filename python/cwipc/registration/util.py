@@ -61,18 +61,6 @@ def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.Point
     else:
         o3d_show_points(title, pc, from000)
 
-def nparray_xyz_from_cwipc(pc : cwipc_wrapper) -> Point_array_xyz:
-    """Return the [X, Y, Z] numpy array for a cwipc point cloud. (obsolete)"""
-    full_npmatrix = pc.get_numpy_matrix()
-    return full_npmatrix[:,0:2]
-
-def nparrays_from_cwipc(pc : cwipc_wrapper) -> Tuple[Point_array_xyz, Point_array_rgb]:
-    """For the cwipc argument, return two numpy arrays: one with the XYZ coordinates, one with the RGB colors (as normalized float32). (obsolete)"""
-    full_npmatrix = pc.get_numpy_matrix()
-    points = full_npmatrix[:,0:2]
-    colors = full_npmatrix[:,3:6] / 255.0
-    return points, colors
-
 def o3d_pick_points(title : str, pc : open3d.geometry.PointCloud, from000 : bool=False) -> List[int]:
     """Show a window with an open3d.geometry.PointCloud. Let the user pick points and return the list of point indices picked."""
     vis = open3d.visualization.VisualizerWithEditing() # type: ignore
