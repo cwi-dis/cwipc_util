@@ -24,6 +24,7 @@ class TransformFilter:
         
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        """xxxjack this method should be rewritten using numpy"""
         self.count += 1
         t1_d = time.time()
         points = pc.get_points()

@@ -91,6 +91,7 @@ class ColorizeFilter:
         return pc
     
     def _mapcolor(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        """xxxjack this method should be rewritten using numpy"""
         points = pc.get_points()
         ts = pc.timestamp()
         cellsize = pc.cellsize()

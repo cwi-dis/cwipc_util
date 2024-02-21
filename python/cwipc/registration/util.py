@@ -104,31 +104,15 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False,
 
 def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     """Return a list of the tile numbers used in the point cloud"""
-    pointarray = np.ctypeslib.as_array(pc.get_points())
+    pointarray = pc.get_numpy_array()
     # Extract the relevant fields (X, Y, Z coordinates)
     tilearray = pointarray['tile']
     unique = np.unique(tilearray)
     rv = unique.tolist()
     return rv
-   
-def _old_cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
-    points = pc.get_points()
-    for i in range(len(points)):
-        point = np.array([
-            points[i].x,
-            points[i].y,
-            points[i].z,
-            1
-        ])
-        transformed_point = transform.dot(point) # type: ignore
-        points[i].x = transformed_point[0]
-        points[i].y = transformed_point[1]
-        points[i].z = transformed_point[2]
-    new_pc = cwipc_from_points(points, pc.timestamp())
-    new_pc._set_cellsize(pc.cellsize())
-    return new_pc
 
 def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
+    """xxxjack this method should be rewritten using get_numpy_matrix"""
     pc_points = pc.get_points()
     n_points = len(pc_points)
     np_points = np.ctypeslib.as_array(pc_points)
