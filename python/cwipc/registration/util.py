@@ -112,7 +112,7 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     return rv
 
 def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
-    """xxxjack this method should be rewritten using get_numpy_matrix"""
+    """Apply an affine transpormation to a point cloud and return the resulting point cloud"""
 
     np_points = pc.get_numpy_matrix()
     n_points = np_points.shape[0]
@@ -126,22 +126,6 @@ def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -
     new_pc = cwipc_from_numpy_matrix(np_points, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
-
-    ones = np.ones(n_points)
-    np_points_xyz1 = np.column_stack([np_points['x'], np_points['y'], np_points['z'], ones])
-    # Obscure code ahead. I ended up with this expression by trial and error. We first transpose
-    # the source array (so it is 4xN shape, then matrix-multiply into the transformation, then transpose again
-    # so we end up with Nx4)
-    np_points_transformed = (transform @ np_points_xyz1.transpose()).transpose()
-    for i in range(n_points):
-        pc_points[i].x = np_points_transformed[i][0]
-        pc_points[i].y = np_points_transformed[i][1]
-        pc_points[i].z = np_points_transformed[i][2]
-
-    new_pc = cwipc_from_points(pc_points, pc.timestamp())
-    new_pc._set_cellsize(pc.cellsize())
-    return new_pc
-
 
 class BaseAlgorithm(Algorithm):
     """Base class for most algorithms, both registration and alignment.
@@ -186,13 +170,3 @@ class BaseAlgorithm(Algorithm):
             return rv
         rv.free()
         return None
-
-    def _get_nparray_for_pc(self, pc : cwipc_wrapper):
-        """xxxjack I think this method shoulnd't exist. We should use open3d pointclouds everywhere."""
-        # Get the points (as a cwipc-style array) and convert them to a NumPy array-of-structs
-        pointarray = np.ctypeslib.as_array(pc.get_points())
-        # Extract the relevant fields (X, Y, Z coordinates)
-        xyzarray = pointarray[['x', 'y', 'z']]
-        # Turn this into an N by 3 2-dimensional array
-        nparray = np.column_stack([xyzarray['x'], xyzarray['y'], xyzarray['z']])
-        return nparray

@@ -146,7 +146,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _prepare_nparrays(self):
         assert self.per_camera_nparray == []
         self.per_camera_nparray = [
-            self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds
+            cam_pc.get_numpy_matrix(onlyGeometry=True) for cam_pc in self.per_camera_pointclouds
         ]
     
     def _prepare_kdtrees(self):

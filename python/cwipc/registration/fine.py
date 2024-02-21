@@ -36,10 +36,10 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         else:
             assert False, f"target camera {target} not found"
         self.our_pointcloud = self.per_camera_pointclouds[targetIndex]
-        self.our_points_nparray = self._get_nparray_for_pc(self.our_pointcloud)
+        self.our_points_nparray = self.our_pointcloud.get_numpy_matrix(onlyGeometry=True)
 
         other_nparrays = [
-            self._get_nparray_for_pc(cam_pc) for cam_pc in self.per_camera_pointclouds if cam_pc != self.our_pointcloud
+            cam_pc.get_numpy_matrix(onlyGeometry=True) for cam_pc in self.per_camera_pointclouds if cam_pc != self.our_pointcloud
         ]
         self.other_points_nparray = np.concatenate(other_nparrays)
 
