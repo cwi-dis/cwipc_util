@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Tuple
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_tilefilter
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_matrix, cwipc_tilefilter
 import open3d
 import open3d.visualization
 import numpy as np
@@ -113,9 +113,20 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
 
 def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
     """xxxjack this method should be rewritten using get_numpy_matrix"""
-    pc_points = pc.get_points()
-    n_points = len(pc_points)
-    np_points = np.ctypeslib.as_array(pc_points)
+
+    np_points = pc.get_numpy_matrix()
+    n_points = np_points.shape[0]
+    np_points_xyz = np_points[...,0:3]
+    # Split the affine transform into a rotation and a translation
+    rotmat = transform[:3,:3]
+    transvec = transform[:3,3].transpose()
+    np_points_transformed = (rotmat @ np_points_xyz.transpose()).transpose()
+    np_points_transformed = np_points_transformed + transvec
+    np_points[...,0:3] = np_points_transformed
+    new_pc = cwipc_from_numpy_matrix(np_points, pc.timestamp())
+    new_pc._set_cellsize(pc.cellsize())
+    return new_pc
+
     ones = np.ones(n_points)
     np_points_xyz1 = np.column_stack([np_points['x'], np_points['y'], np_points['z'], ones])
     # Obscure code ahead. I ended up with this expression by trial and error. We first transpose
