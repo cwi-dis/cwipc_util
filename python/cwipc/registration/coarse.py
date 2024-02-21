@@ -12,7 +12,7 @@ import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..abstract import cwipc_tiledsource_abstract
 from .abstract import *
-from .util import get_tiles_used, o3d_from_cwipc, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
+from .util import get_tiles_used, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
 MarkerPosition = List[Tuple[float, float, float]] # Position (outline) of a marker in 3D coordinates
@@ -97,7 +97,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         tilenums = get_tiles_used(self.original_pointcloud)
         for t in tilenums:
             partial_pc = cwipc_tilefilter(self.original_pointcloud, t)
-            o3d_partial_pc = o3d_from_cwipc(partial_pc)
+            o3d_partial_pc = partial_pc.get_o3d_pointcloud()
             self.per_camera_o3d_pointclouds.append(o3d_partial_pc)
             self.per_camera_tilenum.append(t)
             partial_pc.free()

@@ -56,20 +56,10 @@ def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.Point
     The optional from000 argument places the camera at (0, 0, 0).
     """
     if type(pc) == cwipc_wrapper:
-        pc_o3d = o3d_from_cwipc(pc)
+        pc_o3d = pc.get_o3d_pointcloud()
         o3d_show_points(title, pc_o3d, from000)
     else:
         o3d_show_points(title, pc, from000)
-
-def o3d_from_cwipc(pc : cwipc_wrapper) -> open3d.geometry.PointCloud:
-    """Convert a cwipc point cloud to a open3d.geometry.PointCloud"""
-    np_xyz_array, np_rgb_array = nparrays_from_cwipc(pc)
-    points_v = open3d.utility.Vector3dVector(np_xyz_array)
-    colors_v = open3d.utility.Vector3dVector(np_rgb_array)
-    o3d_pc = open3d.geometry.PointCloud()
-    o3d_pc.points = points_v
-    o3d_pc.colors = colors_v
-    return o3d_pc
 
 def nparray_xyz_from_cwipc(pc : cwipc_wrapper) -> Point_array_xyz:
     """Return the [X, Y, Z] numpy array for a cwipc point cloud. (obsolete)"""
