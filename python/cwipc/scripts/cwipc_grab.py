@@ -1,15 +1,10 @@
 import sys
 import os
-import time
 import threading
-import time
-import argparse
 import traceback
 import queue
 import struct
 from typing import Optional, Dict, Any
-import numpy as np
-from PIL import Image
 
 from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
 from .. import codec
@@ -79,7 +74,7 @@ class FileWriter(cwipc_sink_abstract):
             print(f"writer: stopped")
         return not self.error_encountered              
         
-    def feed(self, pc):
+    def feed(self, pc : cwipc_wrapper) -> None:
         try:
             if self.nodrop:
                 self.output_queue.put(pc)
@@ -92,7 +87,7 @@ class FileWriter(cwipc_sink_abstract):
                 print(f"writer: dropped pointcloud {pc.timestamp()}")
             pc.free()
 
-    def save_pc(self, pc):
+    def save_pc(self, pc : cwipc_wrapper) -> bool:
         """Save pointcloud"""
         if self.pcpattern:
             # Save pointcloud
@@ -122,49 +117,70 @@ class FileWriter(cwipc_sink_abstract):
             # xxxjack could easily add compressed files, etc
         if self.rgbpattern or self.depthpattern or self.skeletonpattern:
             saved_any = False
-            pc_auxdata = pc.access_auxiliary_data()
-            for i in range(pc_auxdata.count()):
-                aux_name = pc_auxdata.name(i)
-                if aux_name.startswith('rgb'):
-                    saved_any = self.save_auxdata('rgb', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.rgbpattern)
-                if aux_name.startswith('depth'):
-                    saved_any = self.save_auxdata('depth', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.depthpattern)
-                if aux_name.startswith('skeleton'):
-                    saved_any = self.save_auxdata_skeleton('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+            ok = self.save_images(pc)
+            if ok:
+                saved_any = True
+            ok = self.save_skeletons(pc)
+            if ok:
+                saved_any = True
             if not saved_any:
                 print(f"writer: did not find any auxiliary data in pointcloud {pc.timestamp()}")
                 #return False
         return True
-
-    def save_auxdata(self, type, name, pc, description, data, pattern):
-        filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
-        ext = os.path.splitext(filename)[1].lower()
-        if ext == '.bin' or ext == '.raw':
-            with open(filename, 'wb') as fp:
-                fp.write(data)
-            if self.verbose:
-                print(f"writer: wrote {type} to {filename}")
-        else:
-            image = self.as_image(type, description, data)
-            try:
-                image.save(filename)
-                if self.verbose:
-                    print(f"writer: wrote {type} to {filename}")
-            except ValueError:
-                print(f"writer: Filetype {ext} unknown for {type} output: {filename}")
-                return False
-            except AttributeError:
-                print("Couldn't save image {}".format(image))
-        return True
     
-    def save_auxdata_skeleton(self, type, name, pc, description, data, pattern):
-        data_bytes = bytes(data)
-        n_skeletons, n_joints = struct.unpack('II', data_bytes[:8])
-        #print(f'n_skeletons= {n_skeletons} | n_joints= {n_joints}')
-        if n_skeletons > 0:
-            filename = pattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
-            ext = os.path.splitext(filename)[1].lower()
-            if ext == '.txt':    
+    def save_images(self, pc : cwipc_wrapper) -> bool:
+        if not self.rgbpattern and not self.depthpattern:
+            return False
+        auxdata = pc.access_auxiliary_data()
+        if auxdata == None or auxdata.count() == 0:
+            return False
+        import cv2
+        anydone = False
+        if self.rgbpattern:
+            image_dict = auxdata.get_all_images("rgb.")
+            for serial, image in image_dict.items():
+                name = "rgb." + serial
+                filename = self.rgbpattern.format(timestamp=pc.timestamp(), count=self.count, type="rgb", name=name)
+                # Jack is confused. I thought opencv always used BGR images, so those are returned from get_all_images()
+                # But now it appears that imshow() wants BGR images but imwrite() wants RGB images?
+                # Go figure...
+                swapped_image = image[:,:,[2,1,0]]
+                ok = cv2.imwrite(filename, swapped_image)
+                if ok:
+                    anydone = True
+        if self.depthpattern:
+            image_dict = auxdata.get_all_images("depth.")
+            for serial, image in image_dict.items():
+                name = "depth." + serial
+                filename = self.depthpattern.format(timestamp=pc.timestamp(), count=self.count, type="depth", name=name)
+                ok = cv2.imwrite(filename, image)
+                if ok:
+                    anydone = True
+
+        return anydone
+    
+    def save_skeletons(self, pc : cwipc_wrapper) -> bool:
+        if not self.skeletonpattern:
+            return False
+        auxdata = pc.access_auxiliary_data()
+        if auxdata == None:
+            return False
+        anydone = False
+        for i in range(auxdata.count()):
+            name = auxdata.name(i)
+            if not name.startswith('skeleton'):
+                continue
+            data = auxdata.data(i)
+            #    saved_any = self.save_auxdata_skeleton('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+            data_bytes = bytes(data)
+            n_skeletons, n_joints = struct.unpack('II', data_bytes[:8])
+            #print(f'n_skeletons= {n_skeletons} | n_joints= {n_joints}')
+            if n_skeletons > 0:
+                filename = self.skeletonpattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
+                ext = os.path.splitext(filename)[1].lower()
+                if ext != '.txt':
+                    print(f"Couldn't save skeleton to {filename}. {ext} format not supported. Try txt")
+                    continue
                 with open(filename, "w") as f:
                     f.write('n_skeletons : '+str(n_skeletons)+'\n')
                     f.write('n_joints : '+str(n_joints)+'\n')
@@ -179,63 +195,9 @@ class FileWriter(cwipc_sink_abstract):
                         f.write(str((confidence, x, y, z, qw, qx, qy, qz))+'\n')
                         offset += joint_struct.size
                         #print((confidence, x, y, z, qw, qx, qy, qz))
-                print(f"writer: wrote {type} to {filename}")
-            else:
-                print(f"Couldn't save skeleton. {ext} format not supported. Try txt")
-                return False
-        return True
-
-    def parse_description(self, description):
-        rv = {}
-        fields = description.split(',')
-        for f in fields:
-            k, v = f.split('=')
-            try:
-                v = int(v)
-            except ValueError:
-                pass
-            rv[k] = v
-        return rv
-        
-    def bgra_to_rgb(self, bgra_image):
-        bgra_image = bgra_image.convert("RGBA")
-        data = np.array(bgra_image) 
-        red, green, blue, alpha = data.T 
-        data = np.array([blue, green, red, alpha])
-        data = data.transpose()
-        return Image.fromarray(data)
-        
-    def as_image(self, type, description, data) -> Any:
-        attrs = self.parse_description(description)
-        #print(f"attrs: {attrs}")
-        width = attrs['width']
-        height = attrs['height']
-        if 'bpp' in attrs:
-            if attrs['bpp'] == 3:
-                image_mode = 'RGB'
-            elif attrs['bpp'] == 4:
-                image_mode = 'RGBA'
-            elif attrs['bpp'] == 2:
-                image_mode = 'I;16'
-            else:
-                raise CwipcError("Unexpected bpp in image attrs")
-            image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
-            return image
-        elif 'format' in attrs:
-            if attrs['format'] == 2:
-                image_mode = 'RGB'
-                bgra_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
-                rgb_image = self.bgra_to_rgb(bgra_image)
-            elif attrs['format'] == 3:
-                image_mode = 'RGBA'
-                bgra_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
-                rgb_image = self.bgra_to_rgb(bgra_image)
-            elif attrs['format'] == 4:
-                image_mode = 'I;16'
-                rgb_image = Image.frombytes(image_mode, (width, height), bytes(data), 'raw')
-            else:
-                raise CwipcError("Unexpected format in image attrs")
-            return rgb_image 
+                print(f"writer: wrote skeleton to {filename}")
+                anydone = True
+        return anydone
 
     def statistics(self) -> None:
         pass        
