@@ -229,85 +229,32 @@ q             Quit
         filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
         cwipc_write(filename, self.cur_pc, True) #writing in binary
         print(f'Saved as {filename} in {os.getcwd()}')
-    
+
     def draw_rgb(self, pc : cwipc_wrapper) -> None:
         """Draw a window with the RGB data of all cameras."""
         auxdata = pc.access_auxiliary_data()
         if not auxdata:
             return
-        all_images = []
-        for aux_index in range(auxdata.count()):
-            aux_name = auxdata.name(aux_index)
-            aux_description = auxdata.description(aux_index)
-            aux_ptr = auxdata.pointer(aux_index)
-            aux_size = auxdata.size(aux_index)
-            if not aux_name.startswith("rgb"):
-                continue
-            image_descr = self._parse_aux_description(aux_description)
-            image_width = image_descr['width']
-            image_height = image_descr['height']
-            image_stride = image_descr['stride']
-            if 'bpp' in image_descr:
-                image_bpp = image_descr['bpp']
-            elif 'format' in image_descr:
-                image_format = image_descr['format']
-                if image_format == 2:
-                    image_bpp = 3 # RGB
-                elif image_format == 3:
-                    image_bpp = 4 # RGBA
-                elif image_format == 4:
-                    image_bpp = 2 # 16-bit grey
-                else:
-                    assert False, "Unknown format in auxdata format specifier"
-            else:
-                assert False, "Missing both bpp and format in auxdata description"
-            # We can only handle RGB and RGBA for now
-            assert image_bpp == 3 or image_bpp == 4
-            image_data = auxdata.data(aux_index)
-            np_image_data_bytes = np.array(image_data)
-            np_image_data = np.reshape(np_image_data_bytes, (image_height, image_width, image_bpp))
-            # Select B, G, R channels
-            np_image_data = np_image_data[:,:,[2,1,0]]
-            if self.rgb_cw:
-                np_image_data = cv2.rotate(np_image_data, cv2.ROTATE_90_CLOCKWISE)
-            elif self.rgb_ccw:
-                np_image_data = cv2.rotate(np_image_data, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            if self.rgb_cw or self.rgb_ccw:
-                assert np_image_data.shape == (image_width, image_height, 3)
-            else:
-                assert np_image_data.shape == (image_height, image_width, 3)
-            all_images.append(np_image_data)
-        if len(all_images) > 0:
-            if self.rgb_cw or self.rgb_ccw:
-                full_image = cv2.hconcat(all_images)
-            else:
-                full_image = cv2.vconcat(all_images)
-            # Scale to something reasonable
-            h, w, _ = full_image.shape
-            hscale = 1024 / h
-            wscale = 1024 / w
-            scale = min(hscale, wscale)
-            if scale < 1:
-                new_h = int(h*scale)
-                new_w = int(w*scale)
-                full_image = cv2.resize(full_image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
-            cv2.imshow("RGB", full_image)
-            cv2.waitKey(1)
+        per_camera_images = auxdata.get_all_images("rgb.")
+        all_images = list(per_camera_images.values())
 
-        pass
-
-    def _parse_aux_description(self, description : str) -> Dict[str, Any]:
-        """Helper method: parse an auxdata description string"""
-        rv = {}
-        fields = description.split(',')
-        for f in fields:
-            k, v = f.split('=')
-            try:
-                v = int(v)
-            except ValueError:
-                pass
-            rv[k] = v
-        return rv
+        if len(all_images) == 0:
+            return
+        if self.rgb_cw or self.rgb_ccw:
+            full_image = cv2.hconcat(all_images)
+        else:
+            full_image = cv2.vconcat(all_images)
+        # Scale to something reasonable
+        h, w, _ = full_image.shape
+        hscale = 1024 / h
+        wscale = 1024 / w
+        scale = min(hscale, wscale)
+        if scale < 1:
+            new_h = int(h*scale)
+            new_w = int(w*scale)
+            full_image = cv2.resize(full_image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+        cv2.imshow("RGB", full_image)
+        cv2.waitKey(1)
     
     def reload_cameraconfig(self) -> None:
         """Reload the cameras. Call after changing cameraconfig.json."""
