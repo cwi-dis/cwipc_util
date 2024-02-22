@@ -594,74 +594,11 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
             print(f"get_rgb_depth_images: tilenum {tilenum}: no auxdata")
             assert 0
             return None, None
-        depth_image : Optional[cv2.typing.MatLike] = None
-        rgb_image : Optional[cv2.typing.MatLike] = None
-        for aux_index in range(auxdata.count()):
-            if auxdata.name(aux_index) == "rgb." + serial:
-                assert rgb_image is None
-                depth_descr = self._parse_aux_description(auxdata.description(aux_index))
-                depth_width = depth_descr['width']
-                image_height = depth_descr['height']
-                depth_stride = depth_descr['stride']
-                depth_bpp = 0
-                if 'bpp' in depth_descr:
-                    depth_bpp = depth_descr['bpp']
-                elif 'format' in depth_descr:
-                    depth_format = depth_descr['format']
-                    if depth_format == 2:
-                        depth_bpp = 3 # RGB
-                    elif depth_format == 3:
-                        depth_bpp = 4 # RGBA
-                    elif depth_format == 4:
-                        depth_bpp = 2 # 16-bit grey
-                    else:
-                        assert False, "Unknown format in RGB auxdata format specifier"
-                assert depth_bpp in (3, 4)
-                depth_data = auxdata.data(aux_index)
-                np_image_data_bytes = np.array(depth_data)
-                np_image_data = np.reshape(np_image_data_bytes, (image_height, depth_width, depth_bpp))
-                # Select B, G, R channels
-                np_image_data = np_image_data[:,:,[2,1,0]]
-                rgb_image = np_image_data
-            if auxdata.name(aux_index) == "depth." + serial:
-                assert depth_image is None
-                depth_descr = self._parse_aux_description(auxdata.description(aux_index))
-                depth_width = depth_descr['width']
-                depth_height = depth_descr['height']
-                depth_stride = depth_descr['stride']
-                depth_bpp = 0
-                if 'bpp' in depth_descr:
-                    depth_bpp = depth_descr['bpp']
-                elif 'format' in depth_descr:
-                    depth_format = depth_descr['format']
-                    if depth_format == 2:
-                        depth_bpp = 3 # RGB
-                    elif depth_format == 3:
-                        depth_bpp = 4 # RGBA
-                    elif depth_format == 4:
-                        depth_bpp = 2 # 16-bit grey
-                    else:
-                        assert False, "Unknown format in Depth auxdata format specifier"
-                assert depth_bpp ==2
-                depth_data = auxdata.data(aux_index)
-                np_depth_data_bytes = np.array(depth_data)
-                np_depth_data = np.reshape(np_depth_data_bytes, (depth_height, depth_width, depth_bpp))
-                np_depth_lower = np_depth_data[:,:,0]
-                np_depth_upper = np_depth_data[:,:,1]
-                np_depth_data = np_depth_lower + (np_depth_upper * 256)
-                depth_image = np_depth_data
+        image_dict = auxdata.get_all_images(serial)
+        depth_image : Optional[cv2.typing.MatLike] = image_dict.get("depth.")
+        rgb_image : Optional[cv2.typing.MatLike] = image_dict.get("rgb.")
+        assert not depth_image is None
+        assert not rgb_image is None
+
         return rgb_image, depth_image
          
-    def _parse_aux_description(self, description : str) -> Dict[str, Any]:
-        """Helper method: parse an auxdata description string"""
-        rv = {}
-        fields = description.split(',')
-        for f in fields:
-            k, v = f.split('=')
-            try:
-                v = int(v)
-            except ValueError:
-                pass
-            rv[k] = v
-        return rv
-    
