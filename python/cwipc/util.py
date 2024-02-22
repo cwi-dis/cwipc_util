@@ -4,7 +4,7 @@ import ctypes.util
 import warnings
 import os
 import sys
-from typing import Optional, List, Type, Any, Union
+from typing import Optional, List, Type, Any, Union, Dict
 from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_pythonic
 
 __all__ = [
@@ -808,30 +808,118 @@ class cwipc_auxiliary_data:
         return self._cwipc_auxiliary_data
         
     def count(self) -> int:
+        """Return number of items in auxiliary_data collection"""
         return cwipc_util_dll_load().cwipc_auxiliary_data_count(self.as_cwipc_auxiliary_data_p())
         
     def name(self, idx : int) -> str:
+        """Return name of item idx"""
         rv = cwipc_util_dll_load().cwipc_auxiliary_data_name(self.as_cwipc_auxiliary_data_p(), idx)
         return rv.decode('utf8')
         
     def description(self, idx : int) -> str:
+        """Return description string of item idx"""
         rv = cwipc_util_dll_load().cwipc_auxiliary_data_description(self.as_cwipc_auxiliary_data_p(), idx)
         return rv.decode('utf8')
         
     def pointer(self, idx : int) -> ctypes.c_void_p:
+        """Access native point to item idx"""
         return cwipc_util_dll_load().cwipc_auxiliary_data_pointer(self.as_cwipc_auxiliary_data_p(), idx)
         
     def size(self, idx : int) -> int:
+        """Return size if bytes of item idx"""
         return cwipc_util_dll_load().cwipc_auxiliary_data_size(self.as_cwipc_auxiliary_data_p(), idx)
         
     def data(self, idx : int) -> bytes:
+        """Return data of item idx as bytes"""
         size = self.size(idx)
         pointer = self.pointer(idx)
         c_type = ctypes.c_ubyte*size
         c_array = c_type.from_address(pointer) # type: ignore
         rv = bytearray(c_array)
         return rv
-        
+    
+    # Auxiliary methods to get image data from auxiliary data
+    def _parse_aux_description(self, description : str) -> Dict[str, Any]:
+        rv = {}
+        fields = description.split(',')
+        for f in fields:
+            k, v = f.split('=')
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+            rv[k] = v
+        return rv
+    
+    def get_image_description(self, idx : int) -> Dict[str, Any]:
+        """Parse description of item idx as an image description"""
+        desc_str = self.description(idx)
+        desc = self._parse_aux_description(desc_str)
+        # Add some more useful values
+        if "bpp" in desc:
+            bpp = desc["bpp"]
+            if bpp == 2:
+                desc["image_format"] = "GREY"
+            elif bpp == 3:
+                desc["image_format"] = "RGB"
+            elif bpp == 4:
+                desc["image_format"] = "RGBA"
+        elif "format" in desc:
+            image_format = desc['format']
+            if image_format == 2:
+                desc["bpp"] = 3
+                desc["image_format"] = "RGB"
+            elif image_format == 3:
+                desc["bpp"] = 4 # RGBA
+                desc["image_format"] = "RGBA"
+            elif image_format == 4:
+                desc["bpp"] = 2 # 16-bit grey
+                desc["image_format"] = "GREY"
+        return desc
+
+    def get_image(self, idx : int) -> 'NDArray[Any]':
+        """Return item idx, which should be an image, as a numpy NDArray.
+        If the item is an RGB image it will be width*height*3, uint8 B, G, R.
+        If the item is a Depth image it will be width*height, uint16.
+        """
+        import numpy as np
+        descr = self.get_image_description(idx)
+        image_format = descr["image_format"]
+        image_data = self.data(idx)
+        if image_format == "GREY":
+            np_image_data_raw = np.frombuffer(image_data, np.uint16)
+            shape = (descr["height"], descr["width"])
+            np_image_data = np.reshape(np_image_data_raw, shape)
+        else:
+            np_image_data_bytes = np.frombuffer(image_data, np.uint8)
+            shape = (descr["height"], descr["width"], descr["bpp"])
+            np_image_data = np.reshape(np_image_data_bytes, shape)
+            np_image_data = np_image_data[:,:,[0,1,2]]
+        return np_image_data
+    
+    def get_all_images(self, pattern : str = "") -> Dict[str, 'NDArray[Any]']:
+        """Return all images as a dictionary mapping name to the numpy image array.
+        The optional pattern argument can be used to limit which images to get (name must contain pattern), and
+        that string will be removed from the image name. (In other words: passing ".12345" will get "rgb" and "depth"
+        for that serial number, and passing "rgb." will get the serial number).
+
+        If the item is an RGB image it will be width*height*3, uint8 B, G, R.
+        If the item is a Depth image it will be width*height, uint16.
+        """
+        rv = {}
+        for idx in range(self.count()):
+            name = self.name(idx)
+            if not name.startswith("rgb.") and not name.startswith("depth."):
+                continue
+            if pattern:
+                if not pattern in name:
+                    continue
+                name = name.replace(pattern, '')
+
+            image = self.get_image(idx)
+            rv[name] = image
+        return rv
+   
 def cwipc_get_version() -> str:
     """Return version information"""
     c_version = cwipc_util_dll_load().cwipc_get_version()
