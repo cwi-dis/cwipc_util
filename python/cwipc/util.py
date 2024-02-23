@@ -4,6 +4,9 @@ import ctypes.util
 import warnings
 import os
 import sys
+import open3d
+import numpy
+import numpy.typing
 from typing import Optional, List, Type, Any, Union, Dict
 from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_pythonic
 
@@ -505,8 +508,8 @@ def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.
         values = tuple(values)
     return allocator(*values)
     
-cwipc_point_numpy_array_value_type = "NDType[Any]"
-cwipc_point_numpy_matrix_value_type = "NDType[float]"
+cwipc_point_numpy_array_value_type = numpy.typing.NDArray[Any]
+cwipc_point_numpy_matrix_value_type = numpy.typing.NDArray[numpy.floating]
 
 class cwipc_wrapper(cwipc_abstract):
     """Pointcloud as an opaque object."""
@@ -570,46 +573,45 @@ class cwipc_wrapper(cwipc_abstract):
         
     def get_numpy_array(self) -> cwipc_point_numpy_array_value_type:
         """Return the pointcloud data as a numpy array of records"""
-        import numpy as np
         points = self.get_points()
-        np_points = np.ctypeslib.as_array(points)
+        np_points = numpy.ctypeslib.as_array(points)
         return np_points
     
     def get_numpy_matrix(self, onlyGeometry=False) -> cwipc_point_numpy_matrix_value_type:
         """Return the pointcloud as a numpy matrix of floats, shape Nx7, columns x, y, z, r, g, b, tile.
         If onlyGeometry is True only the first three columns will be returned.
         """
-        import numpy as np
         points = self.get_points()
-        np_points = np.ctypeslib.as_array(points)
+        np_points = numpy.ctypeslib.as_array(points)
         nColumn = 3 if onlyGeometry else 7
         np_shape = (np_points.shape[0], nColumn)
-        np_matrix = np.zeros(np_shape, np.float32)
+        np_matrix = numpy.zeros(np_shape, numpy.float32)
         np_matrix[..., 0] = np_points['x']
         np_matrix[..., 1] = np_points['y']
         np_matrix[..., 2] = np_points['z']
         
         if not onlyGeometry:
             np_rgbt_shape = (np_points.shape[0], 4)
-            np_rgbt = np.zeros(np_rgbt_shape, np.uint8)
+            np_rgbt = numpy.zeros(np_rgbt_shape, numpy.uint8)
             np_rgbt[:,0] = np_points['r']
             np_rgbt[:,1] = np_points['g']
             np_rgbt[:,2] = np_points['b']
             np_rgbt[:,3] = np_points['tile']
             
-            np_rgbt_float = np_rgbt.astype(np.float32)
+            np_rgbt_float = np_rgbt.astype(numpy.float32)
             np_matrix[..., 3:] = np_rgbt_float
         return np_matrix
 
-    def get_o3d_pointcloud(self) -> "open3d.geometry.PointCloud":
+    def get_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
         """Returns an Open3D PointCloud representing this cwipc pointcloud"""
-        import open3d
         np_matrix = self.get_numpy_matrix()
         points = np_matrix[:,0:3]
         colors = np_matrix[:,3:6] / 255.0
         o3d_pc = open3d.geometry.PointCloud()
-        o3d_pc.points = open3d.utility.Vector3dVector(points)
-        o3d_pc.colors = open3d.utility.Vector3dVector(colors)
+        o3d_points = open3d.utility.Vector3dVector(points)
+        o3d_pc.points = o3d_points
+        o3d_colors = open3d.utility.Vector3dVector(colors)
+        o3d_pc.colors = o3d_colors
         return o3d_pc
         
     def get_bytes(self) -> bytearray:
@@ -877,27 +879,26 @@ class cwipc_auxiliary_data:
                 desc["image_format"] = "GREY"
         return desc
 
-    def get_image(self, idx : int) -> 'NDArray[Any]':
+    def get_image(self, idx : int) -> numpy.typing.NDArray[Any]:
         """Return item idx, which should be an image, as a numpy NDArray.
         If the item is an RGB image it will be width*height*3, uint8 B, G, R.
         If the item is a Depth image it will be width*height, uint16.
         """
-        import numpy as np
         descr = self.get_image_description(idx)
         image_format = descr["image_format"]
         image_data = self.data(idx)
         if image_format == "GREY":
-            np_image_data_raw = np.frombuffer(image_data, np.uint16)
+            np_image_data_raw = numpy.frombuffer(image_data, numpy.uint16)
             shape = (descr["height"], descr["width"])
-            np_image_data = np.reshape(np_image_data_raw, shape)
+            np_image_data = numpy.reshape(np_image_data_raw, shape)
         else:
-            np_image_data_bytes = np.frombuffer(image_data, np.uint8)
+            np_image_data_bytes = numpy.frombuffer(image_data, numpy.uint8)
             shape = (descr["height"], descr["width"], descr["bpp"])
             np_image_data = np.reshape(np_image_data_bytes, shape)
             np_image_data = np_image_data[:,:,[0,1,2]]
         return np_image_data
     
-    def get_all_images(self, pattern : str = "") -> Dict[str, 'NDArray[Any]']:
+    def get_all_images(self, pattern : str = "") -> Dict[str, numpy.typing.NDArray[Any]]:
         """Return all images as a dictionary mapping name to the numpy image array.
         The optional pattern argument can be used to limit which images to get (name must contain pattern), and
         that string will be removed from the image name. (In other words: passing ".12345" will get "rgb" and "depth"
@@ -970,7 +971,6 @@ def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) ->
 
 def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, timestamp : int) -> cwipc_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
-    import numpy as np
     nPoint = np_points.shape[0]
     addr = np_points.ctypes.data_as(ctypes.POINTER(cwipc_point))
     nBytes = nPoint * np_points.strides[0]
@@ -985,26 +985,24 @@ def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, times
 
 def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
-    import numpy as np
     count = np_points_matrix.shape[0]
     assert np_points_matrix.shape == (count, 7)
-    assert np_points_matrix.dtype in (np.float32, np.float64)
-    np_points = np.zeros(count, cwipc_point_numpy_dtype)
+    assert np_points_matrix.dtype in (numpy.float32, numpy.float64)
+    np_points = numpy.zeros(count, cwipc_point_numpy_dtype)
     np_points['x'] = np_points_matrix[:,0]
     np_points['y'] = np_points_matrix[:,1]
     np_points['z'] = np_points_matrix[:,2]
-    np_points['r'] = np_points_matrix[:,3].astype(np.uint8)
-    np_points['g'] = np_points_matrix[:,4].astype(np.uint8)
-    np_points['b'] = np_points_matrix[:,5].astype(np.uint8)
-    np_points['tile'] = np_points_matrix[:,6].astype(np.uint8)
+    np_points['r'] = np_points_matrix[:,3].astype(numpy.uint8)
+    np_points['g'] = np_points_matrix[:,4].astype(numpy.uint8)
+    np_points['b'] = np_points_matrix[:,5].astype(numpy.uint8)
+    np_points['tile'] = np_points_matrix[:,6].astype(numpy.uint8)
     return cwipc_from_numpy_array(np_points, timestamp)
 
-def cwipc_from_o3d_pointcloud(o3d_pc : "open3d.geometry.PointCloud", timestamp : int) -> cwipc_wrapper:
-    import numpy as np
-    points = np.asarray(o3d_pc.points)
-    colors = np.asarray(o3d_pc.colors)
+def cwipc_from_o3d_pointcloud(o3d_pc : open3d.geometry.PointCloud, timestamp : int) -> cwipc_wrapper:
+    points = numpy.asarray(o3d_pc.points)
+    colors = numpy.asarray(o3d_pc.colors)
     nPoints = points.shape[0]
-    np_matrix = np.zeros((nPoints, 7))
+    np_matrix = numpy.zeros((nPoints, 7))
     np_matrix[..., 0:3] = points
     np_matrix[..., 3:6] = colors * 256
     # We have no way to construct tilenum
