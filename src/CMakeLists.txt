@@ -14,11 +14,11 @@ target_include_directories(
     cwipc_util PUBLIC
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include> 
-    ${PCL_INCLUDE_DIRS}
 )
 target_include_directories(
     cwipc_util PRIVATE
     ${glfw_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 )
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	target_link_directories(
