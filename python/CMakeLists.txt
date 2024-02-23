@@ -63,28 +63,16 @@ cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv)
 
 # Test the various scripts
 
-add_test(NAME cwipc_tilecolor
-	COMMAND ${Python3_BINDIR}/cwipc_tilecolor -i ${CMAKE_CURRENT_SOURCE_DIR}/../tests/fixtures/input/pcl_frame1.ply -o ${CMAKE_CURRENT_BINARY_DIR}/cwipc_tilecolor_out.ply
-	)
-cwipc_python_test(TEST cwipc_tilecolor FIXTURES_REQUIRED venv)
-if(DEFINED ENV{OPENGL_IS_BROKEN})
-	# See issue #19
-	set_tests_properties(cwipc_tilecolor PROPERTIES DISABLED True)
-endif()
 
 add_test(NAME cwipc_view
 	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2
 	)
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv)
 
-add_test(NAME cwipc_calibrate
-	COMMAND ${Python3_BINDIR}/cwipc_calibrate --help
+add_test(NAME cwipc_register
+	COMMAND ${Python3_BINDIR}/cwipc_register --help
 	)
-cwipc_python_test(TEST cwipc_calibrate FIXTURES_REQUIRED venv)
-if(DEFINED ENV{OPENGL_IS_BROKEN})
-	# See issue #19
-	set_tests_properties(cwipc_calibrate PROPERTIES DISABLED True)
-endif()
+cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv)
 
 add_test(NAME cwipc_forward
 	COMMAND ${Python3_BINDIR}/cwipc_forward --help
