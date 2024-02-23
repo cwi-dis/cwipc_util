@@ -112,7 +112,7 @@ setup(
     # and refuse to install the project if the version does not match. If you
     # do not support Python 2, you can simplify this to '>=3.5' or similar, see
     # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
-    python_requires='>=3.4',
+    python_requires='>=3.9',
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
@@ -121,10 +121,7 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     #
-    # xxxjack: the pinning of open3d is frowned upon, but I don't know a better solution right now.
-    # open3d 0.17 and 0.18 are broken: the visualizer camera cannot be repositioned programmatically.
-    # This makes registration become very troublesome.
-    install_requires=['numpy', 'open3d~=0.16.0', 'Pillow', 'opencv-python', 'scipy', 'matplotlib'],
+    install_requires=['numpy', 'open3d', 'Pillow', 'opencv-python', 'scipy', 'matplotlib'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
