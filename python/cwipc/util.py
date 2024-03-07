@@ -894,7 +894,7 @@ class cwipc_auxiliary_data:
         else:
             np_image_data_bytes = numpy.frombuffer(image_data, numpy.uint8)
             shape = (descr["height"], descr["width"], descr["bpp"])
-            np_image_data = np.reshape(np_image_data_bytes, shape)
+            np_image_data = numpy.reshape(np_image_data_bytes, shape)
             np_image_data = np_image_data[:,:,[0,1,2]]
         return np_image_data
     
