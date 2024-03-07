@@ -179,7 +179,6 @@ q             Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         cmd = self.visualiser.interact(None, "?hq .<+-cwamirsn0123456789", 30)
-        print(f"xxxjack cmd={cmd}")
         if cmd == "q":
             return False
         elif cmd == '?' or cmd == 'h':
