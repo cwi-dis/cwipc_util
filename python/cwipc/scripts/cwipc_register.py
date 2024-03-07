@@ -53,15 +53,20 @@ def main():
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
+    
+    parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
+    parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
+    parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
+    parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
+    
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
-    parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
-    parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
-    parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
     parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
+    
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
+    
     parser.add_argument("recording", nargs='?', help="A directory with recordings (realsense or kinect) for which to do registration")
     args = parser.parse_args()
     beginOfRun(args)
@@ -286,7 +291,8 @@ class Registrator:
             if ok:
                 pc = self.capturer.get()
                 if pc != None:
-                    print(f"xxxjack pc has {pc.count()} points")
+                    if self.verbose:
+                        print(f"cwipc_register: dropped pc with {pc.count()} points")
                     pc.free()
                     pc= None
 
@@ -306,6 +312,19 @@ class Registrator:
                     print(f"cwipc_register: reload cameraconfig after applying conf_init settings")
                 self.capturer.reload_config(self.cameraconfig.filename)
         if self.args.noregister:
+            return True
+        if self.args.tabletop:
+            assert self.cameraconfig.camera_count() == 1
+            t = self.cameraconfig.get_transform(0)
+            matrix = np.array(
+                [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, -1.0, 0.0,  1.0],
+                    [0.0, 0.0, -1.0,  0.60],
+                    [0, 0, 0, 1]
+                ])
+            t.set_matrix(matrix)
+            self.cameraconfig.save()
             return True
         if self.args.coarse or self.cameraconfig.is_identity():
             new_pc = None
@@ -483,6 +502,7 @@ class Registrator:
     def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         if self.verbose:
             print(f"cwipc_register: Use coarse alignment class {self.coarse_aligner_class.__name__}")
+        assert self.capturer
         aligner = self.coarse_aligner_class()
         aligner.verbose = self.verbose
         aligner.debug = self.debug
