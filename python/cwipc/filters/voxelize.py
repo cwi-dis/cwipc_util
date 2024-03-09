@@ -1,8 +1,9 @@
 import time
 from typing import Union, List
+from .abstract import cwipc_abstract_filter
 from ..util import cwipc_downsample, cwipc_wrapper
 
-class VoxelizeFilter:
+class VoxelizeFilter(cwipc_abstract_filter):
     """
     voxelize - Reduce number of points by voxelization (combining points within a cube by their average)
         Arguments:

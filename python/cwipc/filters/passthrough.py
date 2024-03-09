@@ -1,4 +1,6 @@
-class PassthroughFilter:
+from .abstract import cwipc_abstract_filter
+
+class PassthroughFilter(cwipc_abstract_filter):
     """
     passthrough - A filter that does nothing. For debugging only.
         Arguments: none.

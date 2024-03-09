@@ -1,10 +1,11 @@
 import time
 from typing import Union, List, Tuple, Optional, Dict, Sequence, Any
+from .abstract import cwipc_abstract_filter
 from ..util import cwipc_wrapper, cwipc_point_array, cwipc_from_points
 
 ColorTuple = Tuple[float, float, float]
 
-class ColorMap:
+class ColorMap(cwipc_abstract_filter):
     def __init__(self, initializer : Optional[Dict[int, ColorTuple]] = None):
         self._map : List[Optional[ColorTuple]] = [None]*256
         if initializer:
@@ -58,8 +59,9 @@ class ColorizeFilter:
     colorize - Change the color of points in a pointcloud, based on the tile number or mask.
         Arguments:
             weight: 1.0 means completely replace original color, 0.0 changes nothing
-            colormap: a 3-float-tuple for a uniform color, otherwise a colorize.ColorMap or the name of one
-                      (camera, contributions)
+            colormap: a 3-float-tuple for a uniform color, otherwise a colorize.ColorMap or the name of one:
+                      camera: Each tile number gets a different color
+                      contributions: the color depends on the number of bits set in the tilenumber
     """
     filtername = "colorize"
 

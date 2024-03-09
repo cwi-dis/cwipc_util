@@ -1,4 +1,6 @@
-class AnalyzeFilter:
+from .abstract import cwipc_abstract_filter
+
+class AnalyzeFilter(cwipc_abstract_filter):
     """
     analyze - a filter that prints min, max and average of X, Y, Z coordinates at end of run.
         Arguments: none.

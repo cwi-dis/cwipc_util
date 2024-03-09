@@ -1,19 +1,12 @@
 import sys
-from abc import ABC
 from typing import cast
 import importlib
 import importlib.util
+from .abstract import cwipc_abstract_filter
 from ..net.abstract import *
-from ..util import cwipc_wrapper
 from . import passthrough, analyze, voxelize, transform, crop, remove_outliers, colorize
 
 all_filters = [passthrough, analyze, voxelize, transform, crop, remove_outliers, colorize]
-
-class cwipc_abstract_filter(ABC):
-
-    @abstractmethod
-    def filter(self, pc: cwipc_wrapper) -> cwipc_wrapper:
-        ...
 
 def help() -> None:
     print("A builtin filter can be specified by name (for example passthrough) or as name with arguments (for example passthrough()).", file=sys.stderr)
@@ -24,6 +17,12 @@ def help() -> None:
         print(filter.CustomFilter.__doc__)
 
 def factory(filterdesc : str) -> cwipc_abstract_filter:
+    """Create a filter by name (for filters without parameters).
+    Or create a filter by passing the filename of a Python module implementing a CustonFilter class.
+    Or create a filter by passing a string that looks like the Python code that would be used to create the filter.
+
+    NOTE: the latter will use eval() so it is probably not very safe.
+    """
     if filterdesc.lower().endswith(".py"):
         # Filter description looks like a Python source file. Import it.
 

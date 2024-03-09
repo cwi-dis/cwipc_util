@@ -1,8 +1,9 @@
 import time
 from typing import Union, List
+from .abstract import cwipc_abstract_filter
 from ..util import cwipc_crop, cwipc_wrapper
 
-class CropFilter:
+class CropFilter(cwipc_abstract_filter):
     """
     crop - Remove points outside a given bounding box
         Arguments:
