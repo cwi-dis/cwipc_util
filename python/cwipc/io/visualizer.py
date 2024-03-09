@@ -10,6 +10,10 @@ import cv2
 import numpy as np
 
 class Visualizer(cwipc_sink_abstract):
+    """Asynchronous point cloud viewer. The API is very similar to cwipc_window, but this class runs the UI
+    in a separate thread so interaction (and feeding of the point clouds) does not cause the whole program to grind
+    to a halt.
+    """
     HELP="""
 space         Pause/resume
 .             Single step (for recordings)

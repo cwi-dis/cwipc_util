@@ -229,6 +229,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
 
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
+    """This algorithm computes, for each pair of tiles, the number of overlapping points and the distribution of their point2point distances."""
 
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
@@ -295,6 +296,7 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
         return True
 
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
+    """This algorithm computes, for each tile, the number of overlapping points with any of the other tiles and the distribution of their point2point distances."""
     """Compute registration by checking the distances from every point in this tile pointcloud to the nearest in any other pointcloud"""
 
     def __init__(self):

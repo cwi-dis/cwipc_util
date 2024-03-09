@@ -16,7 +16,10 @@ __all__ = [
 RegistrationTransformation = numpy.typing.NDArray[numpy.float64] # Should be: NDArray[(4,4), float]
 
 class Algorithm(ABC):
-
+    """Abstract base class for any algorithm that operates on tiled point clouds.
+    Contains the methods for adding a pointcloud, converting from tile-index to tile-number and vv, and for running the
+    algorithm.
+    """
     @abstractmethod
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
@@ -45,6 +48,7 @@ class Algorithm(ABC):
     # There are also methods to return the result, but they don't have a fixed signature.
 
 class AnalysisAlgorithm(Algorithm):
+    """ABC for a pointcloud analysis algorithm (such as computing the overlap between tiles)"""
 
     @abstractmethod
     def get_ordered_results(self) -> List[Tuple[int, float, float]]:
@@ -64,6 +68,8 @@ class AnalysisAlgorithm(Algorithm):
         ...
 
 class AlignmentAlgorithm(Algorithm):
+    """ABC for an algorithm that tries to find the best alignment for one tile (or possibly between two tiles, but always returning a new
+    matrix for a single tile only)"""
 
     @abstractmethod
     def set_correspondence(self, correspondence) -> None:
@@ -84,6 +90,8 @@ class AlignmentAlgorithm(Algorithm):
          ...
 
 class MultiAlignmentAlgorithm(Algorithm):
+    """ABC for an algorithm that tries to align all tiles."""
+    
     @abstractmethod
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         """After a successful run(), returns the list of transformations applied to each tile"""

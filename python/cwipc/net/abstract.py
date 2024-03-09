@@ -146,7 +146,11 @@ class cwipc_rawsink_abstract(ABC):
 
 
 class cwipc_sink_abstract(ABC):
-    """A sink for pointclouds. They could be shown on-screen, transmitted over the network, etc."""
+    """A sink for pointclouds. They could be shown on-screen, transmitted over the network, etc.
+    The API is similar to cwipc_sink but subtly different: the intention is that this class is implemented
+    in Python, and most likely in a multi-threaded way with queues to ensure producer and sink do not run
+    in lock-step.
+    """
     
     @abstractmethod
     def start(self) -> None:
