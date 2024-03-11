@@ -3,7 +3,7 @@ from typing import Union, List
 from .abstract import cwipc_abstract_filter
 from ..util import cwipc_wrapper, cwipc_from_points
 
-class TransformFilter)cwipc_abstract_filter:
+class TransformFilter(cwipc_abstract_filter):
     """
     transform - Adjust coordinate system of the point clouds.
         Arguments:
