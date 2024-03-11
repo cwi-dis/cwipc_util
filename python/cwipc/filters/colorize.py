@@ -5,7 +5,7 @@ from ..util import cwipc_wrapper, cwipc_point_array, cwipc_from_points
 
 ColorTuple = Tuple[float, float, float]
 
-class ColorMap(cwipc_abstract_filter):
+class ColorMap:
     def __init__(self, initializer : Optional[Dict[int, ColorTuple]] = None):
         self._map : List[Optional[ColorTuple]] = [None]*256
         if initializer:
@@ -54,7 +54,7 @@ _namedColorMaps=dict(
     contributions=_colorMapContributingCameras
 )
 
-class ColorizeFilter:
+class ColorizeFilter(cwipc_abstract_filter):
     """
     colorize - Change the color of points in a pointcloud, based on the tile number or mask.
         Arguments:
