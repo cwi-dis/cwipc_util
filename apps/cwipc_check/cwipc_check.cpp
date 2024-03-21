@@ -108,7 +108,7 @@ int install() {
     if (status != 0) {
         return status;
     }
-
+#if 0
     script = "\"" + libExecDir + "\\..\\bin\\cwipc_pymodules_install.ps1" + "\"";
 
     cmd = "powershell -ExecutionPolicy Bypass -File " + script;
@@ -117,6 +117,7 @@ int install() {
     if (status != 0) {
         return status;
     }
+#endif
     return 0;
 #else
     std::cerr << progName << ": only implemented on Windows. On other platforms use your local package manager (brew, apt, etc)" << std::endl;
