@@ -271,6 +271,12 @@ class Registrator:
         self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args)
         if self.args.fromxml:
             # Special case: load XML config file name create JSON config file
+            # Ensure that we have specified the capturer name, and that it is a supported one.
+            supported = ["kinect", "k4aoffline", "realsense"]
+            if not self.capturerName in supported:
+                print("Capturer needs to be specified for --fromxml")
+                print(f"Supported capturers: {' '.join(supported)}")
+                return False
             self.json_from_xml()
             return True
         if not self.open_capturer():
@@ -413,7 +419,8 @@ class Registrator:
         return True
     
     def json_from_xml(self):
-        capturer = capturerFactory("cameraconfig.xml") # type: ignore
+        assert self.capturerFactory
+        capturer = self.capturerFactory("cameraconfig.xml") # type: ignore
         json_data = capturer.get_config()
         open(self.args.cameraconfig, 'wb').write(json_data)
 
