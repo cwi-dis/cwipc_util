@@ -231,9 +231,6 @@ class SourceServer:
         self.stopped = False
         self.pc_filters = []
         if args.filter:
-            if 'help' in args.filter:
-                filters.help()
-                sys.exit(1)
             for fdesc in args.filter:
                 filter = filters.factory(fdesc)
                 self.pc_filters.append(filter)
@@ -365,13 +362,17 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--inpoint", type=int, action="store", metavar="N", help="Start at frame with timestamp > N")
     input_args.add_argument("--outpoint", type=int, action="store", metavar="N", help="Stop at frame with timestamp >= N")
     input_args.add_argument("--nodrop", action="store_true", help="Attempt to store all captures by not dropping frames. Only works for some prerecorded capturers.")
-    input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Use --filter help for help. Multiple filters are applied in order.")
+    input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
+    input_args.add_argument("--help_filters", action="store_true", help="List available filters and exit")
     return parser
-    
+            
 def beginOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
     if args.version:
         print(cwipc_get_version())
+        sys.exit(0)
+    if args.help_filters:
+        filters.help()
         sys.exit(0)
     if args.pausefordebug:
         answer=None
@@ -408,7 +409,7 @@ def beginOfRun(args : argparse.Namespace) -> None:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
             print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, signals-unity-bridge, bin2dash")
             sys.exit(1)
-            
+
 def endOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
     if args.pausefordebug:
