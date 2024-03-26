@@ -5,7 +5,7 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 import os
-CWIPC_VERSION="7.1+unknown"
+CWIPC_VERSION="7.5+unknown"
 if 'CWIPC_VERSION' in os.environ:
     CWIPC_VERSION=os.environ['CWIPC_VERSION']
     
