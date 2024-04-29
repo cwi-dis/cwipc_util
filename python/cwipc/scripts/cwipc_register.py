@@ -354,7 +354,8 @@ class Registrator:
                 self.capturer.reload_config(self.cameraconfig.filename)
                 if self.verbose:
                     print(f"cwipc_register: reload {self.cameraconfig.filename}")
-        if not self.args.nofine:
+        
+        if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
             if self.debug:
