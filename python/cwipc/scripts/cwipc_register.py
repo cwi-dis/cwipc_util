@@ -22,9 +22,13 @@ try:
     _ = cwipc.realsense2.cwipc_realsense2_dll_load()
 except ModuleNotFoundError:
     cwipc.realsense2 = None
+except FileNotFoundError:
+    cwipc.realsense2 = None
 try:
     import cwipc.kinect
 except ModuleNotFoundError:
+    cwipc.kinect = None
+except FileNotFoundError:
     cwipc.kinect = None
 
 
