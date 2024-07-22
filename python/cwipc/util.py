@@ -873,7 +873,7 @@ class cwipc_auxiliary_data:
                 desc["image_format"] = "RGB"
             elif image_format == 3:
                 desc["bpp"] = 4 # RGBA
-                desc["image_format"] = "RGBA"
+                desc["image_format"] = "BGRA"
             elif image_format == 4:
                 desc["bpp"] = 2 # 16-bit grey
                 desc["image_format"] = "GREY"
@@ -895,7 +895,12 @@ class cwipc_auxiliary_data:
             np_image_data_bytes = numpy.frombuffer(image_data, numpy.uint8)
             shape = (descr["height"], descr["width"], descr["bpp"])
             np_image_data = numpy.reshape(np_image_data_bytes, shape)
-            np_image_data = np_image_data[:,:,[0,1,2]]
+            # xxxjack This code knows about Realsense and Kinect RGB formats.
+            if image_format == "RGB":
+                # We want to return BGR (because that is apparently what OpenCV uses). So reverse the channels.
+                np_image_data = np_image_data[:,:,[2,1,0]]
+            else:
+                np_image_data = np_image_data[:,:,[0,1,2]]
         return np_image_data
     
     def get_all_images(self, pattern : str = "") -> Dict[str, numpy.typing.NDArray[Any]]:
