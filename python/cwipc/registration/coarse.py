@@ -122,14 +122,14 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
             another_pass_wanted = False # Will be set to True if we find any new information, which will help another pass
             tilenums_to_register = self._get_unregistered_tiles()
             if self.verbose:
-                print(f"coarse: attempting to register tiles {tilenums_to_register}")
+                print(f"cwipc_register: coarse: attempting to register tiles {tilenums_to_register}")
             # But there are some tiles not in tilenums_to_register that we still want to make a pass over, 
             # because in the previous pass they were registered, and they may have information on markers we have not seen yet.
             tilenums_to_register = range(len(self.per_camera_o3d_pointclouds))
-            for tilenum in tilenums_to_register:
-                camnum = self.tilenum_for_camera_index(tilenum)
-                o3d_pc = self.per_camera_o3d_pointclouds[tilenum]
-                this_tile_markers = self.markers[tilenum]
+            for camindex in tilenums_to_register:
+                tilenum = self.tilenum_for_camera_index(camindex)
+                o3d_pc = self.per_camera_o3d_pointclouds[camindex]
+                this_tile_markers = self.markers[camindex]
                 for id, area in this_tile_markers.items():
                     if not self._check_marker(area):
                         continue
@@ -139,26 +139,26 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
                         #
                         wanted_marker_corners = self.known_marker_positions[id]
                         this_marker_corners = area
-                        this_transform = self._align_marker(camnum, o3d_pc, wanted_marker_corners, this_marker_corners)
+                        this_transform = self._align_marker(camindex, o3d_pc, wanted_marker_corners, this_marker_corners)
                         if this_transform is None:
                             continue
-                        old_transform = self.transformations[tilenum]
+                        old_transform = self.transformations[camindex]
                         had_transform = not (old_transform == transformation_identity()).all() # Can happen if we found one for a previous marker
                         if had_transform:
                             # See how much they differ
                             delta_mat = np.abs(this_transform - old_transform)
                             delta = np.add.reduce(delta_mat, None)
                             if self.verbose:
-                                print(f"coarse: tile {tilenum}: marker {id}: new registration matrix differs {delta} from old one")
+                                print(f"cwipc_register: coarse: camera {tilenum} cameramask {camindex}: marker {id}: new registration matrix differs {delta} from old one")
                         else:
                             if self.verbose:
-                                print(f"coarse: tile {tilenum}: marker {id}: created transformation matrix")
-                            self.transformations[tilenum] = this_transform
+                                print(f"cwipc_register: coarse: camera {tilenum} cameramask {camindex}: marker {id}: created transformation matrix")
+                            self.transformations[camindex] = this_transform
                     else:
                         if self.verbose:
-                            print(f"coarse: tile {tilenum}: marker {id}: unknown marker found")
+                            print(f"cwipc_register: coarse: camera {tilenum} cameramask {camindex}: marker {id}: unknown marker found")
                         # If we have a transformation we can compute the 3D position of this new marker
-                        tile_transform = self.transformations[tilenum]
+                        tile_transform = self.transformations[camindex]
                         tile_transform_valid = not (tile_transform == transformation_identity()).all()
                         if tile_transform_valid:
                             # Good! We have found a marker we didn't know about.
@@ -175,7 +175,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
                                 z = float(np_point_transformed[2])
                                 new_area.append((x, y, z))
                             if self.verbose:
-                                print(f"coarse: tile {tilenum}: marker {id}: corners {new_area}")
+                                print(f"cwipc_register: coarse: camera {tilenum} cameramask {camindex}: marker {id}: 3d-corners {new_area}")
                             self.known_marker_positions[id] = new_area
                             # We want to do another round over all tiles, maybe this marker helps adjustment.
                             another_pass_wanted = True
@@ -183,12 +183,12 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
 
     def _find_markers_all_tiles(self) -> None:
         self.markers = []
-        for idx in range(len(self.per_camera_o3d_pointclouds)):
-            o3d_pc = self.per_camera_o3d_pointclouds[idx]
-            camnum = self.per_camera_tilenum[idx]
-            markers = self._find_markers(0, idx)
+        for camindex in range(len(self.per_camera_o3d_pointclouds)):
+            o3d_pc = self.per_camera_o3d_pointclouds[camindex]
+            camnum = self.per_camera_tilenum[camindex]
+            markers = self._find_markers(0, camindex)
             if self.verbose:
-                print(f"find_markers_all_tiles: camera={camnum}: {markers}q")
+                print(f"cwipc_register: find_markers_all_tiles: camera {camindex}: marker id to 3D-corners mapping: {markers}")
             self.markers.append(markers)
         assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
         
@@ -196,16 +196,17 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         """Return False if the MarkerPosition cannot be a valid marker"""
         if len(marker) == 4:
             return True
-        print(f"Error: marker has {len(marker)} corners in stead of 4")
+        print(f"cwipc_register: Error: marker has {len(marker)} corners in stead of 4")
         return False
     
-    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         return {}
     
-    def _align_marker(self, camnum : int, pc : open3d.geometry.PointCloud, target : MarkerPosition, dst : MarkerPosition) -> Optional[RegistrationTransformation]:
+    def _align_marker(self, camindex : int, pc : open3d.geometry.PointCloud, target : MarkerPosition, dst : MarkerPosition) -> Optional[RegistrationTransformation]:
         """Find the transformation that will align pc so that the target marker matches best with the dst marker"""
         # Create the pointcloud that we want to align to
+        tilenum = self.tilenum_for_camera_index(camindex)
         target_pc = open3d.geometry.PointCloud()
         target_points = open3d.utility.Vector3dVector(target)
         target_pc.points = target_points
@@ -221,7 +222,7 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         if self.verbose:
             rmse = estimator.compute_rmse(dst_pc, target_pc, corr)
             if self.verbose:
-                print(f"_align_marker: cam {camnum}: rmse={rmse}")
+                print(f"cwipc_register: _align_marker: camera {camindex}: rmse error={rmse}")
         return transform
 
     def get_result_transformations(self) -> List[RegistrationTransformation]:
@@ -269,18 +270,18 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         }
         self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
     
-    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID, which is always 9999).
         The markers are "found" by having the user select the points in 3D space.
         """
-        o3dpc = self.per_camera_o3d_pointclouds[idx]
-        tilenum = self.per_camera_tilenum[idx]
-        indices = o3d_pick_points(f"Cam {tilenum}: {self.prompt}", o3dpc, from000=True)
+        o3dpc = self.per_camera_o3d_pointclouds[camindex]
+        tilenum = self.per_camera_tilenum[camindex]
+        indices = o3d_pick_points(f"Cam {camindex}: {self.prompt}", o3dpc, from000=True)
         points = []
         for i in indices:
             point = o3dpc.points[i]
             if self.debug:
-                print(f"find_marker: corner: {point}")
+                print(f"cwipc_register: find_marker: camera {camindex}: 3D-corner: {point}")
             points.append(point)
         rv = { 9999 : points}
         return rv
@@ -305,13 +306,13 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             ]
         }
     
-    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)
         The markers are found by mapping the point cloud to a color image and depth image, then finding Aruco markers
         in that color image, then using the depth image to compute the 3D coordinates.
         """
-        o3dpc = self.per_camera_o3d_pointclouds[idx]
-        tilenum = self.per_camera_tilenum[idx]
+        o3dpc = self.per_camera_o3d_pointclouds[camindex]
+        tilenum = self.per_camera_tilenum[camindex]
             
         vis = o3d_show_points(f"Pass {passnum} tile {tilenum}: Ensure markers are visible. ESC to close.", o3dpc, from000=True, keepopen=True)
         o3d_bgr_image_float = vis.capture_screen_float_buffer()
@@ -342,14 +343,14 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         fx, fy = o3d_intrinsic.get_focal_length()
         cx, cy = o3d_intrinsic.get_principal_point()
         if self.debug:
-            print(f"deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
+            print(f"cwipc_register: camera {camnum}: deproject: depth_scale={depth_scale} c={cx},{cy} f={fx},{fy}")
         # Now get the depth image
         np_depth_image_float = np.asarray(o3d_depth_image_float)
         height, width = np_depth_image_float.shape
         min_depth = np.min(np_depth_image_float)
         max_depth = np.max(np_depth_image_float)
         if self.debug:
-            print(f"deproject: depth range {min_depth} to {max_depth}, width={width}, height={height}")
+            print(f"cwipc_register: camera {camnum}: deproject: depth range {min_depth} to {max_depth}, width={width}, height={height}")
         areas_3d : List[List[Tuple[float, float, float]]] = []  # Will be filled with 3D areas
         boxes : List[Any] = [] # Will be filled with open3d boxes (if we want to display them)
         if show_depth_map:
@@ -361,13 +362,13 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             #for area_2d in areas_2d:
             area_2d = areas_2d[idx]
             if self.debug:
-                print(f"deproject: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
+                print(f"cwipc_register: camera {camnum}: deproject: examine marker {idx} of {len(ids)}, id={ids[idx]}, 2d-area={area_2d}")
             npoints = len(area_2d)
             assert npoints == 4
             orig_transform = np.asarray(o3d_extrinsic)
             transform = transformation_invert(orig_transform)
             if self.debug:
-                print(f"deproject: transform={transform}")
+                print(f"cwipc_register: camera {camnum}: deproject: transform={transform}")
             # We want the bounding box (in the D image) for debugging
             assert len(area_2d) == 4
             min_u = max_u = int(area_2d[0][0])
@@ -392,7 +393,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 d = np_depth_image_float[v, u]
                 d = float(d)
                 if self.debug:
-                    print(f"deproject: corner: u={u}, v={v}, d={d} in 2D space")
+                    print(f"cwipc_register: camera {camnum}: deproject: corner: u={u}, v={v}, d={d} in 2D space")
                 #
                 # Convert from u, v, d to x, y, z using intrinsics
                 #
@@ -404,7 +405,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 #
                 np_point = np.array([x, y, z, 1])
                 if self.debug:
-                    print(f"deproject: corner: x={x}, y={y}, z={z} in 3D camera space (pt={np_point})")
+                    print(f"cwipc_register: camera {camnum}: deproject: corner: x={x}, y={y}, z={z} in 3D camera space (pt={np_point})")
                 
                 np_point_transformed = (transform @ np_point)
 
@@ -413,7 +414,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
                 pz = float(np_point_transformed[2])
                 fourth = float(np_point_transformed[3])
                 if self.debug:
-                    print(f"deproject: corner: x={px}, y={py}, z={pz}, fourth={fourth} in 3D pointcloud space (pt={np_point_transformed})")
+                    print(f"cwipc_register: camera {camnum}: deproject: corner: x={px}, y={py}, z={pz}, fourth={fourth} in 3D pointcloud space (pt={np_point_transformed})")
                 area_3d.append((px, py, pz))
             #
             # Found all the corners. Remember them as a 3d area
@@ -466,11 +467,13 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         show_aruco_results = self.verbose
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
         if self.debug:
-            print("find_aruco_in_image: corners:", corners)
-            print("find_aruco_in_image: ids:", ids)
+            print(f"cwipc_register: camera {tilenum}: find_aruco_in_image: 2d-corners:", corners)
+            print(f"cwipc_register: camera {tilenum}: find_aruco_in_image: ids:", ids)
         if show_aruco_results:
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
+            if self.verbose:
+                print(f"cwipc_register: camera {tilenum}: show RGB image with detected marker")
             winTitle = f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close."
             cv2.imshow(winTitle, outputImage)
             while True:
@@ -494,34 +497,38 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
 
 class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
 
-    def _find_markers(self, passnum : int, idx : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
-        tilenum = self.per_camera_tilenum[idx]
-        np_rgb_image, np_depth_image = self._get_rgb_depth_images(tilenum)
+        tilenum = self.per_camera_tilenum[camindex]
+        np_rgb_image, np_depth_image = self._get_rgb_depth_images(camindex)
         if np_rgb_image is None or np_depth_image is None:
-            print(f"Warning: RGB or Depth image not captured. Revert to interactive image capture.")
-            return MultiCameraCoarseAruco._find_markers(self, passnum, idx)
+            print(f"cwipc_register: camera {camindex}: Warning: RGB or Depth image not captured. Revert to interactive image capture.")
+            return MultiCameraCoarseAruco._find_markers(self, passnum, camindex)
         areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
         rv : MarkerPositions = {}
-        print(f"xxxjack areas_2d: {areas_2d}, ids {ids}")
-        for idx in range(len(ids)):
-            marker_id = ids[idx]
-            area_2d = areas_2d[idx]
+        if self.verbose:
+            print(f"cwipc_register: camera {camindex}: _find_markers: Auruco-IDs: {ids}, 2D-Arease: {areas_2d}")
+        for i in range(len(ids)):
+            marker_id = ids[i]
+            area_2d = areas_2d[i]
             if self.debug:
-                print(f"find_markers: examine marker {idx} of {len(ids)}, id={ids[idx]}, area={area_2d}")
+                print(f"cwipc_register: camera {camindex}: find_markers: examine marker {i} of {len(ids)}, id={ids[i]}, area={area_2d}")
             npoints = len(area_2d)
             assert npoints == 4
             area_3d = []
-            for corner_2d in area_2d:
+            for corner_2d_idx in range(len(area_2d)):
+                corner_2d = area_2d[corner_2d_idx]
                 u, v = corner_2d
                 # opencv uses y-down, open3d uses y-up. So convert the v value
                 # v = height - v
                 u = int(u)
                 v = int(v)
-                d = self._get_depth_value(np_depth_image, u, v)
-                print(f"xxxjack find_markers: u,v,d={(u, v, d)}")
+                d = self._get_depth_value(camindex, np_depth_image, u, v)
+                if self.verbose:
+                    print(f"cwipc_register: camera {camindex}: find_markers: marker {i}, corner {corner_2d_idx}: u,v,d={(u, v, d)}")
                 corner_3d = self._map_2d_to_3d(tilenum, u, v, d)
-                print(f"xxxjack find_markers: 3d={corner_3d}")
+                if self.verbose:
+                    print(f"cwipc_register: camera {camindex}: find_markers: marker {i}, corner {corner_2d_idx}: 3d-point={corner_3d}")
                 area_3d.append(corner_3d)
             if not marker_id in rv:
                 rv[marker_id] = area_3d
@@ -535,10 +542,10 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 new_distance = np.linalg.norm(new_corner)
                 old_distance = np.linalg.norm(old_corner)
                 if new_distance < old_distance:
-                    print(f"Warning: duplicate marker {marker_id}. Use new at distance {new_distance}, old was at {old_distance}")
+                    print(f"cwipc_register: camera {camindex}: Warning: duplicate marker {marker_id}. Use new at distance {new_distance}, old was at {old_distance}")
                     rv[marker_id] = area_3d
                 else:
-                    print(f"Warning: duplicate marker {marker_id}. Keep old at distance {old_distance}, new was at {new_distance}")
+                    print(f"cwipc_register: camera {camindex}: Warning: duplicate marker {marker_id}. Keep old at distance {old_distance}, new was at {new_distance}")
 
         return rv
     
@@ -548,18 +555,18 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         outargs = bytearray(12)
         ok = self.grabber.auxiliary_operation("map2d3d", inargs, outargs)
         if not ok:
-            print("map2d3d failed")
+            print(f"cwipc_register: camera {tilenum}: map2d3d failed")
             assert False
         rv_x, rv_y, rv_z = struct.unpack("fff", outargs)
         return rv_x, rv_y, rv_z
         
-    def _get_depth_value(self, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
+    def _get_depth_value(self, camindex: int, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
         """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
         rv = int(np_depth_image[y, x])
         if rv != 0:
             return rv
         if self.verbose:
-            print(f"Warning: need to interpolate depth value for {(x, y)}")
+            print(f"cwipc_register: camera {camindex}: Warning: need to interpolate depth value for {(x, y)}")
         distance = 1
         while distance < 10: # Arbitrary value, really...
             d_sum = 0
@@ -576,22 +583,24 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                         d_count += 1
             if d_count > 0:
                 if self.verbose:
-                    print(f"Interpolated {d_sum//d_count} from {d_count} points at distance {distance}")
+                    print(f"cwipc_register: camera {camindex}: Interpolated {d_sum//d_count} from {d_count} points at distance {distance}")
                 return d_sum // d_count
             distance += 1
-        print(f"Error: failed to find any depth points within {distance} pixels")
+        print(f"cwipc_register: camera {camindex}: Error: failed to find any depth points within {distance} pixels of {(x, y)}")
         return 0
     
-    def _get_rgb_depth_images(self, tilenum : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
-        """Return the RGB and Depth images for a given tile, from the point cloud auxiliary data."""
+    def _get_rgb_depth_images(self, camindex : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
+        """Return the RGB and Depth images for a given camera, from the point cloud auxiliary data."""
+        tilenum = self.per_camera_tilenum[camindex]
+        
         serial = self.serial_for_tilenum.get(tilenum)
         if not serial:
-            print(f"getrgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
+            print(f"cwipc_register: camera {camindex}: getrgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
             return None, None
         assert self.original_pointcloud
         auxdata = self.original_pointcloud.access_auxiliary_data()
         if not auxdata or auxdata.count() == 0:
-            print(f"get_rgb_depth_images: tilenum {tilenum}: no auxdata")
+            print(f"cwipc_register: camera {camindex}: get_rgb_depth_images: tilenum {tilenum}: no auxdata")
             assert 0
             return None, None
         image_dict = auxdata.get_all_images(serial)

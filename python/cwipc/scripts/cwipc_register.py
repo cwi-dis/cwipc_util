@@ -500,7 +500,9 @@ class Registrator:
         del visualizer
         del sourceServer
         del sourceThread
-        assert captured_pc
+        if not captured_pc:
+            print("cwipc_register: no capture selected in interactive mode. Exiting.")
+            sys.exit(1)
         return captured_pc
 
     def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
