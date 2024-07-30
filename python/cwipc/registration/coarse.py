@@ -276,6 +276,8 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         """
         o3dpc = self.per_camera_o3d_pointclouds[camindex]
         tilenum = self.per_camera_tilenum[camindex]
+        if self.verbose:
+            print(f"cwipc_register: camera {camindex}: show point cloud to allow selection of marker corners") 
         indices = o3d_pick_points(f"Cam {camindex}: {self.prompt}", o3dpc, from000=True)
         points = []
         for i in indices:
@@ -313,13 +315,14 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         """
         o3dpc = self.per_camera_o3d_pointclouds[camindex]
         tilenum = self.per_camera_tilenum[camindex]
-            
-        vis = o3d_show_points(f"Pass {passnum} tile {tilenum}: Ensure markers are visible. ESC to close.", o3dpc, from000=True, keepopen=True)
+        if self.verbose:
+            print(f"cwipc_register: camera {camindex}: show point cloud to allow viewpoint selection for aruco detection") 
+        vis = o3d_show_points(f"Pass {passnum} camera {camindex}: Ensure markers are visible. ESC to close.", o3dpc, from000=True, keepopen=True)
         o3d_bgr_image_float = vis.capture_screen_float_buffer()
         np_bgr_image_float = np.asarray(o3d_bgr_image_float)
         np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]
         np_rgb_image = (np_rgb_image_float * 255).astype(np.uint8)
-        areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
+        areas_2d, ids = self._find_aruco_in_image(passnum, camindex, np_rgb_image)
         rv : MarkerPositions = {}
         if not ids is None:
             viewControl = vis.get_view_control()
@@ -463,7 +466,8 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             tmpvis.destroy_window()
         return areas_3d
     
-    def _find_aruco_in_image(self, passnum : int, tilenum : int, img : cv2.typing.MatLike) -> Tuple[List[List[List[float]]], List[int]]:
+    def _find_aruco_in_image(self, passnum : int, camindex : int, img : cv2.typing.MatLike) -> Tuple[List[List[List[float]]], List[int]]:
+        tilenum = self.per_camera_tilenum[camindex]
         show_aruco_results = self.verbose
         corners, ids, rejected  = self.ARUCO_DETECTOR.detectMarkers(img)
         if self.debug:
@@ -473,8 +477,8 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             outputImage = img.copy()
             cv2.aruco.drawDetectedMarkers(outputImage, corners, ids)
             if self.verbose:
-                print(f"cwipc_register: camera {tilenum}: show RGB image with detected marker")
-            winTitle = f"pass {passnum} cam {tilenum}: Detected markers in 2D image. ESC to close."
+                print(f"cwipc_register: camera {camindex}: show RGB image with detected marker")
+            winTitle = f"pass {passnum} cam {camindex}: Detected markers in 2D image. ESC to close."
             cv2.imshow(winTitle, outputImage)
             while True:
                 ch = cv2.waitKey()
@@ -504,7 +508,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         if np_rgb_image is None or np_depth_image is None:
             print(f"cwipc_register: camera {camindex}: Warning: RGB or Depth image not captured. Revert to interactive image capture.")
             return MultiCameraCoarseAruco._find_markers(self, passnum, camindex)
-        areas_2d, ids = self._find_aruco_in_image(passnum, tilenum, np_rgb_image)
+        areas_2d, ids = self._find_aruco_in_image(passnum, camindex, np_rgb_image)
         rv : MarkerPositions = {}
         if self.verbose:
             print(f"cwipc_register: camera {camindex}: _find_markers: Auruco-IDs: {ids}, 2D-Arease: {areas_2d}")
