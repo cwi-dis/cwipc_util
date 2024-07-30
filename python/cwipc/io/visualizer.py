@@ -32,7 +32,7 @@ r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
 c             Reload cameraconfig
 ?,h           Help
-q             Quit
+q,ESC         Quit
     """
     output_queue : queue.Queue[Optional[cwipc_wrapper]]
 
@@ -66,6 +66,8 @@ q             Quit
         self.stop_requested = False
         self.point_size_min = 0.0005
         self.point_size_power = 0
+        self.frame_duration = 30    # Milliseconds, will be adjusted once known
+        self.previous_frame_timestamp = 0
         
     def statistics(self) -> None:
         pass
@@ -106,6 +108,10 @@ q             Quit
                 if self.paused:
                     if pc: pc.free()
                     pc = None
+                if pc:
+                    if self.previous_frame_timestamp:
+                        self.frame_duration = pc.timestamp() - self.previous_frame_timestamp
+                    self.previous_frame_timestamp = pc.timestamp()
                 ok = self.draw_pc(pc)
                 if not ok: break
                 if not self.paused:
@@ -182,8 +188,8 @@ q             Quit
     def interact_visualiser(self) -> bool:
         """Allow user interaction with the visualizer."""
         assert self.visualiser
-        cmd = self.visualiser.interact(None, "?hq .<+-cwamirsn0123456789", 30)
-        if cmd == "q":
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cwamirsn0123456789", self.frame_duration)
+        if cmd == "q" or cmd == "\x1b":
             return False
         elif cmd == '?' or cmd == 'h':
             print(self.HELP)
@@ -223,6 +229,7 @@ q             Quit
         elif cmd == 'c':
             self.reload_cameraconfig()
         else:
+            print(f"Unknown command {repr(cmd)}")
             print(self.HELP, flush=True)
         return True
 
