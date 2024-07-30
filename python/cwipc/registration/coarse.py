@@ -188,7 +188,15 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
             camnum = self.per_camera_tilenum[camindex]
             markers = self._find_markers(0, camindex)
             if self.verbose:
-                print(f"cwipc_register: find_markers_all_tiles: camera {camindex}: marker id to 3D-corners mapping: {markers}")
+                print(f"cwipc_register: find_markers_all_tiles: camera {camindex}: marker ids: {markers.keys()}")
+                for mid, corners in markers.items():
+                    nCorners = len(corners)
+                    for corner_idx in range(nCorners):
+                        corner = corners[corner_idx]
+                        next_corner = corners[(corner_idx+1) % nCorners]
+                        distance = np.linalg.norm(np.array(corner) - np.array(next_corner))
+                        print(f"cwipc_register: find_markers_all_tiles: camera {camindex}: marker {mid}:  3D corner: {corner}, distance to next: {distance}")
+                
             self.markers.append(markers)
         assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
         
