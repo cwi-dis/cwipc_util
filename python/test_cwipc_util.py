@@ -297,12 +297,21 @@ class TestApi(unittest.TestCase):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()
         self.assertTrue(pcs.available(True))
-        self.assertTrue(pcs.available(False))
         self.assertFalse(pcs.eof())
         pc = pcs.get()
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
+        pc.free()
+        pcs.free()
+        
+    def test_cwipc_synthetic_available_false(self):
+        """Does the synthetic reader implement available(False) correctly?"""
+        pcs = cwipc.cwipc_synthetic(5)
+        self.assertTrue(pcs.available(True))
+        pc = pcs.get()
+        self.assertFalse(pcs.available(False))
+        assert pc # Only to keep linters happy
         pc.free()
         pcs.free()
         

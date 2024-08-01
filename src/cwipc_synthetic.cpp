@@ -64,6 +64,13 @@ public:
     }
 
     bool available(bool wait) {
+        if (
+            !wait && m_fps != 0 && 
+            m_earliest_next_pointcloud.time_since_epoch() != std::chrono::milliseconds(0) &&
+            std::chrono::system_clock::now() < m_earliest_next_pointcloud
+        ) {
+            return false;
+        }
         return true;
     }
 
