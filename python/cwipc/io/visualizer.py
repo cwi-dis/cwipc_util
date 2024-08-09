@@ -66,8 +66,7 @@ q,ESC         Quit
         self.stop_requested = False
         self.point_size_min = 0.0005
         self.point_size_power = 0
-        self.frame_duration = 30    # Milliseconds, will be adjusted once known
-        self.previous_frame_timestamp = 0
+        self.display_fps = 30
         
     def statistics(self) -> None:
         pass
@@ -104,14 +103,11 @@ q,ESC         Quit
                     if not ok:
                         break
                     continue
-                pc = self.output_queue.get(timeout=0.033)
+                get_timeout = (1.0 / self.display_fps)
+                pc = self.output_queue.get(timeout=get_timeout)
                 if self.paused:
                     if pc: pc.free()
                     pc = None
-                if pc:
-                    if self.previous_frame_timestamp:
-                        self.frame_duration = pc.timestamp() - self.previous_frame_timestamp
-                    self.previous_frame_timestamp = pc.timestamp()
                 ok = self.draw_pc(pc)
                 if not ok: break
                 if not self.paused:
@@ -188,7 +184,8 @@ q,ESC         Quit
     def interact_visualiser(self) -> bool:
         """Allow user interaction with the visualizer."""
         assert self.visualiser
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cwamirsn0123456789", self.frame_duration)
+        interaction_duration = 500 // self.display_fps
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cwamirsn0123456789", interaction_duration)
         if cmd == "q" or cmd == "\x1b":
             return False
         elif cmd == '?' or cmd == 'h':
