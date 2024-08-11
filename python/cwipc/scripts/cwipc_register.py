@@ -309,6 +309,7 @@ class Registrator:
                     gotframes += 1
                     
         self.cameraconfig.load(self.capturer.get_config())
+        must_reload = False
         if not self.dry_run:
             anyChanged = False
             if self.args.conf_init:
@@ -318,11 +319,14 @@ class Registrator:
             self.cameraconfig.save()
             if anyChanged:
                 # Need to reload camera config if we made changes
-                if self.verbose:
-                    print(f"cwipc_register: reload cameraconfig after applying conf_init settings")
-                self.capturer.reload_config(self.cameraconfig.filename)
+                must_reload = True
         if self.args.noregister:
             return True
+        if must_reload:
+            if self.verbose:
+                print(f"cwipc_register: reload cameraconfig")
+            self.capturer.reload_config(self.cameraconfig.filename)
+            must_reload = False
         if self.args.tabletop:
             assert self.cameraconfig.camera_count() == 1
             t = self.cameraconfig.get_transform(0)
@@ -355,11 +359,14 @@ class Registrator:
                 if self.verbose:
                     print(f"cwipc_register: save {self.cameraconfig.filename}")
                 self.cameraconfig.save()
-                self.capturer.reload_config(self.cameraconfig.filename)
-                if self.verbose:
-                    print(f"cwipc_register: reload {self.cameraconfig.filename}")
+                must_reload = True
         
         if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
+            if must_reload:
+                if self.verbose:
+                    print(f"cwipc_register: reload {self.cameraconfig.filename}")
+                self.capturer.reload_config(self.cameraconfig.filename)
+                must_reload = False
             self.prompt("Fine calibration: capturing human-sized object")
             pc = self.capture()
             if self.debug:
