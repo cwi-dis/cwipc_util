@@ -415,6 +415,7 @@ class Registrator:
                 version=4,
                 type=camtype,
                 system=dict(),
+                hardware=dict(),
                 postprocessing=dict(
                     depthfilterparameters=dict(
 
