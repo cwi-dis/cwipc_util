@@ -404,27 +404,47 @@ class Registrator:
         if not is_realsense and not is_kinect:
             print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
             return False
-        camtype = "kinect_offline"
         if is_realsense:
             camtype = "realsense_playback"
-        # Create the camera definitions
-        camera = [
-            dict(filename=fn, type=camtype)
-                for fn in allfiles
-        ]
-        cameraconfig = dict(
-            version=3,
-            type=camtype,
-            system=dict(),
-            postprocessing=dict(
-                depthfilterparameters=dict(
+            # Create the camera definitions
+            camera = [
+                dict(filename=fn, type=camtype)
+                    for fn in allfiles
+            ]
+            cameraconfig = dict(
+                version=4,
+                type=camtype,
+                system=dict(),
+                postprocessing=dict(
+                    depthfilterparameters=dict(
 
-                )
-            ),
-            camera=camera
-        )
-        if is_kinect:
-            cameraconfig["skeleton"] = {}
+                    )
+                ),
+                camera=camera
+            )
+        elif is_kinect:
+            camtype = "kinect_offline"
+            # Create the camera definitions
+            camera = [
+                dict(filename=fn, type=camtype)
+                    for fn in allfiles
+            ]
+            cameraconfig = dict(
+                version=3,
+                type=camtype,
+                system=dict(),
+                postprocessing=dict(
+                    depthfilterparameters=dict(
+
+                    )
+                ),
+                skeleton=dict(),
+                camera=camera
+            )
+        else:
+            print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
+            return False
+
         json.dump(cameraconfig, open(self.args.cameraconfig, "w"), indent=4)
         if self.verbose:
             print(f"Created {self.args.cameraconfig}")
