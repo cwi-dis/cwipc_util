@@ -416,11 +416,8 @@ class Registrator:
                 type=camtype,
                 system=dict(),
                 hardware=dict(),
-                postprocessing=dict(
-                    depthfilterparameters=dict(
-
-                    )
-                ),
+                processing=dict(),
+                filtering=dict(),
                 camera=camera
             )
         elif is_kinect:
