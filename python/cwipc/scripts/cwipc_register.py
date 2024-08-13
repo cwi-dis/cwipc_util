@@ -293,20 +293,8 @@ class Registrator:
                 print("Still cannot open capturer. Giving up.")
                 return False
         assert self.capturer
-        # Capture some frames (so we know get_config() will have obtained all parameters).
-        # Get initial cameraconfig and save it
-        gotframes = 0
-        while gotframes < 3:
-            ok = self.capturer.available(True)
-            if ok:
-                pc = self.capturer.get()
-                if pc != None:
-                    if self.verbose:
-                        print(f"cwipc_register: dropped pc with {pc.count()} points")
-                    pc.free()
-                    pc= None
 
-                    gotframes += 1
+        self._capture_some_frames(self.capturer)
                     
         self.cameraconfig.load(self.capturer.get_config())
         must_reload = False
@@ -451,6 +439,7 @@ class Registrator:
     def json_from_xml(self):
         assert self.capturerFactory
         capturer = self.capturerFactory("cameraconfig.xml") # type: ignore
+        self._capture_some_frames(capturer)
         json_data = capturer.get_config()
         open(self.args.cameraconfig, 'wb').write(json_data)
 
@@ -633,7 +622,24 @@ class Registrator:
         assert camnum_to_fix
         return worst_correspondence, camnum_to_fix      
 
-    
+    def _capture_some_frames(self, capturer : cwipc_tiledsource_abstract) -> None:
+        # Capture some frames (so we know get_config() will have obtained all parameters).
+        # Get initial cameraconfig and save it
+        gotframes = 0
+        while gotframes < 3:
+            ok = capturer.available(True)
+            if ok:
+                pc = capturer.get()
+                if pc != None:
+                    if self.verbose:
+                        print(f"cwipc_register: dropped pc with {pc.count()} points")
+                    pc.free()
+                    pc= None
+
+                    gotframes += 1
+        if self.verbose:
+            print(f"cwipc_register: captured {gotframes} frames to ensure config stability")
+
 if __name__ == '__main__':
     main()
     
