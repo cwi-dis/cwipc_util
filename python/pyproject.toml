@@ -1,0 +1,34 @@
+[build-system]
+
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+
+name = "cwipc_util"
+description="Python interface to cwipc libraries (ctypes-based)"
+authors=[
+    {name="Jack Jansen", email="Jack.Jansen@cwi.nl"}
+]
+dynamic = ["version"]
+requires-python = ">= 3.9"
+dependencies = [
+    "numpy<2.0.0", 
+    "open3d", 
+    "Pillow", 
+    "opencv-python", 
+    "scipy", 
+    "matplotlib"
+]
+
+[project.scripts]
+
+cwipc_grab = "cwipc.scripts.cwipc_grab:main"
+cwipc_view = "cwipc.scripts.cwipc_view:main"
+cwipc_register = "cwipc.scripts.cwipc_register:main"
+cwipc_forward = "cwipc.scripts.cwipc_forward:main"
+cwipc_toproxy = "cwipc.scripts.cwipc_toproxy:main"
+
+[tool.setuptools.packages]
+
+find = {}
