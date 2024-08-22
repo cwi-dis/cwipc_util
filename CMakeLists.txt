@@ -4,12 +4,7 @@ cmake_policy(SET CMP0074 NEW)
 project(cwipc_util)
 
 # We need glfw3 and OpenGL (only for cwipc_window())
-find_package(glfw3 3.2)
-if(NOT glfw3_FOUND)
-	message(STATUS "glfw3: Use from third-party/glfw")
-	add_subdirectory("third-party/glfw")
-	include_directories("third-party/glfw/include")
-endif()
+find_package(glfw3 3.2 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 add_subdirectory("src")
