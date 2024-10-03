@@ -49,8 +49,10 @@ class DropWriter(cwipc_sink_abstract):
                 r["aux"] = auxdata.count()
                 if auxdata != None and auxdata.count() > 0:
                     for i in range(auxdata.count()):
-                        descr = auxdata.description(i)
-                        r[f"_{i}"] = descr
+                        auxname = auxdata.name(i)
+                        descr_dict = auxdata._parse_aux_description(auxdata.description(i))
+                        for k, v in descr_dict.items():
+                            r[f"{auxname}.{k}"] = v
                 print(repr(r))
                 pc.free()
                 
