@@ -51,5 +51,4 @@ private:
   glfw_state _appstate;
   int _width, _height;
 };
-
 #endif //window_util_hpp

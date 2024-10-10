@@ -11,6 +11,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#ifdef CWIPC_WITH_GUI
 #include "window_util.hpp"
 
 class cwipc_sink_window_impl : public cwipc_sink {
@@ -330,8 +331,10 @@ private:
         m_last_char_cv.notify_one();
     }
 };
+#endif // CWIPC_WITH_GUI
 
 cwipc_sink* cwipc_window(const char *title, char **errorMessage, uint64_t apiVersion) {
+#ifdef CWIPC_WITH_GUI
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -343,4 +346,11 @@ cwipc_sink* cwipc_window(const char *title, char **errorMessage, uint64_t apiVer
     }
 
     return new cwipc_sink_window_impl(title);
+#else
+	if (errorMessage) {
+		*errorMessage = (char *)"cwipc_window: not implemented, cwipc_util built without GUI support";
+	}
+
+	return NULL;
+#endif // CWIPC_WITH_GUI
 }
