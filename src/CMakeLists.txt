@@ -61,6 +61,9 @@ if(WIN32)
 endif()
 
 install(TARGETS cwipc_util
+	RUNTIME_DEPENDENCIES 
+	PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-"
+	POST_EXCLUDE_REGEXES ".*system32/.*\\.dll"
     EXPORT cwipc_util
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -78,7 +81,7 @@ install(EXPORT cwipc_util DESTINATION lib/cmake/cwipc_util)
 
 if(WIN32)
 	# Copy the dependent DLLs that cmake/vcpkg have created
-	install(FILES $<TARGET_RUNTIME_DLLS:cwipc_util> DESTINATION ${CMAKE_INSTALL_BINDIR})
+	# install(FILES $<TARGET_RUNTIME_DLLS:cwipc_util> DESTINATION ${CMAKE_INSTALL_BINDIR})
 	# Copy the PDB file, if it exists
 	install(FILES $<TARGET_PDB_FILE:cwipc_util> DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL)
 endif()
