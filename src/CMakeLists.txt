@@ -60,7 +60,7 @@ if(WIN32)
 	target_link_libraries(cwipc_util PRIVATE wsock32 ws2_32)
 endif()
 
-if(WINDOWS)
+if(WIN32)
 	install(TARGETS cwipc_util
 		RUNTIME_DEPENDENCIES 
 		PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-"
