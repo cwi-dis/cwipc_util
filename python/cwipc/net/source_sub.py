@@ -126,7 +126,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.started = False
         self.running = False
         self.failed = False
-        self.output_queue = queue.Queue()
+        self.output_queue = queue.Queue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []

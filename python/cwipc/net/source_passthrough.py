@@ -27,7 +27,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         self.source.set_fourcc(FOURCC)
         self.running = False
         self.verbose = verbose
-        self.output_queue = queue.Queue()
+        self.output_queue = queue.Queue(maxsize=2)
         
     def free(self) -> None:
         pass
