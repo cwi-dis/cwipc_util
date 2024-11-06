@@ -25,7 +25,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         self.source.set_fourcc(FOURCC)
         self.running = False
         self.verbose = verbose
-        self.output_queue = queue.Queue()
+        self.output_queue = queue.Queue(maxsize=2)
         self.times_decode = []
         self.streamNumber = None
         self._init_tiling()

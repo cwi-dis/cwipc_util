@@ -12,6 +12,7 @@
 #else
 #include <sys/socket.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #define closesocket(x) close(x)
 #endif
 

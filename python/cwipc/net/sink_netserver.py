@@ -13,6 +13,7 @@ from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_r
 class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     
     SELECT_TIMEOUT=0.1
+    SELECT_LONG_TIMEOUT=5.0
     QUEUE_FULL_TIMEOUT=0.001
     
     producer : Optional[cwipc_producer_abstract]
@@ -21,6 +22,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     sizes_forward : List[int]
     bandwidths_forward : List[float]
     fourcc : Optional[vrt_fourcc_type]
+    conn_sockets : List[socket.socket]
 
     def __init__(self, port : int, verbose : bool=False, nodrop : bool=False):
         threading.Thread.__init__(self)
@@ -39,7 +41,8 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', port))
         self.socket.listen()
-         
+        self.conn_sockets = []
+    
     def start(self) -> None:
         threading.Thread.start(self)
         self.started = True
@@ -48,6 +51,12 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         if self.verbose: print(f"netserver: stopping thread")
         self.stopped = True
         self.socket.close()
+        if self.input_queue:
+            try:
+                while self.input_queue.get(block=False):
+                    pass
+            except queue.Empty:
+                pass
         if self.started:
             self.join()
         
@@ -64,33 +73,67 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         if self.verbose: print(f"netserver: thread started")
         try:
             while not self.stopped and self.producer and self.producer.is_alive():
-                readable, _, errorable = select.select([self.socket], [], [], self.SELECT_TIMEOUT)
-                if self.socket in errorable:
+                #
+                # First check if there is a new incoming connection (waiting if we have no active connection sockets)
+                #
+                select_timeout = self.SELECT_LONG_TIMEOUT
+                if len(self.conn_sockets) > 0:
+                    select_timeout = self.SELECT_TIMEOUT
+                try:
+                    # We don't care about writeable conn_sockets, except that we want select to return quickly if there are any
+                    readable, _, errorable = select.select([self.socket], self.conn_sockets, [], select_timeout)
+                except socket.error:
                     continue
+                if self.socket in errorable:
+                    break
                 if self.socket in readable:
                     connSocket, other = self.socket.accept()
                     if self.verbose:
                         print(f"netserver: accepted connection from {other}")
-                    while not self.stopped and self.producer and self.producer.is_alive():
-                        t1 = time.time()
-                        data = self.input_queue.get()
-                        assert data != None
-                        hdr = self._gen_header(data)
+                    self.conn_sockets.append(connSocket)
+                #
+                # Next transmit the data over all connection sockets
+                #
+                if self.conn_sockets:
+                    t1 = time.time()
+                    data = self.input_queue.get()
+                    assert data != None
+                    hdr = self._gen_header(data)
+                    packet = hdr + data
+                    conn_socket_error : List[socket.socket]
+                    conn_socket_writeable : List[socket.socket]
+                    #
+                    # If we have a single outgoing connection we wait indefinitely, if we have multiple
+                    # outgoing connections we only transmit on those that can transmit, too bad for the
+                    # other connections.
+                    #
+                    select_timeout = self.SELECT_TIMEOUT
+                    if len(self.conn_sockets) <= 1:
+                        select_timeout = self.SELECT_LONG_TIMEOUT
+                    try:
+                        _, conn_socket_writeable, conn_socket_error = select.select([], self.conn_sockets, self.conn_sockets, select_timeout)
+                    except socket.error:
+                        continue
+                    
+                    for connSocket in conn_socket_writeable:
                         try:
-                            connSocket.sendall(hdr + data)
-                        except OSError:
-                            break
-                        t2 = time.time()
-                        if self.verbose:
-                            print(f"netserver: transmitted {len(hdr+data)} bytes")
-                        if t2 == t1: t2 = t1 + 0.0005
-                        self.times_forward.append(t2-t1)
-                        datasize = len(data)
-                        self.sizes_forward.append(datasize)
-                        self.bandwidths_forward.append(datasize/(t2-t1))
-                    connSocket.close()
-                    connSocket = None
-                    if self.verbose: print(f"netserver: connection closed")
+                            connSocket.sendall(packet)
+                        except socket.error:
+                            conn_socket_error.append(connSocket)
+                            if self.verbose:
+                                print(f"netserver: error on send to {connSocket.getpeername()}")
+                    t2 = time.time()
+                    if self.verbose:
+                        print(f"netserver: transmitted {len(hdr+data)} bytes on {len(self.conn_sockets)} connections")
+                    if t2 == t1: t2 = t1 + 0.0005
+                    self.times_forward.append(t2-t1)
+                    datasize = len(data)
+                    self.sizes_forward.append(datasize)
+                    self.bandwidths_forward.append(datasize/(t2-t1))
+                    for connSocket in conn_socket_error:
+                        connSocket.close()
+                        if self.verbose: print(f"netserver: connection to {connSocket.getpeername()} closed")
+                        self.conn_sockets.remove(connSocket)
         finally:
             self.stopped = True
             if self.verbose: print(f"netserver: thread stopping")

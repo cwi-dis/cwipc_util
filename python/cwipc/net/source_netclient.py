@@ -40,7 +40,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         self._conn_refused = False
         self.verbose = verbose
-        self.output_queue = queue.Queue()
+        self.output_queue = queue.Queue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
