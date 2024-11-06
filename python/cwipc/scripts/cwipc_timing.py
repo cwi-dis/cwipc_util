@@ -21,6 +21,7 @@ class DropWriter(cwipc_sink_abstract):
         self.output_queue = queue.Queue(maxsize=queuesize)
         self.count = 0
         self.results = []
+        self.previous_timestamp = None
         
         
     def start(self) -> None:
@@ -39,11 +40,15 @@ class DropWriter(cwipc_sink_abstract):
                 assert pc
                 # xxxjack get statistics
                 self.count = self.count + 1
+                pc_timestamp = pc.timestamp()
                 r : Dict[str, Any] = dict(
                     num=self.count,
-                    timestamp=pc.timestamp(),
+                    timestamp=pc_timestamp,
                     pointcount=pc.count(),
                 )
+                if self.previous_timestamp != None:
+                    r["frame_duration"] = pc_timestamp - self.previous_timestamp
+                self.previous_timestamp = pc_timestamp
                 auxdata = pc.access_auxiliary_data()
                 assert auxdata
                 r["aux"] = auxdata.count()
@@ -53,6 +58,10 @@ class DropWriter(cwipc_sink_abstract):
                         descr_dict = auxdata._parse_aux_description(auxdata.description(i))
                         for k, v in descr_dict.items():
                             r[f"{auxname}.{k}"] = v
+                        delta_time_depth = pc_timestamp - descr_dict["depth_timestamp"]
+                        delta_time_color = pc_timestamp - descr_dict["color_timestamp"]
+                        r[f"{auxname}.color_age"] = delta_time_color
+                        r[f"{auxname}.depth_age"] = delta_time_depth
                 print(repr(r))
                 pc.free()
                 
