@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, List, Iterable
 
 from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
 from .. import codec
+from ..util import cwipc_auxiliary_data
 from ._scriptsupport import *
 from ..net.abstract import *
 
@@ -18,12 +19,18 @@ class DropWriter(cwipc_sink_abstract):
     csvwriter : Optional[csv.DictWriter]
     csvkeys : List[str]
     details : bool
+    savergb : int
+    savergb_counter : int
+    output_filename : Optional[str]
 
     def __init__(self, args : argparse.Namespace, queuesize=5):
         self.producer = None
         self.output_queue = queue.Queue(maxsize=queuesize)
         self.count = 0
         self.details = args.details
+        self.savergb = args.savergb
+        self.savergb_counter = self.savergb
+        self.output_filename = args.output
         self.results = []
         self.csvwriter = None
         self.csvkeys = []
@@ -44,7 +51,6 @@ class DropWriter(cwipc_sink_abstract):
             try:
                 pc = self.output_queue.get(timeout=0.5)
                 assert pc
-                # xxxjack get statistics
                 self.count = self.count + 1
                 pc_timestamp = pc.timestamp()
                 r : Dict[str, Any] = dict(
@@ -61,6 +67,8 @@ class DropWriter(cwipc_sink_abstract):
                 if auxdata != None and auxdata.count() > 0:
                     for i in range(auxdata.count()):
                         auxname = auxdata.name(i)
+                        if not "timestamps" in auxname:
+                            continue
                         descr_dict = auxdata._parse_aux_description(auxdata.description(i))
                         for k, v in descr_dict.items():
                             r[f"{auxname}.{k}"] = v
@@ -68,7 +76,13 @@ class DropWriter(cwipc_sink_abstract):
                         delta_time_color = pc_timestamp - descr_dict["color_timestamp"]
                         r[f"{auxname}.color_age"] = delta_time_color
                         r[f"{auxname}.depth_age"] = delta_time_depth
+
                     self.writerecord(r)
+                    if self.savergb:
+                        self.savergb_counter -= 1
+                        if self.savergb_counter <= 0:
+                            self.save_rgb(pc, auxdata)
+                            self.savergb_counter = self.savergb
                 pc.free()
                 
             except queue.Empty:
@@ -76,6 +90,26 @@ class DropWriter(cwipc_sink_abstract):
         
         return True              
         
+    def save_rgb(self, pc : cwipc_wrapper, auxdata : cwipc_auxiliary_data) -> None:
+        import cv2
+        timestamp = pc.timestamp()
+        image_dict = auxdata.get_all_images("rgb.")
+        for serial, image in image_dict.items():
+            name = "rgb." + serial
+            filename = f"{timestamp}.{serial}.png"
+            # Jack is confused. I thought opencv always used BGR images, so those are returned from get_all_images()
+            # But now it appears that imshow() wants BGR images but imwrite() wants RGB images?
+            # Go figure...
+            if False:
+                swapped_image = image[:,:,[2,1,0]]
+            else:
+                swapped_image = image
+            ok = cv2.imwrite(filename, swapped_image)
+            if ok:
+                print(f"wrote {filename}", file=sys.stderr)
+            else:
+                print(f"Error: failed to write {filename}", file=sys.stderr)
+    
     def feed(self, pc : cwipc_wrapper) -> None:
         self.output_queue.put(pc)
         
@@ -89,7 +123,10 @@ class DropWriter(cwipc_sink_abstract):
     def init_csv(self, record : Dict[str, Any]) -> None:
         fieldnames = record.keys()
         self.csvkeys = self.filter_keys(fieldnames)
-        self.csvwriter = csv.DictWriter(sys.stdout, self.csvkeys)
+        fp = sys.stdout
+        if self.output_filename:
+            fp = open(self.output_filename, "w")
+        self.csvwriter = csv.DictWriter(fp, self.csvkeys)
         self.csvwriter.writeheader()
 
     def filter_record(self, record: Dict[str, Any]) -> Dict[str, any]:
@@ -118,6 +155,8 @@ def main():
     
     parser = ArgumentParser(description="Get detailed timestamps from a capturer")
     parser.add_argument("--details", action="store_true", help="Output detailed timing records")
+    parser.add_argument("--savergb", metavar="N", type=int, default=0, help="Save RGB images for every N-th frame")
+    parser.add_argument("--output", "-o", metavar="FILE", type=str, help="Store CSV output in FILE")
 
     args = parser.parse_args()
     
@@ -128,6 +167,8 @@ def main():
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
     source.request_auxiliary_data("timestamps")
+    if args.savergb:
+        source.request_auxiliary_data("rgb")
 
     kwargs = {}
     writer = DropWriter(args=args)
