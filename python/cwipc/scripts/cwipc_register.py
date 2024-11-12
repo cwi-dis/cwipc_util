@@ -328,6 +328,16 @@ class Registrator:
             t.set_matrix(matrix)
             self.cameraconfig.save()
             return True
+        if self.args.coarse and not self.cameraconfig.is_identity():
+            print(f"cwipc_register: reset matrix")
+            pass 
+            for i in range(self.cameraconfig.camera_count()):
+                t = self.cameraconfig.get_transform(i)
+                t.set_matrix(transformation_identity())
+            self.cameraconfig.save()
+            if self.verbose:
+                print(f"cwipc_register: reload cameraconfig")
+            self.capturer.reload_config(self.cameraconfig.filename)
         if self.args.coarse or self.cameraconfig.is_identity():
             new_pc = None
             while new_pc == None:
