@@ -115,7 +115,7 @@ q,ESC         Quit
                         self.cur_pc.free()
                     self.cur_pc = pc
                 if self.single_step and pc != None:
-                    print("xxxjack single step done")
+                    print(f"single_step: ts={pc.timestamp()}")
                     self.paused = True
                     self.single_step = False
             except queue.Empty:
@@ -194,6 +194,9 @@ q,ESC         Quit
             self.write_current_pointcloud()
         elif cmd == " ":
             self.paused = not self.paused
+            if self.paused:
+                if self.cur_pc:
+                    print(f"pause: ts={self.cur_pc.timestamp()}")
         elif cmd == ".":
             self.single_step = True
             self.paused = False
