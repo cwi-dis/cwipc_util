@@ -358,6 +358,9 @@ class Registrator:
                     print(f"cwipc_register: save {self.cameraconfig.filename}")
                 self.cameraconfig.save()
                 must_reload = True
+        else:
+            if self.verbose:
+                print(f"cwipc_register: skipping coarse calibration, cameraconfig already has matrices")
         
         if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
             if must_reload:
@@ -378,6 +381,9 @@ class Registrator:
             new_pc = None
             if not self.dry_run:
                 self.cameraconfig.save()
+        else:
+            if self.verbose:
+                print(f"cwipc_register: skipping fine calibration, not needed")
         
         return False
     
