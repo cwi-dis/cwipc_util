@@ -46,20 +46,24 @@ q,ESC         Quit
         self.rgb_cw = False
         self.rgb_ccw = False
         self.timestamps = False
+        self.paused = False
+        self.single_step = False
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
             self.rgb_cw = args.rgb_cw
             self.rgb_ccw = args.rgb_ccw
             self.timestamps = args.timestamps
+            # If we want paused we actually set single_step (so we get the first point cloud)
+            if args.paused:
+                self.paused = True
+                self.single_step = True
         for k in kwargs:
             # Should only be the ones that can also be in args, but hey...
             setattr(self, k, kwargs[k])
         self.output_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.cur_pc = None
-        self.paused = False
-        self.single_step = False
         self.nodrop = nodrop
         self.tilefilter = None
         self.filter_mode = 'mask'

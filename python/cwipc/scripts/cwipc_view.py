@@ -13,6 +13,7 @@ def main():
     SetupStackDumper()
     parser = ArgumentParser(description="View pointcloud streams", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
+    parser.add_argument("--paused", action="store_true", help="Start paused")
     parser.add_argument("--skeleton", action="store_true", help="Get and render skeleton from the capture (in stead of point cloud). Only for source --kinect or --k4aoffline")
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
