@@ -45,11 +45,13 @@ q,ESC         Quit
         self.show_rgb = False
         self.rgb_cw = False
         self.rgb_ccw = False
+        self.timestamps = False
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
             self.rgb_cw = args.rgb_cw
             self.rgb_ccw = args.rgb_ccw
+            self.timestamps = args.timestamps
         for k in kwargs:
             # Should only be the ones that can also be in args, but hey...
             setattr(self, k, kwargs[k])
@@ -160,6 +162,17 @@ q,ESC         Quit
         assert self.visualiser
         cellsize = self.point_size_min
         if pc:
+            if self.timestamps:
+                print(f'timestamps: ts={pc.timestamp()}')
+                auxdata = pc.access_auxiliary_data()
+                if auxdata != None and auxdata.count() > 0:
+                    for i in range(auxdata.count()):
+                        auxname = auxdata.name(i)
+                        if not "timestamps" in auxname:
+                            continue
+                        descr = auxdata.description(i)
+                        print(f'timestamps:    {auxname}: {descr}')
+
             # First show RGB, if wanted
             if self.show_rgb:
                 self.draw_rgb(pc)

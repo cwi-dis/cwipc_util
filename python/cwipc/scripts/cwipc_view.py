@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
+    parser.add_argument("--timestamps", action="store_true", help="Print detailed timestamp information about every point cloud displayed")
     parser.add_argument("--help_commands", action="store_true", help="List interactive commands and exit")
     args = parser.parse_args()
     if args.help_commands:
@@ -33,6 +34,8 @@ def main():
     else:
         visualizer = None
 
+    if args.timestamps:
+        source.request_auxiliary_data("timestamps")
     if args.skeleton:
         source.request_auxiliary_data("skeleton")
     if args.rgb:
