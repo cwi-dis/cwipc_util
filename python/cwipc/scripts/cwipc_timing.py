@@ -129,7 +129,7 @@ class DropWriter(cwipc_sink_abstract):
         self.csvwriter = csv.DictWriter(fp, self.csvkeys)
         self.csvwriter.writeheader()
 
-    def filter_record(self, record: Dict[str, Any]) -> Dict[str, any]:
+    def filter_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
         rv = {}
         for k, v in record.items():
             if k in self.csvkeys:
