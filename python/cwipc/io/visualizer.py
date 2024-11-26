@@ -61,7 +61,8 @@ q,ESC         Quit
         for k in kwargs:
             # Should only be the ones that can also be in args, but hey...
             setattr(self, k, kwargs[k])
-        self.output_queue = queue.Queue(maxsize=2)
+        queue_size = 1 if self.timestamps else 2
+        self.output_queue = queue.Queue(maxsize=queue_size)
         self.verbose = verbose
         self.cur_pc = None
         self.nodrop = nodrop

@@ -288,7 +288,7 @@ class SourceServer:
                     pc = filter.filter(pc)
                 self.pointcounts_grab.append(pc.count())
                 pc_timestamp = pc.timestamp()/1000.0
-                if self.verbose: print(f'grab: captured {pc.count()} points')
+                if self.verbose: print(f'grab: captured {pc.count()} points, ts={pc.timestamp()}')
                 t1 = time.time()
                 if self.viewer: 
                     t = pc.timestamp()
