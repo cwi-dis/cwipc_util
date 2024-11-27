@@ -53,9 +53,10 @@ q,ESC         Quit
             self.show_rgb = args.rgb
             self.rgb_cw = args.rgb_cw
             self.rgb_ccw = args.rgb_ccw
-            self.timestamps = args.timestamps
+            if 'timestamp' in args:
+                self.timestamps = args.timestamps
             # If we want paused we actually set single_step (so we get the first point cloud)
-            if args.paused:
+            if 'paused' in args and args.paused:
                 self.paused = True
                 self.single_step = True
         for k in kwargs:
