@@ -866,7 +866,7 @@ class cwipc_auxiliary_data:
                 desc["image_format"] = "RGB"
             elif bpp == 4:
                 desc["image_format"] = "RGBA"
-        elif "format" in desc:
+        if "format" in desc:
             image_format = desc['format']
             if image_format == 2:
                 desc["bpp"] = 3
@@ -877,6 +877,10 @@ class cwipc_auxiliary_data:
             elif image_format == 4:
                 desc["bpp"] = 2 # 16-bit grey
                 desc["image_format"] = "GREY"
+            else:
+                # This caters for newer realsense code, which puts a string format specifier into the format parameter.
+                # Note that this will override any format surmised by looking at bpp
+                desc["image_format"] = image_format
         return desc
 
     def get_image(self, idx : int) -> numpy.typing.NDArray[Any]:
