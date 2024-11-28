@@ -861,22 +861,22 @@ class cwipc_auxiliary_data:
         if "bpp" in desc:
             bpp = desc["bpp"]
             if bpp == 2:
-                desc["image_format"] = "GREY"
+                desc["image_format"] = "Z16"
             elif bpp == 3:
-                desc["image_format"] = "RGB"
+                desc["image_format"] = "RGB8"
             elif bpp == 4:
                 desc["image_format"] = "RGBA"
         if "format" in desc:
             image_format = desc['format']
             if image_format == 2:
                 desc["bpp"] = 3
-                desc["image_format"] = "RGB"
+                desc["image_format"] = "RGB8"
             elif image_format == 3:
                 desc["bpp"] = 4 # RGBA
                 desc["image_format"] = "BGRA"
             elif image_format == 4:
                 desc["bpp"] = 2 # 16-bit grey
-                desc["image_format"] = "GREY"
+                desc["image_format"] = "Z16"
             else:
                 # This caters for newer realsense code, which puts a string format specifier into the format parameter.
                 # Note that this will override any format surmised by looking at bpp
@@ -891,20 +891,22 @@ class cwipc_auxiliary_data:
         descr = self.get_image_description(idx)
         image_format = descr["image_format"]
         image_data = self.data(idx)
-        if image_format == "GREY":
+        if image_format == "Z16":
             np_image_data_raw = numpy.frombuffer(image_data, numpy.uint16)
             shape = (descr["height"], descr["width"])
             np_image_data = numpy.reshape(np_image_data_raw, shape)
-        else:
+        elif image_format == "RGB8":
             np_image_data_bytes = numpy.frombuffer(image_data, numpy.uint8)
             shape = (descr["height"], descr["width"], descr["bpp"])
             np_image_data = numpy.reshape(np_image_data_bytes, shape)
-            # xxxjack This code knows about Realsense and Kinect RGB formats.
-            if image_format == "RGB":
-                # We want to return BGR (because that is apparently what OpenCV uses). So reverse the channels.
-                np_image_data = np_image_data[:,:,[2,1,0]]
-            else:
-                np_image_data = np_image_data[:,:,[0,1,2]]
+            np_image_data = np_image_data[:,:,[2,1,0]]
+        elif image_format == "BGRA":
+            np_image_data_bytes = numpy.frombuffer(image_data, numpy.uint8)
+            shape = (descr["height"], descr["width"], descr["bpp"])
+            np_image_data = numpy.reshape(np_image_data_bytes, shape)
+            np_image_data = np_image_data[:,:,[0,1,2]]
+        else:
+            raise CwipcError(f"Unknown auxiliary data image format: {repr(image_format)}")
         return np_image_data
     
     def get_all_images(self, pattern : str = "") -> Dict[str, numpy.typing.NDArray[Any]]:
