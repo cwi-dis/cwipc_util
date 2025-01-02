@@ -38,13 +38,19 @@ def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     if _bin2dash_dll_reference: return _bin2dash_dll_reference
     
     if libname == None:
+        # Backward compatibility: if the environment variable VRTOGETHER_BIN2DASH_PATH is set, use that.
         libname = os.environ.get('VRTOGETHER_BIN2DASH_PATH')
         if not libname:
-            libname = ctypes.util.find_library('bin2dash')
+            # Current preferred use: SIGNALS_SMD_PATH points to the right directory.
+            dirname = os.environ.get('SIGNALS_SMD_PATH')
+            if dirname:
+                libname = os.path.join(dirname, 'bin2dash.so')
+        if not libname:
+            libname = ctypes.util.find_library('bin2dash.so')
             if not libname:
-                libname = ctypes.util.find_library('bin2dash.so')
+                libname = ctypes.util.find_library('bin2dash')
             if not libname:
-                raise Bin2dashError('Dynamic library bin2dash not found')
+                raise Bin2dashError('Dynamic library bin2dash not found. Set SIGNALS_SMD_PATH to the directory containing the bin2dash library')
     assert libname
     # Signals library needs to be able to find some data files stored next to the DLL.
     # Tell it where they are.

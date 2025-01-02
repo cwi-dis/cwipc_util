@@ -6,7 +6,7 @@ import sys
 import threading
 import queue
 from typing import Optional, List, Union
-from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract, vrt_fourcc_type
 
 SUB_API_VERSION = 0x20210729A
 
@@ -53,11 +53,17 @@ def _signals_unity_bridge_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     if _signals_unity_bridge_dll_reference: return _signals_unity_bridge_dll_reference
     
     if libname == None:
+        # Backward compatibility: if the environment variable VRTOGETHER_SUB_PATH is set, use that.
         libname = os.environ.get('VRTOGETHER_SUB_PATH')
         if not libname:
-            libname = ctypes.util.find_library('signals-unity-bridge')
+            # Current preferred use: SIGNALS_SMD_PATH points to the right directory.
+            dirname = os.environ.get('SIGNALS_SMD_PATH')
+            if dirname:
+                libname = os.path.join(dirname, 'signals-unity-bridge.so')
+        if not libname:
+            libname = ctypes.util.find_library('signals-unity-bridge.so')
             if not libname:
-                libname = ctypes.util.find_library('signals-unity-bridge.so')
+                libname = ctypes.util.find_library('signals-unity-bridge')
             if not libname:
                 raise SubError('Dynamic library signals-unity-bridge not found')
     assert libname
@@ -114,6 +120,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
     sizes_receive: List[int]
     bandwidth_receive: List[float]
     unwanted_receive: List[int]
+    fourcc : Optional[vrt_fourcc_type]
 
     output_queue : queue.Queue[Optional[bytes]]
 
@@ -134,6 +141,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.streamIndex = streamIndex
         self.streamCount = 0
         self.tile_info = None
+        self.fourcc = None
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
@@ -162,7 +170,12 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
             assert self.dll
             self.dll.sub_destroy(self.handle)
             self.handle = None
-            
+    
+    def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
+        self.fourcc = fourcc
+        # xxxjack we should check that the fourcc is valid for the stream
+        # but we don't do so yet.
+
     def start(self) -> None:
         assert self.handle
         assert self.dll
