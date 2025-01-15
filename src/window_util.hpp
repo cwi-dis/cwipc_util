@@ -9,7 +9,6 @@
 #pragma once
 
 #define GLFW_INCLUDE_GLU
-#define GL_SILENCE_DEPRECATION
 
 #include "GLFW/glfw3.h"
 #include <iostream>
