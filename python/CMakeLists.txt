@@ -69,10 +69,10 @@ add_test(NAME cwipc_view
 	)
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv)
 
-#add_test(NAME cwipc_register
-#	COMMAND ${Python3_BINDIR}/cwipc_register --help
-#	)
-#cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv)
+add_test(NAME cwipc_register
+	COMMAND ${Python3_BINDIR}/cwipc_register --help
+	)
+cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv)
 
 add_test(NAME cwipc_forward
 	COMMAND ${Python3_BINDIR}/cwipc_forward --help
