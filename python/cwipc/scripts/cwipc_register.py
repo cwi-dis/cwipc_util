@@ -18,8 +18,6 @@ from cwipc.io.visualizer import Visualizer
 
 try:
     import cwipc.realsense2
-    # Workaround for https://github.com/intel-isl/Open3D/issues/3283
-    _ = cwipc.realsense2.cwipc_realsense2_dll_load()
 except ModuleNotFoundError:
     cwipc.realsense2 = None
 except FileNotFoundError:
