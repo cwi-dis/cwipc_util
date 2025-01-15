@@ -73,6 +73,7 @@ add_test(NAME cwipc_register
 	COMMAND ${Python3_BINDIR}/cwipc_register --help
 	)
 cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv)
+set_tests_properties(cwipc_register PROPERTIES RUN_SERIAL TRUE)
 
 add_test(NAME cwipc_forward
 	COMMAND ${Python3_BINDIR}/cwipc_forward --help
