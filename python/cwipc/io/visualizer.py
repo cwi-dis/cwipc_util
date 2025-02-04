@@ -48,6 +48,7 @@ q,ESC         Quit
         self.timestamps = False
         self.paused = False
         self.single_step = False
+        self.redraw_requested = False
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
@@ -107,17 +108,14 @@ q,ESC         Quit
         while self._continue_running():
             try:
                 if self.paused and self.nodrop:
-                    ok = self.draw_pc(None)
-                    if not ok:
-                        break
+                    self.draw_pc(None)
                     continue
                 get_timeout = (1.0 / self.display_fps)
                 pc = self.output_queue.get(timeout=get_timeout)
                 if self.paused:
                     if pc: pc.free()
                     pc = None
-                ok = self.draw_pc(pc)
-                if not ok: break
+                self.draw_pc(pc)
                 if not self.paused:
                     if self.cur_pc:
                         self.cur_pc.free()
@@ -161,12 +159,16 @@ q,ESC         Quit
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
-    def draw_pc(self, pc : Optional[cwipc_wrapper]) -> bool:
+    def draw_pc(self, pc : Optional[cwipc_wrapper]) -> None:
         """Draw pointcloud and interact with the visualizer.
         If None is passed as the pointcloud it will only interact (keeping the previous pointcloud visible)
         """
         assert self.visualiser
         cellsize = self.point_size_min
+        if self.redraw_requested:
+            self.redraw_requested = False
+            if pc == None:
+                pc = self.cur_pc
         if pc:
             if self.timestamps:
                 print(f'timestamps: ts={pc.timestamp()}')
@@ -197,16 +199,18 @@ q,ESC         Quit
                 pc_to_show.free()
             if not ok: 
                 print('display: window.feed() returned False')
-                return False
-        return self.interact_visualiser() # Note we pass the original pc to interact, not the modified pc.
+                self.stop()
+                return
+        self.interact_visualiser() # Note we pass the original pc to interact, not the modified pc.
 
-    def interact_visualiser(self) -> bool:
+    def interact_visualiser(self) -> None:
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
         cmd = self.visualiser.interact(None, "?h\x1bq .<+-cwamirsn0123456789", interaction_duration)
         if cmd == "q" or cmd == "\x1b":
-            return False
+            self.stop()
+            return
         elif cmd == '?' or cmd == 'h':
             print(self.HELP)
         elif cmd == "w" and self.cur_pc:
@@ -226,6 +230,7 @@ q,ESC         Quit
 
         elif cmd == 'a':
             self.select_tile_or_stream(all=True)
+            self.redraw_requested = True
         elif cmd == 'm':
             self.select_mode('mask')
         elif cmd == 'i':
@@ -234,15 +239,19 @@ q,ESC         Quit
             self.select_mode('stream')
         elif cmd == 'n':
             self.select_tile_or_stream(increment=True)
+            self.redraw_requested = True
         elif cmd == 'r':
             pass # toggle skeleton rendering (managed on cwipc_view)
         elif cmd in '0123456789':
             self.select_tile_or_stream(number=int(cmd))
+            self.redraw_requested = True
         elif cmd == '+':
             self.point_size_power += 1
+            self.redraw_requested = True
         elif cmd == '-':
             if self.point_size_power>0:
                 self.point_size_power -= 1
+                self.redraw_requested = True
         elif cmd == '\0':
             pass
         elif cmd == 'c':
@@ -250,8 +259,7 @@ q,ESC         Quit
         else:
             print(f"Unknown command {repr(cmd)}")
             print(self.HELP, flush=True)
-        return True
-
+    
     def write_current_pointcloud(self):
         """Save the current point cloud. May be overridden in subclasses to do something else."""
         assert self.cur_pc
