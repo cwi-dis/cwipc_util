@@ -6,6 +6,8 @@ import argparse
 import queue
 from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
 from ..net.abstract import *
+from ..filters.abstract import cwipc_abstract_filter
+from ..filters.colorize import ColorizeFilter
 import cv2
 import numpy as np
 
@@ -28,6 +30,7 @@ a             Show all tiles/streams
 m             Toggle tile/stream selection tile mask mode
 i             Toggle tile/stream selection tile index mode
 s             Toggle tile/stream selection stream mode
+f             Colorize points to show contributing cameras
 r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
 c             Reload cameraconfig
@@ -35,6 +38,7 @@ c             Reload cameraconfig
 q,ESC         Quit
     """
     output_queue : queue.Queue[Optional[cwipc_wrapper]]
+    display_filter : Optional[cwipc_abstract_filter]
 
     def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None, title="cwipc_view", **kwargs):
         self.title = title
@@ -49,6 +53,7 @@ q,ESC         Quit
         self.paused = False
         self.single_step = False
         self.redraw_requested = False
+        self.display_filter = None
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
@@ -76,6 +81,7 @@ q,ESC         Quit
         self.point_size_min = 0.0005
         self.point_size_power = 0
         self.display_fps = 30
+        self.display_filter = None
         
     def statistics(self) -> None:
         pass
@@ -190,8 +196,10 @@ q,ESC         Quit
             if self.verbose:
                 if not self.paused:
                     print(f'display: showing pointcloud timestamp={pc.timestamp()} cellsize={pc.cellsize()} latency={time.time() - pc.timestamp()/1000.0:.3f}')
+            if self.display_filter:
+                pc_to_show = self.display_filter.filter(pc_to_show)
             if self.tilefilter:
-                pc_to_show = cwipc_tilefilter(pc, self.tilefilter)
+                pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
                 if self.verbose:
                     print(f'display: selected {pc_to_show.count()} of {pc.count()} points')
             ok = self.visualiser.feed(pc_to_show, True)
@@ -207,7 +215,7 @@ q,ESC         Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cwamirsn0123456789", interaction_duration)
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwamirsn0123456789", interaction_duration)
         if cmd == "q" or cmd == "\x1b":
             self.stop()
             return
@@ -256,6 +264,12 @@ q,ESC         Quit
             pass
         elif cmd == 'c':
             self.reload_cameraconfig()
+        elif cmd == 'f':
+            if self.display_filter == None:
+                self.display_filter = ColorizeFilter(0.8, "camera")
+            else:
+                self.display_filter = None
+            self.redraw_requested = True
         else:
             print(f"Unknown command {repr(cmd)}")
             print(self.HELP, flush=True)
