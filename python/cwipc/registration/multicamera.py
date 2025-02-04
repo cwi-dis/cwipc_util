@@ -75,12 +75,14 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.analyzer = None
         assert self.aligner_class
         self.analyzer = self.analyzer_class()
+        self.analyzer.verbose = self.verbose
         assert self.current_pointcloud
         self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
 
     def _prepare_compute(self):
         self.aligner = None
         self.aligner = self.aligner_class()
+        self.aligner.verbose = self.verbose
         assert self.current_pointcloud
         self.aligner.add_tiled_pointcloud(self.current_pointcloud)
 
@@ -101,7 +103,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.results = self.analyzer.get_ordered_results()
         camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate([])
         if self.verbose:
-            print(f"Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            print(f"registration.MultiCamera: Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
@@ -110,7 +112,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         camnums_already_fixed = []
         while camnum_to_fix != None:
             if self.verbose:
-                print(f"Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
+                print(f"registration.MultiCamera: Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
@@ -135,7 +137,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.analyzer.run()
             self.results = self.analyzer.get_ordered_results()
             if self.verbose:
-                print(f"Step {stepnum}: per-camera correspondence, ordered worst-first:")
+                print(f"registration.MultiCamera: Step {stepnum}: per-camera correspondence, ordered worst-first:")
                 for _camnum, _correspondence, _weight in self.results:
                     print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
             # See results, and whether it's worth it to do another step
@@ -148,12 +150,12 @@ class MultiCamera(MultiAlignmentAlgorithm):
             # - We may also want to try another (more expensive) algorithm
             if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence-0.0001:
                 if self.verbose:
-                    print(f"Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
+                    print(f"registration.MultiCamera: Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
                 break
             stepnum += 1
         self.proposed_cellsize = total_correspondence*self.cellsize_factor
         if self.verbose:
-            print(f"After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            print(f"registration.MultiCamera: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
@@ -224,7 +226,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             pc_new = pc
             must_free_new = False
         if self.verbose:
-            print(f"Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
+            print(f"registration.MultiCamera: Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
         pointcounts = []
         for i in range(2**ntiles_orig):
             pc_tile = cwipc_tilefilter(pc_new, i)
@@ -232,7 +234,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             pc_tile.free()
             pointcounts.append(pointcount)
         if self.verbose:
-            print(f"Pointcounts per tile, after voxelizing:")
+            print(f"registration.MultiCamera: Pointcounts per tile, after voxelizing:")
             for i in range(len(pointcounts)):
                 print(f"\ttile {i}: {pointcounts[i]}")
         if must_free_new:

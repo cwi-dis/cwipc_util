@@ -38,7 +38,7 @@ class RegistrationVisualizer(Visualizer):
         self.captured_pc : Optional[cwipc_wrapper] = None
 
     def write_current_pointcloud(self):
-        print(f"xxxjack captured {self.cur_pc}")
+        print(f"cwipc_register: captured {self.cur_pc}")
         self.captured_pc = self.cur_pc
         self.cur_pc = None
         self.stop()
@@ -66,6 +66,7 @@ def main():
     parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
     parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
     
+    parser.add_argument("--show_plot", action="store_true", help="After each fine aligner step show a graph of the results")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     
@@ -234,12 +235,13 @@ class Registrator:
         self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
         self.args = args
         self.verbose = self.args.verbose
+        self.show_plot = self.args.show_plot
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
         if self.args.recording:
             if self.args.cameraconfig:
-                print("Cannot use --cameraconfig with a recording")
+                print("cwipc_register: Cannot use --cameraconfig with a recording")
                 sys.exit(1)
             self.args.cameraconfig = os.path.realpath(os.path.join(self.args.recording, DEFAULT_FILENAME))
         if not self.args.cameraconfig:
@@ -253,7 +255,7 @@ class Registrator:
             if os.path.exists("cwipc_register_debug"):
                 shutil.rmtree("cwipc_register_debug")
             os.mkdir("cwipc_register_debug")
-            print(f"Will produce debug files in cwipc_register_debug")
+            print(f"cwipc_register: Will produce debug files in ./cwipc_register_debug")
 
     def __del__(self):
         if self.capturer != None:
@@ -276,19 +278,19 @@ class Registrator:
             # Ensure that we have specified the capturer name, and that it is a supported one.
             supported = ["kinect", "k4aoffline", "realsense"]
             if not self.capturerName in supported:
-                print("Capturer needs to be specified for --fromxml")
-                print(f"Supported capturers: {' '.join(supported)}")
+                print("cwipc_register: Capturer needs to be specified for --fromxml")
+                print(f"cwipc_register: Supported capturers: {' '.join(supported)}")
                 return False
             self.json_from_xml()
             return True
         if not self.open_capturer():
             if self.args.recording:
-                print(f"Cannot open capturer, probably an issue with {self.args.cameraconfig}")
+                print(f"cwipc_register: Cannot open capturer, probably an issue with {self.args.cameraconfig}")
                 return False
-            print("Cannot open capturer. Presume missing cameraconfig, try to create it.")
+            print("cwipc_register: Cannot open capturer. Presume missing cameraconfig, try to create it.")
             self.create_cameraconfig()
             if not self.open_capturer():
-                print("Still cannot open capturer. Giving up.")
+                print("cwipc_register: Still cannot open capturer. Giving up.")
                 return False
         assert self.capturer
 
@@ -401,10 +403,10 @@ class Registrator:
                 allfiles.append(fn)
                 is_realsense = True
         if is_realsense and is_kinect:
-            print(f"Directory {self.args.recording} contains both .mkv and .bag files")
+            print(f"cwipc_register: Directory {self.args.recording} contains both .mkv and .bag files")
             return False
         if not is_realsense and not is_kinect:
-            print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
+            print(f"cwipc_register: Directory {self.args.recording} contains neither .mkv nor .bag files")
             return False
         if is_realsense:
             camtype = "realsense_playback"
@@ -442,12 +444,12 @@ class Registrator:
                 camera=camera
             )
         else:
-            print(f"Directory {self.args.recording} contains neither .mkv nor .bag files")
+            print(f"cwipc_register: Directory {self.args.recording} contains neither .mkv nor .bag files")
             return False
 
         json.dump(cameraconfig, open(self.args.cameraconfig, "w"), indent=4)
         if self.verbose:
-            print(f"Created {self.args.cameraconfig}")
+            print(f"cwipc_register: Created {self.args.cameraconfig}")
         return True
     
     def json_from_xml(self):
@@ -461,7 +463,7 @@ class Registrator:
         assert self.capturerFactory
         # xxxjack this will eventually fail for generic capturer
         if not self.capturerName:
-            print(f"{self.progname}: selected capturer does not need calibration")
+            print(f"cwipc_register: selected capturer does not need calibration")
             return False
         # Step one: Try to open with an existing cameraconfig.
         if self.capturer != None:
@@ -486,9 +488,9 @@ class Registrator:
         if not self.dry_run:
             self.cameraconfig.save()
             if self.verbose:
-                print(f"Saved {self.args.cameraconfig}")
+                print(f"cwipc_register: Saved {self.args.cameraconfig}")
         else:
-            print(f"Not saving {self.args.cameraconfig}, --dry-run specified.")
+            print(f"cwipc_register: Not saving {self.args.cameraconfig}, --dry-run specified.")
         
     def capture(self) -> cwipc.cwipc_wrapper:
         if self.args.nograb:
@@ -539,7 +541,7 @@ class Registrator:
             cwipc.cwipc_write(filename, pc)
             filename = f"cwipc_register_debug/{label}-cameraconfig.json"
             self.cameraconfig.save_to(filename)
-            print(f"Saved pointcloud and cameraconfig for {label}")
+            print(f"cwipc_register: Saved pointcloud and cameraconfig for {label}")
             
     def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         if self.verbose:
@@ -556,9 +558,9 @@ class Registrator:
         ok = aligner.run()
         stop_time = time.time()
         if self.verbose:
-            print(f"coarse aligner ran for {stop_time-start_time:.3f} seconds")
+            print(f"cwipc_register: coarse aligner ran for {stop_time-start_time:.3f} seconds")
         if not ok:
-            print("Could not do coarse registration")
+            print("cwipc_register: Could not do coarse registration")
             return None
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = aligner.get_result_transformations()
@@ -575,16 +577,16 @@ class Registrator:
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         if self.verbose:
-            print(f"cwipc_register: Use coarse alignment class {self.fine_aligner_class.__name__}")
+            print(f"cwipc_register: Use fine alignment class {self.fine_aligner_class.__name__}")
         aligner = self.fine_aligner_class()
         aligner.verbose = self.verbose
-        # aligner.debug = self.debug
+        #aligner.debug = self.debug
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001
 
         aligner.verbose = True
-        aligner.show_plot = False
+        aligner.show_plot = self.show_plot
         aligner.add_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
             aligner.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
@@ -592,9 +594,9 @@ class Registrator:
         ok = aligner.run()
         stop_time = time.time()
         if self.verbose:
-            print(f"fine aligner ran for {stop_time-start_time:.3f} seconds")
+            print(f"cwipc_register: fine aligner ran for {stop_time-start_time:.3f} seconds")
         if not ok:
-            print("Could not do fine registration")
+            print("cwipc_register: Could not do fine registration")
             sys.exit(1)
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = aligner.get_result_transformations()
@@ -615,9 +617,9 @@ class Registrator:
         start_time = time.time()
         analyzer.run()
         stop_time = time.time()
-        print(f"analyzer ran for {stop_time-start_time:.3f} seconds")
+        print(f"cwipc_register: analyzer ran for {stop_time-start_time:.3f} seconds")
         results = analyzer.get_ordered_results()
-        print(f"Sorted correspondences after {label}")
+        print(f"cwipc_register: Sorted correspondences after {label}")
         worst_correspondence = 0
         for camnum, correspondence, weight in results:
             print(f"\tcamnum={camnum}, correspondence={correspondence}, weight={weight}")
