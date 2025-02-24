@@ -59,7 +59,6 @@ target_link_libraries(cwipc_util PRIVATE nlohmann_json::nlohmann_json)
 if(WIN32)
 	target_link_libraries(cwipc_util PRIVATE wsock32 ws2_32)
 endif()
-
 if(WIN32)
 	install(TARGETS cwipc_util
 		RUNTIME_DEPENDENCIES 
@@ -79,6 +78,11 @@ else()
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	PUBLIC_HEADER DESTINATION include/cwipc_util
 	)
+endif()
+
+if(ANDROID)
+	file(COPY ${OpenMP_omp_LIBRARY} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+	install(FILES ${OpenMP_omp_LIBRARY} DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cwipc_util
