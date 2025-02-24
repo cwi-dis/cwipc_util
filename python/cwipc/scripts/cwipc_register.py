@@ -60,7 +60,9 @@ def main():
     parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
-    
+    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment algorithm to use")
+    parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
+
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
     parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
@@ -224,6 +226,17 @@ class CameraConfig:
 
 class Registrator:
     def __init__(self, args : argparse.Namespace):
+        self.progname = sys.argv[0]
+        self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
+        self.capturerName = None
+        self.capturer = None
+        self.args = args
+        self.verbose = self.args.verbose
+        self.show_plot = self.args.show_plot
+        self.debug = self.args.debug
+        self.dry_run = self.args.dry_run
+        self.check_coarse_alignment = False # This can be a very expensive operation...
+
         self.no_aruco = args.no_aruco
         if self.no_aruco:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
@@ -231,14 +244,17 @@ class Registrator:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseArucoRgb
         else:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
-        self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
-        self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
-        self.args = args
-        self.verbose = self.args.verbose
-        self.show_plot = self.args.show_plot
-        self.debug = self.args.debug
-        self.dry_run = self.args.dry_run
-        self.check_coarse_alignment = False # This can be a very expensive operation...
+
+        if args.algorithm_fine:
+            self.fine_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_fine)
+        else:
+            self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
+
+        if args.algorithm_analyzer:
+            self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
+        else:
+            self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
+
         if self.args.recording:
             if self.args.cameraconfig:
                 print("cwipc_register: Cannot use --cameraconfig with a recording")
@@ -247,10 +263,6 @@ class Registrator:
         if not self.args.cameraconfig:
             self.args.cameraconfig = DEFAULT_FILENAME
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
-        self.progname = sys.argv[0]
-        self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
-        self.capturerName = None
-        self.capturer = None
         if self.debug:
             if os.path.exists("cwipc_register_debug"):
                 shutil.rmtree("cwipc_register_debug")
@@ -634,7 +646,7 @@ class Registrator:
                 correspondence = results[i][1]
                 break
         if self.debug:
-            analyzer.plot(filename="", show=True)
+            analyzer.plot(filename="", show=True, cumulative=True)
         assert camnum_to_fix
         return worst_correspondence, camnum_to_fix      
 
