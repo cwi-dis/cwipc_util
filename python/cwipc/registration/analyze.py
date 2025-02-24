@@ -443,3 +443,4 @@ class RegistrationAnalyzerFilteredReverse(RegistrationAnalyzerReverse):
             filtered_nparray = orig_nparray[bitmap]
             self.per_camera_nparray_others[camnum] = filtered_nparray
                     
+DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer

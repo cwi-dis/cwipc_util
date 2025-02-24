@@ -248,12 +248,12 @@ class Registrator:
         if args.algorithm_fine:
             self.fine_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_fine)
         else:
-            self.fine_aligner_class = cwipc.registration.multicamera.MultiCamera
+            self.fine_aligner_class = cwipc.registration.multicamera.DEFAULT_FINE_ALIGNMENT_ALGORITHM
 
         if args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
-            self.analyzer_class = cwipc.registration.analyze.RegistrationAnalyzer
+            self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
 
         if self.args.recording:
             if self.args.cameraconfig:

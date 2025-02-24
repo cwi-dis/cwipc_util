@@ -251,3 +251,5 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.current_pointcloud = cwipc_from_packet(self.current_pointcloud.get_packet())
             self.current_pointcloud_is_new = True
         return self.current_pointcloud
+
+DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCamera
