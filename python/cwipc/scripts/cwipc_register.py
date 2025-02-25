@@ -39,7 +39,6 @@ class RegistrationVisualizer(Visualizer):
         self.captured_pc : Optional[cwipc_wrapper] = None
 
     def write_current_pointcloud(self):
-        print(f"cwipc_register: captured {self.cur_pc}")
         self.captured_pc = self.cur_pc
         self.cur_pc = None
         self.stop()
@@ -59,8 +58,8 @@ def main():
     
     parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
     parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
-    parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
-    parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
+    parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
+    parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
 
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
     parser.add_argument("--algorithm_fine", action="store", help="Fine alignment outer algorithm to use")
@@ -363,11 +362,11 @@ class Registrator:
         if self.args.coarse or self.cameraconfig.is_identity():
             new_pc = None
             while new_pc == None:
-                self.prompt("Coarse calibration: capturing aruco/color target")
+                self.prompt("Coarse registration: capturing aruco/color target")
                 pc = self.capture()
                 if self.debug:
                     self.save_pc(pc, "step1_capture_coarse")
-                new_pc = self.coarse_calibration(pc)
+                new_pc = self.coarse_registration(pc)
                 pc.free()
                 pc = None
             assert new_pc
@@ -382,7 +381,7 @@ class Registrator:
                 must_reload = True
         else:
             if self.verbose:
-                print(f"cwipc_register: skipping coarse calibration, cameraconfig already has matrices")
+                print(f"cwipc_register: skipping coarse registration, cameraconfig already has matrices")
         
         if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
             if must_reload:
@@ -390,11 +389,11 @@ class Registrator:
                     print(f"cwipc_register: reload {self.cameraconfig.filename}")
                 self.capturer.reload_config(self.cameraconfig.filename)
                 must_reload = False
-            self.prompt("Fine calibration: capturing human-sized object")
+            self.prompt("Fine registration: capturing human-sized object")
             pc = self.capture()
             if self.debug:
                 self.save_pc(pc, "step3_capture_fine")
-            new_pc = self.fine_calibration(pc)
+            new_pc = self.fine_registration(pc)
             pc.free()
             pc = None
             if self.debug:
@@ -405,7 +404,7 @@ class Registrator:
                 self.cameraconfig.save()
         else:
             if self.verbose:
-                print(f"cwipc_register: skipping fine calibration, not needed")
+                print(f"cwipc_register: skipping fine registration, not needed")
         
         return False
     
@@ -485,7 +484,7 @@ class Registrator:
         assert self.capturerFactory
         # xxxjack this will eventually fail for generic capturer
         if not self.capturerName:
-            print(f"cwipc_register: selected capturer does not need calibration")
+            print(f"cwipc_register: selected capturer does not need registration")
             return False
         # Step one: Try to open with an existing cameraconfig.
         if self.capturer != None:
@@ -565,8 +564,8 @@ class Registrator:
             self.cameraconfig.save_to(filename)
             print(f"cwipc_register: Saved pointcloud and cameraconfig for {label}")
             
-    def coarse_calibration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
-        if self.verbose:
+    def coarse_registration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
+        if True or self.verbose:
             print(f"cwipc_register: Use coarse alignment class {self.coarse_aligner_class.__name__}")
         assert self.capturer
         aligner = self.coarse_aligner_class()
@@ -593,14 +592,15 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         if self.check_coarse_alignment:
-            correspondence, _ = self.check_alignment(new_pc, 0, "after coarse calibration")
+            correspondence, _ = self.check_alignment(new_pc, 0, "after coarse registration")
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
-        _, _ = self.check_alignment(pc, 0, "before fine calibration")
-        if self.verbose:
-            print(f"cwipc_register: Use fine alignment class {self.fine_aligner_class.__name__}")
+    def fine_registration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        _, _ = self.check_alignment(pc, 0, "before fine registration")
+        if True or self.verbose:
+            print(f"cwipc_register: Use fine aligner class {self.fine_aligner_class.__name__}")
+            print(f"cwipc_register: Use inner alignment class {self.alignment_class.__name__}")
         aligner = self.fine_aligner_class()
         aligner.verbose = self.verbose
         aligner.set_aligner_class(self.alignment_class)
@@ -630,14 +630,14 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
-        correspondence, _ = self.check_alignment(new_pc, 0, "after fine calibration")
+        correspondence, _ = self.check_alignment(new_pc, 0, "after fine registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
         assert self.analyzer_class
-        if self.verbose:
-            print(f"cwipc_register: Use analyzer class {self.fine_aligner_class.__name__}")
+        if True or self.verbose:
+            print(f"cwipc_register: Use analyzer class {self.analyzer_class.__name__}")
         analyzer = self.analyzer_class()
         analyzer.verbose = self.verbose
         analyzer.debug = self.debug
