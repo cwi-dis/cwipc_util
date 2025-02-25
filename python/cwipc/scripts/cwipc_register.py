@@ -635,7 +635,12 @@ class Registrator:
         return new_pc
 
     def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
-        analyzer = cwipc.registration.analyze.RegistrationAnalyzer()
+        assert self.analyzer_class
+        if self.verbose:
+            print(f"cwipc_register: Use analyzer class {self.fine_aligner_class.__name__}")
+        analyzer = self.analyzer_class()
+        analyzer.verbose = self.verbose
+        analyzer.debug = self.debug
         analyzer.add_tiled_pointcloud(pc)
         analyzer.plot_label = label
         start_time = time.time()

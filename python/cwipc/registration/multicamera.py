@@ -11,9 +11,76 @@ from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity
-from .fine import RegistrationComputer_ICP_Point2Point
+from .analyze import RegistrationAnalyzerNoOp
 
-class MultiCamera(MultiAlignmentAlgorithm):
+class MultiCameraNoOp(MultiAlignmentAlgorithm):
+    """No-op algorithm for testing purposes.
+    """
+
+    def __init__(self):
+        self.current_pointcloud : Optional[cwipc_wrapper] = None
+        self.transformations : List[RegistrationTransformation] = []
+        self.results : List[Tuple[int, float, float]] = []
+
+        self.analyzer_class : Optional[AnalysisAlgorithmFactory] = None
+
+        self.analyzer : Optional[AnalysisAlgorithm] = None
+
+        self.verbose = False
+        self.show_plot = False
+
+    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
+        assert False
+
+
+    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
+        self.current_pointcloud = pc
+
+    def camera_count(self) -> int:
+        assert self.analyzer
+        return self.analyzer.camera_count()
+    
+    def tilenum_for_camera_index(self, cam_index : int) -> int:
+        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
+        assert self.analyzer
+        return self.analyzer.tilenum_for_camera_index(cam_index)
+
+    def camera_index_for_tilenum(self, tilenum : int) -> int:
+        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
+        assert self.analyzer
+        return self.analyzer.camera_index_for_tilenum(tilenum)
+    
+    def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
+        self._prepare_analyze()
+        assert self.camera_count() > 0
+        if len(self.transformations) == 0:
+            for i in range(self.camera_count()):
+                self.transformations.append(transformation_identity())
+        self.transformations[cam_index] = matrix
+    
+    def _prepare_analyze(self):
+        self.analyzer = RegistrationAnalyzerNoOp()
+        assert self.current_pointcloud
+        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
+
+    def _prepare_compute(self):
+        self.aligner = None
+        assert self.current_pointcloud
+
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert self.current_pointcloud
+        return True
+
+    def get_result_transformations(self) -> List[RegistrationTransformation]:
+        return self.transformations
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+        assert self.current_pointcloud
+        return cwipc_from_packet(self.current_pointcloud.get_packet())
+
+class MultiCameraOneToAllOthers(MultiAlignmentAlgorithm):
     """Align multiple cameras.
     """
 
@@ -73,6 +140,8 @@ class MultiCamera(MultiAlignmentAlgorithm):
     def _prepare_analyze(self):
         self.analyzer = None
         assert self.analyzer_class
+        if self.verbose:
+            print(f"{__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
         self.analyzer = self.analyzer_class()
         self.analyzer.verbose = self.verbose
         assert self.current_pointcloud
@@ -81,6 +150,8 @@ class MultiCamera(MultiAlignmentAlgorithm):
     def _prepare_compute(self):
         self.aligner = None
         assert self.aligner_class
+        if self.verbose:
+            print(f"{__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
         self.aligner = self.aligner_class()
         self.aligner.verbose = self.verbose
         assert self.current_pointcloud
@@ -89,8 +160,6 @@ class MultiCamera(MultiAlignmentAlgorithm):
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.current_pointcloud
-        # Initialize the analyzer
-        self._prepare_analyze()
         assert self.analyzer
         assert self.analyzer.camera_count() > 0
         # Initialize matrices, if not done already (by our caller)
@@ -103,7 +172,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.results = self.analyzer.get_ordered_results()
         camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate([])
         if self.verbose:
-            print(f"registration.MultiCamera: Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            print(f"{__class__.__name__}: Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
@@ -112,7 +181,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
         camnums_already_fixed = []
         while camnum_to_fix != None:
             if self.verbose:
-                print(f"registration.MultiCamera: Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
+                print(f"{__class__.__name__}: Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
@@ -137,7 +206,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.analyzer.run()
             self.results = self.analyzer.get_ordered_results()
             if self.verbose:
-                print(f"registration.MultiCamera: Step {stepnum}: per-camera correspondence, ordered worst-first:")
+                print(f"{__class__.__name__}: Step {stepnum}: per-camera correspondence, ordered worst-first:")
                 for _camnum, _correspondence, _weight in self.results:
                     print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
             # See results, and whether it's worth it to do another step
@@ -150,18 +219,19 @@ class MultiCamera(MultiAlignmentAlgorithm):
             # - We may also want to try another (more expensive) algorithm
             if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence-0.0001:
                 if self.verbose:
-                    print(f"registration.MultiCamera: Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
+                    print(f"{__class__.__name__}: Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
                 break
             stepnum += 1
         self.proposed_cellsize = total_correspondence*self.cellsize_factor
         if self.verbose:
-            print(f"registration.MultiCamera: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
+            print(f"{__class__.__name__}: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
             self.analyzer.plot(show=True)
         self._compute_change()
         if self.verbose:
+            print(f"{__class__.__name__}: Change in pointcloud after alignment:")
             for cam_index in range(len(self.change)):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
         self._compute_new_tiles()
@@ -226,7 +296,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             pc_new = pc
             must_free_new = False
         if self.verbose:
-            print(f"registration.MultiCamera: Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
+            print(f"{__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
         pointcounts = []
         for i in range(2**ntiles_orig):
             pc_tile = cwipc_tilefilter(pc_new, i)
@@ -234,7 +304,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
             pc_tile.free()
             pointcounts.append(pointcount)
         if self.verbose:
-            print(f"registration.MultiCamera: Pointcounts per tile, after voxelizing:")
+            print(f"{__class__.__name__}: Pointcounts per tile, after voxelizing:")
             for i in range(len(pointcounts)):
                 print(f"\ttile {i}: {pointcounts[i]}")
         if must_free_new:
@@ -252,4 +322,4 @@ class MultiCamera(MultiAlignmentAlgorithm):
             self.current_pointcloud_is_new = True
         return self.current_pointcloud
 
-DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCamera
+DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCameraOneToAllOthers

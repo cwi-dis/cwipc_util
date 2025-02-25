@@ -178,8 +178,12 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.correspondence_errors == []
         assert self.matched_point_counts == []
         assert self.matched_point_fractions == []
+        if self.verbose:
+            print(f"{self.__class__.__name__}: computing correspondence errors:")
         for cam_i in range(nCamera):
             tilenum = self.per_camera_tilenum[cam_i]
+            if self.verbose:
+                print(f"\tcamera {tilenum}:")
             hdata = self.per_camera_histograms[cam_i]
             assert hdata
             histogram, edges, cumsum, normsum, plot_label, raw_distances = hdata
@@ -209,7 +213,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 mean = float(np.mean(overlap_distances))
                 stddev = float(np.std(overlap_distances))
                 if self.verbose:
-                    print(f"camera {tilenum}: {filterstep} filters: mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+                    print(f"\t\tstep {filterstep}: mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
                 # Create an array of booleans for all distances we want to keep, and filter on that.
                 filter = np.logical_and(overlap_distances <= (mean+stddev), overlap_distances >= (mean-stddev))
                 overlap_distances = overlap_distances[filter]
@@ -222,12 +226,20 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             total_point_count = len(raw_distances)
             fraction = matched_point_count/total_point_count
             if self.verbose:
-                print(f"camera {tilenum}: corr={corr}, matched={matched_point_count}, total={total_point_count}, fraction={fraction}")
+                print(f"\t\tresult: corr={corr}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
             self.matched_point_fractions.append(fraction)
 
-
-
-
+class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):
+    def run(self, target: Optional[int]=None) -> bool:
+        assert target is None
+        assert len(self.per_camera_pointclouds) > 0
+        self.per_camera_histograms = [
+            (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
+        ]
+        self.correspondence_errors = [0.0]
+        self.matched_point_counts = [1]
+        return True
+    
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
     """This algorithm computes, for each pair of tiles, the number of overlapping points and the distribution of their point2point distances."""
 
