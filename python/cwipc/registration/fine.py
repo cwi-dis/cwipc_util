@@ -43,12 +43,12 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         ]
         self.other_points_nparray = np.concatenate(other_nparrays)
 
-    def get_result_transformation(self) -> RegistrationTransformation:
+    def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         return transformation_identity()
     
     def get_result_pointcloud(self) -> cwipc_wrapper:
         pc = self.our_pointcloud
-        transform = self.get_result_transformation()
+        transform = self.get_result_transformation(nonverbose=True)
         new_pc = cwipc_transform(pc, transform)
         return new_pc
     
@@ -81,9 +81,12 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         )
         return True
 
-    def get_result_transformation(self) -> RegistrationTransformation:
-        if self.verbose:
+    def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
+        if self.verbose and not nonverbose:
             print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
+            print(f"\toverlap: {int(self.registration_result.fitness*100)}%")
+            print(f"\tinlier RMSE: {self.registration_result.inlier_rmse:.4f}")
+            print(f"\ttransformation:\n{self.registration_result.transformation}")
         return self.registration_result.transformation
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
@@ -133,8 +136,12 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         )
         return True
 
-    def get_result_transformation(self) -> RegistrationTransformation:
-        print(f"xxxjack {self.__class__.__name__} result: {self.registration_result}")
+    def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
+        if self.verbose and not nonverbose:
+            print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
+            print(f"\toverlap: {int(self.registration_result.fitness*100)}%")
+            print(f"\tinlier RMSE: {self.registration_result.inlier_rmse:.4f}")
+            print(f"\ttransformation:\n{self.registration_result.transformation}")
         return self.registration_result.transformation
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:

@@ -227,7 +227,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             total_point_count = len(raw_distances)
             fraction = matched_point_count/total_point_count
             if self.verbose:
-                print(f"\t\tresult: corr={corr}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
+                print(f"\t\tresult: mean+std=corr={corr}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
             self.matched_point_fractions.append(fraction)
 
 class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):

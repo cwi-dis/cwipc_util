@@ -593,11 +593,12 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         if self.check_coarse_alignment:
-            correspondence, _ = self.check_alignment(new_pc, 0, "coarse calibration")
+            correspondence, _ = self.check_alignment(new_pc, 0, "after coarse calibration")
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def fine_calibration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+        _, _ = self.check_alignment(pc, 0, "before fine calibration")
         if self.verbose:
             print(f"cwipc_register: Use fine alignment class {self.fine_aligner_class.__name__}")
         aligner = self.fine_aligner_class()
@@ -609,7 +610,6 @@ class Registrator:
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001
 
-        aligner.verbose = True
         aligner.show_plot = self.show_plot
         aligner.add_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
@@ -630,7 +630,7 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
-        correspondence, _ = self.check_alignment(new_pc, 0, "fine calibration")
+        correspondence, _ = self.check_alignment(new_pc, 0, "after fine calibration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
@@ -648,7 +648,7 @@ class Registrator:
         stop_time = time.time()
         print(f"cwipc_register: analyzer ran for {stop_time-start_time:.3f} seconds")
         results = analyzer.get_ordered_results()
-        print(f"cwipc_register: Sorted correspondences after {label}")
+        print(f"cwipc_register: Sorted correspondences {label}")
         worst_correspondence = 0
         for camnum, correspondence, weight in results:
             print(f"\tcamnum={camnum}, correspondence={correspondence}, weight={weight}")
