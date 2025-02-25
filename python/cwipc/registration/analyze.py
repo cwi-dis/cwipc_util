@@ -93,22 +93,22 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         ax_cum = None
         if cumulative:
             ax_cum = plot_ax.twinx()
+        corr_box_text = "Correspondence error:\n"
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             h_data = self.per_camera_histograms[cam_i]
+            corr = self.correspondence_errors[cam_i]
+            count = self.matched_point_counts[cam_i]
+            percentage = int(self.matched_point_fractions[cam_i] * 100)
+            corr_box_text += f"\n{cam_tilenum}: {corr:.4f} ({count} points, {percentage}%)"
             assert h_data
             (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
             plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
             if cumulative:
                 assert ax_cum
-                ax_cum.plot(edges[1:], normsum, linestyle="dotted", label="_nolegend_", color=PLOT_COLORS[cam_i])
-        corr_box_text = "Correspondence error:\n"
-        for cam_i in range(len(self.correspondence_errors)):
-            cam_tilenum = self.per_camera_tilenum[cam_i]
-            corr = self.correspondence_errors[cam_i]
-            count = self.matched_point_counts[cam_i]
-            percentage = int(self.matched_point_fractions[cam_i] * 100)
-            corr_box_text += f"\n{cam_tilenum}: {corr:.4f} ({count} points, {percentage}%)"
+                ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
+                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted", label="_nolegend_", color=PLOT_COLORS[cam_i])
+            
         title = self.plot_title
         if self.plot_label:
             title = self.plot_label + "\n" + title
