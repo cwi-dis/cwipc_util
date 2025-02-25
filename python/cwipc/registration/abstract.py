@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Any, List, Tuple
+from typing import Optional, Union, Any, List, Tuple, Type
 import numpy.typing
 from ..abstract import *
 from .. import cwipc_wrapper
@@ -9,6 +9,8 @@ __all__ = [
     "Algorithm",
     "AnalysisAlgorithm",
     "AlignmentAlgorithm", 
+    "AnalysisAlgorithmFactory",
+    "AlignmentAlgorithmFactory", 
     "MultiAlignmentAlgorithm"
 ]
 
@@ -20,6 +22,9 @@ class Algorithm(ABC):
     Contains the methods for adding a pointcloud, converting from tile-index to tile-number and vv, and for running the
     algorithm.
     """
+    verbose : bool
+    debug : bool
+
     @abstractmethod
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
@@ -89,8 +94,19 @@ class AlignmentAlgorithm(Algorithm):
          """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
          ...
 
+AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
+AlignmentAlgorithmFactory = Type[AlignmentAlgorithm]
+
 class MultiAlignmentAlgorithm(Algorithm):
     """ABC for an algorithm that tries to align all tiles."""
+
+    def set_analyzer_class(self, analyzer_class : AnalysisAlgorithmFactory) -> None:
+        """Set the class to be used for analyzing the results"""
+        self.analyzer_class = analyzer_class
+
+    def set_aligner_class(self, aligner_class : AlignmentAlgorithmFactory) -> None:
+        """Set the class to be used for aligning individual tiles"""
+        self.aligner_class = aligner_class
     
     @abstractmethod
     def get_result_transformations(self) -> List[RegistrationTransformation]:

@@ -171,3 +171,4 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         )
         return criteria
     
+DEFAULT_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Point2Point

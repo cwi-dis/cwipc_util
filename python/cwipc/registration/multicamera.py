@@ -11,7 +11,6 @@ from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity
-from .analyze import RegistrationAnalyzer, RegistrationAnalyzer
 from .fine import RegistrationComputer_ICP_Point2Point
 
 class MultiCamera(MultiAlignmentAlgorithm):
@@ -30,8 +29,8 @@ class MultiCamera(MultiAlignmentAlgorithm):
         self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
 
-        self.analyzer_class = RegistrationAnalyzer
-        self.aligner_class = RegistrationComputer_ICP_Point2Point
+        self.analyzer_class : Optional[AnalysisAlgorithmFactory] = None
+        self.aligner_class : Optional[AlignmentAlgorithmFactory] = None
 
         self.analyzer : Optional[AnalysisAlgorithm] = None
         self.aligner : Optional[AlignmentAlgorithm] = None
@@ -73,7 +72,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
     
     def _prepare_analyze(self):
         self.analyzer = None
-        assert self.aligner_class
+        assert self.analyzer_class
         self.analyzer = self.analyzer_class()
         self.analyzer.verbose = self.verbose
         assert self.current_pointcloud
@@ -81,6 +80,7 @@ class MultiCamera(MultiAlignmentAlgorithm):
 
     def _prepare_compute(self):
         self.aligner = None
+        assert self.aligner_class
         self.aligner = self.aligner_class()
         self.aligner.verbose = self.verbose
         assert self.current_pointcloud

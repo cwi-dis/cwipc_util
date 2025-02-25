@@ -12,6 +12,7 @@ from ._scriptsupport import *
 from cwipc.registration.abstract import *
 from cwipc.registration.util import *
 import cwipc.registration.coarse
+import cwipc.registration.fine
 import cwipc.registration.analyze
 import cwipc.registration.multicamera
 from cwipc.io.visualizer import Visualizer
@@ -60,8 +61,10 @@ def main():
     parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
     parser.add_argument("--coarse", action="store_true", help="Do coarse calibration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine calibration (default: always do it)")
-    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment algorithm to use")
+
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
+    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment outer algorithm to use")
+    parser.add_argument("--algorithm_alignment", action="store", help="Fine alignment inner registration algorithm to use")
 
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
@@ -237,6 +240,9 @@ class Registrator:
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
 
+        #
+        # Coarse aligner class depends on what input we have. So there's no --algorithm option for this.
+        #
         self.no_aruco = args.no_aruco
         if self.no_aruco:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
@@ -250,6 +256,10 @@ class Registrator:
         else:
             self.fine_aligner_class = cwipc.registration.multicamera.DEFAULT_FINE_ALIGNMENT_ALGORITHM
 
+        if args.algorithm_alignment:
+            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_alignment)
+        else:
+            self.alignment_class = cwipc.registration.fine.DEFAULT_ALIGNMENT_ALGORITHM
         if args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
@@ -592,7 +602,9 @@ class Registrator:
             print(f"cwipc_register: Use fine alignment class {self.fine_aligner_class.__name__}")
         aligner = self.fine_aligner_class()
         aligner.verbose = self.verbose
-        #aligner.debug = self.debug
+        aligner.set_aligner_class(self.alignment_class)
+        aligner.set_analyzer_class(self.analyzer_class)
+        aligner.debug = self.debug
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001
