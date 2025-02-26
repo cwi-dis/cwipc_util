@@ -99,6 +99,8 @@ AlignmentAlgorithmFactory = Type[AlignmentAlgorithm]
 
 class MultiAlignmentAlgorithm(Algorithm):
     """ABC for an algorithm that tries to align all tiles."""
+    analyzer_class : AnalysisAlgorithmFactory
+    aligner_class : AlignmentAlgorithmFactory
 
     def set_analyzer_class(self, analyzer_class : AnalysisAlgorithmFactory) -> None:
         """Set the class to be used for analyzing the results"""

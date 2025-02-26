@@ -258,7 +258,7 @@ class Registrator:
         if args.algorithm_alignment:
             self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_alignment)
         else:
-            self.alignment_class = cwipc.registration.fine.DEFAULT_ALIGNMENT_ALGORITHM
+            self.alignment_class = None
         if args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
@@ -600,10 +600,10 @@ class Registrator:
         _, _ = self.check_alignment(pc, 0, "before fine registration")
         if True or self.verbose:
             print(f"cwipc_register: Use fine aligner class {self.fine_aligner_class.__name__}")
-            print(f"cwipc_register: Use inner alignment class {self.alignment_class.__name__}")
         aligner = self.fine_aligner_class()
         aligner.verbose = self.verbose
-        aligner.set_aligner_class(self.alignment_class)
+        if self.alignment_class:
+            aligner.set_aligner_class(self.alignment_class)
         aligner.set_analyzer_class(self.analyzer_class)
         aligner.debug = self.debug
         # This number sets a threashold for the best possible alignment.

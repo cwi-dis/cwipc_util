@@ -12,6 +12,7 @@ from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity
 from .analyze import RegistrationAnalyzerNoOp
+from .fine import DEFAULT_ALIGNMENT_ALGORITHM
 
 class MultiCameraBase(MultiAlignmentAlgorithm):
     """Base class for multi-camera alignment algorithms.
@@ -148,7 +149,8 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
 
     def _prepare_compute(self):
         self.aligner = None
-        assert self.aligner_class
+        if not self.aligner_class:
+            self.aligner_class = DEFAULT_ALIGNMENT_ALGORITHM
         if self.verbose:
             print(f"{__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
         self.aligner = self.aligner_class()
