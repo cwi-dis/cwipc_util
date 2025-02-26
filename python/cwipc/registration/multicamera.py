@@ -1,4 +1,4 @@
-
+from abc import ABC, abstractmethod
 import copy
 import math
 from typing import List, Optional, Any, Tuple
@@ -13,21 +13,36 @@ from .abstract import *
 from .util import transformation_identity
 from .analyze import RegistrationAnalyzerNoOp
 
-class MultiCameraNoOp(MultiAlignmentAlgorithm):
-    """No-op algorithm for testing purposes.
+class MultiCameraBase(MultiAlignmentAlgorithm):
+    """Base class for multi-camera alignment algorithms.
     """
+    current_pointcloud : Optional[cwipc_wrapper]
+    current_pointcloud_is_new : bool
+    transformations : List[RegistrationTransformation]
+    original_transformations : List[RegistrationTransformation]
+    results : List[Tuple[int, float, float]]
+    analyzer_class : Optional[AnalysisAlgorithmFactory]
+    analyzer : Optional[AnalysisAlgorithm]
+    aligner_class : Optional[AlignmentAlgorithmFactory]
+    aligner : Optional[AlignmentAlgorithm]
+    verbose : bool
+    show_plot : bool
 
     def __init__(self):
-        self.current_pointcloud : Optional[cwipc_wrapper] = None
-        self.transformations : List[RegistrationTransformation] = []
-        self.results : List[Tuple[int, float, float]] = []
+        self.current_pointcloud = None
+        self.current_pointcloud_is_new = False
+        self.transformations  = []
+        self.original_transformations = []
+        self.results = []
 
-        self.analyzer_class : Optional[AnalysisAlgorithmFactory] = None
-
-        self.analyzer : Optional[AnalysisAlgorithm] = None
+        self.analyzer_class = None
+        self.analyzer = None
+        self.aligner_class = None
+        self.aligner = None
 
         self.verbose = False
         self.show_plot = False
+
 
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         assert False
@@ -36,6 +51,7 @@ class MultiCameraNoOp(MultiAlignmentAlgorithm):
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         self.current_pointcloud = pc
+        self.current_pointcloud_is_new = False
 
     def camera_count(self) -> int:
         assert self.analyzer
@@ -51,6 +67,14 @@ class MultiCameraNoOp(MultiAlignmentAlgorithm):
         assert self.analyzer
         return self.analyzer.camera_index_for_tilenum(tilenum)
     
+    @abstractmethod
+    def _prepare_analyze(self):
+        assert False
+
+    @abstractmethod
+    def _prepare_compute(self):
+        assert False
+
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
         self._prepare_analyze()
         assert self.camera_count() > 0
@@ -58,7 +82,29 @@ class MultiCameraNoOp(MultiAlignmentAlgorithm):
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.transformations[cam_index] = matrix
+
+    @abstractmethod
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert False
+
+    def get_result_transformations(self) -> List[RegistrationTransformation]:
+        return self.transformations
     
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+        assert self.current_pointcloud
+        if not self.current_pointcloud_is_new:
+            # Do a deep-copy, so our caller can free the pointcloud it passed to us
+            self.current_pointcloud = cwipc_from_packet(self.current_pointcloud.get_packet())
+            self.current_pointcloud_is_new = True
+        return self.current_pointcloud
+  
+class MultiCameraNoOp(MultiCameraBase):
+    """No-op algorithm for testing purposes.
+    """
+    def __init__(self):
+        super().__init__()
+
     def _prepare_analyze(self):
         self.analyzer = RegistrationAnalyzerNoOp()
         assert self.current_pointcloud
@@ -73,69 +119,22 @@ class MultiCameraNoOp(MultiAlignmentAlgorithm):
         assert self.current_pointcloud
         return True
 
-    def get_result_transformations(self) -> List[RegistrationTransformation]:
-        return self.transformations
-    
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
-        assert self.current_pointcloud
-        return cwipc_from_packet(self.current_pointcloud.get_packet())
-
-class MultiCameraOneToAllOthers(MultiAlignmentAlgorithm):
-    """Align multiple cameras.
+class MultiCameraOneToAllOthers(MultiCameraBase):
+    """Align multiple cameras. Every step, one camera is aligned to all others.
+    Every step, we pick the camera with the best chances to make the biggest change.
     """
+    precision_threshold : float
+    change : List[float]
+    cellsize_factor : float
+    proposed_cellsize : float
+
 
     def __init__(self):
+        super().__init__()
         self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
-
-        self.current_pointcloud : Optional[cwipc_wrapper] = None
-        self.current_pointcloud_is_new = False
-        self.transformations : List[RegistrationTransformation] = []
-        self.original_transformations : List[RegistrationTransformation] = []
-        self.change : List[float] = []
-        self.results : List[Tuple[int, float, float]] = []
+        self.change = []
         self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
-
-        self.analyzer_class : Optional[AnalysisAlgorithmFactory] = None
-        self.aligner_class : Optional[AlignmentAlgorithmFactory] = None
-
-        self.analyzer : Optional[AnalysisAlgorithm] = None
-        self.aligner : Optional[AlignmentAlgorithm] = None
-
-        self.verbose = False
-        self.show_plot = False
-
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        assert False
-
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
-        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        self.current_pointcloud = pc
-        self.current_pointcloud_is_new = False
-
-    def camera_count(self) -> int:
-        assert self.analyzer
-        return self.analyzer.camera_count()
-    
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
-        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
-        assert self.analyzer
-        return self.analyzer.tilenum_for_camera_index(cam_index)
-
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
-        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
-        assert self.analyzer
-        return self.analyzer.camera_index_for_tilenum(tilenum)
-    
-    def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
-        if self.analyzer == None:
-            self._prepare_analyze()
-        assert self.analyzer
-        assert self.camera_count() > 0
-        if len(self.transformations) == 0:
-            for i in range(self.camera_count()):
-                self.transformations.append(transformation_identity())
-        self.transformations[cam_index] = matrix
     
     def _prepare_analyze(self):
         self.analyzer = None
@@ -309,17 +308,9 @@ class MultiCameraOneToAllOthers(MultiAlignmentAlgorithm):
                 print(f"\ttile {i}: {pointcounts[i]}")
         if must_free_new:
             pc_new.free()
+    
 
-    def get_result_transformations(self) -> List[RegistrationTransformation]:
-        return self.transformations
-    
-    
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
-        assert self.current_pointcloud
-        if not self.current_pointcloud_is_new:
-            # Do a deep-copy, so our caller can free the pointcloud it passed to us
-            self.current_pointcloud = cwipc_from_packet(self.current_pointcloud.get_packet())
-            self.current_pointcloud_is_new = True
-        return self.current_pointcloud
+class MultiCameraIteratively(MultiCameraBase):
+    pass
 
 DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCameraOneToAllOthers
