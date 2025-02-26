@@ -5,8 +5,9 @@ import numpy.typing as npt
 import scipy.spatial
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
+from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
-from .util import transformation_identity, BaseAlgorithm, cwipc_transform, cwipc_point_numpy_matrix_value_type
+from .util import transformation_identity, BaseAlgorithm, cwipc_transform
 
 RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
@@ -26,6 +27,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.our_pointcloud = None
         self.our_points_nparray = None
+        self.reference_pointcloud = None
         self.reference_points_nparray = None
 
     def set_correspondence(self, correspondence) -> None:

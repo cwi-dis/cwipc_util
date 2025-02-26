@@ -47,6 +47,11 @@ class Algorithm(ABC):
         ...
         
     @abstractmethod
+    def get_pointcloud_for_camera_index(self, cam_index : int) -> cwipc_wrapper:
+        """Returns the point cloud for this tilenumber"""
+        ...
+
+    @abstractmethod
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm. Returns false in case of a failure."""
         ...
@@ -81,6 +86,11 @@ class AlignmentAlgorithm(Algorithm):
         """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
         ...
 
+    @abstractmethod
+    def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
+        """Set the reference point cloud to align with"""
+        ...
+        
     @abstractmethod
     def get_result_transformation(self) -> RegistrationTransformation:
         """After a successful run(), returns the transformation applied to the tile-under-test"""

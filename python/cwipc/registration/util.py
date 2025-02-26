@@ -170,3 +170,7 @@ class BaseAlgorithm(Algorithm):
             return rv
         rv.free()
         return None
+
+    def get_pointcloud_for_camera_index(self, cam_index : int) -> cwipc_wrapper:
+        """Returns the point cloud for this tilenumber"""
+        return self.per_camera_pointclouds[cam_index]
