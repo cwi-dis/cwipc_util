@@ -71,12 +71,14 @@ def main():
     parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
     
     parser.add_argument("--show_plot", action="store_true", help="After each fine aligner step show a graph of the results")
-    parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug")
+    parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug. Implies --verbose.")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     
     parser.add_argument("recording", nargs='?', help="A directory with recordings (realsense or kinect) for which to do registration")
     args = parser.parse_args()
     beginOfRun(args)
+    if args.debug:
+        args.verbose = True
     reg = Registrator(args)
     reg.run()
 
