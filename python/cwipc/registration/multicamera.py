@@ -318,7 +318,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             pc_new.free()
     
 
-class MultiCameraIteratively(MultiCameraBase):
+class MultiCameraIterative(MultiCameraBase):
     resultant_pointcloud : Optional[cwipc_wrapper]
     still_to_do : List[int]
     cellsize_factor : float
@@ -368,6 +368,9 @@ class MultiCameraIteratively(MultiCameraBase):
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run()
         self.results = self.analyzer.get_ordered_results()
+        best_correspondence = 9999
+        for _, correspondence, _ in self.results:
+            best_correspondence = min(best_correspondence, correspondence)
         if self.verbose:
             print(f"{__class__.__name__}: Before:  Per-camera correspondence, ordered worst-first:")
             for _camnum, _correspondence, _weight in self.results:
@@ -385,6 +388,7 @@ class MultiCameraIteratively(MultiCameraBase):
             self._prepare_compute()
             assert self.aligner
             assert self.resultant_pointcloud
+            self.aligner.set_correspondence(best_correspondence)
             self.aligner.set_reference_pointcloud(self.resultant_pointcloud)
             self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
@@ -399,6 +403,8 @@ class MultiCameraIteratively(MultiCameraBase):
             new_transform = np.matmul(this_transform, old_transform)
             self.transformations[cam_index] = new_transform
         # Finally, run the analyzer on the final result
+        self.current_pointcloud = self.resultant_pointcloud
+        self.current_pointcloud_is_new = True
         self._prepare_analyze()
         self.analyzer.run()
         self.results = self.analyzer.get_ordered_results()
