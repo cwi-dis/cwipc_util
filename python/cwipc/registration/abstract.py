@@ -61,15 +61,18 @@ class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm (such as computing the overlap between tiles)"""
 
     @abstractmethod
-    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+    def get_ordered_results(self, weightstyle : str = 'priority') -> List[Tuple[int, float, float]]:
         """Returns a list of (tilenum, epsilon, weight) indicating how each camera is aligned.
         
+        Weightstyle is a string that determines how the weight is computed:
+        - 'priority': the best matching camera has the heighest weight (more points give more weight, closer points give more weight)
+        - 'match' : the worst matching camera has the highest weight (more points give more weight, closer points give less weight)
         tilenum is the camera tile number
         epsilon is a measure (in meters) for how closely this camera tile matches the others
         weight is based on espilon and the number of points that were matched
 
-        The list is sorted by weight (decreasing), so the expectation is that fixing the first one
-        will lead to the greatest overall improvement.
+        The list is sorted by weight (decreasing), so the expectation is that the first one
+        has the highest priority.
         """
 
     @abstractmethod

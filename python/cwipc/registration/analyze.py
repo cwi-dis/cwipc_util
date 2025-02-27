@@ -121,21 +121,26 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         if show:
             plt.show()
    
-    def get_ordered_results(self) -> List[Tuple[int, float, float]]:
+    def get_ordered_results(self, weightstyle : str = 'priority') -> List[Tuple[int, float, float]]:
         """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
         
         This is the order in which the camera re-registration should be attempted.
         """
         rv = []
         for camnum in range(len(self.correspondence_errors)):
-            # Option 1: Use the correspondence as-is
-            #weight = self.correspondences[camnum]
-            # Option 2: multiply by the number of points that were matched
-            #weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
-            # option 3: multiply by the square root of the number of matched points
-            #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
-            # option 4: multiply by the log of the number of matched points
-            weight = self.correspondence_errors[camnum]*math.log(self.matched_point_counts[camnum])
+            if weightstyle == 'priority':
+                # Option 1: Use the correspondence as-is
+                #weight = self.correspondences[camnum]
+                # Option 2: multiply by the number of points that were matched
+                #weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
+                # option 3: multiply by the square root of the number of matched points
+                #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
+                # option 4: multiply by the log of the number of matched points
+                weight = math.log(self.matched_point_counts[camnum]) * self.correspondence_errors[camnum]
+            elif weightstyle == 'match':
+                weight = math.log(self.matched_point_counts[camnum]) / self.correspondence_errors[camnum]
+            else:
+                assert False, f"get_ordered_results: unknown weightstyle {weightstyle}"
             rv.append((self.per_camera_tilenum[camnum], self.correspondence_errors[camnum], weight))
         rv.sort(key=lambda t:-t[2])
         return rv

@@ -367,12 +367,12 @@ class MultiCameraIterative(MultiCameraBase):
         self.original_transformations = copy.deepcopy(self.transformations)
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run()
-        self.results = self.analyzer.get_ordered_results()
+        self.results = self.analyzer.get_ordered_results(weightstyle='match')
         best_correspondence = 9999
         for _, correspondence, _ in self.results:
             best_correspondence = min(best_correspondence, correspondence)
         if self.verbose:
-            print(f"{__class__.__name__}: Before:  Per-camera correspondence, ordered worst-first:")
+            print(f"{__class__.__name__}: Before:  Per-camera correspondence, ordered best-first:")
             for _camnum, _correspondence, _weight in self.results:
                 print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
         if self.show_plot:
