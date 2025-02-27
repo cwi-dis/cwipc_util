@@ -47,7 +47,7 @@ class Algorithm(ABC):
         ...
         
     @abstractmethod
-    def get_pointcloud_for_camera_index(self, cam_index : int) -> cwipc_wrapper:
+    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
         """Returns the point cloud for this tilenumber"""
         ...
 

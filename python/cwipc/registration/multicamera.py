@@ -54,11 +54,10 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         self.current_pointcloud = pc
         self.current_pointcloud_is_new = False
 
-    def get_pointcloud_for_camera_index(self, cam_index : int) -> cwipc_wrapper:
+    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
         """Returns the point cloud for this tilenumber"""
         assert self.current_pointcloud
-        tilemask = 1 << cam_index
-        rv = cwipc_tilefilter(self.current_pointcloud, tilemask)
+        rv = cwipc_tilefilter(self.current_pointcloud, tilenum)
         return rv
     
     def camera_count(self) -> int:
@@ -378,9 +377,10 @@ class MultiCameraIteratively(MultiCameraBase):
             
         self._select_first_pointcloud()
         while self.still_to_do:
+            assert self.resultant_pointcloud
             camnum_to_fix = self._select_next_pointcloud_index()
             if self.verbose:
-                print(f"{__class__.__name__}: Aligning camera {camnum_to_fix}")
+                print(f"{__class__.__name__}: Aligning camera {camnum_to_fix}, {self.resultant_pointcloud.count()} points in reference set")
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
@@ -424,12 +424,13 @@ class MultiCameraIteratively(MultiCameraBase):
 
     def _select_first_pointcloud(self) -> None:
         assert self.resultant_pointcloud == None
-        camIndex = self.still_to_do[0]
+        camNum = self.still_to_do[0]
         if self.verbose:
-            print(f"{__class__.__name__}: Select initial pointcloud: camera {camIndex}")
+            print(f"{__class__.__name__}: Select initial pointcloud: camera {camNum}")
         self.still_to_do = self.still_to_do[1:]
-        pc = self.get_pointcloud_for_camera_index(camIndex)
-        self.resultant_pointcloud = pc
+        pc = self.get_pointcloud_for_tilenum(camNum)
+        # Do a deep-copy
+        self.resultant_pointcloud = cwipc_from_packet(pc.get_packet())
 
     def _select_next_pointcloud_index(self) -> int:
         rv = self.still_to_do[0]

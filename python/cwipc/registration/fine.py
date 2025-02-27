@@ -59,6 +59,8 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
             self.reference_points_nparray = np.concatenate(other_nparrays)
         else:
             self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        if self.verbose:
+            print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")  
 
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         return transformation_identity()
