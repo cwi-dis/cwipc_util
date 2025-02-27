@@ -5,7 +5,7 @@ from typing import List, Optional, Any, Tuple
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
-from cwipc import cwipc_wrapper, cwipc_from_packet
+from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix
 
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
@@ -324,6 +324,7 @@ class MultiCameraIterative(MultiCameraBase):
     cellsize_factor : float
     proposed_cellsize : float
     change : List[float]
+    min_correspondence : float
 
     def __init__(self):
         super().__init__()
@@ -332,6 +333,7 @@ class MultiCameraIterative(MultiCameraBase):
         self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
         self.change = []
+        self.min_correspondence = 0
 
     def _prepare_analyze(self):
         self.analyzer = None
@@ -381,6 +383,10 @@ class MultiCameraIterative(MultiCameraBase):
             camnum_to_fix, correspondence = self._select_next_pointcloud_index()
             if self.verbose:
                 print(f"{__class__.__name__}: Aligning camera {camnum_to_fix}, corr={correspondence}, {self.resultant_pointcloud.count()} points in reference set")
+            if self.min_correspondence > 0 and correspondence < self.min_correspondence:
+                if self.verbose:
+                    print(f"{__class__.__name__}: Increasing correspondence threshold to {self.min_correspondence} because of floor level")
+                correspondence = self.min_correspondence
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
@@ -492,5 +498,27 @@ class MultiCameraIterative(MultiCameraBase):
         if must_free_new:
             pc_new.free()
     
+class MultiCameraIterativeFloor(MultiCameraIterative):
+    """Align multiple cameras. Every step, one camera is aligned to all others.
+    We start with the floor, which is computed by projecting all points from all camers to the plane y=0.
+    """
+
+    def _select_first_pointcloud(self) -> None:
+        assert self.resultant_pointcloud == None
+        assert self.current_pointcloud
+        np_matrix = self.current_pointcloud.get_numpy_matrix()
+        # Try and find the floor level
+        point_heights = np_matrix[:,1]
+        filter = point_heights < 0.1 # It's the floor so it shouldn't be off my more than 10 cm
+        point_heights = point_heights[filter]
+        floor_height = np.mean(point_heights)
+        self.min_correspondence = float(floor_height)
+        if self.verbose:
+            print(f"{__class__.__name__}: Floor level is {floor_height}, based on {len(point_heights)} points")
+        floor_matrix = np_matrix[filter]
+        floor_matrix[...,1] = 0
+        self.resultant_pointcloud = cwipc_from_numpy_matrix(floor_matrix, self.current_pointcloud.timestamp())
+        print(f"xxxjack: first point: np_matrix[0]={floor_matrix[0]}")
+
 
 DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCameraOneToAllOthers
