@@ -320,7 +320,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
 
 class MultiCameraIterative(MultiCameraBase):
     resultant_pointcloud : Optional[cwipc_wrapper]
-    still_to_do : List[int]
+    still_to_do : List[Tuple[int, float, float]]
     cellsize_factor : float
     proposed_cellsize : float
     change : List[float]
@@ -342,7 +342,6 @@ class MultiCameraIterative(MultiCameraBase):
         self.analyzer.verbose = self.verbose
         assert self.current_pointcloud
         self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
-        self.still_to_do = [1 << i for i in range(self.analyzer.camera_count())]
 
     def _prepare_compute(self):
         self.aligner = None
@@ -368,9 +367,7 @@ class MultiCameraIterative(MultiCameraBase):
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run()
         self.results = self.analyzer.get_ordered_results(weightstyle='match')
-        best_correspondence = 9999
-        for _, correspondence, _ in self.results:
-            best_correspondence = min(best_correspondence, correspondence)
+        self.still_to_do = self.results
         if self.verbose:
             print(f"{__class__.__name__}: Before:  Per-camera correspondence, ordered best-first:")
             for _camnum, _correspondence, _weight in self.results:
@@ -381,14 +378,14 @@ class MultiCameraIterative(MultiCameraBase):
         self._select_first_pointcloud()
         while self.still_to_do:
             assert self.resultant_pointcloud
-            camnum_to_fix = self._select_next_pointcloud_index()
+            camnum_to_fix, correspondence = self._select_next_pointcloud_index()
             if self.verbose:
-                print(f"{__class__.__name__}: Aligning camera {camnum_to_fix}, {self.resultant_pointcloud.count()} points in reference set")
+                print(f"{__class__.__name__}: Aligning camera {camnum_to_fix}, corr={correspondence}, {self.resultant_pointcloud.count()} points in reference set")
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
             assert self.resultant_pointcloud
-            self.aligner.set_correspondence(best_correspondence)
+            self.aligner.set_correspondence(correspondence)
             self.aligner.set_reference_pointcloud(self.resultant_pointcloud)
             self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
@@ -430,7 +427,7 @@ class MultiCameraIterative(MultiCameraBase):
 
     def _select_first_pointcloud(self) -> None:
         assert self.resultant_pointcloud == None
-        camNum = self.still_to_do[0]
+        camNum, _, _ = self.still_to_do[0]
         if self.verbose:
             print(f"{__class__.__name__}: Select initial pointcloud: camera {camNum}")
         self.still_to_do = self.still_to_do[1:]
@@ -438,12 +435,12 @@ class MultiCameraIterative(MultiCameraBase):
         # Do a deep-copy
         self.resultant_pointcloud = cwipc_from_packet(pc.get_packet())
 
-    def _select_next_pointcloud_index(self) -> int:
-        rv = self.still_to_do[0]
+    def _select_next_pointcloud_index(self) -> Tuple[int, float]:
+        camNum, correspondence, _ = self.still_to_do[0]
         self.still_to_do = self.still_to_do[1:]
         if self.verbose:
-            print(f"{__class__.__name__}: Select next pointcloud: camera {rv}")
-        return rv
+            print(f"{__class__.__name__}: Select next pointcloud: camera {camNum}, correspondence {correspondence}")
+        return camNum, correspondence
 
     def _compute_change(self):
         for cam_index in range(len(self.transformations)):
