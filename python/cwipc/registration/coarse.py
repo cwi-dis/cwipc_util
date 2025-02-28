@@ -47,6 +47,13 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         assert self.original_pointcloud is None
         self.original_pointcloud = pc
+    
+    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
+        """Returns the point cloud for this tilenumber"""
+        assert self.original_pointcloud
+        rv = cwipc_tilefilter(self.original_pointcloud, tilenum)
+        return rv
+    
 
     def camera_count(self) -> int:
         count = len(self.per_camera_tilenum)
