@@ -62,8 +62,9 @@ def main():
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
 
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
-    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment outer algorithm to use")
-    parser.add_argument("--algorithm_alignment", action="store", help="Fine alignment inner registration algorithm to use")
+    parser.add_argument("--algorithm_multicamera", action="store", help="Fine alignment outer algorithm to use, for multiple cameras")
+    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment inner registration algorithm to use")
+    parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
 
     parser.add_argument("--nograb", metavar="PLYFILE", action="store", help=f"Don't use grabber but use .ply file grabbed earlier, using {DEFAULT_FILENAME} from same directory.")
     parser.add_argument("--skip", metavar="N", type=int, action="store", help="Skip the first N captures")
@@ -79,6 +80,11 @@ def main():
     beginOfRun(args)
     if args.debug:
         args.verbose = True
+    if args.help_algorithms:
+        print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
+        print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
+        print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
+        return 0
     reg = Registrator(args)
     reg.run()
 
@@ -252,15 +258,16 @@ class Registrator:
         else:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
 
-        if args.algorithm_fine:
-            self.fine_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_fine)
+        if args.algorithm_multicamera:
+            self.multicamera_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_multicamera)
         else:
-            self.fine_aligner_class = cwipc.registration.multicamera.DEFAULT_FINE_ALIGNMENT_ALGORITHM
+            self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
 
-        if args.algorithm_alignment:
-            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_alignment)
+        if args.algorithm_fine:
+            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_fine)
         else:
-            self.alignment_class = None
+            self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
+
         if args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
@@ -601,37 +608,37 @@ class Registrator:
     def fine_registration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         _, _ = self.check_alignment(pc, 0, "before fine registration")
         if True or self.verbose:
-            print(f"cwipc_register: Use fine aligner class {self.fine_aligner_class.__name__}")
-        aligner = self.fine_aligner_class()
-        aligner.verbose = self.verbose
+            print(f"cwipc_register: Use fine aligner class {self.multicamera_aligner_class.__name__}")
+        multicam = self.multicamera_aligner_class()
+        multicam.verbose = self.verbose
         if self.alignment_class:
-            aligner.set_aligner_class(self.alignment_class)
-        aligner.set_analyzer_class(self.analyzer_class)
-        aligner.debug = self.debug
+            multicam.set_aligner_class(self.alignment_class)
+        multicam.set_analyzer_class(self.analyzer_class)
+        multicam.debug = self.debug
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001
 
-        aligner.show_plot = self.show_plot
-        aligner.add_tiled_pointcloud(pc)
+        multicam.show_plot = self.show_plot
+        multicam.add_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
-            aligner.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
+            multicam.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
         start_time = time.time()
-        ok = aligner.run()
+        ok = multicam.run()
         stop_time = time.time()
         if self.verbose:
-            print(f"cwipc_register: fine aligner ran for {stop_time-start_time:.3f} seconds")
+            print(f"cwipc_register: multicamera fine aligner ran for {stop_time-start_time:.3f} seconds")
         if not ok:
-            print("cwipc_register: Could not do fine registration")
+            print("cwipc_register: Could not do multicamera fine registration")
             sys.exit(1)
         # Get the resulting transformations, and store them in cameraconfig.
-        transformations = aligner.get_result_transformations()
+        transformations = multicam.get_result_transformations()
         for cam_num in range(len(transformations)):
             matrix = transformations[cam_num]
             t = self.cameraconfig.get_transform(cam_num)
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
-        new_pc = aligner.get_result_pointcloud_full()
+        new_pc = multicam.get_result_pointcloud_full()
         correspondence, _ = self.check_alignment(new_pc, 0, "after fine registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc

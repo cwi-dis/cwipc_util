@@ -7,6 +7,15 @@ import open3d
 import open3d.visualization
 import numpy as np
 from numpy.typing import NDArray
+import textwrap
+
+def algdoc(klass : type, indent : int) -> str:
+    doc = klass.__doc__
+    if doc == None:
+        doc = "No documentation available"
+    doc = textwrap.dedent(doc)
+    doc = textwrap.indent(doc, '\t'*indent)
+    return doc
 
 Point_array_xyz = NDArray[Any]
 Point_array_rgb = NDArray[Any]

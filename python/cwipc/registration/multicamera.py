@@ -10,12 +10,13 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
-from .util import transformation_identity
+from .util import transformation_identity, algdoc
 from .analyze import RegistrationAnalyzerNoOp
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
 class MultiCameraBase(MultiAlignmentAlgorithm):
-    """Base class for multi-camera alignment algorithms.
+    """\
+    Base class for multi-camera alignment algorithms.
     """
     current_pointcloud : Optional[cwipc_wrapper]
     current_pointcloud_is_new : bool
@@ -107,7 +108,8 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         return self.current_pointcloud
   
 class MultiCameraNoOp(MultiCameraBase):
-    """No-op algorithm for testing purposes.
+    """\
+    No-op algorithm for testing purposes.
     """
     def __init__(self):
         super().__init__()
@@ -127,7 +129,8 @@ class MultiCameraNoOp(MultiCameraBase):
         return True
 
 class MultiCameraOneToAllOthers(MultiCameraBase):
-    """Align multiple cameras. Every step, one camera is aligned to all others.
+    """\
+    Align multiple cameras. Every step, one camera is aligned to all others.
     Every step, we pick the camera with the best chances to make the biggest change.
     """
     precision_threshold : float
@@ -319,6 +322,13 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
     
 
 class MultiCameraIterative(MultiCameraBase):
+    """\
+    Align multiple cameras. The first step we pick the camera with the best overal to all others.
+    We move this to the destination set.
+
+    Next we pick a camera with the best overlap with the destination set and align it to the destination set.
+    We repeat this until all cameras are aligned.
+    """
     resultant_pointcloud : Optional[cwipc_wrapper]
     still_to_do : List[Tuple[int, float, float]]
     cellsize_factor : float
@@ -499,8 +509,12 @@ class MultiCameraIterative(MultiCameraBase):
             pc_new.free()
     
 class MultiCameraIterativeFloor(MultiCameraIterative):
-    """Align multiple cameras. Every step, one camera is aligned to all others.
-    We start with the floor, which is computed by projecting all points from all camers to the plane y=0.
+    """\
+    Align multiple cameras. The first step we create a point cloud with all points projected onto the plane Y=0.
+    We move this to the destination set.
+
+    Next we pick a camera with the best overlap with the destination set and align it to the destination set.
+    We repeat this until all cameras are aligned.
     """
 
     def _select_first_pointcloud(self) -> None:
@@ -521,4 +535,23 @@ class MultiCameraIterativeFloor(MultiCameraIterative):
         print(f"xxxjack: first point: np_matrix[0]={floor_matrix[0]}")
 
 
-DEFAULT_FINE_ALIGNMENT_ALGORITHM = MultiCameraOneToAllOthers
+DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraOneToAllOthers
+
+ALL_MULTICAMERA_ALGORITHMS = [
+    MultiCameraNoOp,
+    MultiCameraOneToAllOthers,
+    MultiCameraIterative,
+    MultiCameraIterativeFloor,
+]
+
+
+HELP_MULTICAMERA_ALGORITHMS = """
+The multicamera algorithm tries to align multiple cameras to each other. It uses an alignment
+algorithm repeatedly, and an analysis algorithm to determine the effect of an alignment.
+
+The various multicamera algorithms differ in the way they select the cameras to align, and
+what to try and align it to (either all other cameras, or all cameras that have been previously aligned)
+
+The following multicamera algorithms are available:
+
+""" + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_MULTICAMERA_ALGORITHMS])

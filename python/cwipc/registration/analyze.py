@@ -8,23 +8,20 @@ import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
-from .util import get_tiles_used, BaseAlgorithm
+from .util import get_tiles_used, BaseAlgorithm, algdoc
 
 KD_TREE_TYPE = scipy.spatial.KDTree
 PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
 
 class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
-    """Analyzes how good pointclouds are registered.
+    """
+    Analyzes how good pointclouds are registered.
 
     Create the registrator, add pointclouds, run the algorithm, inspect the results.
     Attributes histogram_bincount and label can be changed before running.
 
     This is the base class, see the subclasses for various different algorithms.
     """
-
-    # See comment in _compute_corrspondences()
-    #: Magic number that governs how far beyond the peak we consider the correspondence
-    BIN_VALUE_DECREASE_FACTOR : float = 0.5
 
     #: Number of bins we want in the histogram
     histogram_bincount : int
@@ -57,7 +54,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
         self.eps = 0.0
-        self.distance_upper_bound = 10.0
+        self.distance_upper_bound = 0.2
         self.plot_label = None
         self.plot_title = "Unknown RegistrationAnalyzer"
         self.per_camera_nparray = []
@@ -74,8 +71,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
 
     def _kdtree_get_distances_to_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
-        self.distance_upper_bound = np.inf # Quick hack: otherwise the counts are broken.
-        distances, _ = tree.query(points, eps=self.eps, distance_upper_bound=self.distance_upper_bound)
+        distances, _ = tree.query(points, workers=-1)
         bitmap = np.isfinite(distances)
         filtered_distances = distances[bitmap]
         return filtered_distances
@@ -178,7 +174,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         ]
 
     def _compute_correspondence_errors(self):
-        N_FILTERING_STEPS = 4
+        N_FILTERING_STEPS = 2
         nCamera = len(self.per_camera_histograms)
         assert self.correspondence_errors == []
         assert self.matched_point_counts == []
@@ -192,25 +188,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             hdata = self.per_camera_histograms[cam_i]
             assert hdata
             histogram, edges, cumsum, normsum, plot_label, raw_distances = hdata
-            if False:
-                # Find the fullest bin, and the corresponding value
-                max_bin_index = int(np.argmax(histogram))
-                max_bin_value = histogram[max_bin_index]
-                # Now we traverse the histogram from here, until we get to a bin that has less than half this number of points
-                for corr_bin_index in range(max_bin_index, len(histogram)):
-                    if histogram[corr_bin_index] <= max_bin_value * self.BIN_VALUE_DECREASE_FACTOR:
-                        break
-                else:
-                    corr_bin_index = max_bin_index+1
-                # Now corr_bin_index is *one past* our expected correspondence is
-                # Note that this is important for the edge case (when all points are exactly aligned)
-                corr_bin_index -= 1
-                corr = edges[corr_bin_index]
-                matched_point_count = cumsum[corr_bin_index]
-                self.correspondence_errors.append(corr)
-                self.matched_point_counts.append(matched_point_count)
-                if self.verbose:
-                    print(f"camera {tilenum}: peak={edges[max_bin_index]}, corr={corr}")
             overlap_distances = copy.deepcopy(raw_distances)
             mean = 0
             stddev = 0
@@ -236,6 +213,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.matched_point_fractions.append(fraction)
 
 class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):
+    """
+    This algorithm does nothing, it just returns a single tile with a single point.
+    """
     def run(self, target: Optional[int]=None) -> bool:
         assert target is None
         assert len(self.per_camera_pointclouds) > 0
@@ -247,7 +227,9 @@ class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):
         return True
     
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
-    """This algorithm computes, for each pair of tiles, the number of overlapping points and the distribution of their point2point distances."""
+    """
+    This algorithm computes, for each pair of tiles, the number of overlapping points and the distribution of their point2point distances.
+    """
 
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
@@ -314,9 +296,10 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
         return True
 
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
-    """This algorithm computes, for each tile, the number of overlapping points with any of the other tiles and the distribution of their point2point distances."""
-    """Compute registration by checking the distances from every point in this tile pointcloud to the nearest in any other pointcloud"""
-
+    """
+    This algorithm computes, for each tile, the number of overlapping points with any of the other tiles and the distribution of their point2point distances.
+    """
+    
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
         self.plot_title = "Histogram of point distances between camera and all others"
@@ -360,7 +343,8 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         return True
 
 class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
-    """Compute registration by checking the distances from every point in this tile pointcloud to the nearest in any other pointcloud.
+    """
+    Same algorithm as RegistrationAnalyzer, but with an additional step to filter out points that are unlikely to have a match.
     
     All point clouds are first filtered to remove the points that are unlikely to have a match (no make the pointclouds and the kdtrees smaller)
     """
@@ -392,7 +376,9 @@ class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
                     
 
 class RegistrationAnalyzerReverse(RegistrationAnalyzer):
-    """Compute registration by checking the distances from every point in any other tile pointcloud to the nearest in this tile pointcloud"""
+    """
+    Same algorithm as RegistrationAnalyzer, but reversed: the distances are computed for the other pointclouds to this pointcloud.
+    """
 
     def __init__(self):
         RegistrationAnalyzer.__init__(self)
@@ -438,9 +424,8 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
         return True
     
 class RegistrationAnalyzerFilteredReverse(RegistrationAnalyzerReverse):
-    """Compute registration by checking the distances from every point in any other tile pointcloud to the nearest in this tile pointcloud.
-    
-    All point clouds are first filtered to remove the points that are unlikely to have a match (no make the pointclouds and the kdtrees smaller)
+    """
+    Same algorithm as RegistrationAnalyzerReverse, but with an additional step to filter out points that are unlikely to have a match.
     """
     
     def _prepare(self):
@@ -462,3 +447,18 @@ class RegistrationAnalyzerFilteredReverse(RegistrationAnalyzerReverse):
             self.per_camera_nparray_others[camnum] = filtered_nparray
                     
 DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
+
+ALL_ANALYZER_ALGORITHMS = [
+    RegistrationAnalyzer,
+    RegistrationAnalyzerFiltered,
+    RegistrationAnalyzerReverse,
+    RegistrationAnalyzerFilteredReverse,
+    RegistrationPairFinder,
+    RegistrationAnalyzerNoOp
+]
+
+HELP_ANALYZER_ALGORITHMS = """
+The analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
+
+The following analyzer algorithms are available:
+""" + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_ANALYZER_ALGORITHMS])

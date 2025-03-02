@@ -7,12 +7,13 @@ import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
-from .util import transformation_identity, BaseAlgorithm, cwipc_transform
+from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
 
 RegistrationResult = open3d.pipelines.registration.RegistrationResult
 
 class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
-    """Compute the registration for a pointcloud.
+    """
+    Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
     """
     correspondence : float
@@ -87,7 +88,9 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         return part_pc
 
 class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
-    """Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry."""
+    """
+    Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry.
+    """
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
@@ -142,7 +145,9 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         return criteria
     
 class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
-    """Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry."""
+    """
+    Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry.
+    """
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
@@ -203,4 +208,15 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         )
         return criteria
     
-DEFAULT_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Point2Plane
+DEFAULT_FINE_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Point2Plane
+
+ALL_FINE_ALIGNMENT_ALGORITHMS = [
+    RegistrationComputer_ICP_Point2Point,
+    RegistrationComputer_ICP_Point2Plane
+]
+
+HELP_FINE_ALIGNMENT_ALGORITHMS = """
+The alignment algorithm looks at a source point cloud and tries to  find the best transformation to align it with a target point cloud.
+
+The following alignment algorithms are available:
+""" + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_FINE_ALIGNMENT_ALGORITHMS])
