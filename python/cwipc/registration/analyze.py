@@ -207,7 +207,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         ]
 
     def _compute_correspondence_errors(self):
-        N_FILTERING_STEPS = 2
         nCamera = len(self.per_camera_histograms)
         assert self.correspondence_errors == []
         assert self.matched_point_counts == []
@@ -224,17 +223,14 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             overlap_distances = copy.deepcopy(raw_distances)
             mean = 0
             stddev = 0
-            for filterstep in range(N_FILTERING_STEPS):
-                mean = float(np.mean(overlap_distances))
-                stddev = float(np.std(overlap_distances))
-                if self.verbose:
-                    print(f"\t\tstep {filterstep}: mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
-                # Create an array of booleans for all distances we want to keep, and filter on that.
-                # filter = np.logical_and(overlap_distances <= (mean+stddev), overlap_distances >= (mean-stddev))
-                filter = np.logical_and(overlap_distances <= (mean+stddev), overlap_distances >= 0)
-                overlap_distances = overlap_distances[filter]
+            
+            mean = float(np.mean(overlap_distances))
+            stddev = float(np.std(overlap_distances))
+            if self.verbose:
+                print(f"\t\tmean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+                
             # Last step: see how many points are below our new-found correspondence
-            corr = mean + stddev
+            corr = mean
             filter = raw_distances <= corr
             matched_point_count = np.count_nonzero(filter)
             self.correspondence_errors.append(corr)
@@ -242,7 +238,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             total_point_count = len(raw_distances)
             fraction = matched_point_count/total_point_count
             if self.verbose:
-                print(f"\t\tresult: mean+std=corr={corr}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
+                print(f"\t\tresult: mean=corr={corr}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
             self.matched_point_fractions.append(fraction)
 
 class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):
