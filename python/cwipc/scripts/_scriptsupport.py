@@ -336,6 +336,7 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
+    parser.add_argument("--debugpy", action="store_true", help="Pause at begin of run to wait for debugpy attaching")
     parser.add_argument("--debuglibrary", action="append", default=[], metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
 
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
@@ -381,6 +382,12 @@ def beginOfRun(args : argparse.Namespace) -> None:
             answer = sys.stdin.readline()
             answer = answer.strip()
         print(f"{sys.argv[0]}: started.")
+    if args.debugpy:
+        import debugpy
+        debugpy.listen(5678)
+        print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
+        debugpy.wait_for_client()
+        print(f"{sys.argv[0]}: debugger attached")        
     for debuglibrary in args.debuglibrary:
         try:
             name, path = debuglibrary.split('=')
