@@ -149,6 +149,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             plt.savefig(filename)
         if show:
             plt.show()
+            plt.close()
    
     def get_ordered_results(self, weightstyle : str = 'priority') -> List[Tuple[int, float, float]]:
         """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
