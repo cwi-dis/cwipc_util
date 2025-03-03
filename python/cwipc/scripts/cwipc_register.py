@@ -72,6 +72,7 @@ def main():
     parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
     
     parser.add_argument("--show_plot", action="store_true", help="After each fine aligner step show a graph of the results")
+    parser.add_argument("--plotstyle", action="store", help="Plot style for the fine alignment step. Comma-separated list of 'count', 'cumulative', 'delta', 'all', 'log'.")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug. Implies --verbose.")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     
@@ -243,6 +244,8 @@ class Registrator:
         self.args = args
         self.verbose = self.args.verbose
         self.show_plot = self.args.show_plot
+        if args.plotstyle:
+            cwipc.registration.analyze.set_default_plot_style(args.plotstyle)
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
@@ -663,6 +666,8 @@ class Registrator:
             print(f"\tcamnum={camnum}, correspondence={correspondence}, weight={weight}")
             if correspondence > worst_correspondence:
                 worst_correspondence = correspondence
+        if self.show_plot:
+            analyzer.plot(show=True)
 
         camnum_to_fix = None
         correspondence = results[0][1]

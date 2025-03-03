@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Any, List, Tuple, Type
+from typing import Optional, Union, Any, List, Tuple, Type, Container
 import numpy.typing
 from ..abstract import *
 from .. import cwipc_wrapper
@@ -76,8 +76,13 @@ class AnalysisAlgorithm(Algorithm):
         """
 
     @abstractmethod
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        """Seve the resulting plot"""
+    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
+        """
+        Plot the analysis results. 
+        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
+        If filename is given the plot is saved there.
+        If show is true the plot is shown on screen
+        """
         ...
 
 class AlignmentAlgorithm(Algorithm):

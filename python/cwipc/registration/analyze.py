@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Any, Tuple, cast
+from typing import List, Optional, Any, Tuple, cast, Container, Union, Iterable
 import math
 import copy
 import numpy as np
@@ -13,6 +13,15 @@ from .util import get_tiles_used, BaseAlgorithm, algdoc
 KD_TREE_TYPE = scipy.spatial.KDTree
 PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
 
+DEFAULT_PLOT_STYLE = ["count"]
+
+def set_default_plot_style(style : Union[str, Iterable[str]]):
+    global DEFAULT_PLOT_STYLE
+    if isinstance(style, str):
+        DEFAULT_PLOT_STYLE = ','.split(style)
+    else:
+        DEFAULT_PLOT_STYLE = list(style)
+        
 class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     """
     Analyzes how good pointclouds are registered.
@@ -79,16 +88,26 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _kdtree_count(self, tree : KD_TREE_TYPE) -> int:
         return tree.data.shape[0]
 
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        """Seve the resulting plot"""
+    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None):
         # xxxjack This uses the stateful pyplot API. Horrible.
         if not filename and not show:
             return
+        if which is None:
+            which = DEFAULT_PLOT_STYLE
+        do_count = which is None or 'count' in which or 'all' in which
+        do_cumulative = which is None or 'cumulative' in which or 'all' in which
+        do_delta = which is None or 'delta' in which or 'all' in which
+        do_log = which is not None and 'log' in which
+        
         nCamera = len(self.per_camera_histograms)
         plot_fig, plot_ax = plt.subplots()
+        if do_log:
+            plot_ax.set_yscale('log')
         ax_cum = None
-        if cumulative:
+        if do_cumulative:
             ax_cum = plot_ax.twinx()
+            if do_log:
+                ax_cum.set_yscale('log')
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
@@ -100,7 +119,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             assert h_data
             (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
             plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
-            if cumulative:
+            if do_cumulative:
                 assert ax_cum
                 ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
                 ax_cum.plot([corr, corr], [0, 1], linestyle="dotted", label="_nolegend_", color=PLOT_COLORS[cam_i])
