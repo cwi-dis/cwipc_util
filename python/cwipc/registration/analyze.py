@@ -18,7 +18,7 @@ DEFAULT_PLOT_STYLE = ["count"]
 def set_default_plot_style(style : Union[str, Iterable[str]]):
     global DEFAULT_PLOT_STYLE
     if isinstance(style, str):
-        DEFAULT_PLOT_STYLE = ','.split(style)
+        DEFAULT_PLOT_STYLE = style.split(',')
     else:
         DEFAULT_PLOT_STYLE = list(style)
         
@@ -98,16 +98,19 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         do_cumulative = which is None or 'cumulative' in which or 'all' in which
         do_delta = which is None or 'delta' in which or 'all' in which
         do_log = which is not None and 'log' in which
-        
+        do_log_cumulative = False # do_log
         nCamera = len(self.per_camera_histograms)
         plot_fig, plot_ax = plt.subplots()
         if do_log:
             plot_ax.set_yscale('log')
+        plot_ax.set_xlabel("Distance (m)")
+        plot_ax.set_ylabel(do_log and "log(count)" or "count")
         ax_cum = None
         if do_cumulative:
             ax_cum = plot_ax.twinx()
-            if do_log:
+            if do_log_cumulative:
                 ax_cum.set_yscale('log')
+            ax_cum.set_ylabel(do_log_cumulative and "log(cumulative)" or "cumulative")
         corr_box_text = "Correspondence error:\n"
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
