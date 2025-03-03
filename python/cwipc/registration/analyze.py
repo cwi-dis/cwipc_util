@@ -102,7 +102,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         nCamera = len(self.per_camera_histograms)
         plot_fig, plot_ax = plt.subplots()
         if do_log:
-            plot_ax.set_yscale('log')
+            plot_ax.set_yscale('symlog')
         plot_ax.set_xlabel("Distance (m)")
         plot_ax.set_ylabel(do_log and "log(count)" or "count")
         ax_cum = None
@@ -125,8 +125,19 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             if do_cumulative:
                 assert ax_cum
                 ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
-                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted", label="_nolegend_", color=PLOT_COLORS[cam_i])
-            
+                ax_cum.plot([corr, corr], [0, 1], linestyle="dashed",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+            if do_delta:
+                # Compute deltas over intervals of half of "corr" size
+                
+                corr_bin = int(np.digitize(corr, edges))
+                nbin = len(histogram) // (corr_bin//2)
+                while len(histogram) % nbin != 0:
+                    nbin += 1
+                new_edges = edges[0::nbin]
+                new_histo = np.reshape(histogram, (-1, nbin)).sum(axis=1)/nbin
+                delta = np.diff(new_histo)
+                plot_ax.plot([new_edges[0], new_edges[-1]], [0, 0], linestyle="solid", label="_nolegend_", color="black", linewidth=0.2)
+                plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i])
         title = self.plot_title
         if self.plot_label:
             title = self.plot_label + "\n" + title
