@@ -102,7 +102,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
             source=self._get_source_pointcloud(),
             target=self._get_target_pointcloud(),
-            max_correspondence_distance=self._get_max_correspondence_distance(),
+            max_correspondence_distance=self.correspondence,
             #init=initial_transformation,
             estimation_method=self._get_estimation_method(),
             criteria=self._get_criteria()
@@ -126,9 +126,6 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         target_pointcloud = open3d.geometry.PointCloud()
         target_pointcloud.points = open3d.utility.Vector3dVector(self.reference_points_nparray)
         return target_pointcloud
-    
-    def _get_max_correspondence_distance(self) -> float:
-        return self.correspondence
     
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
         estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPoint(
@@ -159,7 +156,7 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
             source=self._get_source_pointcloud(),
             target=self._get_target_pointcloud(),
-            max_correspondence_distance=self._get_max_correspondence_distance(),
+            max_correspondence_distance=self.correspondence,
             #init=initial_transformation,
             estimation_method=self._get_estimation_method(),
             criteria=self._get_criteria()
@@ -192,9 +189,6 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         # The max_nn=30 comes from the default for point2plane, so we'll assume the
         # open3d people know what they're doing.
         return open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30)
-    
-    def _get_max_correspondence_distance(self) -> float:
-        return self.correspondence
     
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
         estimation_method = open3d.pipelines.registration.TransformationEstimationPointToPlane()

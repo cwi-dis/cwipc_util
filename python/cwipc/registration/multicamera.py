@@ -159,7 +159,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
     def _prepare_compute(self):
         self.aligner = None
         if not self.aligner_class:
-            self.aligner_class = RegistrationComputer_ICP_Point2Plane
+            self.aligner_class = RegistrationComputer_ICP_Point2Point
         if self.verbose:
             print(f"{__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
         self.aligner = self.aligner_class()
@@ -195,7 +195,9 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
-            self.aligner.set_correspondence(correspondence)
+            if False:
+                # This is wrong, because the correspondence is the *minimum* correspondence, not the *maximum*,
+                self.aligner.set_correspondence(correspondence)
             self.aligner.run(camnum_to_fix)
             camnums_already_fixed.append(camnum_to_fix)
             # Save resultant pointcloud
@@ -401,7 +403,9 @@ class MultiCameraIterative(MultiCameraBase):
             self._prepare_compute()
             assert self.aligner
             assert self.resultant_pointcloud
-            self.aligner.set_correspondence(correspondence)
+            if False:
+                # This is wrong, because the correspondence is the *minimum* correspondence, not the *maximum*,
+                self.aligner.set_correspondence(correspondence)
             self.aligner.set_reference_pointcloud(self.resultant_pointcloud)
             self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
