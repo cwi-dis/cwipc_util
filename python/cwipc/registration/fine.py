@@ -141,6 +141,73 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         )
         return criteria
     
+class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
+    """
+    Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry.
+    """
+
+    def run(self, target: Optional[int]=None) -> bool:
+        """Run the algorithm"""
+        assert not target is None
+        assert len(self.per_camera_pointclouds) > 1
+        self._prepare(target)
+
+        initial_transformation = np.identity(4)
+        self.registration_result : RegistrationResult = open3d.t.pipelines.registration.icp(
+            source=self._get_source_tensor_pointcloud(),
+            target=self._get_target_tensor_pointcloud(),
+            max_correspondence_distance=self.correspondence,
+            #init=initial_transformation,
+            estimation_method=self._get_estimation_method(),
+            criteria=self._get_criteria()
+        )
+        return True
+
+    def _get_source_tensor_pointcloud(self) -> open3d.t.geometry.PointCloud:
+        non_tensor_pointcloud = self._get_source_pointcloud()
+        np_points = np.asarray(non_tensor_pointcloud.points)
+        tensor_points = open3d.core.Tensor(np_points)
+        tensor_pointcloud = open3d.t.geometry.PointCloud(tensor_points)
+        return tensor_pointcloud
+    
+    def _get_target_tensor_pointcloud(self) -> open3d.t.geometry.PointCloud:
+        non_tensor_pointcloud = self._get_target_pointcloud()
+        np_points = np.asarray(non_tensor_pointcloud.points)
+        tensor_points = open3d.core.Tensor(np_points)
+        tensor_pointcloud = open3d.t.geometry.PointCloud(tensor_points)
+        return tensor_pointcloud
+    
+    def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
+        if self.verbose and not nonverbose:
+            print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
+            print(f"\toverlap: {int(self.registration_result.fitness*100)}%")
+            print(f"\tinlier RMSE: {self.registration_result.inlier_rmse:.4f}")
+            print(f"\ttransformation:\n{self.registration_result.transformation}")
+        return self.registration_result.transformation
+    
+    def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
+        source_pointcloud = open3d.geometry.PointCloud()
+        source_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
+        return source_pointcloud
+    
+    def _get_target_pointcloud(self) -> open3d.geometry.PointCloud:
+        target_pointcloud = open3d.geometry.PointCloud()
+        target_pointcloud.points = open3d.utility.Vector3dVector(self.reference_points_nparray)
+        return target_pointcloud
+    
+    def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimation:
+        estimation_method = open3d.t.pipelines.registration.TransformationEstimationPointToPoint(
+        )
+        return estimation_method
+    
+    def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
+        criteria = open3d.t.pipelines.registration.ICPConvergenceCriteria(
+            relative_fitness = 1e-7,
+            relative_rmse = 1e-7,
+            max_iteration = 60
+        )
+        return criteria
+    
 class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
     """
     Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry.
