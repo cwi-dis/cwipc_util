@@ -169,6 +169,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 weight = math.log(self.matched_point_counts[camnum]) * self.correspondence_errors[camnum]
             elif weightstyle == 'match':
                 weight = math.log(self.matched_point_counts[camnum]) / self.correspondence_errors[camnum]
+            elif weightstyle == 'order':
+                weight = camnum
             else:
                 assert False, f"get_ordered_results: unknown weightstyle {weightstyle}"
             rv.append((self.per_camera_tilenum[camnum], self.correspondence_errors[camnum], weight))
