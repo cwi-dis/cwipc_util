@@ -61,17 +61,49 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         else:
             self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
         if self.verbose:
-            print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")  
+            print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")
+        self._compute_centroids()
+        self._filter_reference_points()
+        self._filter_our_points()
+
+    def _compute_centroids(self) -> None:
+        assert not self.our_points_nparray is None
+        assert not self.reference_points_nparray is None
+        our_centroid = np.mean(self.our_points_nparray, axis=0)
+        reference_centroid = np.mean(self.reference_points_nparray, axis=0)
+        self.our_centroid = our_centroid
+        self.reference_centroid = reference_centroid
+        our_centroid[1] = 0
+        reference_centroid[1] = 0
         if self.correspondence == 0:
             # If correspondence is not set use distance between the (floor-based) centroids.
-            our_centroid = np.mean(self.our_points_nparray, axis=0)
-            reference_centroid = np.mean(self.reference_points_nparray, axis=0)
-            our_centroid[1] = 0
-            reference_centroid[1] = 0
             self.correspondence = float(np.linalg.norm(our_centroid - reference_centroid)) / 2
             if self.verbose:
                 print(f"{self.__class__.__name__}: set correspondence to {self.correspondence:.4f} meters")
 
+    def _filter_reference_points(self) -> None:
+        assert not self.reference_points_nparray is None
+        assert not self.our_points_nparray is None
+        our_bbox = np.array([
+            np.min(self.our_points_nparray, axis=0),
+            np.max(self.our_points_nparray, axis=0)
+        ])
+        reference_bbox = our_bbox - self.our_centroid
+        referrence_bbox = reference_bbox * 1.2
+        reference_bbox = reference_bbox + self.reference_centroid
+        reference_points_filter = np.logical_and(
+            np.all(self.reference_points_nparray >= reference_bbox[0], axis=1),
+            np.all(self.reference_points_nparray <= reference_bbox[1], axis=1)
+        )
+        old_count = len(self.reference_points_nparray)
+        self.reference_points_nparray = self.reference_points_nparray[reference_points_filter]
+        new_count = len(self.reference_points_nparray)
+        if self.verbose:
+            print(f"{self.__class__.__name__}: filtered reference: from {old_count} to {new_count} points")
+
+    def _filter_our_points(self) -> None:
+        pass
+    
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         return transformation_identity()
     
