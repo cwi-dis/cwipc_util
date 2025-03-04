@@ -25,7 +25,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
 
     def __init__(self):
         BaseAlgorithm.__init__(self)
-        self.correspondence = 1 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
+        self.correspondence = 0 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.our_pointcloud = None
         self.our_points_nparray = None
         self.reference_pointcloud = None
@@ -62,6 +62,15 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
             self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
         if self.verbose:
             print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")  
+        if self.correspondence == 0:
+            # If correspondence is not set use distance between the (floor-based) centroids.
+            our_centroid = np.mean(self.our_points_nparray, axis=0)
+            reference_centroid = np.mean(self.reference_points_nparray, axis=0)
+            our_centroid[1] = 0
+            reference_centroid[1] = 0
+            self.correspondence = float(np.linalg.norm(our_centroid - reference_centroid)) / 2
+            if self.verbose:
+                print(f"{self.__class__.__name__}: set correspondence to {self.correspondence:.4f} meters")
 
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         return transformation_identity()
@@ -135,9 +144,9 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
     
     def _get_criteria(self) -> open3d.pipelines.registration.ICPConvergenceCriteria:
         criteria = open3d.pipelines.registration.ICPConvergenceCriteria(
-            relative_fitness = 1e-7,
-            relative_rmse = 1e-7,
-            max_iteration = 60
+            relative_fitness = 1e-3,
+            relative_rmse = 1e-6,
+            max_iteration = 30
         )
         return criteria
     
@@ -159,20 +168,27 @@ class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
             max_correspondence_distance=self.correspondence,
             #init=initial_transformation,
             estimation_method=self._get_estimation_method(),
-            criteria=self._get_criteria()
+            criteria=self._get_criteria(),
+            callback_after_iteration=self._callback_after_iteration
         )
         return True
+    
+    def _callback_after_iteration(self, loss_log_map : Any) -> None:
+        if not self.verbose:
+            return
+        index = loss_log_map['iteration_index'].item()
+        fitness = loss_log_map['fitness'].item()
+        inlier_rmse = loss_log_map['inlier_rmse'].item()
+        print(f"iteration {index}: fitness={fitness:.4f}, inlier_rmse={inlier_rmse:.4f}")
 
     def _get_source_tensor_pointcloud(self) -> open3d.t.geometry.PointCloud:
-        non_tensor_pointcloud = self._get_source_pointcloud()
-        np_points = np.asarray(non_tensor_pointcloud.points)
+        np_points = self.our_points_nparray
         tensor_points = open3d.core.Tensor(np_points)
         tensor_pointcloud = open3d.t.geometry.PointCloud(tensor_points)
         return tensor_pointcloud
     
     def _get_target_tensor_pointcloud(self) -> open3d.t.geometry.PointCloud:
-        non_tensor_pointcloud = self._get_target_pointcloud()
-        np_points = np.asarray(non_tensor_pointcloud.points)
+        np_points = self.reference_points_nparray
         tensor_points = open3d.core.Tensor(np_points)
         tensor_pointcloud = open3d.t.geometry.PointCloud(tensor_points)
         return tensor_pointcloud
@@ -183,14 +199,17 @@ class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
             print(f"\toverlap: {int(self.registration_result.fitness*100)}%")
             print(f"\tinlier RMSE: {self.registration_result.inlier_rmse:.4f}")
             print(f"\ttransformation:\n{self.registration_result.transformation}")
-        return self.registration_result.transformation
+        tensor_transformation = self.registration_result.transformation
+        return tensor_transformation.numpy()
     
     def _get_source_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert False
         source_pointcloud = open3d.geometry.PointCloud()
         source_pointcloud.points = open3d.utility.Vector3dVector(self.our_points_nparray)
         return source_pointcloud
     
     def _get_target_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert False
         target_pointcloud = open3d.geometry.PointCloud()
         target_pointcloud.points = open3d.utility.Vector3dVector(self.reference_points_nparray)
         return target_pointcloud
