@@ -10,7 +10,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
-from .util import transformation_identity, algdoc
+from .util import transformation_identity, algdoc, get_tiles_used
 from .analyze import RegistrationAnalyzerNoOp
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
@@ -29,6 +29,7 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
     aligner : Optional[AlignmentAlgorithm]
     verbose : bool
     show_plot : bool
+    nCamera : int
 
     def __init__(self):
         self.current_pointcloud = None
@@ -44,6 +45,7 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
 
         self.verbose = False
         self.show_plot = False
+        self.nCamera = 0
 
 
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
@@ -62,8 +64,14 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         return rv
     
     def camera_count(self) -> int:
-        assert self.analyzer
-        return self.analyzer.camera_count()
+        if self.nCamera == 0:
+            if self.analyzer:
+                self.nCamera = self.camera_count()
+            elif self.current_pointcloud:
+                self.nCamera = len(get_tiles_used(self.current_pointcloud))
+            else:
+                assert False, "No pointcloud and no analyzer"
+        return self.nCamera
     
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
@@ -75,17 +83,29 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         assert self.analyzer
         return self.analyzer.camera_index_for_tilenum(tilenum)
     
-    @abstractmethod
     def _prepare_analyze(self):
-        assert False
+        self.analyzer = None
+        assert self.analyzer_class
+        if self.verbose:
+            print(f"{self.__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
+        self.analyzer = self.analyzer_class()
+        self.analyzer.verbose = self.verbose
+        assert self.current_pointcloud
+        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
 
-    @abstractmethod
     def _prepare_compute(self):
-        assert False
+        self.aligner = None
+        if not self.aligner_class:
+            self.aligner_class = RegistrationComputer_ICP_Point2Point
+        if self.verbose:
+            print(f"{self.__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
+        self.aligner = self.aligner_class()
+        self.aligner.verbose = self.verbose
+        assert self.current_pointcloud
+        self.aligner.add_tiled_pointcloud(self.current_pointcloud)
 
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
-        self._prepare_analyze()
-        assert self.camera_count() > 0
+        nCamera = get_tiles_used(self.current_pointcloud)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
@@ -114,11 +134,6 @@ class MultiCameraNoOp(MultiCameraBase):
     def __init__(self):
         super().__init__()
 
-    def _prepare_analyze(self):
-        self.analyzer = RegistrationAnalyzerNoOp()
-        assert self.current_pointcloud
-        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
-
     def _prepare_compute(self):
         self.aligner = None
         assert self.current_pointcloud
@@ -126,6 +141,28 @@ class MultiCameraNoOp(MultiCameraBase):
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.current_pointcloud
+        self._prepare_analyze()
+        assert self.analyzer
+        assert self.camera_count() > 0
+        self.analyzer.run()
+        self.results = self.analyzer.get_ordered_results()
+        if self.verbose:
+            print(f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered best-first:")
+            for _camnum, _correspondence, _weight in self.results:
+                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+        if self.show_plot:
+            self.analyzer.plot_label = f"{self.__class__.__name__}"
+            self.analyzer.plot(show=True)
+        self.analyzer.filter_sources()
+        self.analyzer.run()
+        second_results = self.analyzer.get_ordered_results()
+        if self.verbose:
+            print(f"{self.__class__.__name__}: After filter:  Per-camera correspondence, ordered best-first:")
+            for _camnum, _correspondence, _weight in second_results:
+                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+        if self.show_plot:
+            self.analyzer.plot_label = f"{self.__class__.__name__}: After filter"
+            self.analyzer.plot(show=True)
         return True
 
 class MultiCameraOneToAllOthers(MultiCameraBase):
@@ -146,36 +183,15 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
         self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
     
-    def _prepare_analyze(self):
-        self.analyzer = None
-        assert self.analyzer_class
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
-        self.analyzer = self.analyzer_class()
-        self.analyzer.verbose = self.verbose
-        assert self.current_pointcloud
-        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
-
-    def _prepare_compute(self):
-        self.aligner = None
-        if not self.aligner_class:
-            self.aligner_class = RegistrationComputer_ICP_Point2Point
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
-        self.aligner = self.aligner_class()
-        self.aligner.verbose = self.verbose
-        assert self.current_pointcloud
-        self.aligner.add_tiled_pointcloud(self.current_pointcloud)
-
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.current_pointcloud
         self._prepare_analyze()
         assert self.analyzer
-        assert self.analyzer.camera_count() > 0
+        assert self.camera_count() > 0
         # Initialize matrices, if not done already (by our caller)
         if len(self.transformations) == 0:
-            for i in range(self.analyzer.camera_count()):
+            for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
         # Run the analyzer for the first time, on the original pointclouds.
@@ -350,36 +366,15 @@ class MultiCameraIterative(MultiCameraBase):
         self.change = []
         self.floor_correspondence = 0
 
-    def _prepare_analyze(self):
-        self.analyzer = None
-        assert self.analyzer_class
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
-        self.analyzer = self.analyzer_class()
-        self.analyzer.verbose = self.verbose
-        assert self.current_pointcloud
-        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
-
-    def _prepare_compute(self):
-        self.aligner = None
-        if not self.aligner_class:
-            self.aligner_class = RegistrationComputer_ICP_Point2Point
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
-        self.aligner = self.aligner_class()
-        self.aligner.verbose = self.verbose
-        assert self.current_pointcloud
-        self.aligner.add_tiled_pointcloud(self.current_pointcloud)
-
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.current_pointcloud
         self._prepare_analyze()
         assert self.analyzer
-        assert self.analyzer.camera_count() > 0
+        assert self.camera_count() > 0
         # Initialize matrices, if not done already (by our caller)
         if len(self.transformations) == 0:
-            for i in range(self.analyzer.camera_count()):
+            for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
         # Run the analyzer for the first time, on the original pointclouds.

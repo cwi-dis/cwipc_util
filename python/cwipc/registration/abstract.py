@@ -84,6 +84,13 @@ class AnalysisAlgorithm(Algorithm):
         If show is true the plot is shown on screen
         """
         ...
+        
+    @abstractmethod
+    def filter_sources(self) -> None:
+        """
+        After running the algorithm, filter all source point clouds to remove the points that were used in the alignment.
+        We can then run the algorithm again to try and determine whether there is another cluster of points with a higher correspondence.
+        """
 
 class AlignmentAlgorithm(Algorithm):
     """ABC for an algorithm that tries to find the best alignment for one tile (or possibly between two tiles, but always returning a new
