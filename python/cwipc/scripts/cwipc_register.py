@@ -60,6 +60,7 @@ def main():
     parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
+    parser.add_argument("--analyze", action="store_true", help="Analyze the pointclouds and show a graph of the results")
 
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
     parser.add_argument("--algorithm_multicamera", action="store", help="Fine alignment outer algorithm to use, for multiple cameras")
@@ -394,8 +395,7 @@ class Registrator:
         else:
             if self.verbose:
                 print(f"cwipc_register: skipping coarse registration, cameraconfig already has matrices")
-        
-        if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
+        if self.cameraconfig.camera_count() > 1 and not self.args.nofine or self.args.analyze:
             if must_reload:
                 if self.verbose:
                     print(f"cwipc_register: reload {self.cameraconfig.filename}")
@@ -405,15 +405,18 @@ class Registrator:
             pc = self.capture()
             if self.debug:
                 self.save_pc(pc, "step3_capture_fine")
-            new_pc = self.fine_registration(pc)
-            pc.free()
-            pc = None
-            if self.debug:
-                self.save_pc(new_pc, "step4_after_fine")
-            new_pc.free()
-            new_pc = None
-            if not self.dry_run:
-                self.cameraconfig.save()
+            if self.args.analyze:
+                self.check_alignment(pc, 0, "analysis")
+            else:
+                new_pc = self.fine_registration(pc)
+                pc.free()
+                pc = None
+                if self.debug:
+                    self.save_pc(new_pc, "step4_after_fine")
+                new_pc.free()
+                new_pc = None
+                if not self.dry_run:
+                    self.cameraconfig.save()
         else:
             if self.verbose:
                 print(f"cwipc_register: skipping fine registration, not needed")
@@ -604,13 +607,13 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         if self.check_coarse_alignment:
-            correspondence, _ = self.check_alignment(new_pc, 0, "after coarse registration")
+            correspondence = self.check_alignment(new_pc, 0, "after coarse registration")
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
     def fine_registration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         if False:
-            _, _ = self.check_alignment(pc, 0, "before fine registration")
+            self.check_alignment(pc, 0, "before fine registration")
         if True or self.verbose:
             print(f"cwipc_register: Use fine aligner class {self.multicamera_aligner_class.__name__}")
         multicam = self.multicamera_aligner_class()
@@ -643,11 +646,11 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        correspondence, _ = self.check_alignment(new_pc, 0, "after fine registration")
+        self.check_alignment(new_pc, 0, "after fine registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> Tuple[float, int]:
+    def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> float:
         assert self.analyzer_class
         if True or self.verbose:
             print(f"cwipc_register: Use analyzer class {self.analyzer_class.__name__}")
@@ -669,18 +672,8 @@ class Registrator:
                 worst_correspondence = correspondence
         if self.show_plot:
             analyzer.plot(show=True)
-
-        camnum_to_fix = None
-        correspondence = results[0][1]
-        for i in range(len(results)):
-            if results[i][1] >= original_capture_precision:
-                camnum_to_fix = results[i][0]
-                correspondence = results[i][1]
-                break
-        if self.debug:
-            analyzer.plot(filename="", show=True, cumulative=True)
-        assert camnum_to_fix
-        return worst_correspondence, camnum_to_fix      
+        
+        return worst_correspondence      
 
     def _capture_some_frames(self, capturer : cwipc_tiledsource_abstract) -> None:
         # Capture some frames (so we know get_config() will have obtained all parameters).
