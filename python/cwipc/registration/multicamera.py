@@ -356,6 +356,7 @@ class MultiCameraIterative(MultiCameraBase):
     proposed_cellsize : float
     change : List[float]
     floor_correspondence : float
+    two_step_correspondence : bool
 
     def __init__(self):
         super().__init__()
@@ -365,6 +366,7 @@ class MultiCameraIterative(MultiCameraBase):
         self.proposed_cellsize = 0
         self.change = []
         self.floor_correspondence = 0
+        self.two_step_correspondence = False
 
     def run(self) -> bool:
         """Run the algorithm"""
@@ -388,21 +390,40 @@ class MultiCameraIterative(MultiCameraBase):
         if self.show_plot:
             self.analyzer.plot_label = f"{self.__class__.__name__}: Before"
             self.analyzer.plot(show=True)
+        if self.two_step_correspondence:
+            # Now filter out the points that we matched in the previous analysis run. The idea is that this gives
+            # us a much better value for correspondence, as it will also take into account the points that are _not_
+            # part of the floor.
+            self.analyzer.filter_sources()
+            self.analyzer.run()
+            second_results = self.analyzer.get_ordered_results(weightstyle='order')
+            if self.verbose:
+                print(f"{self.__class__.__name__}: After filter:  Per-camera correspondence, ordered best-first:")
+                for _camnum, _correspondence, _weight in second_results:
+                    print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            if self.show_plot:
+                self.analyzer.plot_label = f"{self.__class__.__name__}: After filter"
+                self.analyzer.plot(show=True)
+            self.still_to_do = second_results
             
         self._select_first_pointcloud()
         while self.still_to_do:
             assert self.resultant_pointcloud
             camnum_to_fix, correspondence = self._select_next_pointcloud_index()
+            if not self.two_step_correspondence and self.floor_correspondence > 0:
+                correspondence = self.floor_correspondence
+                if self.verbose:
+                    print(f"{self.__class__.__name__}: Set correspondence to floor correspondence {self.floor_correspondence}")
             if self.verbose:
                 print(f"{self.__class__.__name__}: Aligning camera {camnum_to_fix}, corr={correspondence}, {self.resultant_pointcloud.count()} points in reference set")
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
             assert self.resultant_pointcloud
-            if self.floor_correspondence > 0:
+            if correspondence > 0:
                 if self.verbose:
-                    print(f"{self.__class__.__name__}: Set floor correspondence to {self.floor_correspondence}")
-                self.aligner.set_correspondence(self.floor_correspondence)
+                    print(f"{self.__class__.__name__}: Set correspondence to {correspondence}")
+                self.aligner.set_correspondence(correspondence)
             self.aligner.set_reference_pointcloud(self.resultant_pointcloud)
             self.aligner.run(camnum_to_fix)
             # Save resultant pointcloud
@@ -437,6 +458,19 @@ class MultiCameraIterative(MultiCameraBase):
             for cam_index in range(len(self.change)):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
         self._compute_new_tiles()
+        # Finally compute the second-order correspondence again and show it:
+        self.analyzer.filter_sources()
+        self.analyzer.run()
+        second_results = self.analyzer.get_ordered_results()
+        if self.verbose:
+            print(f"{self.__class__.__name__}: After all cameras done, afterfilter:  Per-camera correspondence, ordered best-first:")
+            for _camnum, _correspondence, _weight in second_results:
+                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+        if self.show_plot:
+            self.analyzer.plot_label = f"{self.__class__.__name__}: Final result after filter"
+            self.analyzer.plot(show=True)
+        
+
         return True
 
     def _compute_result_pointcloud_after_step(self)->None:
@@ -576,6 +610,7 @@ class MultiCameraIterativeFloorTwice(MultiCameraIterativeFloor):
         
         self.resultant_pointcloud = None
         self.pass_number = 2
+        self.two_step_correspondence = True
         ok = MultiCameraIterativeFloor.run(self)
         return ok
     
