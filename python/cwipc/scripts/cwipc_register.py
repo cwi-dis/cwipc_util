@@ -663,17 +663,13 @@ class Registrator:
         analyzer.run()
         stop_time = time.time()
         print(f"cwipc_register: analyzer ran for {stop_time-start_time:.3f} seconds")
-        results = analyzer.get_ordered_results()
-        print(f"cwipc_register: Sorted correspondences {label}")
-        worst_correspondence = 0
-        for camnum, correspondence, weight in results:
-            print(f"\tcamnum={camnum}, correspondence={correspondence}, weight={weight}")
-            if correspondence > worst_correspondence:
-                worst_correspondence = correspondence
+        results = analyzer.get_results()
+        results.sort_by_weight(weightstyle='order')
+        results.print_correspondences(label=f"cwipc_register: Sorted correspondences {label}")
         if self.show_plot:
             analyzer.plot(show=True)
         
-        return worst_correspondence      
+        return results.overallCorrespondence      
 
     def _capture_some_frames(self, capturer : cwipc_tiledsource_abstract) -> None:
         # Capture some frames (so we know get_config() will have obtained all parameters).

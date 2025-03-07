@@ -54,14 +54,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     per_camera_kdtree_others : List[KD_TREE_TYPE]
     #: Internal variable, may be useful for inspection: histogram results. List of tuples with histogram-data, edges, histogram-cumulative, histogram-cumulative-normalized, plot_label, raw-distance-data
     per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
-    # Internal variable: (per-camera) computed correspondence error (mean of distances)
-    correspondence : List[float]
-    correspondence_sigma : List[float]
-    # Internal variable: (per-camera, or pair-wise) count of points that are considered to be mappable to the other cloud
-    matched_point_counts : List[int]
     # Internal variable: (per-camera, or pair-wise) fraction of all points that are considered to be mappable
     matched_point_fractions : List[float]
-    
+    # Internal variable: which pass number
+    pass_number : int
+    # Internal variable: the results
+    results : Optional[AnalysisResults]
+
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
@@ -75,15 +74,26 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree  = []
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
-        self.correspondence = []
-        self.correspondence_sigma = []
-        self.matched_point_counts  = []
         self.matched_point_fractions = []
         self.filter_label = ""
+        self.pass_number = 0
+        self.results = None
 
+    def add_tiled_pointcloud(self, pc: cwipc_wrapper) -> None:
+        super().add_tiled_pointcloud(pc)
+        self.results = AnalysisResults(self.camera_count())
+        self.results.tileNums = [i for i in self.per_camera_tilenum]
+    
     def run(self, target: Optional[int]=None) -> bool:
         assert False
 
+    def run_twice(self, target: Optional[int]=None) -> bool:
+        ok = self.run(target)
+        if not ok:
+            return ok
+        self.pass_number = 1
+        self.filter_sources()
+        return self.run(target)
 
     def _kdtree_get_distances_to_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         distances, _ = tree.query(points, workers=-1)
@@ -120,12 +130,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 ax_cum.set_yscale('log')
             ax_cum.set_ylabel(do_log_cumulative and "log(cumulative)" or "cumulative")
         corr_box_text = "Correspondence:\n"
+        assert self.results
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             h_data = self.per_camera_histograms[cam_i]
-            corr = self.correspondence[cam_i]
-            corr_sigma = self.correspondence_sigma[cam_i]
-            count = self.matched_point_counts[cam_i]
+            corr = self.results.minCorrespondence[cam_i]
+            corr_sigma = self.results.minCorrespondenceSigma[cam_i]
+            count = self.results.minCorrespondenceCount[cam_i]
             percentage = int(self.matched_point_fractions[cam_i] * 100)
             corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
             assert h_data
@@ -160,31 +171,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             plt.show()
             plt.close()
    
-    def get_ordered_results(self, weightstyle : str = 'priority') -> List[Tuple[int, float, float]]:
+    def get_results(self, weightstyle : str = 'priority') -> AnalysisResults:
         """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
         
         This is the order in which the camera re-registration should be attempted.
         """
-        rv = []
-        for camnum in range(len(self.correspondence)):
-            if weightstyle == 'priority':
-                # Option 1: Use the correspondence as-is
-                #weight = self.correspondences[camnum]
-                # Option 2: multiply by the number of points that were matched
-                #weight = self.correspondences[camnum]*self.below_correspondence_counts[camnum]
-                # option 3: multiply by the square root of the number of matched points
-                #weight = self.correspondences[camnum]*math.sqrt(self.below_correspondence_counts[camnum])
-                # option 4: multiply by the log of the number of matched points
-                weight = math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
-            elif weightstyle == 'match':
-                weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
-            elif weightstyle == 'order':
-                weight = camnum
-            else:
-                assert False, f"get_ordered_results: unknown weightstyle {weightstyle}"
-            rv.append((self.per_camera_tilenum[camnum], self.correspondence[camnum], weight))
-        rv.sort(key=lambda t:-t[2])
-        return rv
+        assert self.results
+        return self.results
     
     def _prepare(self):
         assert False
@@ -221,8 +214,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _compute_correspondence_errors(self):
         nCamera = len(self.per_camera_histograms)
-        assert self.correspondence == []
-        assert self.matched_point_counts == []
         assert self.matched_point_fractions == []
         if self.verbose:
             print(f"{self.__class__.__name__}: computing correspondence errors:")
@@ -245,9 +236,15 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             # Last step: see how many points are below our new-found correspondence
             filter = raw_distances <= mean
             matched_point_count = np.count_nonzero(filter)
-            self.correspondence.append(mean)
-            self.correspondence_sigma.append(stddev)
-            self.matched_point_counts.append(matched_point_count)
+            assert self.results
+            if self.pass_number == 0:
+                self.results.minCorrespondence[cam_i] = mean
+                self.results.minCorrespondenceSigma[cam_i] = stddev
+                self.results.minCorrespondenceCount[cam_i] = matched_point_count
+            else:
+                self.results.secondCorrespondence[cam_i] = mean
+                self.results.secondCorrespondenceSigma[cam_i] = stddev
+                self.results.secondCorrespondenceCount[cam_i] = matched_point_count
             total_point_count = len(raw_distances)
             fraction = matched_point_count/total_point_count
             if self.verbose:
@@ -257,12 +254,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def filter_sources(self) -> None:
         """Filter points that were matched by a previous run"""
         nCamera = len(self.per_camera_pointclouds)
+        assert self.results
         for cam_i in range(nCamera):
             assert len(self.per_camera_nparray[cam_i]) > 0
             assert len(self.per_camera_nparray_distances[cam_i]) > 0
-            assert self.correspondence[cam_i] > 0
-            assert self.correspondence_sigma[cam_i] > 0
-            cutoff = self.correspondence[cam_i] + self.correspondence_sigma[cam_i] # xxxjack copilot suggested 2*sigma...
+            assert self.results.minCorrespondence[cam_i] > 0
+            assert self.results.minCorrespondenceSigma[cam_i] > 0
+            cutoff = self.results.minCorrespondence[cam_i] + self.results.minCorrespondenceSigma[cam_i] # xxxjack copilot suggested 2*sigma...
             old_count = len(self.per_camera_nparray[cam_i])
             filter = self.per_camera_nparray_distances[cam_i] > cutoff
             filtered_nparray = self.per_camera_nparray[cam_i][filter]
@@ -273,24 +271,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 print(f"filter_sources: camera {cam_i}: from {old_count} to {new_count} points, distance={cutoff}")
         self.filter_label = f" (filtered)"
         self.per_camera_kdtree = []
-        self.correspondence = []
-        self.matched_point_counts = []
         self.matched_point_fractions = []
         self.per_camera_histograms = []
-        
-class RegistrationAnalyzerNoOp(BaseRegistrationAnalyzer):
-    """
-    This algorithm does nothing, it just returns a single tile with a single point.
-    """
-    def run(self, target: Optional[int]=None) -> bool:
-        assert target is None
-        assert len(self.per_camera_pointclouds) > 0
-        self.per_camera_histograms = [
-            (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
-        ]
-        self.correspondence = [0.0]
-        self.matched_point_counts = [1]
-        return True
     
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
     """
@@ -388,8 +370,10 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
             self.per_camera_histograms = [
                 (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
-            self.correspondence = [0.0]
-            self.matched_point_counts = [1]
+            assert self.results
+            self.results.minCorrespondence[0] = 0.0
+            self.results.minCorrespondenceSigma[0] = 0
+            self.results.minCorrespondenceCount[0] = 1
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
@@ -471,8 +455,10 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
             self.per_camera_histograms = [
                 (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
             ]
-            self.correspondence = [0.0]
-            self.matched_point_counts = [1]
+            assert self.results
+            self.results.minCorrespondence[0] = 0.0
+            self.results.minCorrespondenceSigma[0] = 0
+            self.results.minCorrespondenceCount[0] = 1
             return True
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
@@ -528,8 +514,7 @@ ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzerFiltered,
     RegistrationAnalyzerReverse,
     RegistrationAnalyzerFilteredReverse,
-    RegistrationPairFinder,
-    RegistrationAnalyzerNoOp
+    RegistrationPairFinder
 ]
 
 HELP_ANALYZER_ALGORITHMS = """

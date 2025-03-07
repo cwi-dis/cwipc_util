@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Union, Any, List, Tuple, Type, Container
+import math
 import numpy.typing
 from ..abstract import *
 from .. import cwipc_wrapper
@@ -8,6 +9,7 @@ __all__ = [
     "RegistrationTransformation",
     "Algorithm",
     "AnalysisAlgorithm",
+    "AnalysisResults",
     "AlignmentAlgorithm", 
     "AnalysisAlgorithmFactory",
     "AlignmentAlgorithmFactory", 
@@ -57,23 +59,89 @@ class Algorithm(ABC):
         ...
     # There are also methods to return the result, but they don't have a fixed signature.
 
+class AnalysisResults:
+    """Class to hold the results of an analysis algorithm"""
+    #: Number of cameras (tiles) in the point clouds
+    nCamera : int
+    #: tile numbers for each result entry
+    tileNums: List[int]
+    #: minimum correspondence for each camera
+    minCorrespondence : List[float]
+    #: stddev for minimum correspondence
+    minCorrespondenceSigma : List[float]
+    #: number of points that were used for the minimum correspondence for each camera
+    minCorrespondenceCount : List[int]
+    #: second best correspondence for each camera
+    secondCorrespondence : List[float]
+    #: stddev of the above
+    secondCorrespondenceSigma : List[float]
+    #: number of points that were used for secondCorrespondence
+    secondCorrespondenceCount : List[int]
+
+    def __init__(self, nCamera : int):
+        self.nCamera = nCamera
+        self.tileNums = [0] * nCamera
+        self.minCorrespondence = [0.0] * nCamera
+        self.minCorrespondenceSigma = [0.0] * nCamera
+        self.minCorrespondenceCount = [0] * nCamera
+        self.secondCorrespondence = [0] * nCamera
+        self.secondCorrespondenceSigma = [0] * nCamera
+        self.secondCorrespondenceCount = [0] * nCamera
+        self.overallCorrespondence = 0
+
+    def sort_by_weight(self, weightstyle : str = 'priority') -> None:
+        """Sort the results by weightstyle:
+        - 'priority': the best matching camera has the heighest weight (more points give more weight, closer points give more weight)
+        - 'match' : the worst matching camera has the highest weight (more points give more weight, closer points give less weight)
+        - 'priority2' and 'match2': same, but for the point cloud with the first machint points filtered out
+        - 'order': camera number, which is supposed to be real world order.
+        """
+        if weightstyle == 'priority':
+            weights = [(math.log(self.minCorrespondenceCount[i]) * self.minCorrespondence[i]) for i in range(self.nCamera)] #math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
+        elif weightstyle == 'match':
+            weights = [(math.log(self.minCorrespondenceCount[i]) / self.minCorrespondence[i]) for i in range(self.nCamera)]  # weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
+        elif weightstyle == 'priority2':
+            weights = [(math.log(self.secondCorrespondenceCount[i]) * self.secondCorrespondence[i]) for i in range(self.nCamera)] #math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
+        elif weightstyle == 'match2':
+            weights = [(math.log(self.secondCorrespondenceCount[i]) / self.secondCorrespondence[i]) for i in range(self.nCamera)]  # weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
+        elif weightstyle == 'order':
+            weights = [camnum for camnum in range(self.nCamera)]
+        else:
+            assert False, f"sort_by_weight: unknown weightstyle {weightstyle}"
+        sorted_indices = [i[0] for i in sorted(enumerate(weights), key=lambda x:x[1])]
+        self.tileNums = [self.tileNums[i] for i in sorted_indices]
+        self.minCorrespondence = [self.minCorrespondence[i] for i in sorted_indices]
+        self.minCorrespondenceCount = [self.minCorrespondenceCount[i] for i in sorted_indices]
+        self.secondCorrespondence = [self.secondCorrespondence[i] for i in sorted_indices]
+        self.secondCorrespondenceCount = [self.secondCorrespondenceCount[i] for i in sorted_indices]
+
+    def print_correspondences(self, label : str) -> None:
+        print(f"{label}:")
+        for i in range(self.nCamera):
+            _camnum = self.tileNums[i]
+            _minCorr = self.minCorrespondence[i]
+            _minCorrCount = self.minCorrespondenceCount[i]
+            _secondCorr = self.secondCorrespondence[i]
+            _secondCorrCount = self.secondCorrespondenceCount[i]
+            print(f"\tcamnum={_camnum}, corr={_minCorr} ({_minCorrCount} pts), corr2={_secondCorr} ({_secondCorrCount} pts)")
+
 class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm (such as computing the overlap between tiles)"""
 
-    @abstractmethod
-    def get_ordered_results(self, weightstyle : str = 'priority') -> List[Tuple[int, float, float]]:
-        """Returns a list of (tilenum, epsilon, weight) indicating how each camera is aligned.
-        
-        Weightstyle is a string that determines how the weight is computed:
-        - 'priority': the best matching camera has the heighest weight (more points give more weight, closer points give more weight)
-        - 'match' : the worst matching camera has the highest weight (more points give more weight, closer points give less weight)
-        tilenum is the camera tile number
-        epsilon is a measure (in meters) for how closely this camera tile matches the others
-        weight is based on espilon and the number of points that were matched
+    plot_label : Optional[str]
 
-        The list is sorted by weight (decreasing), so the expectation is that the first one
-        has the highest priority.
+    @abstractmethod
+    def get_results(self) -> AnalysisResults:
+        """Returns an object indicating how each camera is aligned.
         """
+        ...
+
+    @abstractmethod
+    def run_twice(self) -> bool:
+        """Run the algorithm twice, removing the points matched in the first run before the second run.
+        This will set the secondCoeespondence variables in the result.
+        """
+        ...
 
     @abstractmethod
     def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:

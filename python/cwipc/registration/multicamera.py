@@ -11,7 +11,6 @@ from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used
-from .analyze import RegistrationAnalyzerNoOp
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
 class MultiCameraBase(MultiAlignmentAlgorithm):
@@ -22,7 +21,7 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
     current_pointcloud_is_new : bool
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
-    results : List[Tuple[int, float, float]]
+    results : Optional[AnalysisResults]
     analyzer_class : Optional[AnalysisAlgorithmFactory]
     analyzer : Optional[AnalysisAlgorithm]
     aligner_class : Optional[AlignmentAlgorithmFactory]
@@ -36,7 +35,7 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         self.current_pointcloud_is_new = False
         self.transformations  = []
         self.original_transformations = []
-        self.results = []
+        self.results = None
 
         self.analyzer_class = None
         self.analyzer = None
@@ -105,6 +104,7 @@ class MultiCameraBase(MultiAlignmentAlgorithm):
         self.aligner.add_tiled_pointcloud(self.current_pointcloud)
 
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
+        assert self.current_pointcloud
         nCamera = get_tiles_used(self.current_pointcloud)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
@@ -145,24 +145,14 @@ class MultiCameraNoOp(MultiCameraBase):
         assert self.analyzer
         assert self.camera_count() > 0
         self.analyzer.run()
-        self.results = self.analyzer.get_ordered_results()
+        self.results = self.analyzer.get_results()
+        self.results.sort_by_weight(weightstyle='order')
         if self.verbose:
-            print(f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered best-first:")
-            for _camnum, _correspondence, _weight in self.results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
         if self.show_plot:
             self.analyzer.plot_label = f"{self.__class__.__name__}"
             self.analyzer.plot(show=True)
-        self.analyzer.filter_sources()
-        self.analyzer.run()
-        second_results = self.analyzer.get_ordered_results()
-        if self.verbose:
-            print(f"{self.__class__.__name__}: After filter:  Per-camera correspondence, ordered best-first:")
-            for _camnum, _correspondence, _weight in second_results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
-        if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}: After filter"
-            self.analyzer.plot(show=True)
+        
         return True
 
 class MultiCameraOneToAllOthers(MultiCameraBase):
@@ -196,15 +186,16 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
         self.original_transformations = copy.deepcopy(self.transformations)
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run()
-        self.results = self.analyzer.get_ordered_results()
-        camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate([])
+        self.results = self.analyzer.get_results()
+        self.results.sort_by_weight(weightstyle='priority')
         if self.verbose:
-            print(f"{self.__class__.__name__}: Before: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
-            for _camnum, _correspondence, _weight in self.results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered by priority")
         if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}: Before"
+            self.analyzer.plot_label = f"{self.__class__.__name__}"
             self.analyzer.plot(show=True)
+
+        # xxxjack 
+        
         stepnum = 1
         camnums_already_fixed = []
         while camnum_to_fix != None:
@@ -234,11 +225,14 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             # Re-initialize analyzer
             self._prepare_analyze()
             self.analyzer.run()
-            self.results = self.analyzer.get_ordered_results()
+            self.results = self.analyzer.get_results()
+            self.results.sort_by_weight(weightstyle='priority')
             if self.verbose:
-                print(f"{self.__class__.__name__}: Step {stepnum}: per-camera correspondence, ordered worst-first:")
-                for _camnum, _correspondence, _weight in self.results:
-                    print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+                self.results.print_correspondences(label=f"{self.__class__.__name__}: Step {stepnum}:  Per-camera correspondence, ordered by priority")
+            if self.show_plot:
+                self.analyzer.plot_label = f"{self.__class__.__name__}"
+                self.analyzer.plot(show=True)
+
             # See results, and whether it's worth it to do another step
             old_camnum_to_fix = camnum_to_fix
             old_correspondence = correspondence
