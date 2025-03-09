@@ -104,11 +104,17 @@ class AnalysisResults:
             weights = [(math.log(self.secondCorrespondenceCount[i]) * self.secondCorrespondence[i]) for i in range(self.nCamera)] #math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
         elif weightstyle == 'match2':
             weights = [(math.log(self.secondCorrespondenceCount[i]) / self.secondCorrespondence[i]) for i in range(self.nCamera)]  # weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
-        elif weightstyle == 'order':
+        elif weightstyle == 'order' or weightstyle == 'bestorder':
             weights = [camnum for camnum in range(self.nCamera)]
         else:
             assert False, f"sort_by_weight: unknown weightstyle {weightstyle}"
         sorted_indices = [i[0] for i in sorted(enumerate(weights), key=lambda x:x[1])]
+        if weightstyle == 'bestorder':
+            # Like order, but we move cameras to the end of the list as long as the first camera
+            # has a worse correspondence than the second one.
+            while self.secondCorrespondence[sorted_indices[0]] > self.secondCorrespondence[sorted_indices[1]]:
+                tmp = sorted_indices[0]
+                sorted_indices = sorted_indices[1:] + [tmp]
         self.tileNums = [self.tileNums[i] for i in sorted_indices]
         self.minCorrespondence = [self.minCorrespondence[i] for i in sorted_indices]
         self.minCorrespondenceCount = [self.minCorrespondenceCount[i] for i in sorted_indices]

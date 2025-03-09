@@ -187,7 +187,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
         # Run the analyzer for the first time, on the original pointclouds.
         self.analyzer.run_twice()
         self.results = self.analyzer.get_results()
-        self.results.sort_by_weight(weightstyle='priority')
+        self.results.sort_by_weight(weightstyle='priority2')
         if self.verbose:
             self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered by priority")
         if self.show_plot:
@@ -377,7 +377,7 @@ class MultiCameraIterative(MultiCameraBase):
         else:
             self.analyzer.run()
         self.results = self.analyzer.get_results()
-        self.results.sort_by_weight(weightstyle='order')
+        self.results.sort_by_weight(weightstyle='bestorder')
         if self.verbose:
             self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
         if self.show_plot:
@@ -554,7 +554,6 @@ class MultiCameraIterativeFloor(MultiCameraIterative):
         floor_matrix = np_matrix[filter]
         floor_matrix[...,1] = 0
         self.resultant_pointcloud = cwipc_from_numpy_matrix(floor_matrix, self.current_pointcloud.timestamp())
-        print(f"xxxjack: first point: np_matrix[0]={floor_matrix[0]}")
 
 class MultiCameraIterativeFloorOnly(MultiCameraIterativeFloor):
     """\

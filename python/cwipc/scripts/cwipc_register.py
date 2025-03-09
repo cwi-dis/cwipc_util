@@ -613,7 +613,8 @@ class Registrator:
         return new_pc
 
     def fine_registration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
-        if False:
+        if not self.verbose:
+            # We only do this if we are not running verbosely (because then the alignment classes will print this info)
             self.check_alignment(pc, 0, "before fine registration")
         if True or self.verbose:
             print(f"cwipc_register: Use fine aligner class {self.multicamera_aligner_class.__name__}")
