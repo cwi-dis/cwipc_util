@@ -72,7 +72,7 @@ def main():
     parser.add_argument("--no_aruco", action="store_true", help="Do coarse alignment with interactive selection (default: find aruco marker)")
     parser.add_argument("--conf_init", action="append", metavar="PATH=VALUE", help="If creating cameraconfig.json, set PATH to VALUE. Example: postprocessing.depthfilterparameters.threshold_far=3.0")
     
-    parser.add_argument("--show_plot", action="store_true", help="After each fine aligner step show a graph of the results")
+    parser.add_argument("--plot", action="store_true", help="After each fine aligner step show a graph of the results")
     parser.add_argument("--plotstyle", action="store", help="Plot style for the fine alignment step. Comma-separated list of 'count', 'cumulative', 'delta', 'all', 'log'.")
     parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug. Implies --verbose.")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
@@ -244,8 +244,9 @@ class Registrator:
         self.capturer = None
         self.args = args
         self.verbose = self.args.verbose
-        self.show_plot = self.args.show_plot
+        self.show_plot = self.args.plot
         if args.plotstyle:
+            self.show_plot = True
             cwipc.registration.analyze.set_default_plot_style(args.plotstyle)
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
@@ -660,7 +661,7 @@ class Registrator:
         analyzer.add_tiled_pointcloud(pc)
         analyzer.plot_label = label
         start_time = time.time()
-        analyzer.run()
+        analyzer.run_twice()
         stop_time = time.time()
         print(f"cwipc_register: analyzer ran for {stop_time-start_time:.3f} seconds")
         results = analyzer.get_results()
