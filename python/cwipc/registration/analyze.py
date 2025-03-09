@@ -76,7 +76,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree  = []
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
-        self.per_camera_histograms_for_plot = FileNotFoundError
+        self.per_camera_histograms_for_plot = None
         self.matched_point_fractions = []
         self.filter_label = ""
         self.pass_number = 0

@@ -144,7 +144,7 @@ class MultiCameraNoOp(MultiCameraBase):
         self._prepare_analyze()
         assert self.analyzer
         assert self.camera_count() > 0
-        self.analyzer.run()
+        self.analyzer.run_twice()
         self.results = self.analyzer.get_results()
         self.results.sort_by_weight(weightstyle='order')
         if self.verbose:
@@ -185,7 +185,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
         # Run the analyzer for the first time, on the original pointclouds.
-        self.analyzer.run()
+        self.analyzer.run_twice()
         self.results = self.analyzer.get_results()
         self.results.sort_by_weight(weightstyle='priority')
         if self.verbose:
@@ -204,9 +204,8 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             # Prepare the registration computer
             self._prepare_compute()
             assert self.aligner
-            if False:
-                # This is wrong, because the correspondence is the *minimum* correspondence, not the *maximum*,
-                self.aligner.set_correspondence(correspondence)
+            correspondence = self.results.secondCorrespondence[camnum_to_fix]
+            self.aligner.set_correspondence(correspondence)
             self.aligner.run(camnum_to_fix)
             camnums_already_fixed.append(camnum_to_fix)
             # Save resultant pointcloud
@@ -248,9 +247,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             stepnum += 1
         self.proposed_cellsize = total_correspondence*self.cellsize_factor
         if self.verbose:
-            print(f"{self.__class__.__name__}: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first:")
-            for _camnum, _correspondence, _weight in self.results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            self.results.print_correspondences(label=f"{self.__class__.__name__}: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first")
         if self.show_plot:
             self.analyzer.plot_label = f"{self.__class__.__name__}: Step {stepnum} result"
             self.analyzer.plot(show=True)
@@ -263,6 +260,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
         return True
 
     def _get_next_candidate(self, camnums_already_fixed : List[int]) -> Tuple[Optional[int], float, float]:
+        assert 0
         camnum_to_fix = None
         correspondence = self.results[0][1]
         for i in range(len(self.results)):
@@ -345,7 +343,7 @@ class MultiCameraIterative(MultiCameraBase):
     We repeat this until all cameras are aligned.
     """
     resultant_pointcloud : Optional[cwipc_wrapper]
-    still_to_do : List[Tuple[int, float, float]]
+    still_to_do : List[int]
     cellsize_factor : float
     proposed_cellsize : float
     change : List[float]
@@ -373,18 +371,20 @@ class MultiCameraIterative(MultiCameraBase):
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
-        # Run the analyzer for the first time, on the original pointclouds.
-        self.analyzer.run()
-        self.results = self.analyzer.get_ordered_results(weightstyle='order')
-        self.still_to_do = self.results
+        
+        if self.two_step_correspondence:
+            self.analyzer.run_twice()
+        else:
+            self.analyzer.run()
+        self.results = self.analyzer.get_results()
+        self.results.sort_by_weight(weightstyle='order')
         if self.verbose:
-            print(f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered best-first:")
-            for _camnum, _correspondence, _weight in self.results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
         if self.show_plot:
             self.analyzer.plot_label = f"{self.__class__.__name__}: Before"
             self.analyzer.plot(show=True)
-        if self.two_step_correspondence:
+        self.still_to_do = list(range(self.camera_count()))
+        if False: # self.two_step_correspondence:
             # Now filter out the points that we matched in the previous analysis run. The idea is that this gives
             # us a much better value for correspondence, as it will also take into account the points that are _not_
             # part of the floor.
@@ -432,17 +432,13 @@ class MultiCameraIterative(MultiCameraBase):
         self.current_pointcloud = self.resultant_pointcloud
         self.current_pointcloud_is_new = True
         self._prepare_analyze()
-        self.analyzer.run()
-        self.results = self.analyzer.get_ordered_results()
-        max_correspondence = 0
-        for _, correspondence, _ in self.results:
-            max_correspondence = max(max_correspondence, correspondence)
+        self.analyzer.run_twice()
+        self.results = self.analyzer.get_results()
+        max_correspondence = max(self.results.minCorrespondence)
         self.proposed_cellsize = max_correspondence * self.cellsize_factor
 
         if self.verbose:
-            print(f"{self.__class__.__name__}: After all cameras done. Per-camera correspondence, ordered worst-first:")
-            for _camnum, _correspondence, _weight in self.results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
+            self.results.print_correspondences(label=f"{self.__class__.__name__}: After all cameras done. Per-camera correspondence")
         if self.show_plot:
             self.analyzer.plot_label = f"{self.__class__.__name__}: Final result"
             self.analyzer.plot(show=True)
@@ -452,19 +448,6 @@ class MultiCameraIterative(MultiCameraBase):
             for cam_index in range(len(self.change)):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
         self._compute_new_tiles()
-        # Finally compute the second-order correspondence again and show it:
-        self.analyzer.filter_sources()
-        self.analyzer.run()
-        second_results = self.analyzer.get_ordered_results()
-        if self.verbose:
-            print(f"{self.__class__.__name__}: After all cameras done, afterfilter:  Per-camera correspondence, ordered best-first:")
-            for _camnum, _correspondence, _weight in second_results:
-                print(f"\tcamnum={_camnum}, correspondence={_correspondence}, weight={_weight}")
-        if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}: Final result after filter"
-            self.analyzer.plot(show=True)
-        
-
         return True
 
     def _compute_result_pointcloud_after_step(self)->None:
@@ -477,17 +460,21 @@ class MultiCameraIterative(MultiCameraBase):
 
     def _select_first_pointcloud(self) -> None:
         assert self.resultant_pointcloud == None
-        camNum, _, _ = self.still_to_do[0]
+        camIndex = self.still_to_do[0]
+        camNum = self.tilenum_for_camera_index(camIndex)
+        self.still_to_do = self.still_to_do[1:]
         if self.verbose:
             print(f"{self.__class__.__name__}: Select initial pointcloud: camera {camNum}")
-        self.still_to_do = self.still_to_do[1:]
         pc = self.get_pointcloud_for_tilenum(camNum)
         # Do a deep-copy
         self.resultant_pointcloud = cwipc_from_packet(pc.get_packet())
 
     def _select_next_pointcloud_index(self) -> Tuple[int, float]:
-        camNum, correspondence, _ = self.still_to_do[0]
+        assert self.results
+        camIndex = self.still_to_do[0]
         self.still_to_do = self.still_to_do[1:]
+        camNum = self.results.tileNums[camIndex]
+        correspondence = self.results.secondCorrespondence[camIndex]
         if self.verbose:
             print(f"{self.__class__.__name__}: Select next pointcloud: camera {camNum}, correspondence {correspondence}")
         return camNum, correspondence
@@ -502,7 +489,7 @@ class MultiCameraIterative(MultiCameraBase):
             #    print(f"camindex={cam_index} old: {orig_transform}")
             #    print(f"camindex={cam_index} new: {new_transform}")
             # Compute how far the point cloud moved
-            # we take four points and compute the average move
+            # we take four points (feet, head, hand left, hand forward) and compute the average move
             total_delta = 0.0
             for point in [
                     np.array([0, 0, 0, 1]),

@@ -647,7 +647,7 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        self.check_alignment(new_pc, 0, "after fine registration")
+        correspondence = self.check_alignment(new_pc, 0, "after fine registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
