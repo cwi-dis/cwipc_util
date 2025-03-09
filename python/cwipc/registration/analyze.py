@@ -54,6 +54,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     per_camera_kdtree_others : List[KD_TREE_TYPE]
     #: Internal variable, may be useful for inspection: histogram results. List of tuples with histogram-data, edges, histogram-cumulative, histogram-cumulative-normalized, plot_label, raw-distance-data
     per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
+    #: Internal variable: the histogram from the first pass, for plotting
+    per_camera_histograms_for_plot : Optional[List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]]
     # Internal variable: (per-camera, or pair-wise) fraction of all points that are considered to be mappable
     matched_point_fractions : List[float]
     # Internal variable: which pass number
@@ -74,6 +76,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree  = []
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
+        self.per_camera_histograms_for_plot = FileNotFoundError
         self.matched_point_fractions = []
         self.filter_label = ""
         self.pass_number = 0
@@ -88,10 +91,15 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert False
 
     def run_twice(self, target: Optional[int]=None) -> bool:
+        if self.verbose:
+            print(f"{self.__class__.__name__}: Pass 1")
         ok = self.run(target)
         if not ok:
             return ok
         self.pass_number = 1
+        if self.verbose:
+            print(f"{self.__class__.__name__}: Pass 2")
+        self.per_camera_histograms_for_plot = self.per_camera_histograms
         self.filter_sources()
         return self.run(target)
 
@@ -133,19 +141,32 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.results
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            h_data = self.per_camera_histograms[cam_i]
+            if self.per_camera_histograms_for_plot != None:
+                h_data = self.per_camera_histograms_for_plot[cam_i]
+            else:
+                h_data = self.per_camera_histograms[cam_i]
             corr = self.results.minCorrespondence[cam_i]
             corr_sigma = self.results.minCorrespondenceSigma[cam_i]
             count = self.results.minCorrespondenceCount[cam_i]
             percentage = int(self.matched_point_fractions[cam_i] * 100)
+
+            corr2 = self.results.secondCorrespondence[cam_i]
+            has_second_correspondence = corr2 != 0
+            if has_second_correspondence:
+                corr2_sigma = self.results.secondCorrespondenceSigma[cam_i]
+                count2 = self.results.secondCorrespondenceCount[cam_i]
             corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
+            if has_second_correspondence:
+                corr_box_text += f"\n   {corr2:.4f}±{corr2_sigma:.4f} ({count2} points)"
             assert h_data
             (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
             plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
             if do_cumulative:
                 assert ax_cum
                 ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
-                ax_cum.plot([corr, corr], [0, 1], linestyle="dashed",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+                if has_second_correspondence:
+                    ax_cum.plot([corr2, corr2], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
             if do_delta:
                 # Compute deltas over intervals of half of "corr" size
                 
@@ -214,7 +235,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _compute_correspondence_errors(self):
         nCamera = len(self.per_camera_histograms)
-        assert self.matched_point_fractions == []
+        if self.pass_number == 0:
+            assert self.matched_point_fractions == []
         if self.verbose:
             print(f"{self.__class__.__name__}: computing correspondence errors:")
         for cam_i in range(nCamera):
@@ -249,7 +271,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             fraction = matched_point_count/total_point_count
             if self.verbose:
                 print(f"\t\tresult: corr={mean}, sigma={stddev}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
-            self.matched_point_fractions.append(fraction)
+            if self.pass_number == 0:
+                self.matched_point_fractions.append(fraction)
 
     def filter_sources(self) -> None:
         """Filter points that were matched by a previous run"""
@@ -271,7 +294,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 print(f"filter_sources: camera {cam_i}: from {old_count} to {new_count} points, distance={cutoff}")
         self.filter_label = f" (filtered)"
         self.per_camera_kdtree = []
-        self.matched_point_fractions = []
         self.per_camera_histograms = []
     
 class RegistrationPairFinder(BaseRegistrationAnalyzer):
