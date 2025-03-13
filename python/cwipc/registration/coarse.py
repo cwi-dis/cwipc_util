@@ -529,7 +529,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         areas_2d, ids = self._find_aruco_in_image(passnum, camindex, np_rgb_image)
         rv : MarkerPositions = {}
         if self.verbose:
-            print(f"cwipc_register: camera {camindex}: _find_markers: Auruco-IDs: {ids}, 2D-Arease: {areas_2d}")
+            print(f"cwipc_register: camera {camindex}: _find_markers: Auruco-IDs: {ids}, 2D-Areas: {areas_2d}")
         for i in range(len(ids)):
             marker_id = ids[i]
             area_2d = areas_2d[i]
@@ -546,6 +546,8 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 u = int(u)
                 v = int(v)
                 d = self._get_depth_value(camindex, np_depth_image, u, v)
+                if d <= 0:
+                    break
                 if self.verbose:
                     print(f"cwipc_register: camera {camindex}: find_markers: marker {i}, corner {corner_2d_idx}: u,v,d={(u, v, d)}")
                 corner_3d = self._map_2d_to_3d(tilenum, u, v, d)
@@ -584,32 +586,24 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         
     def _get_depth_value(self, camindex: int, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
         """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
-        rv = int(np_depth_image[y, x])
-        if rv != 0:
-            return rv
-        if self.verbose:
-            print(f"cwipc_register: camera {camindex}: Warning: need to interpolate depth value for {(x, y)}")
-        distance = 1
-        while distance < 10: # Arbitrary value, really...
-            d_sum = 0
-            d_count = 0
-            for tx in range(x-distance, x+distance+1):
-                if tx < 0 or tx >= np_depth_image.shape[1]:
+        offset = 1
+        depth_sum = 0
+        depth_count = 0
+        for _x in range(x-offset, x+offset+1):
+            if _x < 0 or _x >= np_depth_image.shape[1]:
+                continue
+            for _y in range(y-offset, y+offset+1):
+                if _y < 0 or _y >= np_depth_image.shape[0]:
                     continue
-                for ty in range(y-distance, y+distance+1):
-                    if ty < 0 or ty >= np_depth_image.shape[0]:
-                        continue
-                    td = int(np_depth_image[ty, tx])
-                    if td > 0:
-                        d_sum += td
-                        d_count += 1
-            if d_count > 0:
-                if self.verbose:
-                    print(f"cwipc_register: camera {camindex}: Interpolated {d_sum//d_count} from {d_count} points at distance {distance}")
-                return d_sum // d_count
-            distance += 1
-        print(f"cwipc_register: camera {camindex}: Error: failed to find any depth points within {distance} pixels of {(x, y)}")
-        return 0
+                d = int(np_depth_image[_y, _x])
+                if d == 0:
+                    continue
+                depth_sum += d
+                depth_count += 1
+        if depth_count < 4:
+            print(f"cwipc_register: camera {camindex}: Found only {depth_count} values in a 3x3 grid around ({x}, {y}). Not enough for good results.")
+            return 0
+        return depth_sum // depth_count
     
     def _get_rgb_depth_images(self, camindex : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
         """Return the RGB and Depth images for a given camera, from the point cloud auxiliary data."""
