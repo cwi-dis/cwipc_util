@@ -102,6 +102,9 @@ class MultiCameraCoarse(MultiAlignmentAlgorithm):
         """From the point cloud added prepare the data structures to run the algorithm"""
         assert self.original_pointcloud
         tilenums = get_tiles_used(self.original_pointcloud)
+        if tilenums == []:
+            print(f"{self.__class__.__name__}: no points in cloud. Getting tile numbers from serial numbers")
+            tilenums = list(self.serial_for_tilenum.keys())
         for t in tilenums:
             partial_pc = cwipc_tilefilter(self.original_pointcloud, t)
             o3d_partial_pc = partial_pc.get_o3d_pointcloud()
