@@ -545,7 +545,13 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 # v = height - v
                 u = int(u)
                 v = int(v)
-                d = self._get_depth_value(camindex, np_depth_image, u, v)
+                if True:
+                    du, dv = self._map_color_to_depth(tilenum, u, v)
+                    print(f"xxxjack _map_color_to_depth({u},{v}) -> ({du},{dv})")
+                    d = self._get_depth_value(camindex, np_depth_image, du, dv)
+                    # xxxjack note we don't assign to u,v because map_2d_to_3d wants color coordinates (sigh)
+                else:
+                    d = self._get_depth_value(camindex, np_depth_image, u, v)
                 if d <= 0:
                     break
                 if self.verbose:
@@ -584,9 +590,20 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         rv_x, rv_y, rv_z = struct.unpack("fff", outargs)
         return rv_x, rv_y, rv_z
         
+    def _map_color_to_depth(self, tilenum : int, cu : int, cv : int) -> Tuple[int, int]:
+        assert self.grabber
+        inargs = struct.pack("iii", tilenum, cu, cv)
+        outargs = bytearray(8)
+        ok = self.grabber.auxiliary_operation("mapcolordepth", inargs, outargs)
+        if not ok:
+            print(f"cwipc_register: camera {tilenum}: mapcolordepth failed")
+            assert False
+        du, dv = struct.unpack("ii", outargs)
+        return du, dv
+        
     def _get_depth_value(self, camindex: int, np_depth_image : cv2.typing.MatLike, x : int, y : int) -> int:
         """Return the depth value at (x, y), possibly searching around if the specific depth value is missing"""
-        offset = 1
+        offset = 3
         depth_sum = 0
         depth_count = 0
         for _x in range(x-offset, x+offset+1):
@@ -600,8 +617,8 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                     continue
                 depth_sum += d
                 depth_count += 1
-        if depth_count < 4:
-            print(f"cwipc_register: camera {camindex}: Found only {depth_count} values in a 3x3 grid around ({x}, {y}). Not enough for good results.")
+        if depth_count < 10:
+            print(f"cwipc_register: camera {camindex}: Found only {depth_count} values in a 7x7 grid around ({x}, {y}). Not enough for good results.")
             return 0
         return depth_sum // depth_count
     
