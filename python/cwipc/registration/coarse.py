@@ -596,8 +596,8 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         outargs = bytearray(8)
         ok = self.grabber.auxiliary_operation("mapcolordepth", inargs, outargs)
         if not ok:
-            print(f"cwipc_register: camera {tilenum}: mapcolordepth failed")
-            assert False
+            print(f"cwipc_register: Warning: camera {tilenum}: mapcolordepth failed")
+            return cu, cv
         du, dv = struct.unpack("ii", outargs)
         return du, dv
         
