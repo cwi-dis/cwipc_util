@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Dict, Any
 import time
 import time
@@ -33,6 +34,7 @@ s             Toggle tile/stream selection stream mode
 f             Colorize points to show contributing cameras
 r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
+t             Timelapse: like w but after a 5 second delay
 c             Reload cameraconfig
 ?,h           Help
 q,ESC         Quit
@@ -82,6 +84,8 @@ q,ESC         Quit
         self.point_size_power = 0
         self.display_fps = 30
         self.display_filter = None
+        self.timelapse_write_at = 0
+        self.timelapse_beep_at = 0
         
     def statistics(self) -> None:
         pass
@@ -215,7 +219,19 @@ q,ESC         Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwamirsn0123456789", interaction_duration)
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwtamirsn0123456789", interaction_duration)
+        # First handle the timelapse
+        if self.timelapse_write_at > 0:
+            now = time.time()
+            if now > self.timelapse_beep_at:
+                print(f"timelapse: {int(self.timelapse_write_at - now)}\x07", file=sys.stderr)
+                self.timelapse_beep_at += 1
+            if now > self.timelapse_write_at:
+                print(f"timelapse: Capture point cloud.\x07", file=sys.stderr)
+                self.timelapse_beep_at = 0
+                self.timelapse_write_at = 0
+                self.write_current_pointcloud()
+        # Now handle the commands
         if cmd == "q" or cmd == "\x1b":
             self.stop()
             return
@@ -223,6 +239,10 @@ q,ESC         Quit
             print(self.HELP)
         elif cmd == "w" and self.cur_pc:
             self.write_current_pointcloud()
+        elif cmd == "t":
+            now = time.time()
+            self.timelapse_beep_at = now + 1
+            self.timelapse_write_at = now + 5
         elif cmd == " ":
             self.paused = not self.paused
             if self.paused:
