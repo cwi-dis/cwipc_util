@@ -13,7 +13,7 @@ from .util import get_tiles_used, BaseAlgorithm, algdoc
 KD_TREE_TYPE = scipy.spatial.KDTree
 PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
 
-DEFAULT_PLOT_STYLE = ["count"]
+DEFAULT_PLOT_STYLE = ["count","cumulative"]
 
 def set_default_plot_style(style : Union[str, Iterable[str]]):
     global DEFAULT_PLOT_STYLE

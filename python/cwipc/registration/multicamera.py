@@ -603,7 +603,7 @@ class MultiCameraIterativeFloorTwice(MultiCameraIterativeFloor):
 
 
 
-DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraOneToAllOthers
+DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterativeFloorTwice
 
 ALL_MULTICAMERA_ALGORITHMS = [
     MultiCameraNoOp,
