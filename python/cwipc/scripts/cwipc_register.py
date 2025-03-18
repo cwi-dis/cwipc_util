@@ -66,6 +66,7 @@ def main():
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
+    parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
     
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")

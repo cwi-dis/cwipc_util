@@ -52,6 +52,7 @@ q,ESC         Quit
         self.show_rgb = False
         self.rgb_cw = False
         self.rgb_ccw = False
+        self.rgb_full = False
         self.timestamps = False
         self.paused = False
         self.single_step = False
@@ -60,6 +61,7 @@ q,ESC         Quit
         if args:
             self.cameraconfig = args.cameraconfig
             self.show_rgb = args.rgb
+            self.rgb_full = args.rgb_full
             self.rgb_cw = args.rgb_cw
             self.rgb_ccw = args.rgb_ccw
             if 'timestamp' in args:
@@ -150,7 +152,10 @@ q,ESC         Quit
             pass
         self.nodrop = False
         if self.show_rgb:
-            cv2.destroyWindow("RGB")
+            if self.rgb_full:
+                cv2.destroyAllWindows()
+            else:
+                cv2.destroyWindow("RGB")
         if self.visualiser:
             self.visualiser.free()
         self.visualiser = None
@@ -329,6 +334,12 @@ q,ESC         Quit
         if not auxdata:
             return
         per_camera_images = auxdata.get_all_images("rgb.")
+        if self.rgb_full:
+            for name, image in per_camera_images.items():
+                cv2.imshow(name, image)
+            cv2.waitKey(1)
+            return
+        # Combine images into a single window to show
         all_images = list(per_camera_images.values())
 
         if len(all_images) == 0:
@@ -345,7 +356,7 @@ q,ESC         Quit
         if scale < 1:
             new_h = int(h*scale)
             new_w = int(w*scale)
-            full_image = cv2.resize(full_image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+            full_image = cv2.resize(full_image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
         cv2.imshow("RGB", full_image)
         cv2.waitKey(1)
     
