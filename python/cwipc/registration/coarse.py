@@ -547,7 +547,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
                 v = int(v)
                 if True:
                     du, dv = self._map_color_to_depth(tilenum, u, v)
-                    print(f"xxxjack _map_color_to_depth({u},{v}) -> ({du},{dv})")
+                    # print(f"xxxjack _map_color_to_depth({u},{v}) -> ({du},{dv})")
                     d = self._get_depth_value(camindex, np_depth_image, du, dv)
                     # xxxjack note we don't assign to u,v because map_2d_to_3d wants color coordinates (sigh)
                 else:
