@@ -34,14 +34,22 @@ except FileNotFoundError:
 DEFAULT_FILENAME = "cameraconfig.json"
 
 class RegistrationVisualizer(Visualizer):
+    reload_cameraconfig_callback : Optional[Callable[[], None]]
+
     def __init__(self, *args, **kwargs):
         Visualizer.__init__(self, *args, **kwargs)
         self.captured_pc : Optional[cwipc_wrapper] = None
+        self.reload_cameraconfig_callback = None
 
     def write_current_pointcloud(self):
         self.captured_pc = self.cur_pc
         self.cur_pc = None
         self.stop()
+
+    def reload_cameraconfig(self) -> None:
+        super().reload_cameraconfig()
+        if self.reload_cameraconfig_callback:
+            self.reload_cameraconfig_callback()
 
 def main():
     parser = ArgumentParser(description="Register cwipc cameras (realsense, kinect, virtual) so they produce overlapping point clouds.")
@@ -49,15 +57,16 @@ def main():
         f1, f2 = s.split(',')
         return float(f1), float(f2)
     parser.add_argument("--fromxml", action="store_true", help="Convert cameraconfig.xml to cameraconfig.json and exit")
-    
+    parser.add_argument("--guided", action="store_true", help="Guide me through the whole registration procedure")
+    parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
+    parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
+
     parser.add_argument("--interactive", action="store_true", help="Interactive mode: show pointclouds (and optional RGB images). w command will attempt registration.")
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
     
-    parser.add_argument("--noregister", action="store_true", help="Don't do any registration, only create cameraconfig.json if needed")
-    parser.add_argument("--tabletop", action="store_true", help="Do static registration of one camera, 1m away at 1m height")
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
     parser.add_argument("--analyze", action="store_true", help="Analyze the pointclouds and show a graph of the results")
@@ -206,6 +215,7 @@ class CameraConfig:
         for t in self.transforms:
             t.reset()
         self._dirty = False
+        print(f"cwipc_register: saved {self.filename}")
 
     def save_to(self, filename : str) -> None:
         self.refresh_transforms()
@@ -251,29 +261,32 @@ class Registrator:
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
-
+        #
+        if self.args.guided:
+            self.args.interactive = True
+            self.args.rgb = True
         #
         # Coarse aligner class depends on what input we have. So there's no --algorithm option for this.
         #
         self.no_aruco = args.no_aruco
         if self.no_aruco:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
-        elif args.rgb:
+        elif self.args.rgb:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseArucoRgb
         else:
             self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
 
-        if args.algorithm_multicamera:
+        if self.args.algorithm_multicamera:
             self.multicamera_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_multicamera)
         else:
             self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
 
-        if args.algorithm_fine:
+        if self.args.algorithm_fine:
             self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_fine)
         else:
             self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
 
-        if args.algorithm_analyzer:
+        if self.args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
             self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
@@ -306,6 +319,7 @@ class Registrator:
             # cameraconfig file, otherwise generate it.
             if not self.initialize_recording():
                 return False
+            self.args.nodrop = True
         self.args.nodecode = True
         self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args)
         if self.args.fromxml:
@@ -318,6 +332,9 @@ class Registrator:
                 return False
             self.json_from_xml()
             return True
+        #
+        # Now we really start
+        #
         if not self.open_capturer():
             if self.args.recording:
                 print(f"cwipc_register: Cannot open capturer, probably an issue with {self.args.cameraconfig}")
@@ -346,9 +363,7 @@ class Registrator:
         if self.args.noregister:
             return True
         if must_reload:
-            if self.verbose:
-                print(f"cwipc_register: reload cameraconfig")
-            self.capturer.reload_config(self.cameraconfig.filename)
+            self._reload_cameraconfig_to_capturer()
             must_reload = False
         if self.args.tabletop:
             assert self.cameraconfig.camera_count() == 1
@@ -370,10 +385,19 @@ class Registrator:
                 t = self.cameraconfig.get_transform(i)
                 t.set_matrix(transformation_identity())
             self.cameraconfig.save()
-            if self.verbose:
-                print(f"cwipc_register: reload cameraconfig")
-            self.capturer.reload_config(self.cameraconfig.filename)
+            self._reload_cameraconfig_to_capturer()
         if self.args.coarse or self.cameraconfig.is_identity():
+            if self.args.guided:
+                self.args.interactive = True
+                self.args.rgb = True
+                print(f"\n===================================================================", file=sys.stderr)
+                print(f"===== Place Aruco marker at origin. ", file=sys.stderr)
+                print(f"===== Examine RGB images and adjust cameras so marker is visible to all.", file=sys.stderr)
+                print(f"===== Examine RGB images colors and exposure.", file=sys.stderr)
+                print(f"===== Edit cameraconfig.json and change exposure, gain, backlight, etc. ", file=sys.stderr)
+                print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
+                print(f"===== When all is good press w in point cloud window", file=sys.stderr)
+                print(f"===================================================================\n", file=sys.stderr)
             new_pc = None
             while new_pc == None:
                 self.prompt("Coarse registration: capturing aruco/color target")
@@ -397,33 +421,59 @@ class Registrator:
             if self.verbose:
                 print(f"cwipc_register: skipping coarse registration, cameraconfig already has matrices")
         if self.cameraconfig.camera_count() > 1 and not self.args.nofine or self.args.analyze:
-            if must_reload:
-                if self.verbose:
-                    print(f"cwipc_register: reload {self.cameraconfig.filename}")
-                self.capturer.reload_config(self.cameraconfig.filename)
-                must_reload = False
-            self.prompt("Fine registration: capturing human-sized object")
-            pc = self.capture()
-            if self.debug:
-                self.save_pc(pc, "step3_capture_fine")
-            if self.args.analyze:
-                self.check_alignment(pc, 0, "analysis")
-            else:
-                new_pc = self.fine_registration(pc)
-                pc.free()
-                pc = None
+            while True:
+                if must_reload:
+                    self._reload_cameraconfig_to_capturer()
+                    must_reload = False
+                if self.args.guided:
+                    self.args.rgb = False
+                    print(f"\n===================================================================", file=sys.stderr)
+                    print(f"===== Examine point cloud window.", file=sys.stderr)
+                    print(f"===== Edit cameraconfig.json and change near, far, height_min, height_max, radius_filter. ", file=sys.stderr)
+                    print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
+                    print(f"===== Ensure you get a clean capture including the floor.", file=sys.stderr)
+                    print(f"===== Have a human (could be you) stand at the origin and ensure they are fully captured. ", file=sys.stderr)
+                    print(f"===== You can use 1234 or 0 to see only per-camera point clouds. ", file=sys.stderr)
+                    print(f"===== Press w in the point cloud window to capture.", file=sys.stderr)
+                    print(f"===== Alternatively, press t (for timelapse) and ensure you yourself are in position in 5 seconds.", file=sys.stderr)
+                    print(f"===== Or, if you are happy with the registration, press q")
+                    print(f"===================================================================\n", file=sys.stderr)
+
+                self.prompt("Fine registration: capturing human-sized object")
+                pc = self.capture()
                 if self.debug:
-                    self.save_pc(new_pc, "step4_after_fine")
-                new_pc.free()
-                new_pc = None
-                if not self.dry_run:
-                    self.cameraconfig.save()
+                    self.save_pc(pc, "step3_capture_fine")
+                if self.args.analyze:
+                    self.check_alignment(pc, 0, "analysis")
+                else:
+                    new_pc = self.fine_registration(pc)
+                    pc.free()
+                    pc = None
+                    if self.debug:
+                        self.save_pc(new_pc, "step4_after_fine")
+                    new_pc.free()
+                    new_pc = None
+                    if not self.dry_run:
+                        self.cameraconfig.save()
+                if not self.args.guided:
+                    break
+                must_reload = True
         else:
             if self.verbose:
                 print(f"cwipc_register: skipping fine registration, not needed")
         
         return False
     
+    def _reload_cameraconfig_from_file(self) -> None:
+        assert self.capturer
+        print(f"cwipc_register: reload camerconfig from {self.cameraconfig.filename}")
+        self.cameraconfig.load(self.capturer.get_config())
+
+    def _reload_cameraconfig_to_capturer(self) -> None:
+        assert self.capturer
+        print(f"cwipc_register: reload {self.cameraconfig.filename} to capturer")
+        self.capturer.reload_config(self.cameraconfig.filename)
+
     def initialize_recording(self) -> bool:
         if os.path.exists(self.args.cameraconfig):
             return True
@@ -512,6 +562,7 @@ class Registrator:
             return False
         self.capturer.request_auxiliary_data("rgb")
         self.capturer.request_auxiliary_data("depth")
+        self.capturer.request_auxiliary_data("timestamps")
         return True
     
     def create_cameraconfig(self) -> None:
@@ -554,6 +605,7 @@ class Registrator:
     
     def interactive_capture(self) -> cwipc.cwipc_wrapper:
         visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args, title="cwipc_register")
+        visualizer.reload_cameraconfig_callback = self._reload_cameraconfig_from_file
         sourceServer = SourceServer(cast(cwipc_source_abstract, self.capturer), visualizer, self.args)
         sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
         visualizer.set_producer(sourceThread)
