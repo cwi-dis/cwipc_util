@@ -35,6 +35,7 @@ f             Colorize points to show contributing cameras
 r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
 t             Timelapse: like w but after a 5 second delay
+p             Timelapse pause: pause after 5 seconds
 c             Reload cameraconfig
 ?,h           Help
 q,ESC         Quit
@@ -86,6 +87,7 @@ q,ESC         Quit
         self.display_filter = None
         self.timelapse_write_at = 0
         self.timelapse_beep_at = 0
+        self.timelapse_pause_at = 0
         
     def statistics(self) -> None:
         pass
@@ -131,7 +133,7 @@ q,ESC         Quit
                         self.cur_pc.free()
                     self.cur_pc = pc
                 if self.single_step and pc != None:
-                    print(f"single_step: ts={pc.timestamp()}")
+                    self._show_timestamps(pc, 'single_step')
                     self.paused = True
                     self.single_step = False
             except queue.Empty:
@@ -169,6 +171,17 @@ q,ESC         Quit
         if self.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
+    def _show_timestamps(self, pc: cwipc_wrapper, label : str) -> None:
+        print(f'{label}: ts={pc.timestamp()}')
+        auxdata = pc.access_auxiliary_data()
+        if auxdata != None and auxdata.count() > 0:
+            for i in range(auxdata.count()):
+                auxname = auxdata.name(i)
+                if not "timestamps" in auxname:
+                    continue
+                descr = auxdata.description(i)
+                print(f'{label}:    {auxname}: {descr}')
+
     def draw_pc(self, pc : Optional[cwipc_wrapper]) -> None:
         """Draw pointcloud and interact with the visualizer.
         If None is passed as the pointcloud it will only interact (keeping the previous pointcloud visible)
@@ -181,15 +194,7 @@ q,ESC         Quit
                 pc = self.cur_pc
         if pc:
             if self.timestamps:
-                print(f'timestamps: ts={pc.timestamp()}')
-                auxdata = pc.access_auxiliary_data()
-                if auxdata != None and auxdata.count() > 0:
-                    for i in range(auxdata.count()):
-                        auxname = auxdata.name(i)
-                        if not "timestamps" in auxname:
-                            continue
-                        descr = auxdata.description(i)
-                        print(f'timestamps:    {auxname}: {descr}')
+                self._show_timestamps(pc, "timestamps")
 
             # First show RGB, if wanted
             if self.show_rgb:
@@ -219,18 +224,26 @@ q,ESC         Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwtamirsn0123456789", interaction_duration)
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwtpamirsn0123456789", interaction_duration)
         # First handle the timelapse
         if self.timelapse_write_at > 0:
             now = time.time()
-            if now > self.timelapse_beep_at:
-                print(f"timelapse: {int(self.timelapse_write_at - now)}\x07", file=sys.stderr)
-                self.timelapse_beep_at += 1
-            if now > self.timelapse_write_at:
+            if now >= self.timelapse_write_at:
                 print(f"timelapse: Capture point cloud.\x07", file=sys.stderr)
                 self.timelapse_beep_at = 0
                 self.timelapse_write_at = 0
                 self.write_current_pointcloud()
+            if now >= self.timelapse_beep_at:
+                print(f"timelapse: {int(self.timelapse_write_at - now)}\x07", file=sys.stderr)
+                self.timelapse_beep_at += 1
+        if self.timelapse_pause_at > 0:
+            now = time.time()
+            if now >= self.timelapse_pause_at:
+                print(f"timelapse: pause", file=sys.stderr)
+                self.paused = True
+                self.timelapse_pause_at = 0
+                if self.cur_pc:
+                    self._show_timestamps(self.cur_pc, 'pause')
         # Now handle the commands
         if cmd == "q" or cmd == "\x1b":
             self.stop()
@@ -243,19 +256,25 @@ q,ESC         Quit
             now = time.time()
             self.timelapse_beep_at = now + 1
             self.timelapse_write_at = now + 5
+            self.paused = False
+            print(f"timelapse: capture in 5 seconds", file=sys.stderr)
+        elif cmd == "p":
+            now = time.time()
+            self.timelapse_pause_at = now + 5
+            print(f"timelapse: pause in 5 seconds", file=sys.stderr)
+            self.paused = False
         elif cmd == " ":
             self.paused = not self.paused
             if self.paused:
                 if self.cur_pc:
-                    print(f"pause: ts={self.cur_pc.timestamp()}")
+                    self._show_timestamps(self.cur_pc, 'pause')
         elif cmd == ".":
             self.single_step = True
             self.paused = False
-            print("xxxjack single step requested")
         elif cmd == "<":
             if not self.source.seek(0):
                 print("Input source does not support seek")
-
+            self.paused = False
         elif cmd == 'a':
             self.select_tile_or_stream(all=True)
             self.redraw_requested = True
@@ -283,7 +302,10 @@ q,ESC         Quit
         elif cmd == '\0':
             pass
         elif cmd == 'c':
+            self.paused = False
+            print("reload: reloading cameraconfig.json...", file=sys.stderr)
             self.reload_cameraconfig()
+            print("reload: reloaded cameraconfig.json.", file=sys.stderr)
         elif cmd == 'f':
             if self.display_filter == None:
                 self.display_filter = ColorizeFilter(0.8, "camera")
