@@ -392,17 +392,31 @@ class Registrator:
                 self.args.interactive = True
                 self.args.rgb = True
                 print(f"\n===================================================================", file=sys.stderr)
+                print(f"===== All commands should by typed in the point cloud window (the blue one).", file=sys.stderr)
+                print(f"===== ? will print help here.", file=sys.stderr)
+                print(f"===== c to reload the cameraconfig.json file will sometimes fail. Restart cwipc_register in that case.", file=sys.stderr)
+                print(f"===== If you want to redo the coarse registration run cwipc_register --guided --coarse", file=sys.stderr)
+                print(f"===== If you get surprising results try re-running with the --verbose option.", file=sys.stderr)
+                print(f"===== See https://github.com/cwi-dis/cwipc/blob/master/doc/registration.md for more information.", file=sys.stderr)
+                print(f"\n===================================================================", file=sys.stderr)
                 print(f"===== Place Aruco marker at origin. ", file=sys.stderr)
                 print(f"===== Examine RGB images and adjust cameras so marker is visible to all.", file=sys.stderr)
                 print(f"===== Examine RGB images colors and exposure.", file=sys.stderr)
                 print(f"===== Edit cameraconfig.json and change exposure, gain, backlight, etc. ", file=sys.stderr)
+                print(f"===== Ensure there are no negative values in the hardware parameters", file=sys.stderr)
+                print(f"===== Ensure the Depth and Color width and height are to your liking", file=sys.stderr)
+                print(f"===== For realsense, turn off all filters and use map_color_to_depth=-1", file=sys.stderr)
+                print(f"===== If you are using sync cables ensure the sync parameters are set correctly", file=sys.stderr)
+                print(f"===== If you are using a Kinect, ensure the depth and color cameras are aligned", file=sys.stderr)
                 print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
-                print(f"===== When all is good press w in point cloud window", file=sys.stderr)
+                print(f"===== When all is good press w in point cloud window, otherwise edit and c again", file=sys.stderr)
                 print(f"===================================================================\n", file=sys.stderr)
             new_pc = None
             while new_pc == None:
                 self.prompt("Coarse registration: capturing aruco/color target")
                 pc = self.capture()
+                if self.args.guided:
+                    print(f"===== The windows will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 if self.debug:
                     self.save_pc(pc, "step1_capture_coarse")
                 new_pc = self.coarse_registration(pc)
@@ -430,7 +444,10 @@ class Registrator:
                     self.args.rgb = False
                     print(f"\n===================================================================", file=sys.stderr)
                     print(f"===== Examine point cloud window.", file=sys.stderr)
-                    print(f"===== Edit cameraconfig.json and change near, far, height_min, height_max, radius_filter. ", file=sys.stderr)
+                    print(f"===== Edit cameraconfig.json and change near, far (or threshold_min_distance and threshold_max_distance), height_min, height_max, radius_filter. ", file=sys.stderr)
+                    print(f"===== At this point you want to include some floor, so set height_min to a small negative value.", file=sys.stderr)
+                    print(f"===== Also look at depth_x_erosion and depth_y_erosion, to get rid of background colors that leak onto the subject", file=sys.stderr)
+                    print(f"===== For Realsense, experiment with the filters and map_color_to_depth (-1, 0, 1)", file=sys.stderr)
                     print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
                     print(f"===== Ensure you get a clean capture including the floor.", file=sys.stderr)
                     print(f"===== Have a human (could be you) stand at the origin and ensure they are fully captured. ", file=sys.stderr)
@@ -442,6 +459,8 @@ class Registrator:
 
                 self.prompt("Fine registration: capturing human-sized object")
                 pc = self.capture()
+                if self.args.guided:
+                    print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 if self.debug:
                     self.save_pc(pc, "step3_capture_fine")
                 if self.args.analyze:
