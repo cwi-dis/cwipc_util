@@ -141,11 +141,7 @@ class FileWriter(cwipc_sink_abstract):
             for serial, image in image_dict.items():
                 name = "rgb." + serial
                 filename = self.rgbpattern.format(timestamp=pc.timestamp(), count=self.count, type="rgb", name=name)
-                # Jack is confused. I thought opencv always used BGR images, so those are returned from get_all_images()
-                # But now it appears that imshow() wants BGR images but imwrite() wants RGB images?
-                # Go figure...
-                swapped_image = image[:,:,[2,1,0]]
-                ok = cv2.imwrite(filename, swapped_image)
+                ok = cv2.imwrite(filename, image)
                 if ok:
                     anydone = True
         if self.depthpattern:
