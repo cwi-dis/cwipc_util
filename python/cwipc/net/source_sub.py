@@ -142,6 +142,8 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.streamCount = 0
         self.tile_info = None
         self.fourcc = None
+        lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
+        self.lldash_logging = not not lldash_log_setting
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
         if self.verbose: print(f"source_sub: sub_create()")
@@ -157,11 +159,22 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
     
         print(f"source_sub: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
+        self.lldash_log(event="async_log_message", level=level, msg=msg)
         # xxxjack raising an exception from a ctypes callback doesn't work.
         # Need to fix at some point.
         if False and level == 0:
             raise SubError(msg)
-
+        
+    def lldash_log(self, **kwargs):
+        if not self.lldash_logging:
+            return
+        lts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()) + f".{int(time.time()*1000)%1000:03d}"
+        message = f"source_sub: ts={lts}"
+        for k, v in kwargs.items():
+            message += f" {k}={v}"
+        print(message)
+        sys.stdout.flush()
+        
     def __del__(self):
         self.free()
         
@@ -180,7 +193,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         assert self.handle
         assert self.dll
         if self.verbose: print(f"source_sub: sub_play({self.url})")
+        self.lldash_log(event="sub_play_call", url=self.url)
         ok = self.dll.sub_play(self.handle, self.url.encode('utf8'))
+        self.lldash_log(event="sub_play_return", ok=ok)
         if not ok:
             self.failed = True
             self.output_queue.put(None)
@@ -280,6 +295,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         assert self.dll
         assert self.started
         if True or self.verbose: print(f"source_sub: sub_enable_stream(handle, {tileNum}, {qualityNum})")
+        self.lldash_log(event="sub_enable_stream", tileNum=tileNum, qualityNum=qualityNum, url=self.url)
         ok = self.dll.sub_enable_stream(self.handle, tileNum, qualityNum)
         if not ok:
             return False
@@ -293,7 +309,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         assert self.dll
         assert self.started
         if True or self.verbose: print(f"source_sub: sub_disable_stream(handle, {tileNum})")
-        return self.dll.sub_disable_stream(self.handle, tileNum)
+        self.lldash_log(event="sub_disable_stream", tileNum=tileNum, url=self.url)
+        rv = self.dll.sub_disable_stream(self.handle, tileNum)
+        return rv
         
     def run(self) -> None:
         if self.verbose: print(f"source_sub: thread started")
@@ -322,6 +340,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
                     ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
                     if self.verbose: print(f"source_sub: read: sub_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
                     length2 = self.dll.sub_grab_frame(self.handle, streamIndex, ptr, length, None)
+                    self.lldash_log(event="sub_grab_frame_returned", streamIndex=streamIndex, length=length, url=self.url)
                     if length2 != length:
                         raise SubError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
                     

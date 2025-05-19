@@ -1,6 +1,8 @@
 import ctypes
 import ctypes.util
+import sys
 import os
+import time
 from typing import Optional, Any, List, Union
 from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
@@ -110,9 +112,21 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         self.handle = None        
         self.sizes_forward = []
         self.bandwidths_forward = []
+        lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
+        self.lldash_logging = not not lldash_log_setting
         
     def __del__(self):
         self.free()
+        
+    def lldash_log(self, **kwargs):
+        if not self.lldash_logging:
+            return
+        lts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()) + f".{int(time.time()*1000)%1000:03d}"
+        message = f"sink_bin2dash: ts={lts}"
+        for k, v in kwargs.items():
+            message += f" {k}={v}"
+        print(message)
+        sys.stdout.flush()
         
     def start(self) -> None:
         url = self.url.encode('utf8')
@@ -123,7 +137,9 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
             if self.verbose:
                 for i in range(streamDescCount):
                     print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
+            self.lldash_log(event="vrt_create_ext_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
             self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
+            self.lldash_log(event="vrt_create_ext_returned", url=self.url)
             if not self.handle:
                 raise Bin2dashError(f"vrt_create_ext({url}) failed")
         else:
@@ -131,7 +147,9 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
                 self.fourcc = VRT_4CC("cwi1")
             else:
                 self.fourcc = VRT_4CC(self.fourcc)
+            self.lldash_log(event="vrt_create_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms)
             self.handle = self.dll.vrt_create("bin2dashSink".encode('utf8'), self.fourcc, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms)
+            self.lldash_log(event="vrt_create_returned", url=self.url)
             if not self.handle:
                 raise Bin2dashError(f"vrt_create({url}) failed")
         assert self.handle
@@ -162,7 +180,9 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def free(self) -> None:
         if self.handle:
             assert self.dll
+            self.lldash_log(event="vrt_destroy_call", url=self.url)
             self.dll.vrt_destroy(self.handle)
+            self.lldash_log(event="vrt_destroy_returned", url=self.url)
             self.handle = None
             
     def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:
@@ -172,9 +192,14 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         length = len(buffer)
         ok : bool
         if stream_index == None:
+            self.lldash_log(event="vrt_push_buffer_call", url=self.url, length=length)
             ok = self.dll.vrt_push_buffer(self.handle, bytes(buffer), length)
+            self.lldash_log(event="vrt_push_buffer_returned", url=self.url)
         else:
+            self.lldash_log(event="vrt_push_buffer_ext_call", url=self.url, stream_index=stream_index, length=length)
             ok = self.dll.vrt_push_buffer_ext(self.handle, stream_index, bytes(buffer), length)
+            self.lldash_log(event="vrt_push_buffer_ext_returned", url=self.url)
+            
         if ok:
             self.sizes_forward.append(length)
         else:
