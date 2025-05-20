@@ -111,7 +111,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert not target is None
-        assert len(self.per_camera_pointclouds) > 1
+        assert len(self.per_camera_pointclouds) > 1 or self.reference_pointcloud is not None
         self._prepare(target)
 
         initial_transformation = np.identity(4)
