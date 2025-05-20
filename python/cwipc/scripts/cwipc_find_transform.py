@@ -4,6 +4,7 @@ import argparse
 import traceback
 import cwipc
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
+from cwipc.registration.util import transformation_topython
 
 class TransformFinder:
     def __init__(self, verbose: bool = False):
@@ -26,8 +27,9 @@ class TransformFinder:
         self.aligner.add_tiled_pointcloud(self.source_pc)
         self.aligner.run(0)
         transform = self.aligner.get_result_transformation()
+        p_transform = transformation_topython(transform)
         print("Transform matrix:")
-        print(transform)
+        print(p_transform)
 
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
