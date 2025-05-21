@@ -14,32 +14,49 @@ class TransformFinder:
         self.dump = args.dump
         self.verbose = args.verbose
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.source_tile = args.sourcetile
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.target_tile = args.targettile
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
         self.aligner = RegistrationComputer_ICP_Point2Point()
         self.aligner.verbose = self.verbose
             
 
     def load_source(self, source: str):
-        self.source_pc = cwipc.cwipc_read(source, 0)
+        pc = cwipc.cwipc_read(source, 0)
+        if self.source_tile:
+            new_pc = cwipc.cwipc_tilefilter(pc, self.source_tile)
+            pc.free()
+            pc = new_pc
+        self.source_pc = pc
 
     def load_target(self, target: str):
-        self.target_pc = cwipc.cwipc_read(target, 0)
+        pc = cwipc.cwipc_read(target, 0)
+        if self.target_tile:
+            new_pc = cwipc.cwipc_tilefilter(pc, self.target_tile)
+            pc.free()
+            pc = new_pc
+        self.target_pc = pc
 
+    def _fnmod(self) -> str:
+        if self.source_tile or self.target_tile:
+            return f"_{self.source_tile}_{self.target_tile}"
+        return ""
+    
     def run(self):
         assert self.source_pc
         assert self.target_pc
         if self.dump:
-            self.dump_pointclouds("find_transform_before.ply", self.source_pc, self.target_pc)
+            self.dump_pointclouds(f"find_transform_before{self._fnmod()}.ply", self.source_pc, self.target_pc)
         if self.analyze:
             self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.add_tiled_pointcloud(self.source_pc)
-        self.aligner.run(0)
+        self.aligner.run(self.source_tile)
         transform = self.aligner.get_result_transformation()
         self.result_pc = self.aligner.get_result_pointcloud()
         if self.dump:
-            self.dump_pointclouds("find_transform_after.ply", self.result_pc, self.target_pc)
+            self.dump_pointclouds(f"find_transform_after{self._fnmod()}.ply", self.result_pc, self.target_pc)
         if self.analyze:
             self.analyze_pointclouds("After", self.result_pc, self.target_pc)
         p_transform = transformation_topython(transform)
@@ -75,6 +92,8 @@ def main():
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--analyze", help="Print pre and post analysis of point cloud distance", action="store_true")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
+    parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
+    parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
