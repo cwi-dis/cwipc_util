@@ -9,7 +9,7 @@ from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
 from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
 
-RegistrationResult = open3d.pipelines.registration.RegistrationResult
+RegistrationResult = Any # open3d.pipelines.registration.RegistrationResult
 
 class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     """
@@ -26,9 +26,9 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.correspondence = 0 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
-        self.our_pointcloud = None
+        self.our_pointcloud : Optional[cwipc_wrapper] = None
         self.our_points_nparray = None
-        self.reference_pointcloud = None
+        self.reference_pointcloud : Optional[cwipc_wrapper] = None
         self.reference_points_nparray = None
 
     def set_correspondence(self, correspondence) -> None:
