@@ -7,12 +7,16 @@ from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
 from cwipc.registration.util import transformation_topython
 
 class TransformFinder:
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
+    def __init__(self, args : argparse.Namespace):
+        self.args = args
+        self.analyse = args.analyse
+        self.dump = args.dump
+        self.verbose = args.verbose
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.result_pc : Optional[cwipc.cwipc_wrapper] = None
         self.aligner = RegistrationComputer_ICP_Point2Point()
-        self.aligner.verbose = verbose
+        self.aligner.verbose = self.verbose
 
     def load_source(self, source: str):
         self.source_pc = cwipc.cwipc_read(source, 0)
@@ -23,18 +27,36 @@ class TransformFinder:
     def run(self):
         assert self.source_pc
         assert self.target_pc
+        if self.dump:
+            self.dump_pointclouds("find_transform_before.ply", self.source_pc, self.target_pc)
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.add_tiled_pointcloud(self.source_pc)
         self.aligner.run(0)
         transform = self.aligner.get_result_transformation()
+        self.result_pc = self.aligner.get_result_pointcloud()
+        if self.dump:
+            self.dump_pointclouds("find_transform_after.ply", self.result_pc, self.target_pc)
         p_transform = transformation_topython(transform)
         print("Transform matrix:")
         print(p_transform)
 
+    def dump_pointclouds(self, filename: str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper):
+        if self.verbose:
+            print(f"Dumping point clouds to {filename}")
+        colored_source = cwipc.cwipc_colormap(source, 0xFFFFFF, 0xFF0000)
+        colored_target = cwipc.cwipc_colormap(target, 0xFFFFFF, 0x00FF00)
+        combined = cwipc.cwipc_join(colored_source, colored_target)
+        cwipc.cwipc_write(filename, combined)
+        colored_source.free()
+        colored_target.free()
+        combined.free()
+        
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
+    parser.add_argument("--analyse", help="Print pre and post analysis of point cloud distance", action="store_true")
+    parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
@@ -44,7 +66,7 @@ def main():
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")        
-    finder = TransformFinder(verbose=args.verbose)
+    finder = TransformFinder(args)
     finder.load_source(args.source)
     finder.load_target(args.target)
     finder.run()
