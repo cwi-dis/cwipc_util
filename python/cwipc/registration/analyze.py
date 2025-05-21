@@ -103,7 +103,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.filter_sources()
         return self.run(target)
 
-    def _kdtree_get_distances_to_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
+    def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
+        """For each point in points, get the distance to the nearest point in the tree"""
         distances, _ = tree.query(points, workers=-1)
         return distances
     
@@ -342,8 +343,8 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
                 dst_kdtree = self.per_camera_kdtree[cam_j]
                 dst_points = self.per_camera_nparray[cam_j]
                 # Compute symmetric distances
-                distances_1 = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
-                distances_2 = self._kdtree_get_distances_to_points(src_kdtree, dst_points)
+                distances_1 = self._kdtree_get_distances_for_points(dst_kdtree, src_points)
+                distances_2 = self._kdtree_get_distances_for_points(src_kdtree, dst_points)
                 distances_1 = self._filter_infinites(distances_1)
                 distances_2 = self._filter_infinites(distances_2)
                 # Now remove distances from the largest pointcloud (because they are bullshit)
@@ -378,16 +379,31 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
         self.plot_title = "Histogram of point distances between camera and all others"
-
+        self.reference_pointcloud : Optional[cwipc_wrapper] = None
+        self.reference_nparray : Optional[NDArray[Any]] = None
+        self.reference_kdtree : Optional[KD_TREE_TYPE] = None
+        
     def _prepare(self):
         self._prepare_nparrays()
-        self._prepare_kdtrees_others()
+        if self.reference_pointcloud == None:
+            self._prepare_kdtrees_others()
+        else:
+            self._prepare_kdtree_reference()
+        
+    def _prepare_kdtree_reference(self):
+        assert self.reference_pointcloud
+        self.reference_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.reference_kdtree = KD_TREE_TYPE(self.reference_nparray)
+
+    def set_reference_pointcloud(self, pc: cwipc_wrapper) -> None:
+        """Set the reference pointcloud to be used for the analysis"""
+        self.reference_pointcloud = pc
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert target is None
         assert len(self.per_camera_pointclouds) > 0
-        if len(self.per_camera_pointclouds) == 1:
+        if len(self.per_camera_pointclouds) == 1 and self.reference_pointcloud == None:
             # If there is only a single tile we have nothing to do.
             self.per_camera_histograms = [
                 (np.array([1]), np.array([0,1]), np.array([1]), np.array([1]), f"single tile {self.per_camera_tilenum[0]}", np.array([]))
@@ -400,15 +416,19 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         self._prepare()
         # Ensure we have the arrays and kdtrees we need
         assert self.per_camera_nparray
-        assert self.per_camera_kdtree_others
+        assert self.per_camera_kdtree_others or self.reference_kdtree
 
         nCamera = len(self.per_camera_pointclouds)
         self.per_camera_histograms  = [None] * nCamera
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             src_points = self.per_camera_nparray[cam_i]
-            dst_kdtree = self.per_camera_kdtree_others[cam_i]
-            distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+            if self.reference_pointcloud != None:
+                dst_kdtree = self.reference_kdtree
+            else:
+                dst_kdtree = self.per_camera_kdtree_others[cam_i]
+            assert dst_kdtree !=  None
+            distances = self._kdtree_get_distances_for_points(dst_kdtree, src_points)
             self.per_camera_nparray_distances[cam_i] = distances
             distances = self._filter_infinites(distances)
             histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
@@ -493,7 +513,7 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
             cam_tilenum = self.per_camera_tilenum[cam_i]
             src_points = self.per_camera_nparray_others[cam_i]
             dst_kdtree = self.per_camera_kdtree[cam_i]
-            distances = self._kdtree_get_distances_to_points(dst_kdtree, src_points)
+            distances = self._kdtree_get_distances_for_points(dst_kdtree, src_points)
             self.per_camera_nparray_distances[cam_i] = distances
             distances = self._filter_infinites(distances)
             histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
