@@ -43,8 +43,7 @@ class TransformFinder:
         if self.analyze:
             self.analyze_pointclouds("After", self.result_pc, self.target_pc)
         p_transform = transformation_topython(transform)
-        print("Transform matrix:")
-        print(p_transform)
+        print(f"Transform filter needed: --filter 'transform44({p_transform})'")
 
     def dump_pointclouds(self, filename: str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper):
         if self.verbose:
@@ -68,7 +67,7 @@ class TransformFinder:
         sigma = results.minCorrespondenceSigma[0]
         count = results.minCorrespondenceCount[0]
         percentage = 100.0 * count / source.count()
-        print(f"{label} analysis: correspondence: {correspondence}, sigma: {sigma}, count: {count}, percentage: {percentage:.2f}%")
+        print(f"{label} alignment: correspondence: {correspondence}, sigma: {sigma}, count: {count}, percentage: {percentage:.2f}%")
 
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
