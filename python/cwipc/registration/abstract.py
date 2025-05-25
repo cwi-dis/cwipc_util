@@ -7,19 +7,132 @@ from .. import cwipc_wrapper
 
 __all__ = [
     "RegistrationTransformation",
+
+    "AnalysisResults",
+    "MulticamAnalysisResults",
+
     "Algorithm",
     "AnalysisAlgorithm",
-    "AnalysisResults",
-    "AlignmentAlgorithm", 
+    "AlignmentAlgorithm",
+
+    "MulticamAlgorithm",
+    "MulticamAnalysisAlgorithm",
+    "MulticamAlignmentAlgorithm", 
+
     "AnalysisAlgorithmFactory",
     "AlignmentAlgorithmFactory", 
-    "MultiAlignmentAlgorithm"
+    "MulticamAnalysisAlgorithmFactory",
+    "MulticamAlignmentAlgorithmFactory", 
+    
 ]
 
 #RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
 RegistrationTransformation = numpy.typing.NDArray[numpy.float64] # Should be: NDArray[(4,4), float]
 
 class Algorithm(ABC):
+    """Abstract base class for any algorithm that operates on two point clouds.
+    Contains the methods for adding the pointclouds, running the algorithm, and returning the result.
+    """
+    verbose : bool
+    debug : bool
+
+    @abstractmethod
+    def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+        """Set the source point cloud to be used during the algorithm run"""
+        ...
+    
+    def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+        """Set the reference point cloud to be used during the algorithm run.
+        """
+        ...
+
+    @abstractmethod
+    def run(self) -> bool:
+        """Run the algorithm. Returns false in case of a failure."""
+        ...
+    
+    @abstractmethod
+    def get_result(self) -> Any:
+        """Returns the result of the algorithm run"""
+        ...
+
+class AnalysisResults:
+    """Class to hold the results of an analysis algorithm"""
+    #: minimum correspondence for each camera
+    minCorrespondence : float
+    #: stddev for minimum correspondence
+    minCorrespondenceSigma : float
+    #: number of points that were used for the minimum correspondence for each camera
+    minCorrespondenceCount : int
+    #: second best correspondence for each camera
+    secondCorrespondence : float
+    #: stddev of the above
+    secondCorrespondenceSigma : float
+    #: number of points that were used for secondCorrespondence
+    secondCorrespondenceCount : int
+
+
+class AnalysisAlgorithm(Algorithm):
+    """ABC for a pointcloud analysis algorithm between two point clouds"""
+
+    plot_label : Optional[str]
+
+    @abstractmethod
+    def get_results(self) -> AnalysisResults:
+        """Returns an object indicating how the source point cloud is aligned to the target point cloud.
+        """
+        ...
+
+    @abstractmethod
+    def run_twice(self) -> bool:
+        """Run the algorithm twice, removing the points matched in the first run before the second run.
+        This will set the secondCoeespondence variables in the result.
+        """
+        ...
+
+    @abstractmethod
+    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
+        """
+        Plot the analysis results. 
+        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
+        If filename is given the plot is saved there.
+        If show is true the plot is shown on screen
+        """
+        ...
+        
+    @abstractmethod
+    def filter_sources(self) -> None:
+        """
+        After running the algorithm, prepare source and target point cloud for running the algoithm again.
+        """
+
+AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
+
+class AlignmentAlgorithm(Algorithm): # xxxjack wrong base class
+    """ABC for an algorithm that tries to find the best alignment for one tile (or possibly between two tiles, but always returning a new
+    matrix for a single tile only)"""
+
+    @abstractmethod
+    def set_correspondence(self, correspondence) -> None:
+        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+        ...
+        
+    @abstractmethod
+    def get_result_transformation(self) -> RegistrationTransformation:
+        """After a successful run(), returns the transformation applied to the tile-under-test"""
+        ...
+    
+    def get_result_pointcloud(self) -> cwipc_wrapper:
+        """After a successful run(), returns the point cloud for the tile-under-test after the transformation has been applied"""
+        ...
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+         """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
+         ...
+
+AlignmentAlgorithmFactory = Type[AlignmentAlgorithm]
+
+class MulticamAlgorithm(ABC):
     """Abstract base class for any algorithm that operates on tiled point clouds.
     Contains the methods for adding a pointcloud, converting from tile-index to tile-number and vv, and for running the
     algorithm.
@@ -37,7 +150,6 @@ class Algorithm(ABC):
         """Return number of cameras (tiles) in the point clouds"""
         ...
         
-
     @abstractmethod
     def tilenum_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
@@ -59,8 +171,8 @@ class Algorithm(ABC):
         ...
     # There are also methods to return the result, but they don't have a fixed signature.
 
-class AnalysisResults:
-    """Class to hold the results of an analysis algorithm"""
+class MulticamAnalysisResults:
+    """Class to hold the results of an analysis algorithm on tiled point clouds"""
     #: Number of cameras (tiles) in the point clouds
     nCamera : int
     #: tile numbers for each result entry
@@ -131,13 +243,13 @@ class AnalysisResults:
             _secondCorrCount = self.secondCorrespondenceCount[i]
             print(f"\tcamnum={_camnum}, corr={_minCorr} ({_minCorrCount} pts), corr2={_secondCorr} ({_secondCorrCount} pts)")
 
-class AnalysisAlgorithm(Algorithm):
+class MulticamAnalysisAlgorithm(MulticamAlgorithm):
     """ABC for a pointcloud analysis algorithm (such as computing the overlap between tiles)"""
 
     plot_label : Optional[str]
 
     @abstractmethod
-    def get_results(self) -> AnalysisResults:
+    def get_results(self) -> MulticamAnalysisResults:
         """Returns an object indicating how each camera is aligned.
         """
         ...
@@ -166,42 +278,15 @@ class AnalysisAlgorithm(Algorithm):
         We can then run the algorithm again to try and determine whether there is another cluster of points with a higher correspondence.
         """
 
-class AlignmentAlgorithm(Algorithm):
-    """ABC for an algorithm that tries to find the best alignment for one tile (or possibly between two tiles, but always returning a new
-    matrix for a single tile only)"""
 
-    @abstractmethod
-    def set_correspondence(self, correspondence) -> None:
-        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
-        ...
+MulticamAnalysisAlgorithmFactory = Type[MulticamAnalysisAlgorithm]
 
-    @abstractmethod
-    def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
-        """Set the reference point cloud to align with"""
-        ...
-        
-    @abstractmethod
-    def get_result_transformation(self) -> RegistrationTransformation:
-        """After a successful run(), returns the transformation applied to the tile-under-test"""
-        ...
-    
-    def get_result_pointcloud(self) -> cwipc_wrapper:
-        """After a successful run(), returns the point cloud for the tile-under-test after the transformation has been applied"""
-        ...
-    
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
-         """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
-         ...
-
-AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
-AlignmentAlgorithmFactory = Type[AlignmentAlgorithm]
-
-class MultiAlignmentAlgorithm(Algorithm):
+class MulticamAlignmentAlgorithm(MulticamAlgorithm):
     """ABC for an algorithm that tries to align all tiles."""
-    analyzer_class : AnalysisAlgorithmFactory
+    analyzer_class : MulticamAnalysisAlgorithmFactory
     aligner_class : AlignmentAlgorithmFactory
 
-    def set_analyzer_class(self, analyzer_class : AnalysisAlgorithmFactory) -> None:
+    def set_analyzer_class(self, analyzer_class : MulticamAnalysisAlgorithmFactory) -> None:
         """Set the class to be used for analyzing the results"""
         self.analyzer_class = analyzer_class
 
@@ -218,3 +303,5 @@ class MultiAlignmentAlgorithm(Algorithm):
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
          """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
          ...
+
+MulticamAlignmentAlgorithmFactory = Type[MulticamAlignmentAlgorithm]

@@ -8,7 +8,7 @@ import scipy.spatial
 from matplotlib import pyplot as plt
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
-from .util import get_tiles_used, BaseAlgorithm, algdoc
+from .util import get_tiles_used, BaseMulticamAlgorithm, algdoc
 
 KD_TREE_TYPE = scipy.spatial.KDTree
 PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
@@ -22,7 +22,7 @@ def set_default_plot_style(style : Union[str, Iterable[str]]):
     else:
         DEFAULT_PLOT_STYLE = list(style)
         
-class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
+class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAlgorithm):
     """
     Analyzes how good pointclouds are registered.
 
@@ -61,10 +61,10 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     # Internal variable: which pass number
     pass_number : int
     # Internal variable: the results
-    results : Optional[AnalysisResults]
+    results : Optional[MulticamAnalysisResults]
 
     def __init__(self):
-        BaseAlgorithm.__init__(self)
+        BaseMulticamAlgorithm.__init__(self)
         self.histogram_bincount = 400
         self.eps = 0.0
         self.distance_upper_bound = 0.2
@@ -84,7 +84,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def add_tiled_pointcloud(self, pc: cwipc_wrapper) -> None:
         super().add_tiled_pointcloud(pc)
-        self.results = AnalysisResults(self.camera_count())
+        self.results = MulticamAnalysisResults(self.camera_count())
         self.results.tileNums = [i for i in self.per_camera_tilenum]
     
     def run(self, target: Optional[int]=None) -> bool:
@@ -193,7 +193,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             plt.show()
             plt.close()
    
-    def get_results(self, weightstyle : str = 'priority') -> AnalysisResults:
+    def get_results(self, weightstyle : str = 'priority') -> MulticamAnalysisResults:
         """Returns a list of tuples (cameraNumber, correspondenceError, weight), ordered by weight (highest first)
         
         This is the order in which the camera re-registration should be attempted.
@@ -297,13 +297,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.per_camera_kdtree = []
         self.per_camera_histograms = []
     
-class RegistrationPairFinder(BaseRegistrationAnalyzer):
+class MulticamPairFinder(BaseMulticamRegistrationAnalyzer):
     """
     This algorithm computes, for each pair of tiles, the number of overlapping points and the distribution of their point2point distances.
     """
 
     def __init__(self):
-        BaseRegistrationAnalyzer.__init__(self)
+        BaseMulticamRegistrationAnalyzer.__init__(self)
         self.plot_title = "Histogram of point distances between camera pairs"
 
 
@@ -371,13 +371,13 @@ class RegistrationPairFinder(BaseRegistrationAnalyzer):
     def filter_sources(self) -> None:
         print("filter_sources: not implemented for RegistrationPairFinder")
     
-class RegistrationAnalyzer(BaseRegistrationAnalyzer):
+class MulticamRegistrationAnalyzer(BaseMulticamRegistrationAnalyzer):
     """
     This algorithm computes, for each tile, the number of overlapping points with any of the other tiles and the distribution of their point2point distances.
     """
     
     def __init__(self):
-        BaseRegistrationAnalyzer.__init__(self)
+        BaseMulticamRegistrationAnalyzer.__init__(self)
         self.plot_title = "Histogram of point distances between camera and all others"
         self.reference_pointcloud : Optional[cwipc_wrapper] = None
         self.reference_nparray : Optional[NDArray[Any]] = None
@@ -441,7 +441,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         self._compute_correspondence_errors()
         return True
 
-class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
+class MulticamRegistrationAnalyzerFiltered(MulticamRegistrationAnalyzer):
     """
     Same algorithm as RegistrationAnalyzer, but with an additional step to filter out points that are unlikely to have a match.
     
@@ -474,13 +474,13 @@ class RegistrationAnalyzerFiltered(RegistrationAnalyzer):
                 print(f"filter_nparrays: camera {camnum}: from {orig_nparray.shape[0]} to {filtered_nparray.shape[0]} points, distance={self.distance_upper_bound}")
                     
 
-class RegistrationAnalyzerReverse(RegistrationAnalyzer):
+class MulticamRegistrationAnalyzerReverse(MulticamRegistrationAnalyzer):
     """
     Same algorithm as RegistrationAnalyzer, but reversed: the distances are computed for the other pointclouds to this pointcloud.
     """
 
     def __init__(self):
-        RegistrationAnalyzer.__init__(self)
+        MulticamRegistrationAnalyzer.__init__(self)
         self.plot_title = "Histogram of point distances between all others and camera"
         
     def _prepare(self):
@@ -526,7 +526,7 @@ class RegistrationAnalyzerReverse(RegistrationAnalyzer):
         self._compute_correspondence_errors()
         return True
     
-class RegistrationAnalyzerFilteredReverse(RegistrationAnalyzerReverse):
+class MulticamRegistrationAnalyzerFilteredReverse(MulticamRegistrationAnalyzerReverse):
     """
     Same algorithm as RegistrationAnalyzerReverse, but with an additional step to filter out points that are unlikely to have a match.
     """
@@ -549,18 +549,18 @@ class RegistrationAnalyzerFilteredReverse(RegistrationAnalyzerReverse):
             filtered_nparray = orig_nparray[bitmap]
             self.per_camera_nparray_others[camnum] = filtered_nparray
                     
-DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
+DEFAULT_ANALYZER_ALGORITHM = MulticamRegistrationAnalyzer
 
-ALL_ANALYZER_ALGORITHMS = [
-    RegistrationAnalyzer,
-    RegistrationAnalyzerFiltered,
-    RegistrationAnalyzerReverse,
-    RegistrationAnalyzerFilteredReverse,
-    RegistrationPairFinder
+ALL_MULTICAM_ANALYZER_ALGORITHMS = [
+    MulticamRegistrationAnalyzer,
+    MulticamRegistrationAnalyzerFiltered,
+    MulticamRegistrationAnalyzerReverse,
+    MulticamRegistrationAnalyzerFilteredReverse,
+    MulticamPairFinder
 ]
 
-HELP_ANALYZER_ALGORITHMS = """
-The analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
+HELP_MULTICAM_ANALYZER_ALGORITHMS = """
+The multicamera analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
 
-The following analyzer algorithms are available:
-""" + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_ANALYZER_ALGORITHMS])
+The following multicamera analyzer algorithms are available:
+""" + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_MULTICAM_ANALYZER_ALGORITHMS])

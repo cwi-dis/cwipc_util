@@ -18,7 +18,7 @@ from .fine import RegistrationTransformation, RegistrationComputer, Registration
 MarkerPosition = List[Tuple[float, float, float]] # Position (outline) of a marker in 3D coordinates
 MarkerPositions = Dict[int, MarkerPosition]   # map marks IDs to positions
 
-class MultiCameraCoarse(MultiAlignmentAlgorithm):
+class MultiCameraCoarse(MulticamAlignmentAlgorithm):
     """Align multiple cameras.
     """
 

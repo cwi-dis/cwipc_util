@@ -7,11 +7,11 @@ import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
-from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
+from .util import transformation_identity, BaseMulticamAlgorithm, cwipc_transform, algdoc
 
 RegistrationResult = Any # open3d.pipelines.registration.RegistrationResult
 
-class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
+class RegistrationComputer(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
     """
     Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
@@ -24,7 +24,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     registration_result : RegistrationResult
 
     def __init__(self):
-        BaseAlgorithm.__init__(self)
+        BaseMulticamAlgorithm.__init__(self)
         self.correspondence = 0 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.our_pointcloud : Optional[cwipc_wrapper] = None
         self.our_points_nparray = None

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Tuple
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_matrix, cwipc_tilefilter
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter
 import open3d
 import open3d.visualization
 import numpy as np
@@ -56,6 +56,23 @@ def transformation_topython(matrix : RegistrationTransformation) -> List[List[fl
     assert len(rv) == 4
     assert len(rv[0]) == 4
     return rv
+
+def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
+    """Filter a point cloud for specific tiles. Each point tile number is ANDed to the mask, so only points with a tile number that matches the mask are returned.
+    The mask is a bitmask."""
+    pointarray = pc.get_numpy_array()
+    # Extract the relevant fields (X, Y, Z coordinates)
+    tilearray = pointarray['tile']
+    # Create a mask for the points that match the tile mask
+    mask_array = (tilearray & mask) == mask
+    # Filter the point cloud using the mask
+    filtered_points = pointarray[mask_array]
+    rv = cwipc_from_numpy_array(filtered_points, pc.timestamp())
+    if filtered_points.size == 0:
+        return cwipc_from_points([], pc.timestamp())
+    new_pc = cwipc_from_numpy_matrix(filtered_points, pc.timestamp())
+    new_pc._set_cellsize(pc.cellsize())
+    return new_pc
 
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
@@ -137,6 +154,35 @@ def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -
     return new_pc
 
 class BaseAlgorithm(Algorithm):
+    """Base class for most algorithms, both registration and alignment.
+
+    Allows ading point clouds and inspecting them.
+    """
+
+    def __init__(self):
+        self.source_pointcloud : Optional[cwipc_wrapper] = None
+        self.target_pointcloud : Optional[cwipc_wrapper] = None
+        self.verbose = False
+
+    def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
+        """Set the source point cloud for this algorithm"""
+        if tilemask is not None:
+            pc = cwipc_tilefilter_masked(pc, tilemask)
+        if self.verbose:
+            print(f"Setting source point cloud with {pc.count()} points")
+
+        self.source_pointcloud = pc
+    
+    def set_target_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+        """Set the target point cloud for this algorithm"""
+        if tilemask is not None:
+            pc = cwipc_tilefilter_masked(pc, tilemask)
+        if self.verbose:
+            print(f"Setting target point cloud with {pc.count()} points")
+        self.target_pointcloud = pc
+
+    
+class BaseMulticamAlgorithm(MulticamAlgorithm):
     """Base class for most algorithms, both registration and alignment.
 
     Allows ading point clouds and inspecting them.
