@@ -11,7 +11,7 @@ from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used
-from .multifine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
+from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
 class MultiCameraBase(MulticamAlignmentAlgorithm):
     """\
@@ -22,25 +22,17 @@ class MultiCameraBase(MulticamAlignmentAlgorithm):
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
     results : Optional[AnalysisResults]
-    analyzer_class : Optional[AnalysisAlgorithmFactory]
-    analyzer : Optional[AnalysisAlgorithm]
-    aligner_class : Optional[AlignmentAlgorithmFactory]
-    aligner : Optional[AlignmentAlgorithm]
     verbose : bool
     show_plot : bool
     nCamera : int
 
     def __init__(self):
+        MulticamAlignmentAlgorithm.__init__(self)
         self.current_pointcloud = None
         self.current_pointcloud_is_new = False
         self.transformations  = []
         self.original_transformations = []
         self.results = None
-
-        self.analyzer_class = None
-        self.analyzer = None
-        self.aligner_class = None
-        self.aligner = None
 
         self.verbose = False
         self.show_plot = False
@@ -82,15 +74,15 @@ class MultiCameraBase(MulticamAlignmentAlgorithm):
         assert self.analyzer
         return self.analyzer.camera_index_for_tilenum(tilenum)
     
-    def _prepare_analyze(self):
-        self.analyzer = None
+    def _prepare_analyze(self, sourcemask : int, targetmask : int) -> AnalysisAlgorithm:
+        analyzer = None
         assert self.analyzer_class
         if self.verbose:
             print(f"{self.__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
-        self.analyzer = self.analyzer_class()
-        self.analyzer.verbose = self.verbose
+        analyzer = self.analyzer_class()
+        analyzer.verbose = self.verbose
         assert self.current_pointcloud
-        self.analyzer.add_tiled_pointcloud(self.current_pointcloud)
+        analyzer.set_source_pointcloud((self.current_pointcloud)
 
     def _prepare_compute(self):
         self.aligner = None
