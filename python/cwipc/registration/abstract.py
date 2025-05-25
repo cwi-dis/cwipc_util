@@ -50,11 +50,6 @@ class Algorithm(ABC):
     def run(self) -> bool:
         """Run the algorithm. Returns false in case of a failure."""
         ...
-    
-    @abstractmethod
-    def get_result(self) -> Any:
-        """Returns the result of the algorithm run"""
-        ...
 
 class AnalysisResults:
     """Class to hold the results of an analysis algorithm"""
@@ -283,10 +278,14 @@ MulticamAnalysisAlgorithmFactory = Type[MulticamAnalysisAlgorithm]
 
 class MulticamAlignmentAlgorithm(MulticamAlgorithm):
     """ABC for an algorithm that tries to align all tiles."""
-    analyzer_class : MulticamAnalysisAlgorithmFactory
-    aligner_class : AlignmentAlgorithmFactory
+    analyzer_class : Optional[AnalysisAlgorithmFactory]
+    aligner_class : Optional[AlignmentAlgorithmFactory]
 
-    def set_analyzer_class(self, analyzer_class : MulticamAnalysisAlgorithmFactory) -> None:
+    def __init__(self):
+        self.analyzer_class = None
+        self.aligner_class = None
+
+    def set_analyzer_class(self, analyzer_class : AnalysisAlgorithmFactory) -> None:
         """Set the class to be used for analyzing the results"""
         self.analyzer_class = analyzer_class
 

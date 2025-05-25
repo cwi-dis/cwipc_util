@@ -161,7 +161,7 @@ class BaseAlgorithm(Algorithm):
 
     def __init__(self):
         self.source_pointcloud : Optional[cwipc_wrapper] = None
-        self.target_pointcloud : Optional[cwipc_wrapper] = None
+        self.reference_pointcloud : Optional[cwipc_wrapper] = None
         self.verbose = False
 
     def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
@@ -173,13 +173,13 @@ class BaseAlgorithm(Algorithm):
 
         self.source_pointcloud = pc
     
-    def set_target_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
-        """Set the target point cloud for this algorithm"""
+    def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+        """Set the reference point cloud for this algorithm"""
         if tilemask is not None:
             pc = cwipc_tilefilter_masked(pc, tilemask)
         if self.verbose:
             print(f"Setting target point cloud with {pc.count()} points")
-        self.target_pointcloud = pc
+        self.reference_pointcloud = pc
 
     
 class BaseMulticamAlgorithm(MulticamAlgorithm):

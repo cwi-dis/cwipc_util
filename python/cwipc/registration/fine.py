@@ -7,28 +7,24 @@ import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
-from .util import transformation_identity, BaseMulticamAlgorithm, cwipc_transform, algdoc
+from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
 
 RegistrationResult = Any # open3d.pipelines.registration.RegistrationResult
 
-class RegistrationComputer(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
+class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     """
     Compute the registration for a pointcloud.
     This is the base class, which actually does nothing and always returns a fixed unit matrix.
     """
     correspondence : float
-    our_pointcloud : Optional[cwipc_wrapper]
-    reference_pointcloud : Optional[cwipc_wrapper]
     our_points_nparray : Optional[cwipc_point_numpy_matrix_value_type]
     reference_points_nparray : Optional[cwipc_point_numpy_matrix_value_type]
     registration_result : RegistrationResult
 
     def __init__(self):
-        BaseMulticamAlgorithm.__init__(self)
+        BaseAlgorithm.__init__(self)
         self.correspondence = 0 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
-        self.our_pointcloud : Optional[cwipc_wrapper] = None
         self.our_points_nparray = None
-        self.reference_pointcloud : Optional[cwipc_wrapper] = None
         self.reference_points_nparray = None
 
     def set_correspondence(self, correspondence) -> None:
@@ -37,29 +33,17 @@ class RegistrationComputer(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
     def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
         self.reference_pointcloud = pc
 
-    def run(self, target: Optional[int]=None) -> bool:
+    def run(self) -> bool:
         """Run the algorithm"""
-        assert not target is None
-        assert len(self.per_camera_pointclouds) > 1
-        self._prepare(target)
+        self._prepare()
         return True
 
-    def _prepare(self, target : int) -> None:
-        for targetIndex in range(len(self.per_camera_tilenum)):
-            if self.per_camera_tilenum[targetIndex] == target:
-                break
-        else:
-            assert False, f"target camera {target} not found"
-        self.our_pointcloud = self.per_camera_pointclouds[targetIndex]
-        self.our_points_nparray = self.our_pointcloud.get_numpy_matrix(onlyGeometry=True)
+    def _prepare(self) -> None:
+        assert self.source_pointcloud is not None, "source point cloud must be set before running the algorithm"
+        assert self.reference_pointcloud is not None, "reference point cloud must be set before running the algorithm"
+        self.our_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
         # If set_reference_pointcloud() was not called, we'll use the combined point clouds of all other cameras as reference
-        if self.reference_pointcloud is None:
-            other_nparrays = [
-                cam_pc.get_numpy_matrix(onlyGeometry=True) for cam_pc in self.per_camera_pointclouds if cam_pc != self.our_pointcloud
-            ]
-            self.reference_points_nparray = np.concatenate(other_nparrays)
-        else:
-            self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
         if self.verbose:
             print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")
         self._compute_centroids()
@@ -83,24 +67,18 @@ class RegistrationComputer(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
         return transformation_identity()
     
     def get_result_pointcloud(self) -> cwipc_wrapper:
-        pc = self.our_pointcloud
+        pc = self.source_pointcloud
         assert pc is not None
         transform = self.get_result_transformation(nonverbose=True)
         new_pc = cwipc_transform(pc, transform)
         return new_pc
     
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
+        assert self.reference_pointcloud is not None
         part_pc = self.get_result_pointcloud()
-        if self.reference_pointcloud is not None:
-            new_part_pc = cwipc_join(part_pc, self.reference_pointcloud)
-            part_pc.free()
-            part_pc = new_part_pc
-        else:
-            for other_pc in self.per_camera_pointclouds:
-                if other_pc != self.our_pointcloud:
-                    new_part_pc = cwipc_join(part_pc, other_pc)
-                    part_pc.free()
-                    part_pc = new_part_pc
+        new_part_pc = cwipc_join(part_pc, self.reference_pointcloud)
+        part_pc.free()
+        part_pc = new_part_pc
         return part_pc
 
 class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
@@ -111,8 +89,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
         assert not target is None
-        assert len(self.per_camera_pointclouds) > 1 or self.reference_pointcloud is not None
-        self._prepare(target)
+        self._prepare()
 
         initial_transformation = np.identity(4)
         self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
@@ -164,9 +141,7 @@ class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
-        assert not target is None
-        assert len(self.per_camera_pointclouds) > 1
-        self._prepare(target)
+        self._prepare()
 
         initial_transformation = np.identity(4)
         self.registration_result : RegistrationResult = open3d.t.pipelines.registration.icp(
@@ -241,9 +216,7 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
 
     def run(self, target: Optional[int]=None) -> bool:
         """Run the algorithm"""
-        assert not target is None
-        assert len(self.per_camera_pointclouds) > 1
-        self._prepare(target)
+        self._prepare()
 
         initial_transformation = np.identity(4)
         self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(

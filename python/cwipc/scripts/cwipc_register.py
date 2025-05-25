@@ -11,9 +11,9 @@ from cwipc.net.abstract import *
 from ._scriptsupport import *
 from cwipc.registration.abstract import *
 from cwipc.registration.util import *
-import cwipc.registration.coarse
-import cwipc.registration.fine
-import cwipc.registration.analyze
+import cwipc.registration.multicoarse
+import cwipc.registration.multifine
+import cwipc.registration.multianalyze
 import cwipc.registration.multicamera
 from cwipc.io.visualizer import Visualizer
 
@@ -93,8 +93,8 @@ def main():
     if args.debug:
         args.verbose = True
     if args.help_algorithms:
-        print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
-        print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
+        print(cwipc.registration.multianalyze.HELP_ANALYZER_ALGORITHMS)
+        print(cwipc.registration.multifine.HELP_FINE_ALIGNMENT_ALGORITHMS)
         print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
         return 0
     reg = Registrator(args)
@@ -258,7 +258,7 @@ class Registrator:
         self.show_plot = self.args.plot
         if args.plotstyle:
             self.show_plot = True
-            cwipc.registration.analyze.set_default_plot_style(args.plotstyle)
+            cwipc.registration.multianalyze.set_default_plot_style(args.plotstyle)
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
@@ -271,11 +271,11 @@ class Registrator:
         #
         self.no_aruco = args.no_aruco
         if self.no_aruco:
-            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseColorTarget
+            self.coarse_aligner_class = cwipc.registration.multicoarse.MultiCameraCoarseColorTarget
         elif self.args.rgb:
-            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseArucoRgb
+            self.coarse_aligner_class = cwipc.registration.multicoarse.MultiCameraCoarseArucoRgb
         else:
-            self.coarse_aligner_class = cwipc.registration.coarse.MultiCameraCoarseAruco
+            self.coarse_aligner_class = cwipc.registration.multicoarse.MultiCameraCoarseAruco
 
         if self.args.algorithm_multicamera:
             self.multicamera_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_multicamera)
@@ -283,14 +283,14 @@ class Registrator:
             self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
 
         if self.args.algorithm_fine:
-            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_fine)
+            self.alignment_class = getattr(cwipc.registration.multifine, args.algorithm_fine)
         else:
             self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
 
         if self.args.algorithm_analyzer:
-            self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
+            self.analyzer_class = getattr(cwipc.registration.multianalyze, args.algorithm_analyzer)
         else:
-            self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
+            self.analyzer_class = cwipc.registration.multianalyze.DEFAULT_MULTICAM_ANALYZER_ALGORITHM
 
         if self.args.recording:
             if self.args.cameraconfig:

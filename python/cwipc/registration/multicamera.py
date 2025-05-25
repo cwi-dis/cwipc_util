@@ -11,9 +11,9 @@ from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used
-from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
+from .multifine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
-class MultiCameraBase(MultiAlignmentAlgorithm):
+class MultiCameraBase(MulticamAlignmentAlgorithm):
     """\
     Base class for multi-camera alignment algorithms.
     """

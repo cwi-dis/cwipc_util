@@ -549,7 +549,7 @@ class MulticamRegistrationAnalyzerFilteredReverse(MulticamRegistrationAnalyzerRe
             filtered_nparray = orig_nparray[bitmap]
             self.per_camera_nparray_others[camnum] = filtered_nparray
                     
-DEFAULT_ANALYZER_ALGORITHM = MulticamRegistrationAnalyzer
+DEFAULT_MULTICAM_ANALYZER_ALGORITHM = MulticamRegistrationAnalyzer
 
 ALL_MULTICAM_ANALYZER_ALGORITHMS = [
     MulticamRegistrationAnalyzer,
