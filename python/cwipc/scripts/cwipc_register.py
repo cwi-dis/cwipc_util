@@ -12,7 +12,7 @@ from ._scriptsupport import *
 from cwipc.registration.abstract import *
 from cwipc.registration.util import *
 import cwipc.registration.multicoarse
-import cwipc.registration.multifine
+import cwipc.registration.fine
 import cwipc.registration.multianalyze
 import cwipc.registration.multicamera
 from cwipc.io.visualizer import Visualizer
@@ -93,8 +93,8 @@ def main():
     if args.debug:
         args.verbose = True
     if args.help_algorithms:
-        print(cwipc.registration.multianalyze.HELP_ANALYZER_ALGORITHMS)
-        print(cwipc.registration.multifine.HELP_FINE_ALIGNMENT_ALGORITHMS)
+        print(cwipc.registration.multianalyze.HELP_MULTICAM_ANALYZER_ALGORITHMS)
+        print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
         print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
         return 0
     reg = Registrator(args)
@@ -283,7 +283,7 @@ class Registrator:
             self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
 
         if self.args.algorithm_fine:
-            self.alignment_class = getattr(cwipc.registration.multifine, args.algorithm_fine)
+            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_fine)
         else:
             self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
 

@@ -1,0 +1,106 @@
+from typing import List, Union, Iterable, Optional, Container
+import numpy as np
+from matplotlib import pyplot as plt
+from cwipc_util.python.cwipc.registration.abstract import AnalysisResults
+
+PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
+
+DEFAULT_PLOT_STYLE = ["count","cumulative"]
+
+def set_default_plot_style(style : Union[str, Iterable[str]]):
+    global DEFAULT_PLOT_STYLE
+    if isinstance(style, str):
+        DEFAULT_PLOT_STYLE = style.split(',')
+    else:
+        DEFAULT_PLOT_STYLE = list(style)
+        
+
+class Plotter:
+    #: Label for the plot
+    plot_label : Optional[str] 
+    #: Title for the plot (usually determined by this class)
+    plot_title : str
+    results : List[AnalysisResults]
+
+    def __init__(self, title : str):
+        self.title = title
+        pass
+
+    def set_results(self, results : List[AnalysisResults]) -> None:
+        """Set the results to be plotted. This will clear the current plot."""
+        self.results = results
+
+    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None):
+        assert self.results
+        # xxxjack This uses the stateful pyplot API. Horrible.
+        if not filename and not show:
+            return
+        if which is None:
+            which = DEFAULT_PLOT_STYLE
+        do_count = which is None or 'count' in which or 'all' in which
+        do_cumulative = which is None or 'cumulative' in which or 'all' in which
+        do_delta = which is None or 'delta' in which or 'all' in which
+        do_log = which is not None and 'log' in which
+        do_log_cumulative = False # do_log
+        nCamera = len(self.results)
+        plot_fig, plot_ax = plt.subplots()
+        if do_log:
+            plot_ax.set_yscale('symlog')
+        plot_ax.set_xlabel("Distance (m)")
+        plot_ax.set_ylabel(do_log and "log(count)" or "count")
+        ax_cum = None
+        if do_cumulative:
+            ax_cum = plot_ax.twinx()
+            if do_log_cumulative:
+                ax_cum.set_yscale('log')
+            ax_cum.set_ylabel(do_log_cumulative and "log(cumulative)" or "cumulative")
+        corr_box_text = "Correspondence:\n"
+        assert self.results
+        for cam_i in range(nCamera):
+            cam_tilenum = self.results[cam_i].tilemask
+            h_data = self.results[cam_i].histogram
+            corr = self.results[cam_i].minCorrespondence
+            corr_sigma = self.results[cam_i].minCorrespondenceSigma
+            count = self.results[cam_i].minCorrespondenceCount
+            percentage = int(self.results[cam_i].minCorrespondenceCount * 100 / self.results[cam_i].sourcePointCount)
+
+#            corr2 = self.results.secondCorrespondence[cam_i]
+#            has_second_correspondence = corr2 != 0
+#            if has_second_correspondence:
+#                corr2_sigma = self.results.secondCorrespondenceSigma[cam_i]
+#                count2 = self.results.secondCorrespondenceCount[cam_i]
+            corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
+#            if has_second_correspondence:
+#                corr_box_text += f"\n   {corr2:.4f}±{corr2_sigma:.4f} ({count2} points)"
+            assert h_data
+            (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
+            plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
+            if do_cumulative:
+                assert ax_cum
+                ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
+                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+ #               if has_second_correspondence:
+ #                   ax_cum.plot([corr2, corr2], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+            if do_delta:
+                # Compute deltas over intervals of half of "corr" size
+                
+                corr_bin = int(np.digitize(corr, edges))
+                nbin = len(histogram) // (corr_bin//2)
+                while len(histogram) % nbin != 0:
+                    nbin += 1
+                new_edges = edges[0::nbin]
+                new_histo = np.reshape(histogram, (-1, nbin)).sum(axis=1)/nbin
+                delta = np.diff(new_histo)
+                plot_ax.plot([new_edges[0], new_edges[-1]], [0, 0], linestyle="solid", label="_nolegend_", color="black", linewidth=0.2)
+                plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i])
+        title = self.plot_title
+        plt.title(title)
+        props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+        plot_ax.text(0.98, 0.1, corr_box_text, transform=plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
+        plot_ax.legend()
+        if filename:
+            plt.savefig(filename)
+        if show:
+            plt.show()
+            plt.close()
+    

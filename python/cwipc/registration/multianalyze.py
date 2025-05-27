@@ -54,8 +54,6 @@ class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAl
     per_camera_kdtree_others : List[KD_TREE_TYPE]
     #: Internal variable, may be useful for inspection: histogram results. List of tuples with histogram-data, edges, histogram-cumulative, histogram-cumulative-normalized, plot_label, raw-distance-data
     per_camera_histograms : List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]
-    #: Internal variable: the histogram from the first pass, for plotting
-    per_camera_histograms_for_plot : Optional[List[Optional[Tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], str, NDArray[Any]]]]]
     # Internal variable: (per-camera, or pair-wise) fraction of all points that are considered to be mappable
     matched_point_fractions : List[float]
     # Internal variable: which pass number
@@ -76,7 +74,6 @@ class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAl
         self.per_camera_kdtree  = []
         self.per_camera_kdtree_others = [] 
         self.per_camera_histograms = []
-        self.per_camera_histograms_for_plot = None
         self.matched_point_fractions = []
         self.filter_label = ""
         self.pass_number = 0
@@ -99,7 +96,6 @@ class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAl
         self.pass_number = 1
         if self.verbose:
             print(f"{self.__class__.__name__}: Pass 2")
-        self.per_camera_histograms_for_plot = self.per_camera_histograms
         self.filter_sources()
         return self.run(target)
 
@@ -142,10 +138,7 @@ class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAl
         assert self.results
         for cam_i in range(nCamera):
             cam_tilenum = self.per_camera_tilenum[cam_i]
-            if self.per_camera_histograms_for_plot != None:
-                h_data = self.per_camera_histograms_for_plot[cam_i]
-            else:
-                h_data = self.per_camera_histograms[cam_i]
+            h_data = self.per_camera_histograms[cam_i]
             corr = self.results.minCorrespondence[cam_i]
             corr_sigma = self.results.minCorrespondenceSigma[cam_i]
             count = self.results.minCorrespondenceCount[cam_i]

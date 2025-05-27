@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, override
 from ..abstract import *
 from .abstract import *
 from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter
@@ -161,25 +161,31 @@ class BaseAlgorithm(Algorithm):
 
     def __init__(self):
         self.source_pointcloud : Optional[cwipc_wrapper] = None
+        self.source_tilemask : Optional[int] = None
         self.reference_pointcloud : Optional[cwipc_wrapper] = None
+        self.reference_tilemask : Optional[int] = None
         self.verbose = False
 
+    @override
     def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
         """Set the source point cloud for this algorithm"""
         if tilemask is not None:
             pc = cwipc_tilefilter_masked(pc, tilemask)
         if self.verbose:
-            print(f"Setting source point cloud with {pc.count()} points")
+            print(f"{self.__class__.__name__}: Setting source point cloud with {pc.count()} points")
 
         self.source_pointcloud = pc
+        self.source_tilemask = tilemask
     
+    @override
     def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud for this algorithm"""
         if tilemask is not None:
             pc = cwipc_tilefilter_masked(pc, tilemask)
         if self.verbose:
-            print(f"Setting target point cloud with {pc.count()} points")
+            print(f"{self.__class__.__name__}: Setting target point cloud with {pc.count()} points")
         self.reference_pointcloud = pc
+        self.reference_tilemask = tilemask
 
     
 class BaseMulticamAlgorithm(MulticamAlgorithm):
@@ -190,11 +196,14 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     def __init__(self):
         self.per_camera_tilenum : List[int] = []
+        self.source_pointcloud : Optional[cwipc_wrapper] = None
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
         self.verbose = False
 
+    @override
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
+        self.source_pointcloud = pc
         for tilemask in get_tiles_used(pc):
             tiled_pc = self._get_pc_for_cam(pc, tilemask)
             if tiled_pc == None:
@@ -204,10 +213,12 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
             self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
+    @override
+    def tilemask_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         return self.per_camera_tilenum[cam_index]
 
+    @override
     def camera_index_for_tilenum(self, tilenum : int) -> int:
         """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         for i in range(len(self.per_camera_tilenum)):
@@ -215,6 +226,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
                 return i
         assert False, f"Tilenum {tilenum} not known"
 
+    @override
     def camera_count(self):
         assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
         return len(self.per_camera_tilenum)
@@ -226,6 +238,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
         rv.free()
         return None
 
+    @override
     def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
         """Returns the point cloud for this tilenumber"""
         cam_index = self.camera_index_for_tilenum(tilenum)

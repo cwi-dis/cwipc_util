@@ -41,6 +41,7 @@ class Algorithm(ABC):
         """Set the source point cloud to be used during the algorithm run"""
         ...
     
+    @abstractmethod
     def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud to be used during the algorithm run.
         """
@@ -59,13 +60,14 @@ class AnalysisResults:
     minCorrespondenceSigma : float
     #: number of points that were used for the minimum correspondence for each camera
     minCorrespondenceCount : int
-    #: second best correspondence for each camera
-    secondCorrespondence : float
-    #: stddev of the above
-    secondCorrespondenceSigma : float
-    #: number of points that were used for secondCorrespondence
-    secondCorrespondenceCount : int
-
+    #: total number of points in the source point cloud
+    sourcePointCount : int
+    #: total number of points in the reference point cloud
+    referencePointCount : int
+    #: tile mask for this analysis data, if applicable
+    tilemask : Optional[int]
+    #: histogram of distances
+    histogram : Optional[numpy.typing.NDArray[numpy.float64]]
 
 class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm between two point clouds"""
@@ -74,31 +76,31 @@ class AnalysisAlgorithm(Algorithm):
 
     @abstractmethod
     def get_results(self) -> AnalysisResults:
-        """Returns an object indicating how the source point cloud is aligned to the target point cloud.
+        """Returns an object indicating how the source point cloud is aligned to the reference point cloud.
         """
         ...
 
-    @abstractmethod
-    def run_twice(self) -> bool:
-        """Run the algorithm twice, removing the points matched in the first run before the second run.
-        This will set the secondCoeespondence variables in the result.
-        """
-        ...
+#    @abstractmethod
+#    def run_twice(self) -> bool:
+#        """Run the algorithm twice, removing the points matched in the first run before the second run.
+#        This will set the secondCoeespondence variables in the result.
+#        """
+#        ...
 
-    @abstractmethod
-    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
-        """
-        Plot the analysis results. 
-        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
-        If filename is given the plot is saved there.
-        If show is true the plot is shown on screen
-        """
-        ...
+#    @abstractmethod
+#    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
+#        """
+#        Plot the analysis results. 
+#        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
+#        If filename is given the plot is saved there.
+#        If show is true the plot is shown on screen
+#        """
+#        ...
         
     @abstractmethod
     def filter_sources(self) -> None:
         """
-        After running the algorithm, prepare source and target point cloud for running the algoithm again.
+        After running the algorithm, prepare source and target point cloud for running the algorithm again.
         """
 
 AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
@@ -146,7 +148,7 @@ class MulticamAlgorithm(ABC):
         ...
         
     @abstractmethod
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
+    def tilemask_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         ...
 

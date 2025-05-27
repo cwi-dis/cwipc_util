@@ -10,29 +10,27 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
 
-class MultiCameraBase(MulticamAlignmentAlgorithm):
+class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
     """\
     Base class for multi-camera alignment algorithms.
     """
-    current_pointcloud : Optional[cwipc_wrapper]
-    current_pointcloud_is_new : bool
+    original_pointcloud : Optional[cwipc_wrapper]
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
-    results : Optional[AnalysisResults]
+    results : List[AnalysisResults]
     verbose : bool
     show_plot : bool
     nCamera : int
 
     def __init__(self):
         MulticamAlignmentAlgorithm.__init__(self)
-        self.current_pointcloud = None
-        self.current_pointcloud_is_new = False
+        self.original_pointcloud = None
         self.transformations  = []
         self.original_transformations = []
-        self.results = None
+        self.results = []
 
         self.verbose = False
         self.show_plot = False
@@ -41,63 +39,30 @@ class MultiCameraBase(MulticamAlignmentAlgorithm):
 
     def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
         assert False
-
-
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
-        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        self.current_pointcloud = pc
-        self.current_pointcloud_is_new = False
-
-    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
-        """Returns the point cloud for this tilenumber"""
-        assert self.current_pointcloud
-        rv = cwipc_tilefilter(self.current_pointcloud, tilenum)
-        return rv
     
-    def camera_count(self) -> int:
-        if self.nCamera == 0:
-            if self.analyzer:
-                self.nCamera = self.camera_count()
-            elif self.current_pointcloud:
-                self.nCamera = len(get_tiles_used(self.current_pointcloud))
-            else:
-                assert False, "No pointcloud and no analyzer"
-        return self.nCamera
-    
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
-        """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
-        assert self.analyzer
-        return self.analyzer.tilenum_for_camera_index(cam_index)
-
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
-        """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
-        assert self.analyzer
-        return self.analyzer.camera_index_for_tilenum(tilenum)
-    
-    def _prepare_analyze(self, sourcemask : int, targetmask : int) -> AnalysisAlgorithm:
+    def _prepare_analyze(self) -> AnalysisAlgorithm:
         analyzer = None
         assert self.analyzer_class
         if self.verbose:
             print(f"{self.__class__.__name__}: Use analyzer class {self.analyzer_class.__name__}")
         analyzer = self.analyzer_class()
         analyzer.verbose = self.verbose
-        assert self.current_pointcloud
-        analyzer.set_source_pointcloud((self.current_pointcloud)
+        return analyzer
 
-    def _prepare_compute(self):
-        self.aligner = None
+    def _prepare_aligner(self) -> AlignmentAlgorithm:
         if not self.aligner_class:
             self.aligner_class = RegistrationComputer_ICP_Point2Point
         if self.verbose:
             print(f"{self.__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
-        self.aligner = self.aligner_class()
-        self.aligner.verbose = self.verbose
-        assert self.current_pointcloud
-        self.aligner.add_tiled_pointcloud(self.current_pointcloud)
+        aligner = self.aligner_class()
+        aligner.verbose = self.verbose
+        return aligner
+        assert self.original_pointcloud
+        self.aligner.add_tiled_pointcloud(self.original_pointcloud)
 
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
-        assert self.current_pointcloud
-        nCamera = get_tiles_used(self.current_pointcloud)
+        assert self.original_pointcloud
+        nCamera = get_tiles_used(self.original_pointcloud)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
@@ -112,42 +77,44 @@ class MultiCameraBase(MulticamAlignmentAlgorithm):
         return self.transformations
     
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
-        assert self.current_pointcloud
-        if not self.current_pointcloud_is_new:
+        assert self.original_pointcloud
+        if not self.original_pointcloud_is_new:
             # Do a deep-copy, so our caller can free the pointcloud it passed to us
-            self.current_pointcloud = cwipc_from_packet(self.current_pointcloud.get_packet())
-            self.current_pointcloud_is_new = True
-        return self.current_pointcloud
+            self.original_pointcloud = cwipc_from_packet(self.original_pointcloud.get_packet())
+            self.original_pointcloud_is_new = True
+        return self.original_pointcloud
   
-class MultiCameraNoOp(MultiCameraBase):
+class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
     """\
-    No-op algorithm for testing purposes.
+    No-op algorithm for testing purposes. Only computes distances between each tile and all other tiles.
     """
     def __init__(self):
         super().__init__()
 
-    def _prepare_compute(self):
-        self.aligner = None
-        assert self.current_pointcloud
+    def _prepare_aligner(self):
+        assert self.original_pointcloud
 
     def run(self) -> bool:
         """Run the algorithm"""
-        assert self.current_pointcloud
-        self._prepare_analyze()
-        assert self.analyzer
+        assert self.original_pointcloud
         assert self.camera_count() > 0
-        self.analyzer.run_twice()
-        self.results = self.analyzer.get_results()
-        self.results.sort_by_weight(weightstyle='order')
+        for camnum in range(self.camera_count()):
+            tilemask = self.tilemask_for_camera_index(camnum)
+            othertilemask = 0xff ^ tilemask
+            analyzer = self._prepare_analyze()
+            analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
+            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            analyzer.run()
+            results = analyzer.get_results()
+            self.results.append(results)
         if self.verbose:
-            self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
+            pass # self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
         if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}"
-            self.analyzer.plot(show=True)
+            pass #
         
         return True
 
-class MultiCameraOneToAllOthers(MultiCameraBase):
+class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
     """\
     Align multiple cameras. Every step, one camera is aligned to all others.
     Every step, we pick the camera with the best chances to make the biggest change.
@@ -167,7 +134,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
     
     def run(self) -> bool:
         """Run the algorithm"""
-        assert self.current_pointcloud
+        assert self.original_pointcloud
         self._prepare_analyze()
         assert self.analyzer
         assert self.camera_count() > 0
@@ -194,18 +161,18 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             if self.verbose:
                 print(f"{self.__class__.__name__}: Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
             # Prepare the registration computer
-            self._prepare_compute()
+            self._prepare_aligner()
             assert self.aligner
             correspondence = self.results.secondCorrespondence[camnum_to_fix]
             self.aligner.set_correspondence(correspondence)
             self.aligner.run(camnum_to_fix)
             camnums_already_fixed.append(camnum_to_fix)
             # Save resultant pointcloud
-            old_pc = self.current_pointcloud
+            old_pc = self.original_pointcloud
             new_pc = self.aligner.get_result_pointcloud_full()
             old_pc.free()
-            self.current_pointcloud = new_pc
-            self.current_pointcloud_is_new = True
+            self.original_pointcloud = new_pc
+            self.original_pointcloud_is_new = True
             # Apply new transformation (to the left of the old one)
             cam_index = self.aligner.camera_index_for_tilenum(camnum_to_fix)
             old_transform = self.transformations[cam_index]
@@ -300,8 +267,8 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             self.change.append(total_delta / 4)
 
     def _compute_new_tiles(self):
-        assert self.current_pointcloud
-        pc = self.current_pointcloud
+        assert self.original_pointcloud
+        pc = self.original_pointcloud
         ntiles_orig = len(self.transformations)
         must_free_new = False
         if self.proposed_cellsize > 0:
@@ -326,7 +293,7 @@ class MultiCameraOneToAllOthers(MultiCameraBase):
             pc_new.free()
     
 
-class MultiCameraIterative(MultiCameraBase):
+class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     """\
     Align multiple cameras. The first step we pick the camera with the best overal to all others.
     We move this to the destination set.
@@ -354,7 +321,7 @@ class MultiCameraIterative(MultiCameraBase):
 
     def run(self) -> bool:
         """Run the algorithm"""
-        assert self.current_pointcloud
+        assert self.original_pointcloud
         self._prepare_analyze()
         assert self.analyzer
         assert self.camera_count() > 0
@@ -403,7 +370,7 @@ class MultiCameraIterative(MultiCameraBase):
             if self.verbose:
                 print(f"{self.__class__.__name__}: Aligning camera {camnum_to_fix}, corr={correspondence}, {self.resultant_pointcloud.count()} points in reference set")
             # Prepare the registration computer
-            self._prepare_compute()
+            self._prepare_aligner()
             assert self.aligner
             assert self.resultant_pointcloud
             if correspondence > 0:
@@ -421,8 +388,8 @@ class MultiCameraIterative(MultiCameraBase):
             new_transform = np.matmul(this_transform, old_transform)
             self.transformations[cam_index] = new_transform
         # Finally, run the analyzer on the final result
-        self.current_pointcloud = self.resultant_pointcloud
-        self.current_pointcloud_is_new = True
+        self.original_pointcloud = self.resultant_pointcloud
+        self.original_pointcloud_is_new = True
         self._prepare_analyze()
         self.analyzer.run_twice()
         self.results = self.analyzer.get_results()
@@ -453,7 +420,7 @@ class MultiCameraIterative(MultiCameraBase):
     def _select_first_pointcloud(self) -> None:
         assert self.resultant_pointcloud == None
         camIndex = self.still_to_do[0]
-        camNum = self.tilenum_for_camera_index(camIndex)
+        camNum = self.tilemask_for_camera_index(camIndex)
         self.still_to_do = self.still_to_do[1:]
         if self.verbose:
             print(f"{self.__class__.__name__}: Select initial pointcloud: camera {camNum}")
@@ -496,8 +463,8 @@ class MultiCameraIterative(MultiCameraBase):
             self.change.append(total_delta / 4)
 
     def _compute_new_tiles(self):
-        assert self.current_pointcloud
-        pc = self.current_pointcloud
+        assert self.original_pointcloud
+        pc = self.original_pointcloud
         ntiles_orig = len(self.transformations)
         must_free_new = False
         if self.proposed_cellsize > 0:
@@ -533,8 +500,8 @@ class MultiCameraIterativeFloor(MultiCameraIterative):
 
     def _select_first_pointcloud(self) -> None:
         assert self.resultant_pointcloud == None
-        assert self.current_pointcloud
-        np_matrix = self.current_pointcloud.get_numpy_matrix()
+        assert self.original_pointcloud
+        np_matrix = self.original_pointcloud.get_numpy_matrix()
         # Try and find the floor level
         point_heights = np_matrix[:,1]
         filter = point_heights < 0.1 # It's the floor so it shouldn't be off my more than 10 cm
@@ -545,7 +512,7 @@ class MultiCameraIterativeFloor(MultiCameraIterative):
             print(f"{self.__class__.__name__}: Floor level is {floor_height}, based on {len(filtered_point_heights)} (of {len(point_heights)}) points")
         floor_matrix = np_matrix[filter]
         floor_matrix[...,1] = 0
-        self.resultant_pointcloud = cwipc_from_numpy_matrix(floor_matrix, self.current_pointcloud.timestamp())
+        self.resultant_pointcloud = cwipc_from_numpy_matrix(floor_matrix, self.original_pointcloud.timestamp())
 
 class MultiCameraIterativeFloorOnly(MultiCameraIterativeFloor):
     """\
@@ -578,7 +545,7 @@ class MultiCameraIterativeFloorTwice(MultiCameraIterativeFloor):
             return False
         if self.verbose:
             print(f"{self.__class__.__name__}: First pass done")
-        self.current_pointcloud = self.resultant_pointcloud
+        self.original_pointcloud = self.resultant_pointcloud
         
         self.resultant_pointcloud = None
         self.pass_number = 2
