@@ -196,14 +196,14 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     def __init__(self):
         self.per_camera_tilenum : List[int] = []
-        self.source_pointcloud : Optional[cwipc_wrapper] = None
+        self.original_pointcloud : Optional[cwipc_wrapper] = None
         self.per_camera_pointclouds : List[cwipc_wrapper] = []
         self.verbose = False
 
     @override
     def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
-        self.source_pointcloud = pc
+        self.original_pointcloud = pc
         for tilemask in get_tiles_used(pc):
             tiled_pc = self._get_pc_for_cam(pc, tilemask)
             if tiled_pc == None:
