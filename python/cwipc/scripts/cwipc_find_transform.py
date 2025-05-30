@@ -6,11 +6,13 @@ import cwipc
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
 from cwipc.registration.analyze import RegistrationAnalyzer
 from cwipc.registration.util import transformation_topython
+from cwipc.registration.plot import Plotter
 
 class TransformFinder:
     def __init__(self, args : argparse.Namespace):
         self.args = args
         self.analyze = args.analyze
+        self.plot = args.plot
         self.dump = args.dump
         self.verbose = args.verbose
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
@@ -51,8 +53,8 @@ class TransformFinder:
         if self.analyze:
             self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
         self.aligner.set_reference_pointcloud(self.target_pc)
-        self.aligner.add_tiled_pointcloud(self.source_pc)
-        self.aligner.run(self.source_tile)
+        self.aligner.set_source_pointcloud(self.source_pc)
+        self.aligner.run()
         transform = self.aligner.get_result_transformation()
         self.result_pc = self.aligner.get_result_pointcloud()
         if self.dump:
@@ -77,20 +79,21 @@ class TransformFinder:
         analyzer = RegistrationAnalyzer()
         analyzer.verbose = self.verbose
         analyzer.set_reference_pointcloud(target)
-        analyzer.add_tiled_pointcloud(source)
+        analyzer.set_source_pointcloud(source)
         analyzer.run()
         results = analyzer.get_results()
-        correspondence = results.minCorrespondence[0]
-        sigma = results.minCorrespondenceSigma[0]
-        count = results.minCorrespondenceCount[0]
+        correspondence = results.minCorrespondence
+        sigma = results.minCorrespondenceSigma
+        count = results.minCorrespondenceCount
         percentage = 100.0 * count / source.count()
         print(f"{label} alignment: correspondence: {correspondence}, sigma: {sigma}, count: {count}, percentage: {percentage:.2f}%")
-
+        if self.plot:
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--analyze", help="Print pre and post analysis of point cloud distance", action="store_true")
+    parser.add_argument("--plot", help="Plot analysis distance distribution")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
