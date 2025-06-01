@@ -58,6 +58,7 @@ class TransformFinder:
         transform = self.aligner.get_result_transformation()
         self.result_pc = self.aligner.get_result_pointcloud()
         if self.dump:
+            cwipc.cwipc_write(f"find_transform_result{self._fnmod()}.ply", self.result_pc)
             self.dump_pointclouds(f"find_transform_after{self._fnmod()}.ply", self.result_pc, self.target_pc)
         if self.analyze:
             self.analyze_pointclouds("After", self.result_pc, self.target_pc)
