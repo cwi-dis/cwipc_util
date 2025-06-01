@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Any, Tuple
+from typing import List, Optional, Any, Tuple, override
 import numpy as np
 import numpy.typing as npt
 import scipy.spatial
@@ -33,6 +33,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
         self.reference_pointcloud = pc
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         self._prepare()
@@ -63,9 +64,11 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
             if self.verbose:
                 print(f"{self.__class__.__name__}: set correspondence to {self.correspondence:.4f} meters")
     
+    @override
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         return transformation_identity()
     
+    @override
     def get_result_pointcloud(self) -> cwipc_wrapper:
         pc = self.source_pointcloud
         assert pc is not None
@@ -73,6 +76,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         new_pc = cwipc_transform(pc, transform)
         return new_pc
     
+    @override
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
         assert self.reference_pointcloud is not None
         part_pc = self.get_result_pointcloud()
@@ -86,9 +90,9 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
     Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry.
     """
 
-    def run(self, target: Optional[int]=None) -> bool:
+    @override
+    def run(self) -> bool:
         """Run the algorithm"""
-        assert not target is None
         self._prepare()
 
         initial_transformation = np.identity(4)
@@ -102,6 +106,7 @@ class RegistrationComputer_ICP_Point2Point(RegistrationComputer):
         )
         return True
 
+    @override
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         if self.verbose and not nonverbose:
             print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
@@ -139,7 +144,8 @@ class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
     Compute registration for a pointcloud using the ICP point-to-point algorithm using only geometry.
     """
 
-    def run(self, target: Optional[int]=None) -> bool:
+    @override
+    def run(self) -> bool:
         """Run the algorithm"""
         self._prepare()
 
@@ -175,6 +181,7 @@ class RegistrationComputer_Tensor_ICP_Point2Point(RegistrationComputer):
         tensor_pointcloud = open3d.t.geometry.PointCloud(tensor_points)
         return tensor_pointcloud
     
+    @override
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         if self.verbose and not nonverbose:
             print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
@@ -214,12 +221,13 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
     Compute registration for a pointcloud using the ICP point-to-plane algorithm using only geometry.
     """
 
-    def run(self, target: Optional[int]=None) -> bool:
+    @override
+    def run(self) -> bool:
         """Run the algorithm"""
         self._prepare()
 
         initial_transformation = np.identity(4)
-        self.registration_result : RegistrationResult = open3d.pipelines.registration.registration_icp(
+        self.registration_result = open3d.pipelines.registration.registration_icp(
             source=self._get_source_pointcloud(),
             target=self._get_target_pointcloud(),
             max_correspondence_distance=self.correspondence,
@@ -229,6 +237,7 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         )
         return True
 
+    @override
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
         if self.verbose and not nonverbose:
             print(f"{self.__class__.__name__}: {self.__class__.__name__} result: {self.registration_result}")
