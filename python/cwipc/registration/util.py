@@ -64,13 +64,12 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     # Extract the relevant fields (X, Y, Z coordinates)
     tilearray = pointarray['tile']
     # Create a mask for the points that match the tile mask
-    mask_array = (tilearray & mask) == mask
+    mask_array = (tilearray & mask) != 0
     # Filter the point cloud using the mask
     filtered_points = pointarray[mask_array]
-    rv = cwipc_from_numpy_array(filtered_points, pc.timestamp())
     if filtered_points.size == 0:
         return cwipc_from_points([], pc.timestamp())
-    new_pc = cwipc_from_numpy_matrix(filtered_points, pc.timestamp())
+    new_pc = cwipc_from_numpy_array(filtered_points, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 

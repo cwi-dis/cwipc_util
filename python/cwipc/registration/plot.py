@@ -68,13 +68,14 @@ class Plotter:
 #            if has_second_correspondence:
 #                corr2_sigma = self.results.secondCorrespondenceSigma[cam_i]
 #                count2 = self.results.secondCorrespondenceCount[cam_i]
+            label = f"{cam_tilenum}"
             corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
 #            if has_second_correspondence:
 #                corr_box_text += f"\n   {corr2:.4f}±{corr2_sigma:.4f} ({count2} points)"
             assert histogram is not None
             assert histogramEdges is not None
             #(histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
-            plot_ax.plot(histogramEdges[1:], histogram, label=self.title, color=PLOT_COLORS[cam_i])
+            plot_ax.plot(histogramEdges[1:], histogram, label=label, color=PLOT_COLORS[cam_i])
             
             if do_cumulative:
                 assert ax_cum

@@ -121,6 +121,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         if self.verbose:
             print(f"\t\tresult: tilemask={self.results.tilemask}, corr={mean}, sigma={stddev}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
 
+    @override
     def filter_sources(self) -> None:
         """Filter points that were matched by a previous run"""
         assert False
@@ -151,7 +152,6 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
-        self.plot_title = "Histogram of point distances between camera and all others"
 
     def run(self) -> bool:
         """Run the algorithm"""
@@ -166,12 +166,24 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         self.results.histogramEdges = edges
         return True
 
+class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
+    """
+    This algorithm computes the registration between two point clouds, ignoring the nearest point.
+    This is useful to match a point cloud to itself.
+    """
+    
+    def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
+        """For each point in points, get the distance to the nearest point in the tree"""
+        distances, _ = tree.query(points, k=[2], workers=-1)
+        return distances
+    
 ## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence
       
 DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
 ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzer,
+    RegistrationAnalyzerIgnoreNearest
 ]
 
 HELP_ANALYZER_ALGORITHMS = """
