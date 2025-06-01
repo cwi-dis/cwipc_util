@@ -12,6 +12,7 @@ class TransformFinder:
     def __init__(self, args : argparse.Namespace):
         self.args = args
         self.analyze = args.analyze
+        self.nofind = args.nofind
         self.plot = args.plot
         self.dump = args.dump
         self.verbose = args.verbose
@@ -20,8 +21,9 @@ class TransformFinder:
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
         self.target_tile = args.targettile
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.aligner = RegistrationComputer_ICP_Point2Point()
-        self.aligner.verbose = self.verbose
+        if not self.nofind:
+            self.aligner = RegistrationComputer_ICP_Point2Point()
+            self.aligner.verbose = self.verbose
             
 
     def load_source(self, source: str):
@@ -52,6 +54,7 @@ class TransformFinder:
             self.dump_pointclouds(f"find_transform_before{self._fnmod()}.ply", self.source_pc, self.target_pc)
         if self.analyze:
             self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
+        
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.set_source_pointcloud(self.source_pc)
         self.aligner.run()
@@ -98,6 +101,7 @@ def main():
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--analyze", help="Print pre and post analysis of point cloud distance", action="store_true")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
+    parser.add_argument("--nofind", action="store_true", help="Do not find transform, just analyze point clouds. Implies --analyze")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
@@ -109,7 +113,9 @@ def main():
         debugpy.listen(5678)
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
-        print(f"{sys.argv[0]}: debugger attached")        
+        print(f"{sys.argv[0]}: debugger attached")
+    if args.nofind:
+        args.analyze = True
     finder = TransformFinder(args)
     finder.load_source(args.source)
     finder.load_target(args.target)

@@ -134,7 +134,8 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     # Extract the relevant fields (X, Y, Z coordinates)
     tilearray = pointarray['tile']
     unique = np.unique(tilearray)
-    rv = unique.tolist()
+    rv : List[int] = unique.tolist()
+    rv.sort()
     return rv
 
 def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
@@ -170,9 +171,14 @@ class BaseAlgorithm(Algorithm):
     def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
         """Set the source point cloud for this algorithm"""
         if tilemask is not None:
+            pre_count = pc.count()
             pc = cwipc_tilefilter_masked(pc, tilemask)
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Setting source point cloud with {pc.count()} points")
+            post_count = pc.count()
+            if self.verbose:
+                print(f"{self.__class__.__name__}: Setting source point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")
+        else:
+            if self.verbose:
+                print(f"{self.__class__.__name__}: Setting source point cloud with {pc.count()} points")
 
         self.source_pointcloud = pc
         self.source_tilemask = tilemask
@@ -181,9 +187,14 @@ class BaseAlgorithm(Algorithm):
     def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud for this algorithm"""
         if tilemask is not None:
+            pre_count = pc.count()
             pc = cwipc_tilefilter_masked(pc, tilemask)
-        if self.verbose:
-            print(f"{self.__class__.__name__}: Setting target point cloud with {pc.count()} points")
+            post_count = pc.count()
+            if self.verbose:
+                print(f"{self.__class__.__name__}: Setting target point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")
+        else:
+            if self.verbose:
+                print(f"{self.__class__.__name__}: Setting target point cloud with {pc.count()} points")
         self.reference_pointcloud = pc
         self.reference_tilemask = tilemask
 

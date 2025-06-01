@@ -31,6 +31,7 @@ cwipc_forward = "cwipc.scripts.cwipc_forward:main"
 cwipc_toproxy = "cwipc.scripts.cwipc_toproxy:main"
 cwipc_timing = "cwipc.scripts.cwipc_timing:main"
 cwipc_find_transform = "cwipc.scripts.cwipc_find_transform:main"
+cwipc_analyze_registration = "cwipc.scripts.cwipc_analyze_registration:main"
 
 [tool.setuptools.packages.find]
 exclude = ["build*"]
