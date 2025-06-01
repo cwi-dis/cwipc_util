@@ -88,12 +88,15 @@ class TransformFinder:
         percentage = 100.0 * count / source.count()
         print(f"{label} alignment: correspondence: {correspondence}, sigma: {sigma}, count: {count}, percentage: {percentage:.2f}%")
         if self.plot:
+            plotter = Plotter(title=label)
+            plotter.set_results([results])
+            plotter.plot(show=True)
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--analyze", help="Print pre and post analysis of point cloud distance", action="store_true")
-    parser.add_argument("--plot", help="Plot analysis distance distribution")
+    parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")

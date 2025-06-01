@@ -1,7 +1,7 @@
 from typing import List, Union, Iterable, Optional, Container
 import numpy as np
 from matplotlib import pyplot as plt
-from cwipc_util.python.cwipc.registration.abstract import AnalysisResults
+from .abstract import AnalysisResults
 
 PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
 
@@ -16,10 +16,8 @@ def set_default_plot_style(style : Union[str, Iterable[str]]):
         
 
 class Plotter:
-    #: Label for the plot
-    plot_label : Optional[str] 
     #: Title for the plot (usually determined by this class)
-    plot_title : str
+    title : str
     results : List[AnalysisResults]
 
     def __init__(self, title : str):
@@ -58,7 +56,8 @@ class Plotter:
         assert self.results
         for cam_i in range(nCamera):
             cam_tilenum = self.results[cam_i].tilemask
-            h_data = self.results[cam_i].histogram
+            histogram = self.results[cam_i].histogram
+            histogramEdges = self.results[cam_i].histogramEdges
             corr = self.results[cam_i].minCorrespondence
             corr_sigma = self.results[cam_i].minCorrespondenceSigma
             count = self.results[cam_i].minCorrespondenceCount
@@ -72,28 +71,33 @@ class Plotter:
             corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
 #            if has_second_correspondence:
 #                corr_box_text += f"\n   {corr2:.4f}±{corr2_sigma:.4f} ({count2} points)"
-            assert h_data
-            (histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
-            plot_ax.plot(edges[1:], histogram, label=plot_label, color=PLOT_COLORS[cam_i])
+            assert histogram is not None
+            assert histogramEdges is not None
+            #(histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
+            plot_ax.plot(histogramEdges[1:], histogram, label=self.title, color=PLOT_COLORS[cam_i])
+            
             if do_cumulative:
                 assert ax_cum
-                ax_cum.plot(edges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
+                cumsum = np.cumsum(histogram)
+                totDistances = cumsum[-1]
+                normsum = cumsum / totDistances
+                ax_cum.plot(histogramEdges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
                 ax_cum.plot([corr, corr], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
  #               if has_second_correspondence:
  #                   ax_cum.plot([corr2, corr2], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
             if do_delta:
                 # Compute deltas over intervals of half of "corr" size
                 
-                corr_bin = int(np.digitize(corr, edges))
+                corr_bin = int(np.digitize(corr, histogramEdges))
                 nbin = len(histogram) // (corr_bin//2)
                 while len(histogram) % nbin != 0:
                     nbin += 1
-                new_edges = edges[0::nbin]
+                new_edges = histogramEdges[0::nbin]
                 new_histo = np.reshape(histogram, (-1, nbin)).sum(axis=1)/nbin
                 delta = np.diff(new_histo)
                 plot_ax.plot([new_edges[0], new_edges[-1]], [0, 0], linestyle="solid", label="_nolegend_", color="black", linewidth=0.2)
                 plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i])
-        title = self.plot_title
+        title = self.title
         plt.title(title)
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
         plot_ax.text(0.98, 0.1, corr_box_text, transform=plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)

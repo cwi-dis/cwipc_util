@@ -161,8 +161,9 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         distances = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
         distances = self._filter_infinites(distances)
         self._compute_correspondence_errors(distances)
-        histogram, _ = np.histogram(distances, bins=self.histogram_bincount)
+        histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
         self.results.histogram = histogram
+        self.results.histogramEdges = edges
         return True
 
 ## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence

@@ -68,6 +68,8 @@ class AnalysisResults:
     tilemask : Optional[int]
     #: histogram of distances
     histogram : Optional[numpy.typing.NDArray[numpy.float64]]
+    #: edges of the histogram
+    histogramEdges : Optional[numpy.typing.NDArray[numpy.float64]]
 
 class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm between two point clouds"""
