@@ -171,7 +171,8 @@ class BaseAlgorithm(Algorithm):
         """Set the source point cloud for this algorithm"""
         if tilemask is not None:
             pre_count = pc.count()
-            pc = cwipc_tilefilter_masked(pc, tilemask)
+            if tilemask != 0:
+                pc = cwipc_tilefilter_masked(pc, tilemask)
             post_count = pc.count()
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting source point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")
@@ -187,7 +188,8 @@ class BaseAlgorithm(Algorithm):
         """Set the reference point cloud for this algorithm"""
         if tilemask is not None:
             pre_count = pc.count()
-            pc = cwipc_tilefilter_masked(pc, tilemask)
+            if tilemask != 0:
+                pc = cwipc_tilefilter_masked(pc, tilemask)
             post_count = pc.count()
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting target point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")

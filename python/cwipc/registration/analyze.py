@@ -172,9 +172,18 @@ class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
     This is useful to match a point cloud to itself.
     """
     
+    def __init__(self):
+        super().__init__()
+        self.ignore_nearest = 1
+
+    def set_ignore_nearest(self, ignore_nearest: int) -> None:
+        """Set the number of nearest points to ignore"""
+        self.ignore_nearest = ignore_nearest
+
+    @override
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, k=[2], workers=-1)
+        distances, _ = tree.query(points, k=[self.ignore_nearest+1], workers=-1)
         return distances
     
 ## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence
