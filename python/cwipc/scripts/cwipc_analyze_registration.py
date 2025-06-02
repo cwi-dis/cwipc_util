@@ -60,8 +60,12 @@ class AnalyzePointCloud:
         correspondence = results.minCorrespondence
         sigma = results.minCorrespondenceSigma
         count = results.minCorrespondenceCount
+        assert analyzer.source_pointcloud is not None
         percentage = 100.0 * count / analyzer.source_pointcloud.count()
-        label = f"{sourcetile:#x} to {targettile:#x}"
+        if self.args.toself:
+            label = f"{sourcetile:#x} self, nth={self.args.nth}"
+        else:
+            label = f"{sourcetile:#x} to {targettile:#x}"
         print(f"Alignment {label}: correspondence: {correspondence:.6f}, sigma: {sigma:.6f}, count: {count}, percentage: {percentage:.2f}%")
         return results
 
