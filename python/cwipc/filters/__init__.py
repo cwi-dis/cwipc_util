@@ -4,9 +4,9 @@ import importlib
 import importlib.util
 from .abstract import cwipc_abstract_filter
 from ..net.abstract import *
-from . import passthrough, analyze, voxelize, transform, transform44, crop, remove_outliers, colorize
+from . import passthrough, analyze, voxelize, transform, transform44, crop, remove_outliers, colorize, noise
 
-all_filters = [passthrough, analyze, voxelize, transform, transform44, crop, remove_outliers, colorize]
+all_filters = [passthrough, analyze, voxelize, transform, transform44, crop, remove_outliers, colorize, noise]
 
 def help() -> None:
     print("A builtin filter can be specified by name (for example passthrough) or as name with arguments (for example passthrough()).", file=sys.stderr)
