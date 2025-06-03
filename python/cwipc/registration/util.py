@@ -22,12 +22,13 @@ Point_array_rgb = NDArray[Any]
 
 
 def transformation_identity() -> RegistrationTransformation:
-    return np.array([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]
-    ])
+    values  = np.array([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    ], dtype=float)
+    return np.reshape(values, (4, 4))
 
 def transformation_invert(orig_transform : RegistrationTransformation) -> RegistrationTransformation:
     """Invert an affine transformation"""
