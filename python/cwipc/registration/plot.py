@@ -78,17 +78,17 @@ class Plotter:
             assert histogram is not None
             assert histogramEdges is not None
             #(histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
-            plot_ax.plot(histogramEdges[1:], histogram, label=label, color=PLOT_COLORS[cam_i])
+            plot_ax.plot(histogramEdges[1:], histogram, label=label, color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
             
             if do_cumulative:
                 assert ax_cum
                 cumsum = np.cumsum(histogram)
                 totDistances = cumsum[-1]
                 normsum = cumsum / totDistances
-                ax_cum.plot(histogramEdges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i])
-                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+                ax_cum.plot(histogramEdges[1:], normsum, linestyle="dashed", label="_nolegend_", color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
+                ax_cum.plot([corr, corr], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
  #               if has_second_correspondence:
- #                   ax_cum.plot([corr2, corr2], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i])
+ #                   ax_cum.plot([corr2, corr2], [0, 1], linestyle="dotted",  label="_nolegend_", color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
             if do_delta:
                 # Compute deltas over intervals of half of "corr" size
                 
@@ -100,7 +100,7 @@ class Plotter:
                 new_histo = np.reshape(histogram, (-1, nbin)).sum(axis=1)/nbin
                 delta = np.diff(new_histo)
                 plot_ax.plot([new_edges[0], new_edges[-1]], [0, 0], linestyle="solid", label="_nolegend_", color="black", linewidth=0.2)
-                plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i])
+                plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
         title = self.title
         plt.title(title)
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
