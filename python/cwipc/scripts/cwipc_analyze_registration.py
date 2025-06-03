@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, List, Tuple
 import argparse
 import traceback
 import cwipc
@@ -36,11 +36,20 @@ class AnalyzePointCloud:
             title = "Distance between adjacent points in the same tile"
         else:
             title = "Distance between each tile and all others"
-        for sourcetile in tiles:
-            if not self.args.toself:
+        todo : List[Tuple[int, int]] = []
+        if self.args.toself:
+            for sourcetile in tiles:
+                todo.append((sourcetile, sourcetile))
+        elif self.args.pairwise:
+            for sourcetile in tiles:
+                for targettile in tiles:
+                    if sourcetile != targettile:
+                        todo.append((sourcetile, targettile))
+        else:
+            for sourcetile in tiles:
                 targettile = 255 - sourcetile
-            else:
-                targettile = sourcetile
+                todo.append((sourcetile, targettile))
+        for sourcetile, targettile in todo:
             results = self.analyze_pointclouds(self.source_pc, sourcetile, targettile)
             allResults.append(results)
         if self.args.plot:
@@ -73,6 +82,7 @@ def main():
     parser = argparse.ArgumentParser(description="Find registration of a tiled point cloud", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
+    parser.add_argument("--pairwise", action="store_true", help="Analyze pairwise registration of all tilecombinations, not just tile to all other tiles")
     parser.add_argument("--toself", action="store_true", help="Analyze self-registration (source and target tile the same), for judging capture quality")
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
