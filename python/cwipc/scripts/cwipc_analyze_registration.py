@@ -52,6 +52,8 @@ class AnalyzePointCloud:
         for sourcetile, targettile in todo:
             results = self.analyze_pointclouds(self.source_pc, sourcetile, targettile)
             allResults.append(results)
+        allResults.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        # xxxjack or should we  multiply by (r.sourcePointCount + r.referencePointCount - 2*r.minCorrespondenceCount) ?
         if self.args.plot:
             plotter = Plotter(title=title)
             plotter.set_results(allResults)
