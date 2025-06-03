@@ -5,7 +5,7 @@ import traceback
 import cwipc
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
 from cwipc.registration.analyze import RegistrationAnalyzer
-from cwipc.registration.util import transformation_topython
+from cwipc.registration.util import transformation_topython, cwipc_tilefilter_masked
 from cwipc.registration.plot import Plotter
 
 class TransformFinder:
@@ -29,7 +29,7 @@ class TransformFinder:
     def load_source(self, source: str):
         pc = cwipc.cwipc_read(source, 0)
         if self.source_tile:
-            new_pc = cwipc.cwipc_tilefilter(pc, self.source_tile)
+            new_pc = cwipc_tilefilter_masked(pc, self.source_tile)
             pc.free()
             pc = new_pc
         self.source_pc = pc
@@ -37,7 +37,7 @@ class TransformFinder:
     def load_target(self, target: str):
         pc = cwipc.cwipc_read(target, 0)
         if self.target_tile:
-            new_pc = cwipc.cwipc_tilefilter(pc, self.target_tile)
+            new_pc = cwipc_tilefilter_masked(pc, self.target_tile)
             pc.free()
             pc = new_pc
         self.target_pc = pc
