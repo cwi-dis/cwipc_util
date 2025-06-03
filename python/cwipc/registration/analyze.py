@@ -61,6 +61,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _prepare_results(self):
         self.results = AnalysisResults()
         self.results.tilemask = self.source_tilemask
+        self.results.referenceTilemask = self.reference_tilemask
 
     def _prepare_source_ndarray(self):
         assert self.source_pointcloud

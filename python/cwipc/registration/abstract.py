@@ -66,6 +66,8 @@ class AnalysisResults:
     referencePointCount : int
     #: tile mask for this analysis data, if applicable
     tilemask : Optional[int]
+    #: target tilemask, if applicable
+    referenceTilemask : Optional[int]
     #: histogram of distances
     histogram : Optional[numpy.typing.NDArray[numpy.float64]]
     #: edges of the histogram

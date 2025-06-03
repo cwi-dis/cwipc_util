@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from .abstract import AnalysisResults
 
-PLOT_COLORS = ["r", "g", "b", "y", "m", "c", "orange", "lime"] # 8 colors. First 4 match cwipc_tilecolor().
+PLOT_COLORS = ["r", "g", "b", "yellow", "magenta", "cyan", "orange", "lime", "violet", "chocolate", "slategrey", "lavender"] # 12 colors. First 4 match cwipc_tilecolor().
 
 DEFAULT_PLOT_STYLE = ["count","cumulative"]
 
@@ -56,6 +56,7 @@ class Plotter:
         assert self.results
         for cam_i in range(nCamera):
             cam_tilenum = self.results[cam_i].tilemask
+            ref_tilenum = self.results[cam_i].referenceTilemask
             histogram = self.results[cam_i].histogram
             histogramEdges = self.results[cam_i].histogramEdges
             corr = self.results[cam_i].minCorrespondence
@@ -69,7 +70,9 @@ class Plotter:
 #                corr2_sigma = self.results.secondCorrespondenceSigma[cam_i]
 #                count2 = self.results.secondCorrespondenceCount[cam_i]
             label = f"{cam_tilenum}"
-            corr_box_text += f"\n{cam_tilenum}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
+            if ref_tilenum:
+                label += f" vs {ref_tilenum}"
+            corr_box_text += f"\n{label}: {corr:.4f}±{corr_sigma:.4f} ({count} points, {percentage}%)"
 #            if has_second_correspondence:
 #                corr_box_text += f"\n   {corr2:.4f}±{corr2_sigma:.4f} ({count2} points)"
             assert histogram is not None
