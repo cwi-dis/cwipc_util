@@ -14,6 +14,7 @@ class TransformFinder:
         self.plot = args.plot
         self.dump = args.dump
         self.verbose = args.verbose
+        self.correspondence = args.correspondence
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
         self.source_tile = args.sourcetile
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
@@ -50,10 +51,12 @@ class TransformFinder:
         if self.dump:
             self.dump_pointclouds(f"find_transform_before{self._fnmod()}.ply", self.source_pc, self.target_pc)
         analysis_results = self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
-        
+        if self.correspondence < 0:
+            self.correspondence = analysis_results.minCorrespondence + analysis_results.minCorrespondenceSigma
+        print(f"Using aligner {self.aligner.__class__.__name__} with correspondence threshold {self.correspondence}")
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.set_source_pointcloud(self.source_pc)
-        self.aligner.set_correspondence(analysis_results.minCorrespondence) # xxxjack or + analysis_results.minCorrespondenceSigma?
+        self.aligner.set_correspondence(self.correspondence)
         self.aligner.run()
         transform = self.aligner.get_result_transformation()
         self.result_pc = self.aligner.get_result_pointcloud()
@@ -101,6 +104,7 @@ def main():
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
+    parser.add_argument("--correspondence", type=float, metavar="FLOAT", default=-1, help="Correspondence threshold for alignment (default: use analysis result)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
