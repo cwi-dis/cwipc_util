@@ -27,9 +27,11 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         self.our_points_nparray = None
         self.reference_points_nparray = None
 
+    @override
     def set_correspondence(self, correspondence) -> None:
         self.correspondence = correspondence
 
+    @override
     def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
         self.reference_pointcloud = pc
 
