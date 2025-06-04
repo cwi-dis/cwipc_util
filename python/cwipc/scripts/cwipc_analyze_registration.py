@@ -32,15 +32,18 @@ class AnalyzePointCloud:
             return
         print(f"Tiles used in source: {tiles}")
         allResults = []
-        if self.args.toself:
-            title = "Distance between adjacent points in the same tile"
-        else:
-            title = "Distance between each tile and all others"
         todo : List[Tuple[int, int]] = []
         if self.args.toself:
+            title = "Distance between adjacent points in the same tile"
+            for tile in tiles:
+                todo.append((tile, tile))
+        elif self.args.totile >= 0:
+            title = f"Distance between this tile and tile {self.args.totile}"
             for sourcetile in tiles:
-                todo.append((sourcetile, sourcetile))
+                if sourcetile != self.args.totile:
+                    todo.append((sourcetile, self.args.totile))
         elif self.args.pairwise:
+            title = "Distance between each tile and all others"
             for sourcetile in tiles:
                 for targettile in tiles:
                     if sourcetile != targettile:
@@ -53,7 +56,6 @@ class AnalyzePointCloud:
             results = self.analyze_pointclouds(self.source_pc, sourcetile, targettile)
             allResults.append(results)
         allResults.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
-        # xxxjack or should we  multiply by (r.sourcePointCount + r.referencePointCount - 2*r.minCorrespondenceCount) ?
         if self.args.plot:
             plotter = Plotter(title=title)
             plotter.set_results(allResults)
@@ -86,6 +88,7 @@ def main():
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
     parser.add_argument("--pairwise", action="store_true", help="Analyze pairwise registration of all tilecombinations, not just tile to all other tiles")
     parser.add_argument("--toself", action="store_true", help="Analyze self-registration (source and target tile the same), for judging capture quality")
+    parser.add_argument("--totile", type=int, metavar="NUM", default=-1, help="Analyze registration of source tile NUM to each individual other tiles")
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
