@@ -2,7 +2,7 @@
 import copy
 import math
 import struct
-from typing import List, Optional, Any, Tuple, Sequence, cast, Dict
+from typing import List, Optional, Any, Tuple, Sequence, cast, Dict, override
 import numpy as np
 from numpy.typing import NDArray
 import open3d
@@ -39,22 +39,21 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         self.computer : Optional[RegistrationComputer] = None
 
         self.verbose = True
-  
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        assert False
         
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    @override
+    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         assert self.original_pointcloud is None
         self.original_pointcloud = pc
     
-    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
+    @override
+    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
         """Returns the point cloud for this tilenumber"""
         assert self.original_pointcloud
         rv = cwipc_tilefilter(self.original_pointcloud, tilenum)
         return rv
     
-
+    @override
     def camera_count(self) -> int:
         count = len(self.per_camera_tilenum)
         assert count > 0 # Otherwise this has been called too early
@@ -67,11 +66,13 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         assert self.grabber is None
         self.grabber = grabber
 
-    def tilenum_for_camera_index(self, cam_index : int) -> int:
+    @override
+    def tilemask_for_camera_index(self, cam_index : int) -> int:
         """Returns the tilenumber (used in the point cloud) for this index (used in the results)"""
         return self.per_camera_tilenum[cam_index]
 
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
+    @override
+    def camera_index_for_tilemask(self, tilenum : int) -> int:
         """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         for i in range(len(self.per_camera_tilenum)):
             if self.per_camera_tilenum[i] == tilenum:
@@ -116,6 +117,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         assert len(tilenums) == len(self.per_camera_tilenum)
         assert len(tilenums) == len(self.transformations)
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -137,7 +139,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
             # because in the previous pass they were registered, and they may have information on markers we have not seen yet.
             tilenums_to_register = range(len(self.per_camera_o3d_pointclouds))
             for camindex in tilenums_to_register:
-                tilenum = self.tilenum_for_camera_index(camindex)
+                tilenum = self.tilemask_for_camera_index(camindex)
                 o3d_pc = self.per_camera_o3d_pointclouds[camindex]
                 this_tile_markers = self.markers[camindex]
                 for id, area in this_tile_markers.items():
@@ -224,7 +226,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
     def _align_marker(self, camindex : int, pc : open3d.geometry.PointCloud, target : MarkerPosition, dst : MarkerPosition) -> Optional[RegistrationTransformation]:
         """Find the transformation that will align pc so that the target marker matches best with the dst marker"""
         # Create the pointcloud that we want to align to
-        tilenum = self.tilenum_for_camera_index(camindex)
+        tilenum = self.tilemask_for_camera_index(camindex)
         target_pc = open3d.geometry.PointCloud()
         target_points = open3d.utility.Vector3dVector(target)
         target_pc.points = target_points
@@ -243,12 +245,14 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
                 print(f"cwipc_register: _align_marker: camera {camindex}: rmse error={rmse}")
         return transform
 
+    @override
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         """Return the transformations found, indexed by camera index.
         If no transformation has been found for a camera the identity transformation will be returned
         """
         return self.transformations
     
+    @override
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
         """Return the resulting point cloud (with each camera mapped by its matrix)"""
         rv : Optional[cwipc_wrapper] = None
@@ -288,6 +292,7 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         }
         self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
     
+    @override
     def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID, which is always 9999).
         The markers are "found" by having the user select the points in 3D space.
@@ -326,6 +331,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
             ]
         }
     
+    @override
     def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)
         The markers are found by mapping the point cloud to a color image and depth image, then finding Aruco markers
@@ -519,6 +525,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
 
 class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
 
+    @override
     def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         tilenum = self.per_camera_tilenum[camindex]

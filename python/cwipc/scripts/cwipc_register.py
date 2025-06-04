@@ -13,7 +13,6 @@ from cwipc.registration.abstract import *
 from cwipc.registration.util import *
 import cwipc.registration.multicoarse
 import cwipc.registration.fine
-import cwipc.registration.multianalyze
 import cwipc.registration.multicamera
 from cwipc.io.visualizer import Visualizer
 
@@ -93,7 +92,6 @@ def main():
     if args.debug:
         args.verbose = True
     if args.help_algorithms:
-        print(cwipc.registration.multianalyze.HELP_MULTICAM_ANALYZER_ALGORITHMS)
         print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
         print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
         return 0
@@ -258,7 +256,7 @@ class Registrator:
         self.show_plot = self.args.plot
         if args.plotstyle:
             self.show_plot = True
-            cwipc.registration.multianalyze.set_default_plot_style(args.plotstyle)
+#            cwipc.registration.multianalyze.set_default_plot_style(args.plotstyle)
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
@@ -287,10 +285,10 @@ class Registrator:
         else:
             self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
 
-        if self.args.algorithm_analyzer:
-            self.analyzer_class = getattr(cwipc.registration.multianalyze, args.algorithm_analyzer)
-        else:
-            self.analyzer_class = cwipc.registration.multianalyze.DEFAULT_MULTICAM_ANALYZER_ALGORITHM
+#        if self.args.algorithm_analyzer:
+#            self.analyzer_class = getattr(cwipc.registration.multianalyze, args.algorithm_analyzer)
+#        else:
+#            self.analyzer_class = cwipc.registration.multianalyze.DEFAULT_MULTICAM_ANALYZER_ALGORITHM
 
         if self.args.recording:
             if self.args.cameraconfig:
@@ -659,7 +657,7 @@ class Registrator:
         aligner = self.coarse_aligner_class()
         aligner.verbose = self.verbose
         aligner.debug = self.debug
-        aligner.add_tiled_pointcloud(pc)
+        aligner.set_tiled_pointcloud(pc)
         serial_dict = self.cameraconfig.get_serial_dict()
         aligner.set_serial_dict(serial_dict)
         aligner.set_grabber(self.capturer)
@@ -701,7 +699,7 @@ class Registrator:
         original_capture_precision = 0.001
 
         multicam.show_plot = self.show_plot
-        multicam.add_tiled_pointcloud(pc)
+        multicam.set_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
             multicam.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
         start_time = time.time()

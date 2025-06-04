@@ -79,7 +79,7 @@ class BaseMulticamRegistrationAnalyzer(MulticamAnalysisAlgorithm, BaseMulticamAl
         self.pass_number = 0
         self.results = None
 
-    def add_tiled_pointcloud(self, pc: cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc: cwipc_wrapper) -> None:
         super().add_tiled_pointcloud(pc)
         self.results = MulticamAnalysisResults(self.camera_count())
         self.results.tileNums = [i for i in self.per_camera_tilenum]

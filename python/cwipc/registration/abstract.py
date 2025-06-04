@@ -9,7 +9,6 @@ __all__ = [
     "RegistrationTransformation",
 
     "AnalysisResults",
-    "MulticamAnalysisResults",
 
     "OverlapAnalysisResults",
     "OverlapAnalysisAlgorithm",
@@ -19,12 +18,10 @@ __all__ = [
     "AlignmentAlgorithm",
 
     "MulticamAlgorithm",
-    "MulticamAnalysisAlgorithm",
     "MulticamAlignmentAlgorithm", 
 
     "AnalysisAlgorithmFactory",
     "AlignmentAlgorithmFactory", 
-    "MulticamAnalysisAlgorithmFactory",
     "MulticamAlignmentAlgorithmFactory", 
     
 ]
@@ -155,7 +152,7 @@ class MulticamAlgorithm(ABC):
     debug : bool
 
     @abstractmethod
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         ...
    
@@ -170,130 +167,23 @@ class MulticamAlgorithm(ABC):
         ...
 
     @abstractmethod
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
+    def camera_index_for_tilemask(self, tilenum : int) -> int:
         """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         ...
         
     @abstractmethod
-    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
+    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
         """Returns the point cloud for this tilenumber"""
         ...
 
     @abstractmethod
-    def run(self, target: Optional[int]=None) -> bool:
+    def run(self) -> bool:
         """Run the algorithm. Returns false in case of a failure."""
         ...
     # There are also methods to return the result, but they don't have a fixed signature.
 
-class MulticamAnalysisResults:
-    """Class to hold the results of an analysis algorithm on tiled point clouds"""
-    #: Number of cameras (tiles) in the point clouds
-    nCamera : int
-    #: tile numbers for each result entry
-    tileNums: List[int]
-    #: minimum correspondence for each camera
-    minCorrespondence : List[float]
-    #: stddev for minimum correspondence
-    minCorrespondenceSigma : List[float]
-    #: number of points that were used for the minimum correspondence for each camera
-    minCorrespondenceCount : List[int]
-    #: second best correspondence for each camera
-    secondCorrespondence : List[float]
-    #: stddev of the above
-    secondCorrespondenceSigma : List[float]
-    #: number of points that were used for secondCorrespondence
-    secondCorrespondenceCount : List[int]
-
-    def __init__(self, nCamera : int):
-        self.nCamera = nCamera
-        self.tileNums = [0] * nCamera
-        self.minCorrespondence = [0.0] * nCamera
-        self.minCorrespondenceSigma = [0.0] * nCamera
-        self.minCorrespondenceCount = [0] * nCamera
-        self.secondCorrespondence = [0] * nCamera
-        self.secondCorrespondenceSigma = [0] * nCamera
-        self.secondCorrespondenceCount = [0] * nCamera
-        self.overallCorrespondence = 0
-
-    def sort_by_weight(self, weightstyle : str = 'priority') -> None:
-        """Sort the results by weightstyle:
-        - 'priority': the best matching camera has the heighest weight (more points give more weight, closer points give more weight)
-        - 'match' : the worst matching camera has the highest weight (more points give more weight, closer points give less weight)
-        - 'priority2' and 'match2': same, but for the point cloud with the first machint points filtered out
-        - 'order': camera number, which is supposed to be real world order.
-        """
-        if weightstyle == 'priority':
-            weights = [(math.log(self.minCorrespondenceCount[i]) * self.minCorrespondence[i]) for i in range(self.nCamera)] #math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
-        elif weightstyle == 'match':
-            weights = [(math.log(self.minCorrespondenceCount[i]) / self.minCorrespondence[i]) for i in range(self.nCamera)]  # weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
-        elif weightstyle == 'priority2':
-            weights = [(math.log(self.secondCorrespondenceCount[i]) * self.secondCorrespondence[i]) for i in range(self.nCamera)] #math.log(self.matched_point_counts[camnum]) * self.correspondence[camnum]
-        elif weightstyle == 'match2':
-            weights = [(math.log(self.secondCorrespondenceCount[i]) / self.secondCorrespondence[i]) for i in range(self.nCamera)]  # weight = math.log(self.matched_point_counts[camnum]) / self.correspondence[camnum]
-        elif weightstyle == 'order' or weightstyle == 'bestorder':
-            weights = [camnum for camnum in range(self.nCamera)]
-        else:
-            assert False, f"sort_by_weight: unknown weightstyle {weightstyle}"
-        sorted_indices = [i[0] for i in sorted(enumerate(weights), key=lambda x:x[1])]
-        if weightstyle == 'bestorder':
-            # Like order, but we move cameras to the end of the list as long as the first camera
-            # has a worse correspondence than the second one.
-            while self.secondCorrespondence[sorted_indices[0]] > self.secondCorrespondence[sorted_indices[1]]:
-                tmp = sorted_indices[0]
-                sorted_indices = sorted_indices[1:] + [tmp]
-        self.tileNums = [self.tileNums[i] for i in sorted_indices]
-        self.minCorrespondence = [self.minCorrespondence[i] for i in sorted_indices]
-        self.minCorrespondenceCount = [self.minCorrespondenceCount[i] for i in sorted_indices]
-        self.secondCorrespondence = [self.secondCorrespondence[i] for i in sorted_indices]
-        self.secondCorrespondenceCount = [self.secondCorrespondenceCount[i] for i in sorted_indices]
-
-    def print_correspondences(self, label : str) -> None:
-        print(f"{label}:")
-        for i in range(self.nCamera):
-            _camnum = self.tileNums[i]
-            _minCorr = self.minCorrespondence[i]
-            _minCorrCount = self.minCorrespondenceCount[i]
-            _secondCorr = self.secondCorrespondence[i]
-            _secondCorrCount = self.secondCorrespondenceCount[i]
-            print(f"\tcamnum={_camnum}, corr={_minCorr} ({_minCorrCount} pts), corr2={_secondCorr} ({_secondCorrCount} pts)")
-
-class MulticamAnalysisAlgorithm(MulticamAlgorithm):
-    """ABC for a pointcloud analysis algorithm (such as computing the overlap between tiles)"""
-
-    plot_label : Optional[str]
-
-    @abstractmethod
-    def get_results(self) -> MulticamAnalysisResults:
-        """Returns an object indicating how each camera is aligned.
-        """
-        ...
-
-    @abstractmethod
-    def run_twice(self) -> bool:
-        """Run the algorithm twice, removing the points matched in the first run before the second run.
-        This will set the secondCoeespondence variables in the result.
-        """
-        ...
-
-    @abstractmethod
-    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
-        """
-        Plot the analysis results. 
-        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
-        If filename is given the plot is saved there.
-        If show is true the plot is shown on screen
-        """
-        ...
-        
-    @abstractmethod
-    def filter_sources(self) -> None:
-        """
-        After running the algorithm, filter all source point clouds to remove the points that were used in the alignment.
-        We can then run the algorithm again to try and determine whether there is another cluster of points with a higher correspondence.
-        """
 
 
-MulticamAnalysisAlgorithmFactory = Type[MulticamAnalysisAlgorithm]
 
 class MulticamAlignmentAlgorithm(MulticamAlgorithm):
     """ABC for an algorithm that tries to align all tiles."""
