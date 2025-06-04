@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, List, Tuple
 import argparse
 import traceback
 import cwipc
@@ -32,15 +32,25 @@ class AnalyzePointCloud:
             return
         print(f"Tiles used in source: {tiles}")
         allResults = []
+        todo : List[Tuple[int, int]] = []
         if self.args.toself:
             title = "Distance between adjacent points in the same tile"
+            for tile in tiles:
+                todo.append((tile, tile))
+        elif self.args.totile >= 0:
+            title = f"Distance between this tile and tile {self.args.totile}"
+            for sourcetile in tiles:
+                if sourcetile != self.args.totile:
+                    todo.append((sourcetile, self.args.totile))
         else:
             title = "Distance between each tile and all others"
-        for sourcetile in tiles:
-            if not self.args.toself:
-                targettile = 255 - sourcetile
-            else:
-                targettile = sourcetile
+            for sourcetile in tiles:
+                if not self.args.toself:
+                    targettile = 255 - sourcetile
+                else:
+                    targettile = sourcetile
+                todo.append((sourcetile, targettile))
+        for sourcetile, targettile in todo:
             results = self.analyze_pointclouds(self.source_pc, sourcetile, targettile)
             allResults.append(results)
         if self.args.plot:
@@ -74,6 +84,7 @@ def main():
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
     parser.add_argument("--toself", action="store_true", help="Analyze self-registration (source and target tile the same), for judging capture quality")
+    parser.add_argument("--totile", type=int, metavar="NUM", default=-1, help="Analyze registration of source tile NUM to each individual other tiles")
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
