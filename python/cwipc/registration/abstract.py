@@ -11,6 +11,9 @@ __all__ = [
     "AnalysisResults",
     "MulticamAnalysisResults",
 
+    "OverlapAnalysisResults",
+    "OverlapAnalysisAlgorithm",
+
     "Algorithm",
     "AnalysisAlgorithm",
     "AlignmentAlgorithm",
@@ -74,9 +77,14 @@ class AnalysisResults:
     histogramEdges : Optional[numpy.typing.NDArray[numpy.float64]]
 
 class AnalysisAlgorithm(Algorithm):
-    """ABC for a pointcloud analysis algorithm between two point clouds"""
+    """ABC for a pointcloud analysis algorithm between two point clouds which returns a minimum distance histogram and values"""
 
     plot_label : Optional[str]
+
+    @abstractmethod
+    def set_correspondence(self, correspondence : float) -> None:
+        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+        ...
 
     @abstractmethod
     def get_results(self) -> AnalysisResults:
@@ -84,28 +92,33 @@ class AnalysisAlgorithm(Algorithm):
         """
         ...
 
-#    @abstractmethod
-#    def run_twice(self) -> bool:
-#        """Run the algorithm twice, removing the points matched in the first run before the second run.
-#        This will set the secondCoeespondence variables in the result.
-#        """
-#        ...
+class OverlapAnalysisResults:
+    #: overlapping area (# of inlier correspondences / # points in the source). Higher is better.
+    fitness : float
+    #: RMSE of all inlier correspondences. Lower is better.
+    rmse : float
+    #: total number of points in the source point cloud
+    sourcePointCount : int
+    #: total number of points in the reference point cloud
+    referencePointCount : int
+    #: tile mask for this analysis data, if applicable
+    tilemask : Optional[int]
+    #: target tilemask, if applicable
+    referenceTilemask : Optional[int]
+    
+class OverlapAnalysisAlgorithm(Algorithm):
+    """ABC for a pointcloud analysis algorithm between two point clouds which returns an overlap indication"""
 
-#    @abstractmethod
-#    def plot(self, filename : Optional[str]=None, show : bool = False, which : Optional[Container[str]]=None) -> None:
-#        """
-#        Plot the analysis results. 
-#        Style can be a selection of 'count', 'cumulative', 'delta' or 'all'. 'log' can be added for logarithmic scales.
-#        If filename is given the plot is saved there.
-#        If show is true the plot is shown on screen
-#        """
-#        ...
-        
     @abstractmethod
-    def filter_sources(self) -> None:
+    def set_correspondence(self, correspondence : float) -> None:
+        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+        ...
+
+    @abstractmethod
+    def get_results(self) -> OverlapAnalysisResults:
+        """Returns an object indicating how well the two point clouds overlap
         """
-        After running the algorithm, prepare source and target point cloud for running the algorithm again.
-        """
+        ...
 
 AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
 
@@ -114,7 +127,7 @@ class AlignmentAlgorithm(Algorithm): # xxxjack wrong base class
     matrix for a single tile only)"""
 
     @abstractmethod
-    def set_correspondence(self, correspondence) -> None:
+    def set_correspondence(self, correspondence : float) -> None:
         """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
         ...
         

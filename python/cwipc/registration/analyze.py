@@ -5,6 +5,7 @@ import copy
 import numpy as np
 from numpy.typing import NDArray
 import scipy.spatial
+import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
 from .util import get_tiles_used, BaseAlgorithm, algdoc
@@ -18,10 +19,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     Create the registrator, add pointclouds, run the algorithm, inspect the results.
     This is the base class, see the subclasses for various different algorithms.
     """
-    #: Minimum distance between points (we will not search for nearer points once we found one within eps)
-    eps : float
-    #: Maximum distance between points that could potentially match.
-    distance_upper_bound : float
     #: Internal variables, may be useful for inspection
     source_ndarray : Optional[NDArray[Any]]
     target_ndarray : Optional[NDArray[Any]]
@@ -32,22 +29,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
-        self.eps = 0.0
-        self.distance_upper_bound = 0.2
+        self.correspondence : float = np.inf 
         self.source_ndarray = None
         self.reference_ndarray = None
         self.reference_kdtree = None
         self.results = AnalysisResults()
 
     @override
-    def set_source_pointcloud(self, pc: cwipc_wrapper, tilemask: Optional[int] = None) -> None:
-        """Set the source point cloud for this algorithm"""
-        super().set_source_pointcloud(pc, tilemask)
-        
-    @override
-    def set_reference_pointcloud(self, pc: cwipc_wrapper, tilemask: Optional[int] = None) -> None:
-        """Set the reference point cloud for this algorithm"""
-        super().set_reference_pointcloud(pc, tilemask)
+    def set_correspondence(self, correspondence: float) -> None:
+        """Set the correspondence distance"""
+        self.correspondence = correspondence
 
     def _prepare(self):
         self.source_ndarray = None
@@ -77,13 +68,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.reference_ndarray is not None
         self.reference_kdtree = KD_TREE_TYPE(self.reference_ndarray)
 
-    @override
-    def run(self) -> bool:
-        assert False
-
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, workers=-1)
+        distances, _ = tree.query(points, workers=-1, distance_upper_bound=self.correspondence)
         return distances
     
     def _filter_infinites(self, distances : NDArray[Any]) -> NDArray[Any]:
@@ -122,29 +109,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         if self.verbose:
             print(f"\t\tresult: tilemask={self.results.tilemask}, corr={mean}, sigma={stddev}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
 
-    @override
-    def filter_sources(self) -> None:
-        """Filter points that were matched by a previous run"""
-        assert False
-        nCamera = len(self.per_camera_pointclouds)
-        assert self.results
-        for cam_i in range(nCamera):
-            assert len(self.per_camera_nparray[cam_i]) > 0
-            assert len(self.per_camera_nparray_distances[cam_i]) > 0
-            assert self.results.minCorrespondence[cam_i] > 0
-            assert self.results.minCorrespondenceSigma[cam_i] > 0
-            cutoff = self.results.minCorrespondence[cam_i] + self.results.minCorrespondenceSigma[cam_i] # xxxjack copilot suggested 2*sigma...
-            old_count = len(self.per_camera_nparray[cam_i])
-            filter = self.per_camera_nparray_distances[cam_i] > cutoff
-            filtered_nparray = self.per_camera_nparray[cam_i][filter]
-            self.per_camera_nparray[cam_i] = filtered_nparray
-            self.per_camera_nparray_distances[cam_i] = self.per_camera_nparray_distances[cam_i][filter]            
-            new_count = len(filtered_nparray)
-            if self.verbose:
-                print(f"filter_sources: camera {cam_i}: from {old_count} to {new_count} points, distance={cutoff}")
-        self.filter_label = f" (filtered)"
-        self.per_camera_kdtree = []
-        self.per_camera_histograms = []
+
 
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     """
@@ -154,6 +119,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     def __init__(self):
         BaseRegistrationAnalyzer.__init__(self)
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         self._prepare()
@@ -184,11 +150,64 @@ class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
     @override
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, k=[self.ignore_nearest+1], workers=-1)
+        distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.correspondence, workers=-1)
         return distances
     
 ## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence
-      
+
+class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
+    """
+    This algorithm computes the overlap between two point clouds.
+    It is a base class, see the subclasses for various different algorithms.
+    """
+    results : Optional[OverlapAnalysisResults]
+
+    def __init__(self):
+        BaseAlgorithm.__init__(self)
+        self.correspondence : float = np.inf 
+        self.results = None
+
+    def set_correspondence(self, correspondence: float) -> None:
+        """Set the correspondence distance"""
+        self.correspondence = correspondence
+
+    def _get_source_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert self.source_pointcloud
+        source_o3d_pointcloud = open3d.geometry.PointCloud()
+        source_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        source_o3d_pointcloud.points = open3d.utility.Vector3dVector(source_points_nparray)
+        return source_o3d_pointcloud
+    
+    def _get_reference_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert self.reference_pointcloud
+        reference_o3d_pointcloud = open3d.geometry.PointCloud()
+        reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        reference_o3d_pointcloud.points = open3d.utility.Vector3dVector(reference_points_nparray)
+        return reference_o3d_pointcloud
+    
+    @override
+    def run(self) -> bool:
+        """Run the algorithm"""
+        source_o3d_pointcloud = self._get_source_o3d_pointcloud()
+        reference_o3d_pointcloud = self._get_reference_o3d_pointcloud()
+        result = open3d.pipelines.registration.evaluate_registration(
+            source_o3d_pointcloud, reference_o3d_pointcloud, max_correspondence_distance=self.correspondence)
+        self.results = OverlapAnalysisResults()
+        self.results.fitness = result.fitness
+        self.results.rmse = result.inlier_rmse
+        self.results.sourcePointCount = len(source_o3d_pointcloud.points)
+        self.results.referencePointCount = len(reference_o3d_pointcloud.points)
+        self.results.tilemask = self.source_tilemask
+        self.results.referenceTilemask = self.reference_tilemask
+        return True
+
+    @override
+    def get_results(self) -> OverlapAnalysisResults:
+        """Returns the analisys results.
+        """
+        assert self.results
+        return self.results
+
 DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
 ALL_ANALYZER_ALGORITHMS = [

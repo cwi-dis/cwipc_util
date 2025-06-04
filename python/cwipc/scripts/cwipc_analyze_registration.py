@@ -5,7 +5,7 @@ import traceback
 import cwipc
 from cwipc.registration.abstract import AnalysisResults
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
-from cwipc.registration.analyze import RegistrationAnalyzer, RegistrationAnalyzerIgnoreNearest
+from cwipc.registration.analyze import RegistrationAnalyzer, RegistrationAnalyzerIgnoreNearest, OverlapAnalyzer
 from cwipc.registration.util import transformation_topython, get_tiles_used
 from cwipc.registration.plot import Plotter
 
@@ -80,6 +80,17 @@ class AnalyzePointCloud:
         else:
             label = f"{sourcetile:#x} to {targettile:#x}"
         print(f"Alignment {label}: correspondence: {correspondence:.6f}, sigma: {sigma:.6f}, count: {count}, percentage: {percentage:.2f}%")
+        if self.args.overlap:
+            overlap_analyzer = OverlapAnalyzer()
+            overlap_analyzer.verbose = self.verbose
+            # NOTE: we are reversing the roles of source and target here, because we want to compute the overlap of the source tile with the target tile
+            overlap_analyzer.set_reference_pointcloud(source, sourcetile)
+            overlap_analyzer.set_source_pointcloud(source, targettile)
+            overlap_analyzer.set_correspondence(correspondence + sigma)
+            overlap_analyzer.run()
+            overlap_results = overlap_analyzer.get_results()
+            print(f"Alignment {label}: overlap fitness: {overlap_results.fitness:.6f}, inlier rmse: {overlap_results.rmse:.6f}")
+
         return results
 
 def main():
@@ -90,6 +101,7 @@ def main():
     parser.add_argument("--toself", action="store_true", help="Analyze self-registration (source and target tile the same), for judging capture quality")
     parser.add_argument("--totile", type=int, metavar="NUM", default=-1, help="Analyze registration of source tile NUM to each individual other tiles")
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
+    parser.add_argument("--overlap", action="store_true", help="Also compute overlap between source and target tile")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
