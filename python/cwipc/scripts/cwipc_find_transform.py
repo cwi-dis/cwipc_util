@@ -3,16 +3,14 @@ from typing import Optional
 import argparse
 import traceback
 import cwipc
-from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
-from cwipc.registration.analyze import RegistrationAnalyzer
+from cwipc.registration.fine import RegistrationComputer_ICP_Point2Plane
+from cwipc.registration.analyze import RegistrationAnalyzer, AnalysisResults
 from cwipc.registration.util import transformation_topython
 from cwipc.registration.plot import Plotter
 
 class TransformFinder:
     def __init__(self, args : argparse.Namespace):
         self.args = args
-        self.analyze = args.analyze
-        self.nofind = args.nofind
         self.plot = args.plot
         self.dump = args.dump
         self.verbose = args.verbose
@@ -21,9 +19,8 @@ class TransformFinder:
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
         self.target_tile = args.targettile
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        if not self.nofind:
-            self.aligner = RegistrationComputer_ICP_Point2Point()
-            self.aligner.verbose = self.verbose
+        self.aligner = RegistrationComputer_ICP_Point2Plane()
+        self.aligner.verbose = self.verbose
             
 
     def load_source(self, source: str):
@@ -52,19 +49,18 @@ class TransformFinder:
         assert self.target_pc
         if self.dump:
             self.dump_pointclouds(f"find_transform_before{self._fnmod()}.ply", self.source_pc, self.target_pc)
-        if self.analyze:
-            self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
+        analysis_results = self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
         
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.set_source_pointcloud(self.source_pc)
+        self.aligner.set_correspondence(analysis_results.minCorrespondence) # xxxjack or + analysis_results.minCorrespondenceSigma?
         self.aligner.run()
         transform = self.aligner.get_result_transformation()
         self.result_pc = self.aligner.get_result_pointcloud()
         if self.dump:
             cwipc.cwipc_write(f"find_transform_result{self._fnmod()}.ply", self.result_pc)
             self.dump_pointclouds(f"find_transform_after{self._fnmod()}.ply", self.result_pc, self.target_pc)
-        if self.analyze:
-            self.analyze_pointclouds("After", self.result_pc, self.target_pc)
+        self.analyze_pointclouds("After", self.result_pc, self.target_pc)
         p_transform = transformation_topython(transform)
         print(f"Transform filter needed: --filter 'transform44({p_transform})'")
 
@@ -79,7 +75,7 @@ class TransformFinder:
         colored_target.free()
         combined.free()
         
-    def analyze_pointclouds(self, label : str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper):
+    def analyze_pointclouds(self, label : str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper) -> AnalysisResults:
         analyzer = RegistrationAnalyzer()
         analyzer.verbose = self.verbose
         analyzer.set_reference_pointcloud(target)
@@ -95,13 +91,13 @@ class TransformFinder:
             plotter = Plotter(title=label)
             plotter.set_results([results])
             plotter.plot(show=True)
+        return results
+    
 def main():
     parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
-    parser.add_argument("--analyze", help="Print pre and post analysis of point cloud distance", action="store_true")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
-    parser.add_argument("--nofind", action="store_true", help="Do not find transform, just analyze point clouds. Implies --analyze")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
@@ -114,8 +110,6 @@ def main():
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
-    if args.nofind:
-        args.analyze = True
     finder = TransformFinder(args)
     finder.load_source(args.source)
     finder.load_target(args.target)
