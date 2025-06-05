@@ -25,6 +25,9 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     verbose : bool
     show_plot : bool
     nCamera : int
+    change : List[float]
+    cellsize_factor : float
+    proposed_cellsize : float
 
     def __init__(self):
         MulticamAlignmentAlgorithm.__init__(self)
@@ -32,13 +35,17 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.original_pointcloud = None
         self.transformations  = []
         self.original_transformations = []
+        self.pre_analysis_results = []
         self.results = []
 
         self.verbose = False
         self.show_plot = False
         self.nCamera = 0
 
-    
+        self.change = []
+        self.cellsize_factor = math.sqrt(2)
+        self.proposed_cellsize = 0
+
     def _prepare_analyze(self) -> AnalysisAlgorithm:
         analyzer = None
         assert self.analyzer_class
@@ -65,96 +72,19 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 self.transformations.append(transformation_identity())
         self.transformations[cam_index] = matrix
 
-    @abstractmethod
-    def run(self) -> bool:
-        """Run the algorithm"""
-        assert False
-
-    def get_result_transformations(self) -> List[RegistrationTransformation]:
-        return self.transformations
-    
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
-        assert self.original_pointcloud
-        if not self.original_pointcloud_is_new:
-            # Do a deep-copy, so our caller can free the pointcloud it passed to us
-            self.original_pointcloud = cwipc_from_packet(self.original_pointcloud.get_packet())
-            self.original_pointcloud_is_new = True
-        return self.original_pointcloud
-  
-    def _plot(self, title : str, data : List[AnalysisResults]) -> None:
-        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
-        plotter = Plotter(title=title)
-        plotter.set_results(data)
-        plotter.plot(show=True)
-       
-    def _print_correspondences(self, label: str, data : List[AnalysisResults]) -> None:
-        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
-        print(f"{label}:")
-        for i in range(len(data)):
-            r = data[i]
-            print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, correspondence={r.minCorrespondence}, stddev={r.minCorrespondenceSigma}, count={r.minCorrespondenceCount}")
-
-class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
-    """\
-    No-op algorithm for testing purposes. Only computes distances between each tile and all other tiles.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def _prepare_aligner(self):
-        assert self.original_pointcloud
-
-    def run(self) -> bool:
-        """Run the algorithm"""
-        assert self.original_pointcloud
-        assert self.camera_count() > 0
-        for camnum in range(self.camera_count()):
-            tilemask = self.tilemask_for_camera_index(camnum)
-            othertilemask = 0xff ^ tilemask
-            analyzer = self._prepare_analyze()
-            analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
-            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
-            analyzer.run()
-            results = analyzer.get_results()
-            self.results.append(results)
-            
-        if self.verbose:
-            self._print_correspondences(f"{self.__class__.__name__}: Before:  Per-camera correspondence", self.results)
-
-        if self.show_plot:
-            self._plot(f"{self.__class__.__name__}: Before", self.results)
-        
-        return True
-
-class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
-    """\
-    Align multiple cameras. Every step, one camera is aligned to all others.
-    Every step, we pick the camera with the best chances to make the biggest change.
-    """
-    precision_threshold : float
-    change : List[float]
-    cellsize_factor : float
-    proposed_cellsize : float
-
-
-    def __init__(self):
-        super().__init__()
-        self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
-        self.change = []
-        self.cellsize_factor = math.sqrt(2)
-        self.proposed_cellsize = 0
-    
-    def run(self) -> bool:
-        """Run the algorithm"""
-        assert self.original_pointcloud
-        self._prepare_analyze()
-        assert self.camera_count() > 0
+    def _init_transformations(self) -> None:
         # Initialize matrices, if not done already (by our caller)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
-        
+
+    def _pre_analyse(self) -> List[int]:
+        """
+        Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
+        """
+        assert self.original_pointcloud
+        assert self.camera_count() > 1
         self.pre_analysis_results = []
         for camnum in range(self.camera_count()):
             tilemask = self.tilemask_for_camera_index(camnum)
@@ -172,30 +102,22 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         if self.show_plot:
             self._plot(f"{self.__class__.__name__}: Before", self.pre_analysis_results)
 
-
-        todo = range(self.camera_count()) # xxxjack should sort.
-        for camnum in todo:
-            aligner = self._prepare_aligner()
-            tilemask = self.tilemask_for_camera_index(camnum)
-            othertilemask = 0xff ^ tilemask
-            aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
-            aligner.set_reference_pointcloud(self.original_pointcloud, othertilemask)
-            # aligner.set_correspondence(self.precision_threshold)
-            aligner.run()
-            
-            # Remember resultant pointcloud
-            old_pc = self.original_pointcloud
-            new_pc = aligner.get_result_pointcloud_full()
-            old_pc.free()
-            self.original_pointcloud = new_pc
-            self.original_pointcloud_is_new = True
-
-            # Apply new transformation (to the left of the old one)
-            old_transform = self.transformations[camnum]
-            this_transform = aligner.get_result_transformation()
-            new_transform = np.matmul(this_transform, old_transform)
-            self.transformations[camnum] = new_transform
-
+        camnums_and_correspondences = []
+        for i in range(len(self.pre_analysis_results)):
+            r = self.pre_analysis_results[i]
+            camnums_and_correspondences.append((i, r.minCorrespondence))
+        camnums_and_correspondences.sort(key=lambda x: x[1])
+        todo = [camnum for camnum, _ in camnums_and_correspondences]
+        return todo
+    
+    @abstractmethod
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert False
+    
+    def _post_analyse(self) -> bool:
+        assert self.original_pointcloud
+        assert self.camera_count() > 0
         self.results = []
         for camnum in range(self.camera_count()):
             tilemask = self.tilemask_for_camera_index(camnum)
@@ -224,7 +146,6 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
                 print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
         self._compute_new_tiles()
         return True
-
 
     def _compute_change(self):
         for cam_index in range(len(self.transformations)):
@@ -275,6 +196,90 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
                 print(f"\ttile {i}: {pointcounts[i]}")
         if must_free_new:
             pc_new.free()
+
+    def get_result_transformations(self) -> List[RegistrationTransformation]:
+        return self.transformations
+    
+    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+        assert self.original_pointcloud
+        if not self.original_pointcloud_is_new:
+            # Do a deep-copy, so our caller can free the pointcloud it passed to us
+            self.original_pointcloud = cwipc_from_packet(self.original_pointcloud.get_packet())
+            self.original_pointcloud_is_new = True
+        return self.original_pointcloud
+  
+    def _plot(self, title : str, data : List[AnalysisResults]) -> None:
+        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        plotter = Plotter(title=title)
+        plotter.set_results(data)
+        plotter.plot(show=True)
+       
+    def _print_correspondences(self, label: str, data : List[AnalysisResults]) -> None:
+        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        print(f"{label}:")
+        for i in range(len(data)):
+            r = data[i]
+            print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, correspondence={r.minCorrespondence}, stddev={r.minCorrespondenceSigma}, count={r.minCorrespondenceCount}")
+
+class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
+    """\
+    No-op algorithm for testing purposes. Only computes distances between each tile and all other tiles.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert self.original_pointcloud
+        assert self.camera_count() > 1
+        _ = self._pre_analyse()
+
+        return True
+    
+class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
+    """\
+    Align multiple cameras. Every step, one camera is aligned to all others.
+    Every step, we pick the camera with the best chances to make the biggest change.
+    """
+    # precision_threshold : float
+
+
+    def __init__(self):
+        super().__init__()
+        # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
+    
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert self.original_pointcloud
+        assert self.camera_count() > 0
+        self._init_transformations()
+        todo = self._pre_analyse()
+
+        for camnum in todo:
+            aligner = self._prepare_aligner()
+            tilemask = self.tilemask_for_camera_index(camnum)
+            othertilemask = 0xff ^ tilemask
+            aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
+            aligner.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            # aligner.set_correspondence(self.precision_threshold)
+            aligner.run()
+            
+            # Remember resultant pointcloud
+            old_pc = self.original_pointcloud
+            new_pc = aligner.get_result_pointcloud_full()
+            old_pc.free()
+            self.original_pointcloud = new_pc
+            self.original_pointcloud_is_new = True
+
+            # Apply new transformation (to the left of the old one)
+            old_transform = self.transformations[camnum]
+            this_transform = aligner.get_result_transformation()
+            new_transform = np.matmul(this_transform, old_transform)
+            self.transformations[camnum] = new_transform
+
+        ok = self._post_analyse()
+        return ok
+
     
 
 class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
@@ -296,18 +301,13 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     def __init__(self):
         super().__init__()
         self.resultant_pointcloud = None
-        self.still_to_do = []
         self.cellsize_factor = math.sqrt(2)
         self.proposed_cellsize = 0
-        self.change = []
-        self.floor_correspondence = 0
-        self.two_step_correspondence = False
+        self.change : List[float] = []
 
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
-        self._prepare_analyze()
-        assert self.analyzer
         assert self.camera_count() > 0
         # Initialize matrices, if not done already (by our caller)
         if len(self.transformations) == 0:
