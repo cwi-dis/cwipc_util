@@ -3,9 +3,9 @@ from typing import Optional
 import argparse
 import traceback
 import cwipc
-from cwipc.registration.multicamera import MultiCameraOneToAllOthers
-from cwipc.registration.fine import RegistrationComputer_ICP_Point2Plane
-from cwipc.registration.analyze import RegistrationAnalyzer, AnalysisResults
+from cwipc.registration.multicamera import DEFAULT_MULTICAMERA_ALGORITHM
+from cwipc.registration.fine import DEFAULT_FINE_ALIGNMENT_ALGORITHM
+from cwipc.registration.analyze import DEFAULT_ANALYZER_ALGORITHM, AnalysisResults
 from cwipc.registration.util import transformation_topython, cwipc_tilefilter_masked
 from cwipc.registration.plot import Plotter
 
@@ -17,10 +17,10 @@ class AlignmentFinder:
 #        self.correspondence = args.correspondence
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.multi_aligner = MultiCameraOneToAllOthers()
+        self.multi_aligner = DEFAULT_MULTICAMERA_ALGORITHM()
         self.multi_aligner.verbose = self.verbose
-        self.multi_aligner.set_analyzer_class(RegistrationAnalyzer)
-        self.multi_aligner.set_aligner_class(RegistrationComputer_ICP_Point2Plane)
+        self.multi_aligner.set_analyzer_class(DEFAULT_ANALYZER_ALGORITHM)
+        self.multi_aligner.set_aligner_class(DEFAULT_FINE_ALIGNMENT_ALGORITHM)
         self.multi_aligner.show_plot = self.plot
             
     def load_input(self, source: str):
