@@ -171,10 +171,10 @@ class MulticamAlgorithm(ABC):
         """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         ...
         
-    @abstractmethod
-    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
-        """Returns the point cloud for this tilenumber"""
-        ...
+#    @abstractmethod
+#    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
+#        """Returns the point cloud for this tilenumber"""
+#        ...
 
     @abstractmethod
     def run(self) -> bool:

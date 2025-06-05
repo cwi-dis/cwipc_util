@@ -43,12 +43,13 @@ class AnalyzePointCloud:
                 if sourcetile != self.args.totile:
                     todo.append((sourcetile, self.args.totile))
         elif self.args.pairwise:
-            title = "Distance between each tile and all others"
+            title = "Distance between each pair of tiles"
             for sourcetile in tiles:
                 for targettile in tiles:
                     if sourcetile != targettile:
                         todo.append((sourcetile, targettile))
         else:
+            title = "Distance between each tile and all other tiles combined"
             for sourcetile in tiles:
                 targettile = 255 - sourcetile
                 todo.append((sourcetile, targettile))

@@ -12,7 +12,7 @@ from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
-
+from .plot import Plotter
 class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
     """\
     Base class for multi-camera alignment algorithms.
@@ -20,6 +20,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     original_pointcloud : Optional[cwipc_wrapper]
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
+    pre_analysis_results : List[AnalysisResults]
     results : List[AnalysisResults]
     verbose : bool
     show_plot : bool
@@ -27,6 +28,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
     def __init__(self):
         MulticamAlignmentAlgorithm.__init__(self)
+        BaseMulticamAlgorithm.__init__(self)
         self.original_pointcloud = None
         self.transformations  = []
         self.original_transformations = []
@@ -36,9 +38,6 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.show_plot = False
         self.nCamera = 0
 
-
-    def plot(self, filename : Optional[str]=None, show : bool = False, cumulative : bool = False):
-        assert False
     
     def _prepare_analyze(self) -> AnalysisAlgorithm:
         analyzer = None
@@ -57,8 +56,6 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         aligner = self.aligner_class()
         aligner.verbose = self.verbose
         return aligner
-        assert self.original_pointcloud
-        self.aligner.add_tiled_pointcloud(self.original_pointcloud)
 
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
         assert self.original_pointcloud
@@ -84,6 +81,19 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             self.original_pointcloud_is_new = True
         return self.original_pointcloud
   
+    def _plot(self, title : str, data : List[AnalysisResults]) -> None:
+        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        plotter = Plotter(title=title)
+        plotter.set_results(data)
+        plotter.plot(show=True)
+       
+    def _print_correspondences(self, label: str, data : List[AnalysisResults]) -> None:
+        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        print(f"{label}:")
+        for i in range(len(data)):
+            r = data[i]
+            print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, correspondence={r.minCorrespondence}, stddev={r.minCorrespondenceSigma}, count={r.minCorrespondenceCount}")
+
 class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
     """\
     No-op algorithm for testing purposes. Only computes distances between each tile and all other tiles.
@@ -107,10 +117,12 @@ class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
             analyzer.run()
             results = analyzer.get_results()
             self.results.append(results)
+            
         if self.verbose:
-            pass # self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence")
+            self._print_correspondences(f"{self.__class__.__name__}: Before:  Per-camera correspondence", self.results)
+
         if self.show_plot:
-            pass #
+            self._plot(f"{self.__class__.__name__}: Before", self.results)
         
         return True
 
@@ -136,80 +148,75 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         """Run the algorithm"""
         assert self.original_pointcloud
         self._prepare_analyze()
-        assert self.analyzer
         assert self.camera_count() > 0
         # Initialize matrices, if not done already (by our caller)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
-        # Run the analyzer for the first time, on the original pointclouds.
-        self.analyzer.run_twice()
-        self.results = self.analyzer.get_results()
-        self.results.sort_by_weight(weightstyle='priority2')
-        if self.verbose:
-            self.results.print_correspondences(label=f"{self.__class__.__name__}: Before:  Per-camera correspondence, ordered by priority")
-        if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}"
-            self.analyzer.plot(show=True)
-
-        # xxxjack 
         
-        stepnum = 1
-        camnums_already_fixed = []
-        while camnum_to_fix != None:
-            if self.verbose:
-                print(f"{self.__class__.__name__}: Step {stepnum}: camera {camnum_to_fix}, correspondence error {correspondence}, overall correspondence error {total_correspondence}")
-            # Prepare the registration computer
-            self._prepare_aligner()
-            assert self.aligner
-            correspondence = self.results.secondCorrespondence[camnum_to_fix]
-            self.aligner.set_correspondence(correspondence)
-            self.aligner.run(camnum_to_fix)
-            camnums_already_fixed.append(camnum_to_fix)
-            # Save resultant pointcloud
+        self.pre_analysis_results = []
+        for camnum in range(self.camera_count()):
+            tilemask = self.tilemask_for_camera_index(camnum)
+            othertilemask = 0xff ^ tilemask
+            analyzer = self._prepare_analyze()
+            analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
+            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            analyzer.run()
+            results = analyzer.get_results()
+            self.pre_analysis_results.append(results)
+
+        if self.verbose:
+            self._print_correspondences(f"{self.__class__.__name__}: Before:  Per-camera correspondence", self.pre_analysis_results)
+
+        if self.show_plot:
+            self._plot(f"{self.__class__.__name__}: Before", self.pre_analysis_results)
+
+
+        todo = range(self.camera_count()) # xxxjack should sort.
+        for camnum in todo:
+            aligner = self._prepare_aligner()
+            tilemask = self.tilemask_for_camera_index(camnum)
+            othertilemask = 0xff ^ tilemask
+            aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
+            aligner.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            # aligner.set_correspondence(self.precision_threshold)
+            aligner.run()
+            
+            # Remember resultant pointcloud
             old_pc = self.original_pointcloud
-            new_pc = self.aligner.get_result_pointcloud_full()
+            new_pc = aligner.get_result_pointcloud_full()
             old_pc.free()
             self.original_pointcloud = new_pc
             self.original_pointcloud_is_new = True
-            # Apply new transformation (to the left of the old one)
-            cam_index = self.aligner.camera_index_for_tilenum(camnum_to_fix)
-            old_transform = self.transformations[cam_index]
-            this_transform = self.aligner.get_result_transformation()
-            new_transform = np.matmul(this_transform, old_transform)
-            # print(f"xxxjack camnum_to_fix={camnum_to_fix}, camindex={cam_index}, new_transform={new_transform}")
-            self.transformations[cam_index] = new_transform
-            # Re-initialize analyzer
-            self._prepare_analyze()
-            self.analyzer.run()
-            self.results = self.analyzer.get_results()
-            self.results.sort_by_weight(weightstyle='priority')
-            if self.verbose:
-                self.results.print_correspondences(label=f"{self.__class__.__name__}: Step {stepnum}:  Per-camera correspondence, ordered by priority")
-            if self.show_plot:
-                self.analyzer.plot_label = f"{self.__class__.__name__}"
-                self.analyzer.plot(show=True)
 
-            # See results, and whether it's worth it to do another step
-            old_camnum_to_fix = camnum_to_fix
-            old_correspondence = correspondence
-            old_total_correspondence = total_correspondence
-            camnum_to_fix, correspondence, total_correspondence = self._get_next_candidate(camnums_already_fixed)
-            # This stop-condition can be improved, in various ways:
-            # - If total_correspondence is worse than previously we should undo this step and try another camera
-            # - We may also want to try another (more expensive) algorithm
-            if camnum_to_fix == old_camnum_to_fix and correspondence >= old_correspondence-0.0001:
-                if self.verbose:
-                    print(f"{self.__class__.__name__}: Step {stepnum}: Giving up: went only from {old_correspondence} to {correspondence}")
-                break
-            stepnum += 1
-        self.proposed_cellsize = total_correspondence*self.cellsize_factor
+            # Apply new transformation (to the left of the old one)
+            old_transform = self.transformations[camnum]
+            this_transform = aligner.get_result_transformation()
+            new_transform = np.matmul(this_transform, old_transform)
+            self.transformations[camnum] = new_transform
+
+        self.results = []
+        for camnum in range(self.camera_count()):
+            tilemask = self.tilemask_for_camera_index(camnum)
+            othertilemask = 0xff ^ tilemask
+            analyzer = self._prepare_analyze()
+            analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
+            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            analyzer.run()
+            results = analyzer.get_results()
+            self.results.append(results)
+        
         if self.verbose:
-            self.results.print_correspondences(label=f"{self.__class__.__name__}: After {stepnum} steps: overall correspondence error {total_correspondence}. Per-camera correspondence, ordered worst-first")
+            self._print_correspondences(f"{self.__class__.__name__}: After:  Per-camera correspondence", self.results)
+
         if self.show_plot:
-            self.analyzer.plot_label = f"{self.__class__.__name__}: Step {stepnum} result"
-            self.analyzer.plot(show=True)
+            self._plot(f"{self.__class__.__name__}: After", self.results)
+        
+        correspondences = [r.minCorrespondence for r in self.results]
+        max_correspondence = max(correspondences)
+
+        self.proposed_cellsize = max_correspondence*self.cellsize_factor
         self._compute_change()
         if self.verbose:
             print(f"{self.__class__.__name__}: Change in matrices after alignment:")
@@ -218,29 +225,6 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         self._compute_new_tiles()
         return True
 
-    def _get_next_candidate(self, camnums_already_fixed : List[int]) -> Tuple[Optional[int], float, float]:
-        assert 0
-        camnum_to_fix = None
-        correspondence = self.results[0][1]
-        for i in range(len(self.results)):
-            if self.results[i][0] in camnums_already_fixed:
-                continue
-            if self.results[i][1] > self.precision_threshold:
-                camnum_to_fix = self.results[i][0]
-                correspondence = self.results[i][1]
-                break
-        if camnum_to_fix == None:
-            # Apparently all cameras have been done at least once.
-            camnum_to_fix = self.results[0][0]
-            correspondence = self.results[0][1]
-        w_sum = 0
-        c_sum = 0
-        for res in self.results:
-            c_sum += res[1] * res[2]
-            w_sum += res[2]
-        if w_sum == 0:
-            w_sum = 1
-        return camnum_to_fix, correspondence, c_sum / w_sum
 
     def _compute_change(self):
         for cam_index in range(len(self.transformations)):

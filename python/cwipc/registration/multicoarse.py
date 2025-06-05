@@ -342,6 +342,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         if self.verbose:
             print(f"cwipc_register: camera {camindex}: show point cloud to allow viewpoint selection for aruco detection") 
         vis = o3d_show_points(f"Pass {passnum} camera {camindex}: Ensure markers are visible. ESC to close.", o3dpc, from000=True, keepopen=True)
+        assert vis is not None
         o3d_bgr_image_float = vis.capture_screen_float_buffer()
         np_bgr_image_float = np.asarray(o3d_bgr_image_float)
         np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]

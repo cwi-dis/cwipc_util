@@ -210,20 +210,13 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
     def __init__(self):
         self.per_camera_tilenum : List[int] = []
         self.original_pointcloud : Optional[cwipc_wrapper] = None
-        self.per_camera_pointclouds : List[cwipc_wrapper] = []
         self.verbose = False
 
     @override
-    def add_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         self.original_pointcloud = pc
         for tilemask in get_tiles_used(pc):
-            tiled_pc = self._get_pc_for_cam(pc, tilemask)
-            if tiled_pc == None:
-                continue
-            if tiled_pc.count() == 0:
-                continue
-            self.per_camera_pointclouds.append(tiled_pc)
             self.per_camera_tilenum.append(tilemask)
 
     @override
@@ -232,7 +225,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
         return self.per_camera_tilenum[cam_index]
 
     @override
-    def camera_index_for_tilenum(self, tilenum : int) -> int:
+    def camera_index_for_tilemask(self, tilenum : int) -> int:
         """Returns the  index (used in the results) for this tilenumber (used in the point cloud)"""
         for i in range(len(self.per_camera_tilenum)):
             if self.per_camera_tilenum[i] == tilenum:
@@ -241,18 +234,17 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     @override
     def camera_count(self):
-        assert len(self.per_camera_tilenum) == len(self.per_camera_pointclouds)
         return len(self.per_camera_tilenum)
 
-    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
-        rv = cwipc_tilefilter(pc, tilemask)
-        if rv.count() != 0:
-            return rv
-        rv.free()
-        return None
+#    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
+#        rv = cwipc_tilefilter(pc, tilemask)
+#        if rv.count() != 0:
+#            return rv
+#        rv.free()
+#        return None
 
-    @override
-    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
-        """Returns the point cloud for this tilenumber"""
-        cam_index = self.camera_index_for_tilenum(tilenum)
-        return self.per_camera_pointclouds[cam_index]
+#    @override
+#    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
+#        """Returns the point cloud for this tilenumber"""
+#        cam_index = self.camera_index_for_tilenum(tilenum)
+#        return self.per_camera_pointclouds[cam_index]

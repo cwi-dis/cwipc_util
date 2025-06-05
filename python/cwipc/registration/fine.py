@@ -32,10 +32,6 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         self.correspondence = correspondence
 
     @override
-    def set_reference_pointcloud(self, pc : cwipc_wrapper) -> None:
-        self.reference_pointcloud = pc
-
-    @override
     def run(self) -> bool:
         """Run the algorithm"""
         self._prepare()
