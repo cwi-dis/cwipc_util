@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join
 
 from cwipc.registration.abstract import RegistrationTransformation
-from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write
+from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
@@ -341,7 +341,17 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             self._plot(f"{self.__class__.__name__}: Mid", remaining_results)
 
         return todo
-        
+    def dump_pointclouds(self, filename: str, source: cwipc_wrapper, target: cwipc_wrapper):
+        if self.verbose:
+            print(f"Dumping point clouds to {filename}")
+        colored_source = cwipc_colormap(source, 0xFFFFFFFF, 0xAAFF0000)
+        colored_target = cwipc_colormap(target, 0xFFFFFFFF, 0xAA00FF00)
+        combined = cwipc_join(colored_source, colored_target)
+        cwipc_write(filename, combined)
+        colored_source.free()
+        colored_target.free()
+        combined.free()
+
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -354,13 +364,16 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         if self.verbose:
             print(f"{self.__class__.__name__}: First camera to align is {first}")
         self.resultant_pointcloud = self._get_pc_for_camnum(first)
+        step = 0
         while todo:
+            step += 1
             if len(todo) > 1:
                 todo = self._mid_analyse(todo)
             camnum = todo.pop(0)
             if self.verbose:
                 print(f"{self.__class__.__name__}: Next camera to align is {camnum}")
             next_pc = self._get_pc_for_camnum(camnum)
+            self.dump_pointclouds(f"multicamera_iterative_step_{step}_in_cam{camnum}.ply", self.resultant_pointcloud, next_pc)
             aligner = self._prepare_aligner()
             aligner.set_source_pointcloud(next_pc)
             aligner.set_reference_pointcloud(self.resultant_pointcloud)
@@ -368,6 +381,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             aligner.run()
 
             new_next_pc = aligner.get_result_pointcloud()
+            self.dump_pointclouds(f"multicamera_iterative_step_{step}_out_cam{camnum}.ply", self.resultant_pointcloud, new_next_pc)
             new_resultant_pc = cwipc_join(self.resultant_pointcloud, new_next_pc)
             self.resultant_pointcloud.free()
             next_pc.free()
