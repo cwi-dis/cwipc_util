@@ -10,6 +10,7 @@ from ..net import sink_netserver
 from ..net import sink_encoder
 from ..net import sink_passthrough
 from ..net import sink_bin2dash
+from ..net import sink_netingest
 from ._scriptsupport import *
 
 def main():
@@ -19,6 +20,7 @@ def main():
     
     output_selection_args = parser.add_argument_group("output selection").add_mutually_exclusive_group()
     output_selection_args.add_argument("--port", action="store", default=4303, type=int, metavar="PORT", help="Port to serve compressed pointclouds on (default: 4303)")
+    output_selection_args.add_argument("--forward", action="store", metavar="HOST:PORT", help="Send compressed pointclouds to cwipc_netserver running on HOST, port PORT")
     output_selection_args.add_argument("--bin2dash", action="store", metavar="URL", help="Send compressed data to bin2dash URL in stead of serving. Example URL:  https://vrt-evanescent.viaccess-orca.com/pctest/")
     
     output_args = parser.add_argument_group("output arguments")
@@ -54,6 +56,17 @@ def main():
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
         )
+    elif args.forward:
+        forwarder = encoder_factory(
+            sink_netingest.cwipc_sink_netingest(
+                args.forward,
+                verbose=(args.verbose > 1),
+                nodrop=args.nodrop
+            ),
+            verbose=(args.verbose > 1),
+            nodrop=args.nodrop
+        )
+
     else:
         forwarder = encoder_factory(
             sink_netserver.cwipc_sink_netserver(
