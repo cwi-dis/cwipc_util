@@ -4,10 +4,10 @@ import argparse
 import threading
 import socket
 import queue
+import struct
 from typing import List, cast, Tuple, Any
 
-HEADER_SIZE = 128
-HEADER_VERSION = 2
+HEADER_SIZE = 16
 MAX_OUTPUT_QUEUE = 10
 
 
@@ -16,15 +16,17 @@ class ForwardHandler(socketserver.BaseRequestHandler):
     transmit_queue : "queue.Queue[bytes]"
 
     def handle(self):
-        self.log_verbose("forwarder: Connected")
+        self.log("Connected")
         self.transmit_queue = queue.Queue(MAX_OUTPUT_QUEUE)
-
+        self.count = 0
         server : ForwardServer = cast(ForwardServer, self.server)
         server.handlers.append(self)
 
         # self.transmit_thread = threading.Thread(target=self.handle_transmit)
         # self.transmit_thread.start()
         self.handle_transmit()
+
+        self.stop()
 
     def log(self, msg : str):
         print(f"{sys.argv[0]}: ForwardHandler: {self.client_address}: {msg}", file=sys.stderr)
@@ -36,13 +38,15 @@ class ForwardHandler(socketserver.BaseRequestHandler):
             self.log(msg)
 
     def stop(self):
-        self.log_verbose("Disconnected")
+        self.log(f"Disconnected, transmitted {self.count} packets")
 
         server : ForwardServer = cast(ForwardServer, self.server)
-        server.handlers.remove(self)
+        if self in server.handlers:
+            server.handlers.remove(self)
 
         sock : socket.socket = self.request
-        sock.close()
+        if sock:
+            sock.close()
 
         self.request = None
 
@@ -64,10 +68,13 @@ class ForwardHandler(socketserver.BaseRequestHandler):
                 packet = self.transmit_queue.get(timeout=1.0)
             except queue.Empty:
                 continue
-
-            sock.sendall(packet)
-            self.log_verbose(f"Transmitted {len(packet)} byte packet")
-
+            try:
+                sock.sendall(packet)
+                self.log_verbose(f"Transmitted {len(packet)} byte packet")
+            except Exception as e:
+                self.log(f"Exception {e}")
+                return
+            self.count += 1
         if self.request != None:
             sock : socket.socket = self.request
             sock.shutdown(socket.SHUT_WR)
@@ -87,9 +94,9 @@ class ForwardServer(socketserver.ThreadingTCPServer):
 class IngestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
-        self.log_verbose("Connected")
+        self.log("Connected")
         self.transmit_queue = queue.Queue(MAX_OUTPUT_QUEUE)
-
+        self.count = 0
         server : IngestServer = cast(IngestServer, self.server)
         server.handlers.append(self)
 
@@ -105,14 +112,16 @@ class IngestHandler(socketserver.BaseRequestHandler):
             self.log(msg)
 
     def stop(self):
-        self.log_verbose("Disconnected")
+        self.log(f"Disconnected, received {self.count} packets")
 
         server : IngestServer = cast(IngestServer, self.server)
-        server.handlers.remove(self)
+        if self in server.handlers:
+            server.handlers.remove(self)
 
             
         sock : socket.socket = self.request
-        sock.close()
+        if sock:
+            sock.close()
 
         self.request = None
 
@@ -142,7 +151,7 @@ class IngestHandler(socketserver.BaseRequestHandler):
                 self.stop()
                 break
 
-            datalen, streamName = self._header_decode(header)
+            h_fourcc, datalen, h_timestamp = struct.unpack("=LLQ", header)
 
             if datalen < 0:
                 self.stop()
@@ -156,9 +165,9 @@ class IngestHandler(socketserver.BaseRequestHandler):
                 break
 
             packetLen = len(header) + len(payload)
-            self.log_verbose(f"Received {packetLen} byte packet for stream {streamName}")
+            self.log_verbose(f"Received {packetLen} byte packet")
             self.receiver_forward(header, payload)
-
+            self.count += 1
         # xxxjack don't understand this?
         if self.request != None:
             sock : socket.socket = self.request
@@ -177,18 +186,6 @@ class IngestHandler(socketserver.BaseRequestHandler):
 
             if len(next) == 0 or datalen == 0:
                 return rv
-
-    def _header_decode(self, header : bytes) -> Tuple[int, str]:
-        header_fields = header.decode().split(',')
-
-        if len(header_fields) != 5 or header_fields[0] != str(HEADER_VERSION):
-            self.log(f"Received invalid header: {header}")
-            return -1, ""
-
-        streamName = header_fields[1]
-        dataSize = int(header_fields[3])
-
-        return dataSize, streamName
 
 class IngestServer(socketserver.TCPServer):
     verbose : bool
@@ -238,7 +235,7 @@ def main():
         with ForwardServer((args.host, args.port), ForwardHandler) as forward_server:
             forward_server.verbose = args.verbose
 
-            if args.verbose:
+            if True:
                 print(
                     f"{sys.argv[0]}: forwarder serving on {forward_server.server_address}",
                     file=sys.stderr
@@ -248,7 +245,7 @@ def main():
             forward_thread.start()
             with IngestServer(forward_server, (args.host, args.ingestport), IngestHandler) as ingest_server:
                 ingest_server.verbose = args.verbose
-                if args.verbose:
+                if True:
                     print(
                         f"{sys.argv[0]}: ingester serving on {ingest_server.server_address}",
                         file=sys.stderr

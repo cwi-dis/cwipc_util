@@ -61,7 +61,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
     def stop(self):
         if self.verbose: print('netclient: stop')
         self.running = False
-        self.output_queue.put(None)
+        if self.output_queue.empty():
+            self.output_queue.put(None)
         self.join()
         
     def eof(self):
