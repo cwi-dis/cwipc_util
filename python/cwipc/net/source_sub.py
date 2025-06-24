@@ -134,6 +134,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         self.failed = False
         self.output_queue = queue.Queue(maxsize=2)
+        self.popped_queue_head = None
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -181,7 +182,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
     def free(self) -> None:
         if self.handle:
             assert self.dll
+            if self.verbose: print(f"source_sub: calling sub_destroy()")
             self.dll.sub_destroy(self.handle)
+            if self.verbose: print(f"source_sub: sub_destroy() returned")
             self.handle = None
     
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
@@ -221,6 +224,8 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         return self.failed or (self.started and self.output_queue.empty() and not self.running)
     
     def available(self, wait : bool=False) -> bool:
+        if self.popped_queue_head:
+            return True
         if not self.output_queue.empty():
             return True
         if not wait or not self.running or self.failed:
@@ -229,12 +234,16 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         try:
             packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
             if packet:
-                self.output_queue.put(packet)
+                self.popped_queue_head = packet
             return not not packet
         except queue.Empty:
             return False
                 
     def get(self) -> Optional[bytes]:
+        if self.popped_queue_head:
+            rv = self.popped_queue_head
+            self.popped_queue_head = None
+            return rv
         if self.eof():
             return None
         packet = self.output_queue.get()
