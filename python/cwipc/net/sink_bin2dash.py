@@ -8,7 +8,7 @@ from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_r
 
 _bin2dash_dll_reference = None
 
-BIN2DASH_API_VERSION = 0x20200327A
+BIN2DASH_API_VERSION = 0x20250620B
 
 class Bin2dashError(RuntimeError):
     pass
