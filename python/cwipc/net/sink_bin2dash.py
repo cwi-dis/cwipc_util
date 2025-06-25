@@ -35,6 +35,8 @@ class streamDesc(ctypes.Structure):
     def __init__(self, fourcc : vrt_fourcc_type, *args : Any):
         super(streamDesc, self).__init__(VRT_4CC(fourcc), *args)
     
+VrtErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int)
+
 def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     global _bin2dash_dll_reference
     if _bin2dash_dll_reference: return _bin2dash_dll_reference
@@ -61,8 +63,8 @@ def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
         os.putenv('SIGNALS_SMD_PATH', libdirname)
     _bin2dash_dll_reference = ctypes.cdll.LoadLibrary(libname)
     
-    _bin2dash_dll_reference.vrt_create_ext.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
-    _bin2dash_dll_reference.vrt_create_ext.restype = vrt_handle_p
+    _bin2dash_dll_reference.vrt_create_ext2.argtypes = [ctypes.c_char_p, VrtErrorCallbackType, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
+    _bin2dash_dll_reference.vrt_create_ext2.restype = vrt_handle_p
     
     _bin2dash_dll_reference.vrt_destroy.argtypes = [vrt_handle_p]
     _bin2dash_dll_reference.vrt_destroy.restype = None
@@ -111,10 +113,23 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         self.bandwidths_forward = []
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
         self.lldash_logging = not not lldash_log_setting
+        self._onVrtError = VrtErrorCallbackType(self._onVrtError)
         
     def __del__(self):
         self.free()
         
+    def _onVrtError(self, cmsg : bytes, level : int):
+        """Callback function passed to vrt_create: preint (or re-raise) Bin2dash errors in Python environment"""
+        msg = cmsg.decode('utf8')
+        levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
+    
+        print(f"sink_bin2dash: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
+        self.lldash_log(event="async_log_message", level=level, msg=msg)
+        # xxxjack raising an exception from a ctypes callback doesn't work.
+        # Need to fix at some point.
+        if False and level == 0:
+            raise SubError(msg)
+                
     def lldash_log(self, **kwargs):
         if not self.lldash_logging:
             return
@@ -141,11 +156,11 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         if self.verbose:
             for i in range(streamDescCount):
                 print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
-        self.lldash_log(event="vrt_create_ext_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
-        self.handle = self.dll.vrt_create_ext("bin2dashSink".encode('utf8'), streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
-        self.lldash_log(event="vrt_create_ext_returned", url=self.url)
+        self.lldash_log(event="vrt_create_ext2_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
+        self.handle = self.dll.vrt_create_ext2("bin2dashSink".encode('utf8'), self._onVrtError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
+        self.lldash_log(event="vrt_create_ext2_returned", url=self.url)
         if not self.handle:
-            raise Bin2dashError(f"vrt_create_ext({url}) failed")
+            raise Bin2dashError(f"vrt_create_ext2({url}) failed")
 
         assert self.handle
         
