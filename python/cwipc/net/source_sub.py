@@ -126,6 +126,8 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
     fourcc : Optional[vrt_fourcc_type]
 
     output_queue : queue.Queue[Optional[bytes]]
+    popped_queue_head : Optional[bytes]
+    queue_lock : threading.Lock
 
     def __init__(self, url : str, streamIndex : int=0, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -138,6 +140,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.failed = False
         self.output_queue = queue.Queue(maxsize=2)
         self.popped_queue_head = None
+        self.queue_lock = threading.Lock()
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -230,30 +233,32 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         return self.failed or (self.started and self.output_queue.empty() and not self.running)
     
     def available(self, wait : bool=False) -> bool:
-        if self.popped_queue_head:
-            return True
-        if not self.output_queue.empty():
-            return True
-        if not wait or not self.running or self.failed:
-            return False
-        # Note: the following code may reorder packets...
-        try:
-            packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-            if packet:
-                self.popped_queue_head = packet
-            return not not packet
-        except queue.Empty:
-            return False
+        with self.queue_lock:
+            if self.popped_queue_head:
+                return True
+            if not self.output_queue.empty():
+                return True
+            if not wait or not self.running or self.failed:
+                return False
+            try:
+                packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+                if packet:
+                    assert not self.popped_queue_head
+                    self.popped_queue_head = packet
+                return not not packet
+            except queue.Empty:
+                return False
                 
     def get(self) -> Optional[bytes]:
-        if self.popped_queue_head:
-            rv = self.popped_queue_head
-            self.popped_queue_head = None
-            return rv
-        if self.eof():
-            return None
-        packet = self.output_queue.get()
-        return packet
+        with self.queue_lock:
+            if self.popped_queue_head:
+                rv = self.popped_queue_head
+                self.popped_queue_head = None
+                return rv
+            if self.eof():
+                return None
+            packet = self.output_queue.get()
+            return packet
 
     def count(self) -> int:
         if not self.streamCount:
