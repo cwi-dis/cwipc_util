@@ -97,6 +97,9 @@ def _signals_unity_bridge_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     
     _signals_unity_bridge_dll_reference.sub_grab_frame.argtypes = [sub_handle_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
     _signals_unity_bridge_dll_reference.sub_grab_frame.restype = ctypes.c_size_t
+
+    _signals_unity_bridge_dll_reference.sub_get_version.argtypes = []
+    _signals_unity_bridge_dll_reference.sub_get_version.restype = ctypes.c_char_p
     
     return _signals_unity_bridge_dll_reference
  
@@ -147,6 +150,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.lldash_logging = not not lldash_log_setting
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
+        if self.verbose:
+            print(f"source_sub: native library version: {self.dll.sub_get_version().decode('utf8')}", file=sys.stderr, flush=True)
+        self.lldash_log(event="source_sub_init", version=self.dll.sub_get_version().decode('utf8'))
         if self.verbose: print(f"source_sub: sub_create()")
         self._onSubError = SubErrorCallbackType(self._onSubError)
         msgLevel = 3 if self.verbose else 0

@@ -76,6 +76,9 @@ def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _bin2dash_dll_reference.vrt_get_media_time_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_int]
     _bin2dash_dll_reference.vrt_get_media_time_ext.restype = ctypes.c_int64
     
+    _bin2dash_dll_reference.vrt_get_version.argtypes = []
+    _bin2dash_dll_reference.vrt_get_version.restype = ctypes.c_char_p
+    
     return _bin2dash_dll_reference
  
 class _CpcBin2dashSink(cwipc_rawsink_abstract):
@@ -109,6 +112,9 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
         self.lldash_logging = not not lldash_log_setting
         self._onVrtError = VrtErrorCallbackType(self._onVrtError)
+        if self.verbose:
+            print(f"bin2dash: native library version: {self.dll.vrt_get_version().decode('utf8')}", file=sys.stderr, flush=True)
+        self.lldash_log(event="sink_bin2dash_init", version=self.dll.vrt_get_version().decode('utf8'))
         
     def __del__(self):
         self.free()
