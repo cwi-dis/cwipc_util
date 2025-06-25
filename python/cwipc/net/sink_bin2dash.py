@@ -72,14 +72,9 @@ def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _bin2dash_dll_reference.vrt_push_buffer_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
     _bin2dash_dll_reference.vrt_push_buffer_ext.restype = ctypes.c_bool
     
-    _bin2dash_dll_reference.vrt_push_buffer.argtypes = [vrt_handle_p, ctypes.c_char_p, ctypes.c_size_t]
-    _bin2dash_dll_reference.vrt_push_buffer.restype = ctypes.c_bool
     
     _bin2dash_dll_reference.vrt_get_media_time_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_int]
     _bin2dash_dll_reference.vrt_get_media_time_ext.restype = ctypes.c_int64
-    
-    _bin2dash_dll_reference.vrt_get_media_time.argtypes = [vrt_handle_p, ctypes.c_int]
-    _bin2dash_dll_reference.vrt_get_media_time.restype = ctypes.c_int64
     
     return _bin2dash_dll_reference
  
@@ -195,25 +190,20 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
             self.lldash_log(event="vrt_destroy_returned", url=self.url)
             self.handle = None
             
-    def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:
+    def feed(self, buffer : Union[bytes, bytearray], stream_index : int = 0) -> bool:
         if not self.handle:
             return False
         assert self.dll
         length = len(buffer)
         ok : bool
-        if stream_index == None:
-            self.lldash_log(event="vrt_push_buffer_call", url=self.url, length=length)
-            ok = self.dll.vrt_push_buffer(self.handle, bytes(buffer), length)
-            self.lldash_log(event="vrt_push_buffer_returned", url=self.url)
-        else:
-            self.lldash_log(event="vrt_push_buffer_ext_call", url=self.url, stream_index=stream_index, length=length)
-            ok = self.dll.vrt_push_buffer_ext(self.handle, stream_index, bytes(buffer), length)
-            self.lldash_log(event="vrt_push_buffer_ext_returned", url=self.url)
+        self.lldash_log(event="vrt_push_buffer_ext_call", url=self.url, stream_index=stream_index, length=length)
+        ok = self.dll.vrt_push_buffer_ext(self.handle, stream_index, bytes(buffer), length)
+        self.lldash_log(event="vrt_push_buffer_ext_returned", url=self.url)
             
         if ok:
             self.sizes_forward.append(length)
         else:
-            raise Bin2dashError(f"vrt_push_buffer(handle, {stream_index}, buffer, {length}) failed")
+            raise Bin2dashError(f"vrt_push_buffer_ext(handle, {stream_index}, buffer, {length}) failed")
         return ok
 
     def canfeed(self, timestamp : int, wait : bool=True) -> bool:
