@@ -233,22 +233,25 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         return self.failed or (self.started and self.output_queue.empty() and not self.running)
     
     def available(self, wait : bool=False) -> bool:
-        with self.queue_lock:
-            if self.popped_queue_head:
-                return True
-            if not self.output_queue.empty():
-                return True
-            if not wait or not self.running or self.failed:
-                return False
-            try:
-                packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-                if packet:
-                    assert not self.popped_queue_head
-                    self.popped_queue_head = packet
-                return not not packet
-            except queue.Empty:
-                return False
-                
+        try:
+            with self.queue_lock:
+                if self.popped_queue_head:
+                    return True
+                if not self.output_queue.empty():
+                    return True
+                if not wait or not self.running or self.failed:
+                    return False
+                try:
+                    packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+                    if packet:
+                        assert not self.popped_queue_head
+                        self.popped_queue_head = packet
+                    return not not packet
+                except queue.Empty:
+                    return False
+        finally:
+            time.sleep(0.0001)  # Give other threads a chance to run
+                            
     def get(self) -> Optional[bytes]:
         with self.queue_lock:
             if self.popped_queue_head:
