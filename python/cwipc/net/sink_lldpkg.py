@@ -6,11 +6,11 @@ import time
 from typing import Optional, Any, List, Union
 from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
-_bin2dash_dll_reference = None
+_lldpkg_dll_reference = None
 
-BIN2DASH_API_VERSION = 0x20250620B
+LLDASH_PACKAGER_API_VERSION = 0x20250620B
 
-class Bin2dashError(RuntimeError):
+class LLDashPackagerError(RuntimeError):
     pass
 
 class vrt_handle_p(ctypes.c_void_p):
@@ -35,56 +35,54 @@ class streamDesc(ctypes.Structure):
     def __init__(self, fourcc : vrt_fourcc_type, *args : Any):
         super(streamDesc, self).__init__(VRT_4CC(fourcc), *args)
     
-VrtErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int)
+LLDashPackagerErrorCallbackType = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int)
 
-def _bin2dash_dll(libname : Optional[str]=None) -> ctypes.CDLL:
-    global _bin2dash_dll_reference
-    if _bin2dash_dll_reference: return _bin2dash_dll_reference
+def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
+    global _lldpkg_dll_reference
+    if _lldpkg_dll_reference: return _lldpkg_dll_reference
     
     if libname == None:
-        # Backward compatibility: if the environment variable VRTOGETHER_BIN2DASH_PATH is set, use that.
-        libname = os.environ.get('VRTOGETHER_BIN2DASH_PATH')
         if not libname:
             # Current preferred use: SIGNALS_SMD_PATH points to the right directory.
             dirname = os.environ.get('SIGNALS_SMD_PATH')
             if dirname:
-                libname = os.path.join(dirname, 'bin2dash.so')
+                libname = os.path.join(dirname, 'lldash_packager.so')
         if not libname:
-            libname = ctypes.util.find_library('bin2dash.so')
+            libname = ctypes.util.find_library('lldash_packager.so')
             if not libname:
-                libname = ctypes.util.find_library('bin2dash')
+                libname = ctypes.util.find_library('lldash_packager')
             if not libname:
-                raise Bin2dashError('Dynamic library bin2dash not found. Set SIGNALS_SMD_PATH to the directory containing the bin2dash library')
+                raise LLDashPackagerError('Dynamic library lldash_packager not found. Set SIGNALS_SMD_PATH to the directory containing the lldash_packager library')
     assert libname
     # Signals library needs to be able to find some data files stored next to the DLL.
     # Tell it where they are.
     if os.path.isabs(libname) and not 'SIGNALS_SMD_PATH' in os.environ:
         libdirname = os.path.dirname(libname)
         os.putenv('SIGNALS_SMD_PATH', libdirname)
-    _bin2dash_dll_reference = ctypes.cdll.LoadLibrary(libname)
+    _lldpkg_dll_reference = ctypes.cdll.LoadLibrary(libname)
     
-    _bin2dash_dll_reference.vrt_create_ext2.argtypes = [ctypes.c_char_p, VrtErrorCallbackType, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
-    _bin2dash_dll_reference.vrt_create_ext2.restype = vrt_handle_p
+    _lldpkg_dll_reference.lldpkg_create.argtypes = [ctypes.c_char_p, LLDashPackagerErrorCallbackType, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
+    _lldpkg_dll_reference.lldpkg_create.restype = vrt_handle_p
     
-    _bin2dash_dll_reference.vrt_destroy.argtypes = [vrt_handle_p]
-    _bin2dash_dll_reference.vrt_destroy.restype = None
+    _lldpkg_dll_reference.lldpkg_destroy.argtypes = [vrt_handle_p]
+    _lldpkg_dll_reference.lldpkg_destroy.restype = None
     
-    _bin2dash_dll_reference.vrt_push_buffer_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
-    _bin2dash_dll_reference.vrt_push_buffer_ext.restype = ctypes.c_bool
+    _lldpkg_dll_reference.lldpkg_push_buffer_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
+    _lldpkg_dll_reference.lldpkg_push_buffer_ext.restype = ctypes.c_bool
     
     
-    _bin2dash_dll_reference.vrt_get_media_time_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_int]
-    _bin2dash_dll_reference.vrt_get_media_time_ext.restype = ctypes.c_int64
+    _lldpkg_dll_reference.lldpkg_get_media_time.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_int]
+    _lldpkg_dll_reference.lldpkg_get_media_time.restype = ctypes.c_int64
     
-    _bin2dash_dll_reference.vrt_get_version.argtypes = []
-    _bin2dash_dll_reference.vrt_get_version.restype = ctypes.c_char_p
+    _lldpkg_dll_reference.lldpkg_get_version.argtypes = []
+    _lldpkg_dll_reference.lldpkg_get_version.restype = ctypes.c_char_p
     
-    return _bin2dash_dll_reference
+    return _lldpkg_dll_reference
  
-class _CpcBin2dashSink(cwipc_rawsink_abstract):
+class _LLDashPackagerSink(cwipc_rawsink_abstract):
     """A DASH sink that streams multiple data streams to a MotionSpell DASH ingestion server.
     
-    Uses the bin2dash native implementation under the hood.
+    Uses the lldash_packager native implementation under the hood.
     """
     
     streamDescs : Optional[List[streamDesc]]
@@ -99,7 +97,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         self.nodrop = nodrop
         self.url = url
         self.handle = None
-        self.dll = _bin2dash_dll()
+        self.dll = _lldpkg_dll()
         assert self.dll
         self.url = url
         self.streamDescs = streamDescs
@@ -111,20 +109,20 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         self.bandwidths_forward = []
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
         self.lldash_logging = not not lldash_log_setting
-        self._onVrtError = VrtErrorCallbackType(self._onVrtError)
+        self._onLLDashPackagerError = LLDashPackagerErrorCallbackType(self._onLLDashPackagerError)
         if self.verbose:
-            print(f"bin2dash: native library version: {self.dll.vrt_get_version().decode('utf8')}", file=sys.stderr, flush=True)
-        self.lldash_log(event="sink_bin2dash_init", version=self.dll.vrt_get_version().decode('utf8'))
+            print(f"lldash_packager: native library version: {self.dll.lldpkg_get_version().decode('utf8')}", file=sys.stderr, flush=True)
+        self.lldash_log(event="sink_lldpkg_init", version=self.dll.lldpkg_get_version().decode('utf8'))
         
     def __del__(self):
         self.free()
         
-    def _onVrtError(self, cmsg : bytes, level : int):
-        """Callback function passed to vrt_create: preint (or re-raise) Bin2dash errors in Python environment"""
+    def _onLLDashPackagerError(self, cmsg : bytes, level : int):
+        """Callback function passed to vrt_create: preint (or re-raise) lldash_packager errors in Python environment"""
         msg = cmsg.decode('utf8')
         levelName = {0:"error", 1:"warning", 2:"info message", 3:"debug message"}.get(level, f"level-{level} message")
     
-        print(f"sink_bin2dash: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
+        print(f"lldash_packager: asynchronous {levelName}: {msg}", file=sys.stderr, flush=True)
         self.lldash_log(event="async_log_message", level=level, msg=msg)
         # xxxjack raising an exception from a ctypes callback doesn't work.
         # Need to fix at some point.
@@ -135,7 +133,7 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         if not self.lldash_logging:
             return
         lts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()) + f".{int(time.time()*1000)%1000:03d}"
-        message = f"sink_bin2dash: ts={lts}"
+        message = f"sink_lldpkg: ts={lts}"
         for k, v in kwargs.items():
             message += f" {k}={v}"
         print(message)
@@ -156,12 +154,12 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         c_streamDescs = (streamDesc*streamDescCount)(*self.streamDescs)
         if self.verbose:
             for i in range(streamDescCount):
-                print(f"bin2dash: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
-        self.lldash_log(event="vrt_create_ext2_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
-        self.handle = self.dll.vrt_create_ext2("bin2dashSink".encode('utf8'), self._onVrtError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, BIN2DASH_API_VERSION)
-        self.lldash_log(event="vrt_create_ext2_returned", url=self.url)
+                print(f"sink_lldpkg: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
+        self.lldash_log(event="lldpkg_create_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
+        self.handle = self.dll.lldpkg_create("bin2dashSink".encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
+        self.lldash_log(event="lldpkg_create_returned", url=self.url)
         if not self.handle:
-            raise Bin2dashError(f"vrt_create_ext2({url}) failed")
+            raise LLDashPackagerError(f"lldpkg_create({url}) failed")
 
         assert self.handle
         
@@ -191,9 +189,9 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def free(self) -> None:
         if self.handle:
             assert self.dll
-            self.lldash_log(event="vrt_destroy_call", url=self.url)
-            self.dll.vrt_destroy(self.handle)
-            self.lldash_log(event="vrt_destroy_returned", url=self.url)
+            self.lldash_log(event="lldpkg_destroy_call", url=self.url)
+            self.dll.lldpkg_destroy(self.handle)
+            self.lldash_log(event="lldpkg_destroy_returned", url=self.url)
             self.handle = None
             
     def feed(self, buffer : Union[bytes, bytearray], stream_index : int = 0) -> bool:
@@ -202,14 +200,14 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
         assert self.dll
         length = len(buffer)
         ok : bool
-        self.lldash_log(event="vrt_push_buffer_ext_call", url=self.url, stream_index=stream_index, length=length)
-        ok = self.dll.vrt_push_buffer_ext(self.handle, stream_index, bytes(buffer), length)
-        self.lldash_log(event="vrt_push_buffer_ext_returned", url=self.url)
+        self.lldash_log(event="lldpkg_push_buffer_call", url=self.url, stream_index=stream_index, length=length)
+        ok = self.dll.lldpkg_push_buffer(self.handle, stream_index, bytes(buffer), length)
+        self.lldash_log(event="lldpkg_push_buffer_returned", url=self.url)
             
         if ok:
             self.sizes_forward.append(length)
         else:
-            raise Bin2dashError(f"vrt_push_buffer_ext(handle, {stream_index}, buffer, {length}) failed")
+            raise LLDashPackagerError(f"lldpkg_push_buffer(handle, {stream_index}, buffer, {length}) failed")
         return ok
 
     def canfeed(self, timestamp : int, wait : bool=True) -> bool:
@@ -221,17 +219,17 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
     def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
-            print('bin2dash: {}: count=0'.format(name))
+            print('lldash_packager: {}: count=0'.format(name))
             return
         minValue = min(values)
         maxValue = max(values)
         avgValue = sum(values) / count
         if isInt:
-            fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+            fmtstring = 'lldash_packager: {}: count={}, average={:.3f}, min={:d}, max={:d}'
         else:
-            fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+            fmtstring = 'lldash_packager: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
 def cwipc_sink_lldpkg(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
     """Create a sink that transmits to a DASH ingestion server."""
-    return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)
+    return _LLDashPackagerSink(url, verbose=verbose, nodrop=nodrop, **kwargs)
