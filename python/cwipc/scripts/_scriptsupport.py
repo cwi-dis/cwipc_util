@@ -145,11 +145,11 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 )
             )
         name = None
-    elif args.sub:
+    elif args.lldplay:
         source = lambda : (
             decoder_factory(
                 source_lldplay.cwipc_source_lldplay(
-                    args.sub, 
+                    args.lldplay, 
                     verbose=(args.verbose > 1)
                     ),
                 verbose=(args.verbose > 1)
@@ -347,12 +347,12 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_selection_args.add_argument("--synthetic", action="store_true", help="Use synthetic pointcloud source")
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Use proxyserver pointcloud source server, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST")
-    input_selection_args.add_argument("--sub", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL")
+    input_selection_args.add_argument("--lldplay", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL")
     input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Use pointcloud(s) from ply or cwipcdump file or directory (in alphabetical order)")
     input_selection_args.add_argument("--certh", action="store", metavar="URL", help="Use Certh pointcloud stream from Rabbitmq server URL")
 
     input_args = parser.add_argument_group("input arguments")
-    input_args.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --sub (default: compressed with cwipc_codec)")
+    input_args.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --lldplay (default: compressed with cwipc_codec)")
     input_args.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
     input_args.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     input_args.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
@@ -408,7 +408,7 @@ def beginOfRun(args : argparse.Namespace) -> None:
             cwipc_kinect_dll_load(path)
         else:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
-            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, signals-unity-bridge, bin2dash")
+            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect")
             sys.exit(1)
 
 def endOfRun(args : argparse.Namespace) -> None:

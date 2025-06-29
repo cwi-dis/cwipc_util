@@ -155,7 +155,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
             for i in range(streamDescCount):
                 print(f"sink_lldpkg: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
         self.lldash_log(event="lldpkg_create_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
-        self.handle = self.dll.lldpkg_create("bin2dashSink".encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
+        self.handle = self.dll.lldpkg_create("cwpic_lldpkg".encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
         self.lldash_log(event="lldpkg_create_returned", url=self.url)
         if not self.handle:
             raise LLDashPackagerError(f"lldpkg_create({url}) failed")

@@ -128,7 +128,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
 
     def __init__(self, url : str, streamIndex : int=0, verbose : bool=False):
         threading.Thread.__init__(self)
-        self.name = 'cwipc_util._SignalsUnityBridgeSource'
+        self.name = 'cwipc_util._LLDashPlayoutSource'
         self.verbose = verbose
         self.url = url
         self.handle = None

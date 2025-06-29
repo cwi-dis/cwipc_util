@@ -21,16 +21,16 @@ def main():
     output_selection_args = parser.add_argument_group("output selection").add_mutually_exclusive_group()
     output_selection_args.add_argument("--port", action="store", default=4303, type=int, metavar="PORT", help="Port to serve compressed pointclouds on (default: 4303)")
     output_selection_args.add_argument("--forward", action="store", metavar="HOST:PORT", help="Send compressed pointclouds to cwipc_netserver running on HOST, port PORT")
-    output_selection_args.add_argument("--bin2dash", action="store", metavar="URL", help="Send compressed data to bin2dash URL in stead of serving. Example URL:  https://vrt-evanescent.viaccess-orca.com/pctest/")
+    output_selection_args.add_argument("--lldpkg", action="store", metavar="URL", help="Send compressed data to LLDashPackager URL in stead of serving. Example URL:  https://vrt-evanescent.viaccess-orca.com/pctest/")
     
     output_args = parser.add_argument_group("output arguments")
-    output_args.add_argument("--seg_dur", action="store", type=int, metavar="MS", help="Bin2dash segment duration (milliseconds, default 10000)")
-    output_args.add_argument("--timeshift_buffer", action="store", type=int, metavar="MS", help="Bin2dash timeshift buffer depth (milliseconds, default 30000)")
+    output_args.add_argument("--seg_dur", action="store", type=int, metavar="MS", help="LLDashPackager segment duration (milliseconds, default 10000)")
+    output_args.add_argument("--timeshift_buffer", action="store", type=int, metavar="MS", help="LLDashPackager timeshift buffer depth (milliseconds, default 30000)")
     output_args.add_argument("--noencode", action="store_true", help="Send uncompressed pointclouds (default: use cwipc_codec encoder)")
     output_args.add_argument("--octree_bits", action="append", type=int, metavar="N", help="Override/append encoder parameter (depth of octree)")
     output_args.add_argument("--jpeg_quality", action="append", type=int, metavar="N", help="Override/append encoder parameter (jpeg quality)")
-    output_args.add_argument("--tiled", action="store_true", help="Encode and transmit streams for every tile (bin2dash only)")
-    output_args.add_argument("--tile", action="append", type=int, help="Encode and transmit stream for specific tile (bin2dash only), can be specified more than once.")
+    output_args.add_argument("--tiled", action="store_true", help="Encode and transmit streams for every tile")
+    output_args.add_argument("--tile", action="append", type=int, help="Encode and transmit stream for specific tile, can be specified more than once.")
     args = parser.parse_args()
     beginOfRun(args)
     #
@@ -44,10 +44,10 @@ def main():
         encoder_factory = sink_encoder.cwipc_sink_encoder
     if args.noforward:
         forwarder = None
-    elif args.bin2dash:
+    elif args.lldpkg:
         forwarder = encoder_factory(
             sink_lldpkg.cwipc_sink_lldpkg(
-                args.bin2dash,
+                args.lldpkg,
                 seg_dur_in_ms=args.seg_dur,
                 timeshift_buffer_depth_in_ms=args.timeshift_buffer, 
                 verbose=(args.verbose > 1),
