@@ -418,7 +418,7 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
             fmtstring = 'source_sub: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
         
-def cwipc_source_sub(address : str, verbose=False) -> cwipc_rawsource_abstract:
+def cwipc_source_lldplay(address : str, verbose=False) -> cwipc_rawsource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from a DASH stream using MotionSpell SignalsUnityBridge"""
     _signals_unity_bridge_dll()
     src = _SignalsUnityBridgeSource(address, verbose=verbose)

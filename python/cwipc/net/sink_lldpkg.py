@@ -232,6 +232,6 @@ class _CpcBin2dashSink(cwipc_rawsink_abstract):
             fmtstring = 'bin2dash: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_bin2dash(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
+def cwipc_sink_lldpkg(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
     """Create a sink that transmits to a DASH ingestion server."""
     return _CpcBin2dashSink(url, verbose=verbose, nodrop=nodrop, **kwargs)

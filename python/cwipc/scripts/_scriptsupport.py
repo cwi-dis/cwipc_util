@@ -11,7 +11,7 @@ from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_sy
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
-from ..net import source_sub
+from ..net import source_lldplay
 from ..net.abstract import *
 from .. import filters
 
@@ -148,7 +148,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     elif args.sub:
         source = lambda : (
             decoder_factory(
-                source_sub.cwipc_source_sub(
+                source_lldplay.cwipc_source_lldplay(
                     args.sub, 
                     verbose=(args.verbose > 1)
                     ),
@@ -406,12 +406,6 @@ def beginOfRun(args : argparse.Namespace) -> None:
         elif name == 'cwipc_kinect':
             from _cwipc_kinect import cwipc_kinect_dll_load
             cwipc_kinect_dll_load(path)
-        elif name == 'signals-unity-bridge':
-            from ..net.source_sub import _signals_unity_bridge_dll
-            _signals_unity_bridge_dll(path)
-        elif name == 'bin2dash':
-            from ..net.sink_bin2dash import _bin2dash_dll
-            _bin2dash_dll(path)
         else:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
             print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, signals-unity-bridge, bin2dash")

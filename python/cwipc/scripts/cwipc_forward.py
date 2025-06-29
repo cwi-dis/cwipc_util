@@ -9,7 +9,7 @@ import traceback
 from ..net import sink_netserver
 from ..net import sink_encoder
 from ..net import sink_passthrough
-from ..net import sink_bin2dash
+from ..net import sink_lldpkg
 from ..net import sink_netingest
 from ._scriptsupport import *
 
@@ -46,7 +46,7 @@ def main():
         forwarder = None
     elif args.bin2dash:
         forwarder = encoder_factory(
-            sink_bin2dash.cwipc_sink_bin2dash(
+            sink_lldpkg.cwipc_sink_lldpkg(
                 args.bin2dash,
                 seg_dur_in_ms=args.seg_dur,
                 timeshift_buffer_depth_in_ms=args.timeshift_buffer, 
