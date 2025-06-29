@@ -13,7 +13,7 @@ LLDASH_PACKAGER_API_VERSION = 0x20250620B
 class LLDashPackagerError(RuntimeError):
     pass
 
-class vrt_handle_p(ctypes.c_void_p):
+class lldpkg_handle_p(ctypes.c_void_p):
     pass
     
 class FrameInfo(ctypes.Structure):
@@ -42,11 +42,10 @@ def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     if _lldpkg_dll_reference: return _lldpkg_dll_reference
     
     if libname == None:
-        if not libname:
-            # Current preferred use: SIGNALS_SMD_PATH points to the right directory.
-            dirname = os.environ.get('SIGNALS_SMD_PATH')
-            if dirname:
-                libname = os.path.join(dirname, 'lldash_packager.so')
+        # Current preferred use: SIGNALS_SMD_PATH points to the right directory.
+        dirname = os.environ.get('SIGNALS_SMD_PATH')
+        if dirname:
+            libname = os.path.join(dirname, 'lldash_packager.so')
         if not libname:
             libname = ctypes.util.find_library('lldash_packager.so')
             if not libname:
@@ -62,16 +61,16 @@ def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _lldpkg_dll_reference = ctypes.cdll.LoadLibrary(libname)
     
     _lldpkg_dll_reference.lldpkg_create.argtypes = [ctypes.c_char_p, LLDashPackagerErrorCallbackType, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
-    _lldpkg_dll_reference.lldpkg_create.restype = vrt_handle_p
+    _lldpkg_dll_reference.lldpkg_create.restype = lldpkg_handle_p
     
-    _lldpkg_dll_reference.lldpkg_destroy.argtypes = [vrt_handle_p]
+    _lldpkg_dll_reference.lldpkg_destroy.argtypes = [lldpkg_handle_p]
     _lldpkg_dll_reference.lldpkg_destroy.restype = None
     
-    _lldpkg_dll_reference.lldpkg_push_buffer_ext.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
+    _lldpkg_dll_reference.lldpkg_push_buffer_ext.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
     _lldpkg_dll_reference.lldpkg_push_buffer_ext.restype = ctypes.c_bool
     
     
-    _lldpkg_dll_reference.lldpkg_get_media_time.argtypes = [vrt_handle_p, ctypes.c_int, ctypes.c_int]
+    _lldpkg_dll_reference.lldpkg_get_media_time.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_int]
     _lldpkg_dll_reference.lldpkg_get_media_time.restype = ctypes.c_int64
     
     _lldpkg_dll_reference.lldpkg_get_version.argtypes = []
@@ -231,5 +230,5 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
 def cwipc_sink_lldpkg(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
-    """Create a sink that transmits to a DASH ingestion server."""
+    """Create a sink that transmits to a MotionSpell lldash ingestion server."""
     return _LLDashPackagerSink(url, verbose=verbose, nodrop=nodrop, **kwargs)
