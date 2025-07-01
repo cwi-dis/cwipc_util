@@ -66,8 +66,8 @@ def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _lldpkg_dll_reference.lldpkg_destroy.argtypes = [lldpkg_handle_p]
     _lldpkg_dll_reference.lldpkg_destroy.restype = None
     
-    _lldpkg_dll_reference.lldpkg_push_buffer_ext.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
-    _lldpkg_dll_reference.lldpkg_push_buffer_ext.restype = ctypes.c_bool
+    _lldpkg_dll_reference.lldpkg_push_buffer.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
+    _lldpkg_dll_reference.lldpkg_push_buffer.restype = ctypes.c_bool
     
     
     _lldpkg_dll_reference.lldpkg_get_media_time.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_int]
