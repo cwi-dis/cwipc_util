@@ -8,7 +8,7 @@ import queue
 from typing import Optional, List, Union
 from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract, vrt_fourcc_type
 
-SUB_API_VERSION = 0x20210729A
+SUB_API_VERSION = 0x20250620A
 
 _signals_unity_bridge_dll_reference = None
 
@@ -97,6 +97,9 @@ def _signals_unity_bridge_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     
     _signals_unity_bridge_dll_reference.sub_grab_frame.argtypes = [sub_handle_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
     _signals_unity_bridge_dll_reference.sub_grab_frame.restype = ctypes.c_size_t
+
+    _signals_unity_bridge_dll_reference.sub_get_version.argtypes = []
+    _signals_unity_bridge_dll_reference.sub_get_version.restype = ctypes.c_char_p
     
     return _signals_unity_bridge_dll_reference
  
@@ -123,6 +126,8 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
     fourcc : Optional[vrt_fourcc_type]
 
     output_queue : queue.Queue[Optional[bytes]]
+    popped_queue_head : Optional[bytes]
+    queue_lock : threading.Lock
 
     def __init__(self, url : str, streamIndex : int=0, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -134,6 +139,8 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         self.failed = False
         self.output_queue = queue.Queue(maxsize=2)
+        self.popped_queue_head = None
+        self.queue_lock = threading.Lock()
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -146,6 +153,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         self.lldash_logging = not not lldash_log_setting
         self.dll = _signals_unity_bridge_dll()
         assert self.dll
+        if self.verbose:
+            print(f"source_sub: native library version: {self.dll.sub_get_version().decode('utf8')}", file=sys.stderr, flush=True)
+        self.lldash_log(event="source_sub_init", version=self.dll.sub_get_version().decode('utf8'))
         if self.verbose: print(f"source_sub: sub_create()")
         self._onSubError = SubErrorCallbackType(self._onSubError)
         msgLevel = 3 if self.verbose else 0
@@ -181,7 +191,9 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
     def free(self) -> None:
         if self.handle:
             assert self.dll
+            if self.verbose: print(f"source_sub: calling sub_destroy()")
             self.dll.sub_destroy(self.handle)
+            if self.verbose: print(f"source_sub: sub_destroy() returned")
             self.handle = None
     
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
@@ -221,24 +233,35 @@ class _SignalsUnityBridgeSource(threading.Thread, cwipc_rawsource_abstract):
         return self.failed or (self.started and self.output_queue.empty() and not self.running)
     
     def available(self, wait : bool=False) -> bool:
-        if not self.output_queue.empty():
-            return True
-        if not wait or not self.running or self.failed:
-            return False
-        # Note: the following code may reorder packets...
         try:
-            packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-            if packet:
-                self.output_queue.put(packet)
-            return not not packet
-        except queue.Empty:
-            return False
-                
+            with self.queue_lock:
+                if self.popped_queue_head:
+                    return True
+                if not self.output_queue.empty():
+                    return True
+                if not wait or not self.running or self.failed:
+                    return False
+                try:
+                    packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
+                    if packet:
+                        assert not self.popped_queue_head
+                        self.popped_queue_head = packet
+                    return not not packet
+                except queue.Empty:
+                    return False
+        finally:
+            time.sleep(0.0001)  # Give other threads a chance to run
+                            
     def get(self) -> Optional[bytes]:
-        if self.eof():
-            return None
-        packet = self.output_queue.get()
-        return packet
+        with self.queue_lock:
+            if self.popped_queue_head:
+                rv = self.popped_queue_head
+                self.popped_queue_head = None
+                return rv
+            if self.eof():
+                return None
+            packet = self.output_queue.get()
+            return packet
 
     def count(self) -> int:
         if not self.streamCount:
