@@ -141,10 +141,10 @@ struct cwipc_skeleton_collection {
   * tiles a pointer to a unique ID of the camera (static string).
   */
 struct cwipc_tileinfo {
-    struct cwipc_vector normal;	/**< Normal indicating the direction the tile is facing */
+    struct cwipc_vector normal;	/**< Vector indicating the direction the tile is facing, often camera position */
     char* cameraName; 				/**< Identifier of the camera (static string) or NULL */
-    uint8_t ncamera; 			/**< Number of cameras that potentially contribute to this tile */
-    uint8_t cameraMask;         /**< Bit mask for this camera */
+    uint8_t ncamera; 			/**< Number of physical cameras that contribute to this tile */
+    uint8_t cameraMask;         /**< Bit mask for this tile */
 };
 
 #ifdef __cplusplus
@@ -390,16 +390,15 @@ public:
      *
      * Pointclouds produced by this source will (even after tile-processing)
      * never contain more tiles than this.
-     * Note that this number may therefore be higher than the actual number of
-     * tiles ever occurring in a pointcloud: a next tiling step may combine
-     * points into new tiles.
+     * Note that this number used to contain potential fused cameras but no longer:
+     * It is either 0 or 1 or nCamera+1.
      */
     virtual int maxtile() = 0;
 
     /** \brief Return information on a tile number.
      * \param tilenum The tile on which to obtain information.
      * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
-     * \return A boolean that is true if the tile could ever exist.
+     * \return A boolean that is true if the tile exists.
      *
      * Tile number 0 is a special case, representing the whole pointcloud.
      */
