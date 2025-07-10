@@ -3,7 +3,8 @@ import ctypes.util
 import sys
 import os
 import time
-from typing import Optional, Any, List, Union
+import urllib.parse
+from typing import Optional, Any, List, Union, Tuple
 from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
 
 _lldpkg_dll_reference = None
@@ -151,16 +152,29 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         # ctypes array constructors are a bit weird. Check the documentation.
         streamDescCount = len(self.streamDescs)
         c_streamDescs = (streamDesc*streamDescCount)(*self.streamDescs)
+        baseurl, mpdname = self._urlsplit(url.decode('utf8'))
         if self.verbose:
             for i in range(streamDescCount):
                 print(f"sink_lldpkg: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
-        self.lldash_log(event="lldpkg_create_call", url=self.url, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
-        self.handle = self.dll.lldpkg_create("cwpic_lldpkg".encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, url, self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
+        self.lldash_log(event="lldpkg_create_call", url=baseurl, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
+        self.handle = self.dll.lldpkg_create(mpdname.encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, baseurl.encode('utf8'), self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
         self.lldash_log(event="lldpkg_create_returned", url=self.url)
         if not self.handle:
             raise LLDashPackagerError(f"lldpkg_create({url}) failed")
 
         assert self.handle
+        
+    def _urlsplit(self, url : str) -> Tuple[str, str]:
+        split = urllib.parse.urlsplit(url)
+        path = split.path
+        basepath, mpdname = os.path.split(path)
+        if not mpdname:
+            mpdname = "cwpic_lldpkg.mpd"
+        mpdbasename, ext = os.path.splitext(mpdname)
+        if ext != ".mpd":
+            raise LLDashPackagerError(f"lldash_packager: URL {url} does not end with .mpd")
+        baseurl = urllib.parse.urlunsplit((split.scheme, split.netloc, basepath, split.query, split.fragment))
+        return baseurl, mpdbasename
         
     def stop(self) -> None:
         pass
