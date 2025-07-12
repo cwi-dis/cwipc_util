@@ -146,6 +146,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         self.streamCount = 0
         self.tile_info = None
         self.fourcc = None
+        self.error_condition = False
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
         self.lldash_logging = not not lldash_log_setting
         self.dll = _lldplay_dll()
@@ -169,8 +170,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         self.lldash_log(event="async_log_message", level=level, msg=msg)
         # xxxjack raising an exception from a ctypes callback doesn't work.
         # Need to fix at some point.
-        if False and level == 0:
-            raise LLDashPlayoutError(msg)
+        if level == 0:
+            self.error_condition = True
+            # raise LLDashPlayoutError(msg)
         
     def lldash_log(self, **kwargs):
         if not self.lldash_logging:
@@ -227,9 +229,13 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
             self.join()
         
     def eof(self) -> bool:
+        if self.error_condition:
+            return False
         return self.failed or (self.started and self.output_queue.empty() and not self.running)
     
     def available(self, wait : bool=False) -> bool:
+        if self.error_condition:
+            return False
         try:
             with self.queue_lock:
                 if self.popped_queue_head:
@@ -262,6 +268,8 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
 
     def count(self) -> int:
         if not self.streamCount:
+            if self.error_condition:
+                return 0
             assert self.handle
             assert self.dll
             assert self.started
@@ -314,7 +322,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         assert self.handle
         assert self.dll
         assert self.started
-        if True or self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileNum}, {qualityNum})")
+        if self.error_condition:
+            return False
+        if self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileNum}, {qualityNum})")
         self.lldash_log(event="lldplay_enable_stream", tileNum=tileNum, qualityNum=qualityNum, url=self.url)
         ok = self.dll.lldplay_enable_stream(self.handle, tileNum, qualityNum)
         if not ok:
@@ -328,7 +338,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         assert self.handle
         assert self.dll
         assert self.started
-        if True or self.verbose: print(f"lldash_play: lldplay_disable_stream(handle, {tileNum})")
+        if self.error_condition:
+            return False
+        if self.verbose: print(f"lldash_play: lldplay_disable_stream(handle, {tileNum})")
         self.lldash_log(event="lldplay_disable_stream", tileNum=tileNum, url=self.url)
         rv = self.dll.lldplay_disable_stream(self.handle, tileNum)
         return rv
@@ -337,7 +349,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         if self.verbose: print(f"lldash_play: thread started")
         last_successful_read_time = time.time()
         try:
-            while self.running:
+            while self.running and not self.error_condition:
                 receivedAnything = False
                 if self.EAGER_RECEIVE:
                     streamsToCheck = range(self.count())
@@ -420,4 +432,3 @@ def cwipc_source_lldplay(address : str, verbose=False) -> cwipc_rawsource_abstra
     _lldplay_dll()
     src = _LLDashPlayoutSource(address, verbose=verbose)
     return src
-        
