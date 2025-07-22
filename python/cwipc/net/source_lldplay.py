@@ -8,7 +8,7 @@ import queue
 from typing import Optional, List, Union
 from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract, vrt_fourcc_type
 
-LLDASH_PLAYOUT_API_VERSION = 0x20250620A
+LLDASH_PLAYOUT_API_VERSION = 0x20250722
 
 _lldplay_dll_reference = None
 

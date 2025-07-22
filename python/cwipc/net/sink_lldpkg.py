@@ -9,7 +9,7 @@ from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_r
 
 _lldpkg_dll_reference = None
 
-LLDASH_PACKAGER_API_VERSION = 0x20250620B
+LLDASH_PACKAGER_API_VERSION = 0x20250722
 
 class LLDashPackagerError(RuntimeError):
     pass
