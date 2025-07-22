@@ -61,7 +61,7 @@ def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
         os.putenv('SIGNALS_SMD_PATH', libdirname)
     _lldpkg_dll_reference = ctypes.cdll.LoadLibrary(libname)
     
-    _lldpkg_dll_reference.lldpkg_create.argtypes = [ctypes.c_char_p, LLDashPackagerErrorCallbackType, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
+    _lldpkg_dll_reference.lldpkg_create.argtypes = [ctypes.c_char_p, LLDashPackagerErrorCallbackType, ctypes.c_int, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
     _lldpkg_dll_reference.lldpkg_create.restype = lldpkg_handle_p
     
     _lldpkg_dll_reference.lldpkg_destroy.argtypes = [lldpkg_handle_p]
@@ -157,7 +157,8 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
             for i in range(streamDescCount):
                 print(f"sink_lldpkg: streamDesc[{i}]: MP4_4CC={c_streamDescs[i].MP4_4CC.to_bytes(4, 'big')}={c_streamDescs[i].MP4_4CC}, tileNumber={c_streamDescs[i].tileNumber}, x={c_streamDescs[i].x}, y={c_streamDescs[i].y}, z={c_streamDescs[i].z}, totalWidth={c_streamDescs[i].totalWidth}, totalHeight={c_streamDescs[i].totalHeight}")
         self.lldash_log(event="lldpkg_create_call", url=baseurl, seg_dur=self.seg_dur_in_ms, timeshift_buffer_depth=self.timeshift_buffer_depth_in_ms, streamDescCount=streamDescCount)
-        self.handle = self.dll.lldpkg_create(mpdname.encode('utf8'), self._onLLDashPackagerError, streamDescCount, c_streamDescs, baseurl.encode('utf8'), self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
+        msgLevel = 3 if self.verbose else 0
+        self.handle = self.dll.lldpkg_create(mpdname.encode('utf8'), self._onLLDashPackagerError, msgLevel, streamDescCount, c_streamDescs, baseurl.encode('utf8'), self.seg_dur_in_ms, self.timeshift_buffer_depth_in_ms, LLDASH_PACKAGER_API_VERSION)
         self.lldash_log(event="lldpkg_create_returned", url=self.url)
         if not self.handle:
             raise LLDashPackagerError(f"lldpkg_create({url}) failed")
