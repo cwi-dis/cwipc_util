@@ -29,11 +29,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
-        self.correspondence : float = np.inf 
+        self.correspondence : float = np.inf
+        self.correspondence_method : Optional[str] = None
         self.source_ndarray = None
         self.reference_ndarray = None
         self.reference_kdtree = None
         self.results = AnalysisResults()
+
+    @override
+    def set_correspondence_method(self, method : Optional[str]):
+        self.correspondence_method = method
 
     @override
     def set_correspondence(self, correspondence: float) -> None:
@@ -92,22 +97,36 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         mean = 0
         stddev = 0
         
+        mode_index = np.argmax(self.results.histogram)
+        mode = self.results.histogramEdges[mode_index+1]
+        median = float(np.median(overlap_distances))
         mean = float(np.mean(overlap_distances))
         stddev = float(np.std(overlap_distances))
         if self.verbose:
-            print(f"\t\tmean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+            print(f"\t\tmode={mode}, median={median}, mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
             
         # Last step: see how many points are below our new-found correspondence
-        filter = raw_distances <= mean
-        matched_point_count = np.count_nonzero(filter)
         assert self.results
-        self.results.minCorrespondence = mean
-        self.results.minCorrespondenceSigma = stddev
+        if self.correspondence_method == None or self.correspondence_method == "mean":
+            filter = raw_distances <= mean
+            self.results.minCorrespondence = mean
+            self.results.minCorrespondenceSigma = stddev
+        elif self.correspondence_method == "median":
+            filter = raw_distances <= median
+            self.results.minCorrespondence = median
+            self.results.minCorrespondenceSigma = 0
+        elif self.correspondence_method == "mode":
+            filter = raw_distances <= mode
+            self.results.minCorrespondence = mode
+            self.results.minCorrespondenceSigma = self.results.histogramEdges[mode_index+1] - self.results.histogramEdges[mode_index]
+        else:
+            assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
+        matched_point_count = np.count_nonzero(filter)
         self.results.minCorrespondenceCount = matched_point_count
         total_point_count = self.results.sourcePointCount
         fraction = matched_point_count/total_point_count
         if self.verbose:
-            print(f"\t\tresult: tilemask={self.results.tilemask}, corr={mean}, sigma={stddev}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
+            print(f"\t\tresult: tilemask={self.results.tilemask}, corr={self.results.minCorrespondence}, sigma={self.results.minCorrespondenceSigma}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
 
 
 
@@ -127,10 +146,10 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         assert self.reference_kdtree is not None
         distances = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
         distances = self._filter_infinites(distances)
-        self._compute_correspondence_errors(distances)
         histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
+        self._compute_correspondence_errors(distances)
         return True
 
 class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):

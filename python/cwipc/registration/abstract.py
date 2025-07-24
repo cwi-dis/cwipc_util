@@ -77,7 +77,12 @@ class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm between two point clouds which returns a minimum distance histogram and values"""
 
     plot_label : Optional[str]
+    correspondence_method: Optional[str]
 
+    @abstractmethod
+    def set_correspondence_method(self, method : Optional[str]):
+        ...
+        
     @abstractmethod
     def set_correspondence(self, correspondence : float) -> None:
         """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
