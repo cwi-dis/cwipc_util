@@ -114,19 +114,17 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         # Last step: see how many points are below our new-found correspondence
         assert self.results
         if self.correspondence_method == None or self.correspondence_method == "mean":
-            filter = raw_distances <= mean
             self.results.minCorrespondence = mean
             self.results.minCorrespondenceSigma = stddev
         elif self.correspondence_method == "median":
-            filter = raw_distances <= median
             self.results.minCorrespondence = median
             self.results.minCorrespondenceSigma = 0
         elif self.correspondence_method == "mode":
-            filter = raw_distances <= mode
             self.results.minCorrespondence = mode
             self.results.minCorrespondenceSigma = self.results.histogramEdges[mode_index+1] - self.results.histogramEdges[mode_index]
         else:
             assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
+        filter = raw_distances <= self.results.minCorrespondence + self.results.minCorrespondenceSigma
         matched_point_count = np.count_nonzero(filter)
         self.results.minCorrespondenceCount = matched_point_count
         total_point_count = self.results.sourcePointCount
