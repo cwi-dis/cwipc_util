@@ -81,11 +81,19 @@ class AnalysisAlgorithm(Algorithm):
 
     @abstractmethod
     def set_correspondence_method(self, method : Optional[str]):
+        """Set the algorithm used to comput point cloud correspondence based on point distances.
+        Values are mean, median, or mode."""
         ...
         
     @abstractmethod
-    def set_correspondence(self, correspondence : float) -> None:
-        """Set the correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+    def set_max_correspondence_distance(self, correspondence : float) -> None:
+        """Set the max correspondence: the maximum distance between two points that are candidates for being "the same" point."""
+        ...
+
+    @abstractmethod
+    def set_min_correspondence_distance(self, correspondence : float) -> None:
+        """Set the min correspondence: the smallest point distance that is meaningful. This value may be used to calculate the
+        histogram to be used for the mode algorithm"""
         ...
 
     @abstractmethod

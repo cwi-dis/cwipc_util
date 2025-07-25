@@ -29,7 +29,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def __init__(self):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
-        self.correspondence : float = np.inf
+        self.max_correspondence_distance : float = np.inf
+        self.min_correspondence_distance : float = 0.0
         self.correspondence_method : Optional[str] = None
         self.source_ndarray = None
         self.reference_ndarray = None
@@ -41,9 +42,14 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.correspondence_method = method
 
     @override
-    def set_correspondence(self, correspondence: float) -> None:
+    def set_min_correspondence_distance(self, correspondence: float) -> None:
         """Set the correspondence distance"""
-        self.correspondence = correspondence
+        self.min_correspondence_distance = correspondence
+
+    @override
+    def set_max_correspondence_distance(self, correspondence: float) -> None:
+        """Set the correspondence distance"""
+        self.max_correspondence_distance = correspondence
 
     def _prepare(self):
         self.source_ndarray = None
@@ -75,7 +81,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, workers=-1, distance_upper_bound=self.correspondence)
+        distances, _ = tree.query(points, workers=-1, distance_upper_bound=self.max_correspondence_distance)
         return distances
     
     def _filter_infinites(self, distances : NDArray[Any]) -> NDArray[Any]:
@@ -146,6 +152,12 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         assert self.reference_kdtree is not None
         distances = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
         distances = self._filter_infinites(distances)
+        if self.min_correspondence_distance > 0:
+            max_distance = np.max(distances)
+            min_distance = np.min(distances)
+            self.histogram_bincount = int((max_distance - min_distance) / self.min_correspondence_distance)
+            if self.verbose:
+                print(f"\t\tmin={min_distance}, max={max_distance}, bincount={self.histogram_bincount}")
         histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
@@ -169,7 +181,7 @@ class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
     @override
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.correspondence, workers=-1)
+        distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.max_correspondence_distance, workers=-1)
         return distances
     
 ## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence
