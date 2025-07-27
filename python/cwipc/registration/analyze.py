@@ -98,18 +98,22 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.results
         return self.results
     
+    def _mode_from_histogram(self, histogram, histogramEdges) -> Tuple[float, float]:
+        mode_index = np.argmax(histogram)
+        mode = histogramEdges[mode_index+1]
+        sigma = histogramEdges[mode_index+1] - histogramEdges[mode_index]
+        return mode, sigma
+
     def _compute_correspondence_errors(self, raw_distances: NDArray[Any]) -> None:
         overlap_distances = copy.deepcopy(raw_distances)
         mean = 0
         stddev = 0
         
-        mode_index = np.argmax(self.results.histogram)
-        mode = self.results.histogramEdges[mode_index+1]
         median = float(np.median(overlap_distances))
         mean = float(np.mean(overlap_distances))
         stddev = float(np.std(overlap_distances))
         if self.verbose:
-            print(f"\t\tmode={mode}, median={median}, mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+            print(f"\t\tmedian={median}, mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
             
         # Last step: see how many points are below our new-found correspondence
         assert self.results
@@ -120,8 +124,11 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.results.minCorrespondence = median
             self.results.minCorrespondenceSigma = 0
         elif self.correspondence_method == "mode":
+            mode, modeSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
             self.results.minCorrespondence = mode
-            self.results.minCorrespondenceSigma = self.results.histogramEdges[mode_index+1] - self.results.histogramEdges[mode_index]
+            self.results.minCorrespondenceSigma = modeSigma
+            if self.verbose:
+                print(f"\t\tmode={mode}, modeSigma={modeSigma}")
         else:
             assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
         filter = raw_distances <= self.results.minCorrespondence + self.results.minCorrespondenceSigma
