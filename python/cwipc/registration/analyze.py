@@ -30,7 +30,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         BaseAlgorithm.__init__(self)
         self.histogram_bincount = 400
         self.max_correspondence_distance : float = np.inf
-        self.min_correspondence_distance : float = 0.0
+        self.histogram_binsize : float = 0.0
         self.correspondence_method : Optional[str] = None
         self.source_ndarray = None
         self.reference_ndarray = None
@@ -44,7 +44,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     @override
     def set_min_correspondence_distance(self, correspondence: float) -> None:
         """Set the correspondence distance"""
-        self.min_correspondence_distance = correspondence
+        self.histogram_binsize = correspondence
 
     @override
     def set_max_correspondence_distance(self, correspondence: float) -> None:
@@ -131,7 +131,29 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             i += 1
         return i == length
     
-    def _compute_histogram(self, raw_distances: NDArray[Any], bins : int) -> Tuple[NDArray[Any], NDArray[Any]]:
+    def _compute_histogram_parameters(self, distances: NDArray[Any]) -> None:
+        """Ensure histogram_binsize and histogram_bincount are set and consistent."""
+        max_distance = np.max(distances)
+        min_distance = np.min(distances)
+        if self.histogram_binsize > 0:
+            if min_distance > 0:
+                min_distance = 0
+            self.histogram_bincount = int((max_distance - min_distance) / self.histogram_binsize)
+            if self.verbose:
+                print(f"\t\tmin={min_distance}, max={max_distance}, bincount={self.histogram_bincount} (based on min_correspondence_distance={self.histogram_binsize})")
+        else:
+            if min_distance > 0:
+                min_distance = 0
+            self.histogram_bincount = int((max_distance - min_distance) / self.histogram_binsize)
+            if self.verbose:
+                print(f"\t\tmin={min_distance}, max={max_distance}, min_correspondence_distance={self.histogram_binsize} (based on bincount={self.histogram_bincount})")
+        mismatch = (max_distance - min_distance) - (self.histogram_bincount * self.histogram_binsize)
+        assert abs(mismatch) <= self.histogram_binsize, f"Mismatch in histogram parameters: mismatch={mismatch} (max={max_distance}, min={min_distance}, bincount={self.histogram_bincount}, binsize={self.histogram_binsize})"
+        
+                
+    def _compute_histogram(self, raw_distances: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
+        assert self.histogram_bincount > 0
+        assert self.histogram_binsize > 0
         return np.histogram(raw_distances, bins=self.histogram_bincount)
     
     def _recompute_histogram(self, histogram: NDArray[Any], histogramEdges: NDArray[Any], binFactor: int) -> Tuple[NDArray[Any], NDArray[Any]]:
@@ -206,13 +228,9 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         assert self.reference_kdtree is not None
         distances = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
         distances = self._filter_infinites(distances)
-        if self.min_correspondence_distance > 0:
-            max_distance = np.max(distances)
-            min_distance = np.min(distances)
-            self.histogram_bincount = int((max_distance - min_distance) / self.min_correspondence_distance)
-            if self.verbose:
-                print(f"\t\tmin={min_distance}, max={max_distance}, bincount={self.histogram_bincount}")
-        histogram, edges = self._compute_histogram(distances, bins=self.histogram_bincount)
+        
+        self._compute_histogram_parameters(distances)
+        histogram, edges = self._compute_histogram(distances)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
         self._compute_correspondence_errors(distances)
