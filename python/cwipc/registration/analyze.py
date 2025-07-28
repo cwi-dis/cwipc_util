@@ -132,10 +132,12 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             i += 1
         return i == length
     
-    def _compute_histogram_parameters(self, distances: NDArray[Any]) -> None:
-        """Ensure histogram_binsize and histogram_bincount are set and consistent."""
+    def _compute_histogram_parameters(self, distances: NDArray[Any]) -> bool:
+        """Ensure histogram_binsize and histogram_bincount are set and consistent. Return False if all distances are the same."""
         max_distance = np.max(distances)
         min_distance = np.min(distances)
+        if min_distance == max_distance:
+            return False
         if min_distance > 0:
                 min_distance = 0
         if self.histogram_binsize > 0:
@@ -150,7 +152,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
                 print(f"\t\tmin={min_distance}, max={max_distance}, min_correspondence_distance={self.histogram_binsize} (based on bincount={self.histogram_bincount})")
         mismatch = (max_distance - min_distance) - (self.histogram_bincount * self.histogram_binsize)
         assert abs(mismatch) <= self.histogram_binsize, f"Mismatch in histogram parameters: mismatch={mismatch} (max={max_distance}, min={min_distance}, bincount={self.histogram_bincount}, binsize={self.histogram_binsize})"
-        
+        return True
                 
     def _compute_histogram(self, raw_distances: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
         assert self.histogram_bincount > 0
@@ -240,7 +242,15 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         distances = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
         distances = self._filter_infinites(distances)
         
-        self._compute_histogram_parameters(distances)
+        if not self._compute_histogram_parameters(distances):
+            print("Warning: all distances are the same")
+            value = distances[0]
+            self.results.minCorrespondence = value
+            self.results.minCorrespondenceSigma = 0
+            self.results.minCorrespondenceCount = distances.shape[0]
+            self.results.histogram = [value]
+            self.results.histogramEdges = [value, value]
+            return False
         histogram, edges = self._compute_histogram_kde(distances)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
