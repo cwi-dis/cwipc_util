@@ -131,6 +131,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             i += 1
         return i == length
     
+    def _compute_histogram(self, raw_distances: NDArray[Any], bins : int) -> Tuple[NDArray[Any], NDArray[Any]]:
+        return np.histogram(raw_distances, bins=self.histogram_bincount)
+    
     def _recompute_histogram(self, histogram: NDArray[Any], histogramEdges: NDArray[Any], binFactor: int) -> Tuple[NDArray[Any], NDArray[Any]]:
         assert binFactor > 0
         newBinCount = int(histogram.shape[0] / binFactor)
@@ -209,7 +212,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
             self.histogram_bincount = int((max_distance - min_distance) / self.min_correspondence_distance)
             if self.verbose:
                 print(f"\t\tmin={min_distance}, max={max_distance}, bincount={self.histogram_bincount}")
-        histogram, edges = np.histogram(distances, bins=self.histogram_bincount)
+        histogram, edges = self._compute_histogram(distances, bins=self.histogram_bincount)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
         self._compute_correspondence_errors(distances)
