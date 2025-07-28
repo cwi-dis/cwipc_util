@@ -5,6 +5,7 @@ import copy
 import numpy as np
 from numpy.typing import NDArray
 import scipy.spatial
+import scipy.stats
 import open3d
 from .. import cwipc_wrapper, cwipc_tilefilter
 from .abstract import *
@@ -117,7 +118,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             if self.verbose:
                 print(f"\t\tIncreasing binFactor from {binFactor} to {binFactor+1} to recompute histogram")
             binFactor = binFactor+1
-            current_histogram, current_histogramEdges = self._recompute_histogram(current_histogram, current_histogramEdges, binFactor)
+            current_histogram, current_histogramEdges = self._recompute_histogram(histogram, histogramEdges, binFactor)
         
     def _compute_derivative(self, histogram: NDArray[Any]) -> NDArray[Any]:
         return np.diff(histogram, prepend=0)
@@ -135,16 +136,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         """Ensure histogram_binsize and histogram_bincount are set and consistent."""
         max_distance = np.max(distances)
         min_distance = np.min(distances)
-        if self.histogram_binsize > 0:
-            if min_distance > 0:
+        if min_distance > 0:
                 min_distance = 0
+        if self.histogram_binsize > 0:
+            # We have a binsize (set by our caller), which is the minimum granularity we're interested in. Compute the binsize from this.
             self.histogram_bincount = int((max_distance - min_distance) / self.histogram_binsize)
             if self.verbose:
                 print(f"\t\tmin={min_distance}, max={max_distance}, bincount={self.histogram_bincount} (based on min_correspondence_distance={self.histogram_binsize})")
         else:
-            if min_distance > 0:
-                min_distance = 0
-            self.histogram_bincount = int((max_distance - min_distance) / self.histogram_binsize)
+            assert self.histogram_bincount > 0, "Either histogram_binsize or histogram_bincount must be set"
+            self.histogram_binsize = (max_distance - min_distance) / self.histogram_bincount
             if self.verbose:
                 print(f"\t\tmin={min_distance}, max={max_distance}, min_correspondence_distance={self.histogram_binsize} (based on bincount={self.histogram_bincount})")
         mismatch = (max_distance - min_distance) - (self.histogram_bincount * self.histogram_binsize)
@@ -156,6 +157,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.histogram_binsize > 0
         return np.histogram(raw_distances, bins=self.histogram_bincount)
     
+    def _compute_histogram_kde(self, raw_distances: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
+        assert self.histogram_bincount > 0
+        assert self.histogram_binsize > 0
+        kde = scipy.stats.gaussian_kde(raw_distances)
+        if self.verbose:
+            print(f"\t\tgaussian_kde: bandwidth={kde.factor}, nPoint={len(raw_distances)}")
+        edges = np.linspace(0, np.max(raw_distances), self.histogram_bincount + 1)
+        values = kde.evaluate(edges[1:])
+        return values, edges
+        
     def _recompute_histogram(self, histogram: NDArray[Any], histogramEdges: NDArray[Any], binFactor: int) -> Tuple[NDArray[Any], NDArray[Any]]:
         assert binFactor > 0
         newBinCount = int(histogram.shape[0] / binFactor)
@@ -230,7 +241,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         distances = self._filter_infinites(distances)
         
         self._compute_histogram_parameters(distances)
-        histogram, edges = self._compute_histogram(distances)
+        histogram, edges = self._compute_histogram_kde(distances)
         self.results.histogram = histogram
         self.results.histogramEdges = edges
         self._compute_correspondence_errors(distances)
