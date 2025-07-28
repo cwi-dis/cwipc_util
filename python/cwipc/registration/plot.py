@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from .abstract import AnalysisResults
 
-PLOT_COLORS = ["r", "g", "b", "yellow", "magenta", "cyan", "orange", "lime", "violet", "chocolate", "slategrey", "lavender"] # 12 colors. First 4 match cwipc_tilecolor().
+PLOT_COLORS = ["r", "g", "b", "orange", "magenta", "cyan", "yellow", "lime", "violet", "chocolate", "slategrey", "lavender"] # 12 colors. First 4 match cwipc_tilecolor().
 
 DEFAULT_PLOT_STYLE = ["count","cumulative"]
 
