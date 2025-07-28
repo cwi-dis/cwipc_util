@@ -104,6 +104,46 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         sigma = histogramEdges[mode_index+1] - histogramEdges[mode_index]
         return mode, sigma
 
+    def _tail_from_histogram(self, histogram, histogramEdges) -> Tuple[float, float]:
+        current_histogram = histogram
+        current_histogramEdges = histogramEdges
+        binFactor = 1
+        while True:
+            derivative = self._compute_derivative(current_histogram)
+            if self._continuous_increase_decrease(derivative):
+                # We have the correct binsize.
+                return self._mode_from_histogram(current_histogram, current_histogramEdges)
+            # We need to increase the binsize.
+            if self.verbose:
+                print(f"\t\tIncreasing binFactor from {binFactor} to {binFactor+1} to recompute histogram")
+            binFactor = binFactor+1
+            current_histogram, current_histogramEdges = self._recompute_histogram(current_histogram, current_histogramEdges, binFactor)
+        
+    def _compute_derivative(self, histogram: NDArray[Any]) -> NDArray[Any]:
+        return np.diff(histogram, prepend=0)
+    
+    def _continuous_increase_decrease(self, derivative: NDArray[Any]) -> bool:
+        length = derivative.shape[0]
+        i = 0
+        while i < length and derivative[i] >= 0:
+            i += 1
+        while i < length and derivative[i] <= 0:
+            i += 1
+        return i == length
+    
+    def _recompute_histogram(self, histogram: NDArray[Any], histogramEdges: NDArray[Any], binFactor: int) -> Tuple[NDArray[Any], NDArray[Any]]:
+        assert binFactor > 0
+        newBinCount = int(histogram.shape[0] / binFactor)
+        newHistogram = np.zeros((newBinCount,), dtype=histogram.dtype)
+        newHistogramEdges = np.zeros((newBinCount+1,), dtype=histogramEdges.dtype)
+        newHistogramEdges[0] = histogramEdges[0]
+        for i in range(newBinCount):
+            newHistogramEdges[i+1] = histogramEdges[(i+1) * binFactor]
+            for j in range(binFactor):
+                if i * binFactor + j < histogram.shape[0]:
+                    newHistogram[i] += histogram[i * binFactor + j]
+        return newHistogram, newHistogramEdges
+
     def _compute_correspondence_errors(self, raw_distances: NDArray[Any]) -> None:
         overlap_distances = copy.deepcopy(raw_distances)
         mean = 0
@@ -124,11 +164,17 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.results.minCorrespondence = median
             self.results.minCorrespondenceSigma = 0
         elif self.correspondence_method == "mode":
-            mode, modeSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
-            self.results.minCorrespondence = mode
-            self.results.minCorrespondenceSigma = modeSigma
+            tail, tailSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
+            self.results.minCorrespondence = tail
+            self.results.minCorrespondenceSigma = tailSigma
             if self.verbose:
-                print(f"\t\tmode={mode}, modeSigma={modeSigma}")
+                print(f"\t\tmode={tail}, modeSigma={tailSigma}")
+        elif self.correspondence_method == "tail":
+            tail, tailSigma = self._tail_from_histogram(self.results.histogram, self.results.histogramEdges)
+            self.results.minCorrespondence = tail
+            self.results.minCorrespondenceSigma = tailSigma
+            if self.verbose:
+                print(f"\t\ttail={tail}, tailSigma={tailSigma}")
         else:
             assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
         filter = raw_distances <= self.results.minCorrespondence + self.results.minCorrespondenceSigma
