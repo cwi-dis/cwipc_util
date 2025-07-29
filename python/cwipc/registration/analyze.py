@@ -37,6 +37,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.reference_ndarray = None
         self.reference_kdtree = None
         self.results = AnalysisResults()
+        self.gaussian_bw_method = None
 
     @override
     def set_correspondence_method(self, method : Optional[str]):
@@ -162,7 +163,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _compute_histogram_kde(self, raw_distances: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
         assert self.histogram_bincount > 0
         assert self.histogram_binsize > 0
-        kde = scipy.stats.gaussian_kde(raw_distances)
+        kde = scipy.stats.gaussian_kde(raw_distances, bw_method=self.gaussian_bw_method)
         if self.verbose:
             print(f"\t\tgaussian_kde: bandwidth={kde.factor}, nPoint={len(raw_distances)}")
         edges = np.linspace(0, np.max(raw_distances), self.histogram_bincount + 1)
