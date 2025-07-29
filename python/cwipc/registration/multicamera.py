@@ -12,7 +12,10 @@ from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, c
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
+from .analyze import RegistrationAnalyzerIgnoreNearest
 from .plot import Plotter
+
+OrderedCameraList = List[Tuple[int, float, float]] # Cameranumber, correspondence, belowcorrespondencefraction
 class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlgorithm):
     """\
     Base class for multi-camera alignment algorithms.
@@ -79,7 +82,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
 
-    def _pre_analyse(self) -> List[int]:
+    def _pre_analyse(self, toSelf=False) -> OrderedCameraList:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
         """
@@ -89,26 +92,36 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         for camnum in range(self.camera_count()):
             tilemask = self.tilemask_for_camera_index(camnum)
             othertilemask = 0xff ^ tilemask
-            analyzer = self._prepare_analyze()
+            if toSelf:
+                analyzer = RegistrationAnalyzerIgnoreNearest()
+                analyzer.verbose = self.verbose
+            else:
+                analyzer = self._prepare_analyze()
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
-            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            if toSelf:
+                analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
+                analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
+                label = "precision"
+            else:
+                analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+                label = "correspondence"
+            analyzer.set_correspondence_method('median')
             analyzer.run()
             results = analyzer.get_results()
             self.pre_analysis_results.append(results)
 
         if self.verbose:
-            self._print_correspondences(f"{self.__class__.__name__}: Before:  Per-camera correspondence", self.pre_analysis_results)
+            self._print_correspondences(f"{self.__class__.__name__}: Before:  Per-camera capture {label}", self.pre_analysis_results)
 
         if self.show_plot:
-            self._plot(f"{self.__class__.__name__}: Before", self.pre_analysis_results)
+            self._plot(f"{self.__class__.__name__}: Capture {label}", self.pre_analysis_results)
 
-        camnums_and_correspondences = []
+        camnums_and_correspondences : OrderedCameraList = []
         for i in range(len(self.pre_analysis_results)):
             r = self.pre_analysis_results[i]
-            camnums_and_correspondences.append((i, r.minCorrespondence))
+            camnums_and_correspondences.append((i, r.minCorrespondence, r.minCorrespondenceCount/r.sourcePointCount))
         camnums_and_correspondences.sort(key=lambda x: x[1])
-        todo = [camnum for camnum, _ in camnums_and_correspondences]
-        return todo
+        return camnums_and_correspondences
     
     @abstractmethod
     def run(self) -> bool:
@@ -130,7 +143,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             self.results.append(results)
         
         if self.verbose:
-            self._print_correspondences(f"{self.__class__.__name__}: After:  Per-camera correspondence", self.results)
+            self._print_correspondences(f"{self.__class__.__name__}: After:  Per-camera correspondence to others", self.results)
 
         if self.show_plot:
             self._plot(f"{self.__class__.__name__}: After", self.results)
@@ -253,15 +266,15 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
-        todo = self._pre_analyse()
+        todo = self._pre_analyse(toself=False)
 
-        for camnum in todo:
+        for camnum, corr, fraction in todo:
             aligner = self._prepare_aligner()
             tilemask = self.tilemask_for_camera_index(camnum)
             othertilemask = 0xff ^ tilemask
             aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
             aligner.set_reference_pointcloud(self.original_pointcloud, othertilemask)
-            # aligner.set_correspondence(self.precision_threshold)
+            aligner.set_correspondence(corr)
             aligner.run()
             
             # Remember resultant pointcloud
@@ -305,7 +318,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             raise ValueError(f"Camera {camnum} has no point cloud")
         return pc
     
-    def _mid_analyse(self, remaining : List[int]) -> List[int]:
+    def _mid_analyse(self, remaining : OrderedCameraList) -> OrderedCameraList:
         """
         Analyze the remaining camera pointclouds for how well they match the current result. Returns a list of camera indices in order of best to worst correspondence.
         """
@@ -313,7 +326,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         assert self.resultant_pointcloud
         assert self.camera_count() > 1
         remaining_results : List[AnalysisResults] = []
-        for camnum in remaining:
+        for camnum, _, _ in remaining:
             tilemask = self.tilemask_for_camera_index(camnum)
             analyzer = self._prepare_analyze()
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
@@ -326,21 +339,24 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             self._print_correspondences(f"{self.__class__.__name__}: Mid:  Per-camera correspondence", remaining_results)
 
 
-        camnums_and_mismatch = []
+        camnums_and_mismatch : OrderedCameraList = []
         for i in range(len(remaining_results)):
             r = remaining_results[i]
             assert r.tilemask
             camnum = self.camera_index_for_tilemask(r.tilemask)
-            mismatch = (r.minCorrespondence + r.minCorrespondenceSigma) * (r.sourcePointCount - r.minCorrespondenceCount)
-            camnums_and_mismatch.append((camnum, mismatch))
-        camnums_and_mismatch.sort(key=lambda x: x[1])
-        print(f"xxxjack: {self.__class__.__name__}: Mid:  Sorted cameras by mismatch: {camnums_and_mismatch}")
-        todo = [camnum for camnum, _ in camnums_and_mismatch]
+            if False:
+                mismatch = (r.minCorrespondence + r.minCorrespondenceSigma) * (r.sourcePointCount - r.minCorrespondenceCount)
+            else:
+                mismatch = r.minCorrespondence
+            camnums_and_mismatch.append((camnum, mismatch, r.minCorrespondenceCount / r.sourcePointCount))
+        camnums_and_mismatch.sort(key=lambda x: -x[2])
+        print(f"xxxjack: {self.__class__.__name__}: Mid:  Sorted cameras by expected improvement: {camnums_and_mismatch}")
 
         if self.show_plot:
             self._plot(f"{self.__class__.__name__}: Mid", remaining_results)
 
-        return todo
+        return camnums_and_mismatch
+
     def dump_pointclouds(self, filename: str, source: cwipc_wrapper, target: cwipc_wrapper):
         if self.verbose:
             print(f"Dumping point clouds to {filename}")
@@ -357,27 +373,27 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
-        todo = self._pre_analyse()
+        todo = self._pre_analyse(toSelf=True)
 
         # The first point cloud we keep as-is, and use it as the destination set.
-        first = todo.pop(0)
+        first, _, _ = todo.pop(0)
         if self.verbose:
-            print(f"{self.__class__.__name__}: First camera to align is {first}")
+            print(f"{self.__class__.__name__}: First camera (not aligned) is {first}")
         self.resultant_pointcloud = self._get_pc_for_camnum(first)
         step = 0
         while todo:
             step += 1
             if len(todo) > 1:
                 todo = self._mid_analyse(todo)
-            camnum = todo.pop(0)
+            camnum, corr, fraction = todo.pop(0)
             if self.verbose:
-                print(f"{self.__class__.__name__}: Next camera to align is {camnum}")
+                print(f"{self.__class__.__name__}: Next camera to align is {camnum}. corr={corr}, fraction={fraction}")
             next_pc = self._get_pc_for_camnum(camnum)
             self.dump_pointclouds(f"multicamera_iterative_step_{step}_in_cam{camnum}.ply", self.resultant_pointcloud, next_pc)
             aligner = self._prepare_aligner()
             aligner.set_source_pointcloud(next_pc)
             aligner.set_reference_pointcloud(self.resultant_pointcloud)
-            # aligner.set_correspondence(self.precision_threshold)
+            aligner.set_correspondence(corr)
             aligner.run()
 
             new_next_pc = aligner.get_result_pointcloud()

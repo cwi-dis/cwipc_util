@@ -14,6 +14,7 @@ from cwipc.registration.util import *
 import cwipc.registration.multicoarse
 import cwipc.registration.fine
 import cwipc.registration.multicamera
+import cwipc.registration.analyze
 from cwipc.io.visualizer import Visualizer
 
 try:
@@ -285,10 +286,10 @@ class Registrator:
         else:
             self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
 
-#        if self.args.algorithm_analyzer:
-#            self.analyzer_class = getattr(cwipc.registration.multianalyze, args.algorithm_analyzer)
-#        else:
-#            self.analyzer_class = cwipc.registration.multianalyze.DEFAULT_MULTICAM_ANALYZER_ALGORITHM
+        if self.args.algorithm_analyzer:
+            self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
+        else:
+            self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
 
         if self.args.recording:
             if self.args.cameraconfig:
@@ -334,20 +335,23 @@ class Registrator:
         #
         # Now we really start
         #
-        if not self.open_capturer():
-            if self.args.recording:
-                print(f"cwipc_register: Cannot open capturer, probably an issue with {self.args.cameraconfig}")
-                return False
-            print("cwipc_register: Cannot open capturer. Presume missing cameraconfig, try to create it.")
-            self.create_cameraconfig()
+        if self.args.nograb:
+            self.create_nograb_cameraconfig()
+        else:
             if not self.open_capturer():
-                print("cwipc_register: Still cannot open capturer. Giving up.")
-                return False
-        assert self.capturer
+                if self.args.recording:
+                    print(f"cwipc_register: Cannot open capturer, probably an issue with {self.args.cameraconfig}")
+                    return False
+                print("cwipc_register: Cannot open capturer. Presume missing cameraconfig, try to create it.")
+                self.create_cameraconfig()
+                if not self.open_capturer():
+                    print("cwipc_register: Still cannot open capturer. Giving up.")
+                    return False
+            assert self.capturer
 
-        self._capture_some_frames(self.capturer)
-                    
-        self.cameraconfig.load(self.capturer.get_config())
+            self._capture_some_frames(self.capturer)
+                        
+            self.cameraconfig.load(self.capturer.get_config())
         must_reload = False
         if not self.dry_run:
             anyChanged = False
@@ -597,7 +601,10 @@ class Registrator:
                 print(f"cwipc_register: Saved {self.args.cameraconfig}")
         else:
             print(f"cwipc_register: Not saving {self.args.cameraconfig}, --dry-run specified.")
-        
+    
+    def create_nograb_cameraconfig(self) -> None:
+        self.cameraconfig.load(open("cameraconfig.json", "rb").read())
+
     def capture(self) -> cwipc.cwipc_wrapper:
         if self.args.nograb:
             pc = cwipc.cwipc_read(self.args.nograb, 0)
