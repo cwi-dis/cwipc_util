@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 import copy
 import math
@@ -441,22 +442,50 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         ok = self._post_analyse()
         return ok
 
+class MultiCameraIterativeInteractive(MultiCameraIterative):
+    """\
+    Similar to MultiCameraIterative, but before every step the user can change the choices made.
+    After each step the user can decide to accept it, or reject it and try something else"""
+
+    def _accept_step(self) -> bool:
+        return self._ask("Accept this result (yes/no)", "no") == "yes"
+    
+    def _select_next(self) -> Tuple[int, float, float]:
+        camnum, corr, fraction = super()._select_next()
+        camnum = int(self._ask("Tile to align", str(camnum)))
+        corr = float(self._ask("Max correspondence", str(corr)))
+        return camnum, corr, fraction
+
+    def _ask(self, prompt : str, default : str) -> str:
+        sys.stdout.write(f"{prompt} [{default}] ? ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        line = line.strip()
+        if not line: 
+            return default
+        return line
+    
 DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterative
 
 ALL_MULTICAMERA_ALGORITHMS = [
     MultiCameraNoOp,
     MultiCameraOneToAllOthers,
     MultiCameraIterative,
-#    MultiCameraIterativeFloor,
+    MultiCameraIterativeInteractive,
 ]
 
 
 HELP_MULTICAMERA_ALGORITHMS = """
+
+## Multicamera algorithms
+ 
 The multicamera algorithm tries to align multiple cameras to each other. It uses an alignment
 algorithm repeatedly, and an analysis algorithm to determine the effect of an alignment.
 
 The various multicamera algorithms differ in the way they select the cameras to align, and
 what to try and align it to (either all other cameras, or all cameras that have been previously aligned)
+
+Default multicamera algorithm is """ + DEFAULT_MULTICAMERA_ALGORITHM.__name__ + """.
 
 The following multicamera algorithms are available:
 

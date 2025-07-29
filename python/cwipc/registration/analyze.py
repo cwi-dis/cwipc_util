@@ -261,7 +261,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
 class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
     """
     This algorithm computes the registration between two point clouds, ignoring the nearest point.
-    This is useful to match a point cloud to itself.
+    This is mainly useful to match a point cloud to itself, to determine its capture quality.
     """
     
     def __init__(self):
@@ -277,61 +277,7 @@ class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
         """For each point in points, get the distance to the nearest point in the tree"""
         distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.max_correspondence_distance, workers=-1)
         return distances
-    
-## xxxjack we need a second-order registration analyzer, which computes the second-best correspondence
 
-class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
-    """
-    This algorithm computes the overlap between two point clouds.
-    It is a base class, see the subclasses for various different algorithms.
-    """
-    results : Optional[OverlapAnalysisResults]
-
-    def __init__(self):
-        BaseAlgorithm.__init__(self)
-        self.correspondence : float = np.inf 
-        self.results = None
-
-    def set_correspondence(self, correspondence: float) -> None:
-        """Set the correspondence distance"""
-        self.correspondence = correspondence
-
-    def _get_source_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
-        assert self.source_pointcloud
-        source_o3d_pointcloud = open3d.geometry.PointCloud()
-        source_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
-        source_o3d_pointcloud.points = open3d.utility.Vector3dVector(source_points_nparray)
-        return source_o3d_pointcloud
-    
-    def _get_reference_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
-        assert self.reference_pointcloud
-        reference_o3d_pointcloud = open3d.geometry.PointCloud()
-        reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
-        reference_o3d_pointcloud.points = open3d.utility.Vector3dVector(reference_points_nparray)
-        return reference_o3d_pointcloud
-    
-    @override
-    def run(self) -> bool:
-        """Run the algorithm"""
-        source_o3d_pointcloud = self._get_source_o3d_pointcloud()
-        reference_o3d_pointcloud = self._get_reference_o3d_pointcloud()
-        result = open3d.pipelines.registration.evaluate_registration(
-            source_o3d_pointcloud, reference_o3d_pointcloud, max_correspondence_distance=self.correspondence)
-        self.results = OverlapAnalysisResults()
-        self.results.fitness = result.fitness
-        self.results.rmse = result.inlier_rmse
-        self.results.sourcePointCount = len(source_o3d_pointcloud.points)
-        self.results.referencePointCount = len(reference_o3d_pointcloud.points)
-        self.results.tilemask = self.source_tilemask
-        self.results.referenceTilemask = self.reference_tilemask
-        return True
-
-    @override
-    def get_results(self) -> OverlapAnalysisResults:
-        """Returns the analisys results.
-        """
-        assert self.results
-        return self.results
 
 DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
@@ -341,7 +287,11 @@ ALL_ANALYZER_ALGORITHMS = [
 ]
 
 HELP_ANALYZER_ALGORITHMS = """
+## Analyzer algorithms
+
 The analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
 
-The following multicamera analyzer algorithms are available:
+The default analyzer algorithm is """ + DEFAULT_ANALYZER_ALGORITHM.__name__ + """
+
+The following analyzer algorithms are available:
 """ + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_ANALYZER_ALGORITHMS])

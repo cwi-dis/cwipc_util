@@ -94,6 +94,7 @@ def main():
     if args.debug:
         args.verbose = True
     if args.help_algorithms:
+        print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
         print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
         print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
         return 0

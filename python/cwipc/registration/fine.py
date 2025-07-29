@@ -283,7 +283,11 @@ ALL_FINE_ALIGNMENT_ALGORITHMS = [
 ]
 
 HELP_FINE_ALIGNMENT_ALGORITHMS = """
-The alignment algorithm looks at a source point cloud and tries to  find the best transformation to align it with a target point cloud.
+## Fine alignment algorithms
+
+The alignment algorithm looks at a source point cloud and tries to find the best transformation to align it with a target point cloud.
+
+The default fine alignment algorithm is """ + DEFAULT_FINE_ALIGNMENT_ALGORITHM.__name__ + """
 
 The following alignment algorithms are available:
 """ + "\n".join([f"\t{alg.__name__}\n{algdoc(alg, 2)}" for alg in ALL_FINE_ALIGNMENT_ALGORITHMS])
