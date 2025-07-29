@@ -46,7 +46,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.nCamera = 0
 
         self.change = []
-        self.cellsize_factor = math.sqrt(2)
+        self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
         self.proposed_cellsize = 0
 
     def _prepare_analyze(self) -> AnalysisAlgorithm:
@@ -101,11 +101,12 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             if toSelf:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
+                analyzer.set_correspondence_method('median')
                 label = "precision"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+                analyzer.set_correspondence_method('mode')
                 label = "correspondence"
-            analyzer.set_correspondence_method('median')
             analyzer.run()
             results = analyzer.get_results()
             self.pre_analysis_results.append(results)
@@ -150,8 +151,10 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         
         correspondences = [r.minCorrespondence for r in self.results]
         max_correspondence = max(correspondences)
+        min_correspondence = min(correspondences)
+        avg_correspondence = (max_correspondence+min_correspondence)/2
 
-        self.proposed_cellsize = max_correspondence*self.cellsize_factor
+        self.proposed_cellsize = min_correspondence*self.cellsize_factor
         self._compute_change()
         if self.verbose:
             print(f"{self.__class__.__name__}: Change in matrices after alignment:")
@@ -373,6 +376,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
+        _ = self._pre_analyse(toSelf=False) # Only needed for verbose output and plots.
         todo = self._pre_analyse(toSelf=True)
 
         # The first point cloud we keep as-is, and use it as the destination set.

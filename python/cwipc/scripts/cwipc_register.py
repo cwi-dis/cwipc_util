@@ -15,6 +15,7 @@ import cwipc.registration.multicoarse
 import cwipc.registration.fine
 import cwipc.registration.multicamera
 import cwipc.registration.analyze
+import cwipc.registration.plot
 from cwipc.io.visualizer import Visualizer
 
 try:
@@ -257,7 +258,6 @@ class Registrator:
         self.show_plot = self.args.plot
         if args.plotstyle:
             self.show_plot = True
-#            cwipc.registration.multianalyze.set_default_plot_style(args.plotstyle)
         self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
@@ -733,22 +733,29 @@ class Registrator:
         assert self.analyzer_class
         if True or self.verbose:
             print(f"cwipc_register: Use analyzer class {self.analyzer_class.__name__}")
-        analyzer = self.analyzer_class()
-        analyzer.verbose = self.verbose
-        analyzer.debug = self.debug
-        analyzer.add_tiled_pointcloud(pc)
-        analyzer.plot_label = label
+        allResults : List[AnalysisResults] = []
         start_time = time.time()
-        analyzer.run_twice()
+        for cam_index in range(self.cameraconfig.camera_count()):
+            targettile = 1 << cam_index
+            othertile = 255 - targettile
+            analyzer = self.analyzer_class()
+            analyzer.set_source_pointcloud(pc, targettile)
+            analyzer.set_reference_pointcloud(pc, othertile)
+            analyzer.set_correspondence_method('mode')
+            analyzer.run()
+            results = analyzer.get_results()
+            allResults.append(results)
         stop_time = time.time()
         print(f"cwipc_register: analyzer ran for {stop_time-start_time:.3f} seconds")
-        results = analyzer.get_results()
-        results.sort_by_weight(weightstyle='order')
-        results.print_correspondences(label=f"cwipc_register: Sorted correspondences {label}")
+
         if self.show_plot:
-            analyzer.plot(show=True)
-        
-        return results.overallCorrespondence      
+            plotter = cwipc.registration.plot.Plotter(title="Results")
+            plotter.set_results(allResults)
+            plotter.plot(show=True)
+        correspondences = []
+        for result in allResults:
+            correspondences.append(result.minCorrespondence)
+        return max(correspondences)      
 
     def _capture_some_frames(self, capturer : cwipc_tiledsource_abstract) -> None:
         # Capture some frames (so we know get_config() will have obtained all parameters).
