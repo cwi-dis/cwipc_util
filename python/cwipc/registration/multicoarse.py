@@ -2,7 +2,11 @@
 import copy
 import math
 import struct
-from typing import List, Optional, Any, Tuple, Sequence, cast, Dict, override
+from typing import List, Optional, Any, Tuple, Sequence, cast, Dict
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 import numpy as np
 from numpy.typing import NDArray
 import open3d

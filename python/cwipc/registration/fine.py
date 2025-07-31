@@ -1,5 +1,9 @@
 
-from typing import List, Optional, Any, Tuple, override
+from typing import List, Optional, Any, Tuple
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 import numpy as np
 import numpy.typing as npt
 import scipy.spatial

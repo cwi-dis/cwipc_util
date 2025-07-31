@@ -1,5 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Tuple, override
+from typing import List, Any, Tuple
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 from ..abstract import *
 from .abstract import *
 from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter

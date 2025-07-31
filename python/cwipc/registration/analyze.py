@@ -1,5 +1,9 @@
 
-from typing import List, Optional, Any, Tuple, override
+from typing import List, Optional, Any, Tuple
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 import math
 import copy
 import numpy as np
