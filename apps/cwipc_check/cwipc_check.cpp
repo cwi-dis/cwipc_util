@@ -70,6 +70,8 @@ int check() {
     {
         std::cerr << "cwipc_kinect: ok." << std::endl;
     }
+#ifdef DISABLED
+    // This needs to be done differently. We need to test using cwipc_python
     std::cerr << "python: determining version:" << std::endl;
     cmd = "python --version";
     status = ::system(cmd.c_str());
@@ -93,6 +95,20 @@ int check() {
     else
     {
         std::cerr << "cwipc python modules: ok." << std::endl;
+    }
+#endif
+    // Test command line utilities
+    std::cerr << "command line utilities: checking" << std::endl;
+    cmd = "cwipc_view --version";
+    status = ::system(cmd.c_str());
+    if (status != 0) {
+        ok = false;
+        std::cerr << "command line utilities: not ok." << std::endl;
+        std::cerr << "command line utilities: " << cmd << ": exit status: " << status << std::endl;
+    }
+    else
+    {
+        std::cerr << "command line utilities: ok." << std::endl;
     }
     if (!ok) return 1;
     return 0;
