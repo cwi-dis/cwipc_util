@@ -103,11 +103,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
                 analyzer.set_correspondence_method('median')
-                label = "precision"
+                label = "precision(median)"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
                 analyzer.set_correspondence_method('mode')
-                label = "correspondence"
+                label = "correspondence(mode)"
             analyzer.run()
             results = analyzer.get_results()
             self.pre_analysis_results.append(results)
@@ -372,9 +372,13 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         for i in range(len(self.todo)):
             if self.todo[i][0] == camnum:
                 del self.todo[i]
-                return
+                return True
         assert False, f"Camnum {camnum} not in self.todo"
 
+    def _select_first(self) -> int:
+        """Select first camera, to align others to. Can be overridden by subclasses"""
+        return self.todo[0][0]
+    
     def _select_next(self) -> Tuple[int, float, float]:
         """Select next tile to align. Can be overridden by subclasses."""
         assert self.todo
@@ -400,7 +404,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.todo = self._pre_analyse(toSelf=True)
 
         # The first point cloud we keep as-is, and use it as the destination set.
-        first, _, _ = self.todo.pop(0)
+        first = self._select_first()
+        self._done(first)
         if self.verbose:
             print(f"{self.__class__.__name__}: First camera (not aligned) is {first}")
         self.resultant_pointcloud = self._get_pc_for_camnum(first)
@@ -450,9 +455,14 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     def _accept_step(self) -> bool:
         return self._ask("Accept this result (yes/no)", "no") == "yes"
     
+    def _select_first(self):
+        camnum = super()._select_first()
+        camnum = int(self._ask("Tile index to align to", str(camnum)))
+        return camnum
+    
     def _select_next(self) -> Tuple[int, float, float]:
         camnum, corr, fraction = super()._select_next()
-        camnum = int(self._ask("Tile to align", str(camnum)))
+        camnum = int(self._ask("Tile index to align", str(camnum)))
         corr = float(self._ask("Max correspondence", str(corr)))
         return camnum, corr, fraction
 
