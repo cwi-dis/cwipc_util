@@ -42,6 +42,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.reference_kdtree = None
         self.results = AnalysisResults()
         self.gaussian_bw_method = None
+        self.ignore_nearest = 0
 
     @override
     def set_correspondence_method(self, method : Optional[str]):
@@ -49,13 +50,18 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     @override
     def set_min_correspondence_distance(self, correspondence: float) -> None:
-        """Set the correspondence distance"""
+        """Set the minimum correspondence distance that is meaningful"""
         self.histogram_binsize = correspondence
 
     @override
     def set_max_correspondence_distance(self, correspondence: float) -> None:
-        """Set the correspondence distance"""
+        """Set the maximum correspondence distance (above this points are not matched)"""
         self.max_correspondence_distance = correspondence
+
+    @override
+    def set_ignore_nearest(self, ignore_nearest: int) -> None:
+        """Set the number of nearest points to ignore"""
+        self.ignore_nearest = ignore_nearest
 
     def _prepare(self):
         self.source_ndarray = None
@@ -87,7 +93,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, workers=-1, distance_upper_bound=self.max_correspondence_distance)
+        distances, _ = tree.query(points, k=[self.ignore_nearest+1], workers=-1, distance_upper_bound=self.max_correspondence_distance)
         return distances
     
     def _filter_infinites(self, distances : NDArray[Any]) -> NDArray[Any]:
@@ -263,26 +269,7 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         self._compute_correspondence_errors(distances)
         return True
 
-class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
-    """
-    This algorithm computes the registration between two point clouds, ignoring the nearest point.
-    This is mainly useful to match a point cloud to itself, to determine its capture quality.
-    """
-    
-    def __init__(self):
-        super().__init__()
-        self.ignore_nearest = 1
 
-    def set_ignore_nearest(self, ignore_nearest: int) -> None:
-        """Set the number of nearest points to ignore"""
-        self.ignore_nearest = ignore_nearest
-
-    @override
-    def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
-        """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.max_correspondence_distance, workers=-1)
-        return distances
-    
 class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
     """
     This algorithm computes the overlap between two point clouds.
@@ -340,7 +327,6 @@ DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
 ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzer,
-    RegistrationAnalyzerIgnoreNearest,
     OverlapAnalyzer
 ]
 

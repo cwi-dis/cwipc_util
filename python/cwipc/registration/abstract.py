@@ -97,6 +97,11 @@ class AnalysisAlgorithm(Algorithm):
         ...
 
     @abstractmethod
+    def set_ignore_nearest(self, ignore_nearest: int) -> None:
+        """Set the number of nearest points to ignore"""
+        ...
+
+    @abstractmethod
     def get_results(self) -> AnalysisResults:
         """Returns an object indicating how the source point cloud is aligned to the reference point cloud.
         """

@@ -5,7 +5,7 @@ import traceback
 import cwipc
 from cwipc.registration.abstract import AnalysisResults
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
-from cwipc.registration.analyze import RegistrationAnalyzer, RegistrationAnalyzerIgnoreNearest, OverlapAnalyzer
+from cwipc.registration.analyze import RegistrationAnalyzer, OverlapAnalyzer
 from cwipc.registration.util import transformation_topython, get_tiles_used
 from cwipc.registration.plot import Plotter
 
@@ -15,10 +15,7 @@ class AnalyzePointCloud:
         self.verbose = args.verbose
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        if args.toself:
-            self.analyzer_algorithm = RegistrationAnalyzerIgnoreNearest
-        else:
-            self.analyzer_algorithm = RegistrationAnalyzer
+        self.analyzer_algorithm = RegistrationAnalyzer
             
     def load_source(self, source: str):
         pc = cwipc.cwipc_read(source, 0)
