@@ -42,7 +42,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.reference_kdtree = None
         self.results = AnalysisResults()
         self.gaussian_bw_method = None
-        self.ignore_nearest = 0
+        self.ignore_nearest : int = 0
+        self.ignore_floor : bool = False
 
     @override
     def set_correspondence_method(self, method : Optional[str]):
@@ -63,6 +64,10 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         """Set the number of nearest points to ignore"""
         self.ignore_nearest = ignore_nearest
 
+    @override
+    def set_ignore_floor(self, ignoreFloor: bool) -> None:
+        self.ignore_floor = ignoreFloor
+
     def _prepare(self):
         self.source_ndarray = None
         self.reference_ndarray = None
@@ -80,12 +85,24 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _prepare_source_ndarray(self):
         assert self.source_pointcloud
         self.source_ndarray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
-        self.results.sourcePointCount = self.source_pointcloud.count()
+        if self.ignore_floor:
+            not_floor = self.source_ndarray[:,1] > 0.1
+            filtered = self.source_ndarray[not_floor]
+            if self.verbose:
+                print(f"\t\tFloor filter kept {filtered.shape[0]} of {self.source_ndarray.shape[0]} points")
+            self.source_ndarray = filtered
+        self.results.sourcePointCount = self.source_ndarray.shape[0]
 
     def _prepare_reference_ndarray(self):
         assert self.reference_pointcloud
         self.reference_ndarray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
-        self.results.referencePointCount = self.reference_pointcloud.count()
+        if self.ignore_floor:
+            not_floor = self.reference_ndarray[:,1] > 0.1
+            filtered = self.reference_ndarray[not_floor]
+            if self.verbose:
+                print(f"\t\tFloor filter kept {filtered.shape[0]} of {self.reference_ndarray.shape[0]} points")
+            self.reference_ndarray = filtered
+        self.results.referencePointCount = self.reference_ndarray.shape[0]
 
     def _prepare_reference_kdtree(self):
         assert self.reference_ndarray is not None

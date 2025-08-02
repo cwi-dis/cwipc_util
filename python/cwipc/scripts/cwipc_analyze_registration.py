@@ -69,6 +69,8 @@ class AnalyzePointCloud:
             analyzer.set_min_correspondence_distance(self.args.min_corr)
         if self.args.method:
             analyzer.set_correspondence_method(self.args.method)
+        if self.args.ignore_floor:
+            analyzer.set_ignore_floor(True)
         analyzer.verbose = self.verbose
         analyzer.set_source_pointcloud(source, sourcetile)
         analyzer.set_reference_pointcloud(source, targettile)
@@ -108,6 +110,7 @@ def main():
     parser.add_argument("--max_corr", type=float, default=-1, metavar="DIST", help="Maximum distance between two points to be considered the same point (default: -1, i.e. no limit)")
     parser.add_argument("--min_corr", type=float, default=0.0, metavar="DIST", help="Minimum distance between two points that is meaningful to consider (default: 0.0, i.e. no limit)")
     parser.add_argument("--method", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, or mode (default: None, i.e. use mean)")
+    parser.add_argument("--ignore_floor", action="store_true", help="Remove floor (low Y points)")
     parser.add_argument("--overlap", action="store_true", help="Also compute overlap between source and target tile")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")

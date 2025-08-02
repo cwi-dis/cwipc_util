@@ -102,6 +102,11 @@ class AnalysisAlgorithm(Algorithm):
         ...
 
     @abstractmethod
+    def set_ignore_floor(self, ignoreFloor : bool) -> None:
+        """Ignore point with a low Y coordinate for the analysis"""
+        ...
+
+    @abstractmethod
     def get_results(self) -> AnalysisResults:
         """Returns an object indicating how the source point cloud is aligned to the reference point cloud.
         """
