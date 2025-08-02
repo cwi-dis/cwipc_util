@@ -233,6 +233,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     """
     This algorithm computes the registration between two point clouds.
+    It uses scipy.spatial.KDtree.query to find the distances between points in the two clouds.
     """
     
     def __init__(self):
@@ -281,13 +282,66 @@ class RegistrationAnalyzerIgnoreNearest(RegistrationAnalyzer):
         """For each point in points, get the distance to the nearest point in the tree"""
         distances, _ = tree.query(points, k=[self.ignore_nearest+1], distance_upper_bound=self.max_correspondence_distance, workers=-1)
         return distances
+    
+class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
+    """
+    This algorithm computes the overlap between two point clouds.
+    It uses open3d.pipelines.registration.evaluate_registration to compute this number.
+    """
+    results : Optional[OverlapAnalysisResults]
 
+    def __init__(self):
+        BaseAlgorithm.__init__(self)
+        self.correspondence : float = np.inf 
+        self.results = None
+
+    def set_correspondence(self, correspondence: float) -> None:
+        """Set the correspondence distance"""
+        self.correspondence = correspondence
+
+    def _get_source_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert self.source_pointcloud
+        source_o3d_pointcloud = open3d.geometry.PointCloud()
+        source_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        source_o3d_pointcloud.points = open3d.utility.Vector3dVector(source_points_nparray)
+        return source_o3d_pointcloud
+    
+    def _get_reference_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
+        assert self.reference_pointcloud
+        reference_o3d_pointcloud = open3d.geometry.PointCloud()
+        reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        reference_o3d_pointcloud.points = open3d.utility.Vector3dVector(reference_points_nparray)
+        return reference_o3d_pointcloud
+    
+    @override
+    def run(self) -> bool:
+        """Run the algorithm"""
+        source_o3d_pointcloud = self._get_source_o3d_pointcloud()
+        reference_o3d_pointcloud = self._get_reference_o3d_pointcloud()
+        result = open3d.pipelines.registration.evaluate_registration(
+            source_o3d_pointcloud, reference_o3d_pointcloud, max_correspondence_distance=self.correspondence)
+        self.results = OverlapAnalysisResults()
+        self.results.fitness = result.fitness
+        self.results.rmse = result.inlier_rmse
+        self.results.sourcePointCount = len(source_o3d_pointcloud.points)
+        self.results.referencePointCount = len(reference_o3d_pointcloud.points)
+        self.results.tilemask = self.source_tilemask
+        self.results.referenceTilemask = self.reference_tilemask
+        return True
+
+    @override
+    def get_results(self) -> OverlapAnalysisResults:
+        """Returns the analisys results.
+        """
+        assert self.results
+        return self.results
 
 DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
 ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzer,
-    RegistrationAnalyzerIgnoreNearest
+    RegistrationAnalyzerIgnoreNearest,
+    OverlapAnalyzer
 ]
 
 HELP_ANALYZER_ALGORITHMS = """
