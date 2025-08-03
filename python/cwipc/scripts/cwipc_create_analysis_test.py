@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, Dict, Any
 import argparse
 import traceback
 import numpy as np
@@ -20,6 +20,7 @@ class AnalysisTestCreator:
         self.per_camera_movement = args.move
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.output_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.description : Optional[Dict[str, Any]] = None
             
 
     def load_input(self, source: str):
@@ -29,7 +30,28 @@ class AnalysisTestCreator:
     def save_output(self, target: str):
         assert self.output_pc
         cwipc.cwipc_write(target, self.output_pc)
-       
+    
+    def create_default_description(self) -> None:
+        self.description = dict(
+            noise=0.0,
+            tiles = [
+                dict(
+                    corr=0,
+                    move=dict(
+                        x=0,
+                        y=0,
+                        z=0
+                    ),
+                    rotate=dict(
+                        x=0,
+                        y=0,
+                        z=0
+                    )
+                )
+                for tilenum in range(self.ncamera)
+            ]
+        )
+
     def run(self):
         assert self.input_pc
         sim_filter = SimulatecamsFilter(self.args.ncamera)
@@ -42,14 +64,18 @@ class AnalysisTestCreator:
             per_tile_pc = cwipc.cwipc_tilefilter(tiled_pc, tilemask)
             if self.verbose:
                 print(f"Tile {camnum} has {per_tile_pc.count()} points")
+            transform = transformation_identity()
+            transform_changed = False            
+            # Move camera in a random direction (in the Z=0 plane)
             if camnum < len(self.per_camera_movement) and self.per_camera_movement[camnum] > 0:
                 movement = self.per_camera_movement[camnum]
                 random_angle = np.random.uniform(0, 2 * np.pi)
                 delta_x = movement * np.cos(random_angle)
                 delta_z = movement * np.sin(random_angle)
-                transform = transformation_identity()
-                transform[0, 3] = delta_x
-                transform[2, 3] = delta_z
+                transform[0, 3] += delta_x
+                transform[2, 3] += delta_z
+                transform_changed = True
+            if transform_changed:
                 if self.verbose:
                     print(f"Moving tile {camnum} by {transform}")
                 new_per_tile_pc = cwipc_transform(per_tile_pc, transform)
@@ -65,6 +91,8 @@ class AnalysisTestCreator:
             if self.verbose:
                 print(f"Adding noise of {self.noise} meters to the point cloud")
             noise_filter = NoiseFilter(self.noise)
+            if self.description != None:
+                self.description["noise"] = self.noise
             cwipc_joined_pc = noise_filter.filter(cwipc_joined_pc)
         self.output_pc = cwipc_joined_pc
        
@@ -73,8 +101,9 @@ def main():
     parser.add_argument("input", help="Input point cloud .ply file")
     parser.add_argument("output", help="Output point cloud .ply file")
     parser.add_argument("--ncamera", type=int, metavar="NUM", default=1, help="Number of cameras to simulate")
-    parser.add_argument("--move", type=float, action="append", metavar="D", help="Distance to move a tile (in meters) in the Y=0 plane")
+    parser.add_argument("--move", type=float, action="append", metavar="D", help="Distance to move a tile (in meters) in the Y=0 plane, random XZ angle. Repeat for each tile.")
     parser.add_argument("--noise", type=float, metavar="DIST", default=0.0, help="Add noise to each point (in meters)")
+    parser.add_argument("--descr", action="store_true", help="Also store description of modifications as a JSON file")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
