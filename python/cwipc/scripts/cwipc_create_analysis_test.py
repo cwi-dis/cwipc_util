@@ -1,4 +1,6 @@
 import sys
+import os.path
+import json
 from typing import Optional, Dict, Any
 import argparse
 import traceback
@@ -21,6 +23,8 @@ class AnalysisTestCreator:
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.output_pc : Optional[cwipc.cwipc_wrapper] = None
         self.description : Optional[Dict[str, Any]] = None
+        if self.args.descr:
+            self.create_default_description()
             
 
     def load_input(self, source: str):
@@ -30,6 +34,10 @@ class AnalysisTestCreator:
     def save_output(self, target: str):
         assert self.output_pc
         cwipc.cwipc_write(target, self.output_pc)
+        if self.description:
+            target_base, _ = os.path.splitext(target)
+            target_json = target_base + ".json"
+            json.dump(self.description, open(target_json, "w"), indent=2)
     
     def create_default_description(self) -> None:
         self.description = dict(
@@ -67,13 +75,17 @@ class AnalysisTestCreator:
             transform = transformation_identity()
             transform_changed = False            
             # Move camera in a random direction (in the Z=0 plane)
-            if camnum < len(self.per_camera_movement) and self.per_camera_movement[camnum] > 0:
+            if self.per_camera_movement and camnum < len(self.per_camera_movement) and self.per_camera_movement[camnum] > 0:
                 movement = self.per_camera_movement[camnum]
                 random_angle = np.random.uniform(0, 2 * np.pi)
                 delta_x = movement * np.cos(random_angle)
                 delta_z = movement * np.sin(random_angle)
                 transform[0, 3] += delta_x
                 transform[2, 3] += delta_z
+                if self.description:
+                    self.description["tiles"][camnum]["move"]["x"] += delta_x
+                    self.description["tiles"][camnum]["move"]["z"] += delta_z
+                    self.description["tiles"][camnum]["corr"] += movement
                 transform_changed = True
             if transform_changed:
                 if self.verbose:
