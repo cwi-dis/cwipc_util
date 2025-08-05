@@ -4,7 +4,9 @@ import json
 from typing import Optional, Dict, Any
 import argparse
 import traceback
+import random
 import numpy as np
+from scipy.spatial.transform import Rotation, RigidTransform
 import cwipc
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
 from cwipc.registration.analyze import RegistrationAnalyzer
@@ -20,6 +22,8 @@ class AnalysisTestCreator:
         self.noise = args.noise
         self.ncamera = args.ncamera
         self.per_camera_movement = args.move
+        self.per_camera_rotate = args.rotate
+        self.per_camera_tilt = args.tilt
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.output_pc : Optional[cwipc.cwipc_wrapper] = None
         self.description : Optional[Dict[str, Any]] = None
@@ -73,7 +77,33 @@ class AnalysisTestCreator:
             if self.verbose:
                 print(f"Tile {camnum} has {per_tile_pc.count()} points")
             transform = transformation_identity()
-            transform_changed = False            
+            transform_changed = False
+            # Rotate a camera around the Y axis.
+            if self.per_camera_rotate and camnum < len(self.per_camera_rotate) and self.per_camera_rotate[camnum] != 0:
+                rotation = self.per_camera_rotate[camnum]
+                new_rotation = Rotation.from_euler('y', rotation)
+                new_transform = RigidTransform.from_rotation(new_rotation)
+                transform = new_transform.as_matrix() @ transform
+                transform_changed = True
+                # Make a wild guess at the movement, assuming points are about 20 cm from the Y axis
+                movement = abs(0.2 * rotation)
+                if self.description:
+                    self.description["tiles"][camnum]["rotate"]["y"] += rotation
+                    self.description["tiles"][camnum]["corr"] += movement
+            # Tilt a camera around the X or Z axis
+            if self.per_camera_tilt and camnum < len(self.per_camera_tilt) and self.per_camera_tilt[camnum] != 0:
+                rotation = self.per_camera_tilt[camnum]
+                rotation_axis = random.choice(('x','z'))
+                new_rotation = Rotation.from_euler(rotation_axis, rotation)
+                new_transform = RigidTransform.from_rotation(new_rotation)
+                transform = new_transform.as_matrix() @ transform
+                transform_changed = True
+                # Make a wild guess at the movement, assuming a human is about 1.8m tall
+                movement = abs(1.8 * rotation)
+                if self.description:
+                    self.description["tiles"][camnum]["rotate"][rotation_axis] += rotation
+                    self.description["tiles"][camnum]["corr"] += movement
+
             # Move camera in a random direction (in the Z=0 plane)
             if self.per_camera_movement and camnum < len(self.per_camera_movement) and self.per_camera_movement[camnum] > 0:
                 movement = self.per_camera_movement[camnum]
@@ -114,6 +144,8 @@ def main():
     parser.add_argument("output", help="Output point cloud .ply file")
     parser.add_argument("--ncamera", type=int, metavar="NUM", default=1, help="Number of cameras to simulate")
     parser.add_argument("--move", type=float, action="append", metavar="D", help="Distance to move a tile (in meters) in the Y=0 plane, random XZ angle. Repeat for each tile.")
+    parser.add_argument("--rotate", type=float, action="append", metavar="RAD", help="Angle to rotate a tile (in radians) around the Y axis. Repeat for each tile.")
+    parser.add_argument("--tilt", type=float, action="append", metavar="RAD", help="Angle to rotate a tile (in radians) around the X or Z axis. Repeat for each tile.")
     parser.add_argument("--noise", type=float, metavar="DIST", default=0.0, help="Add noise to each point (in meters)")
     parser.add_argument("--descr", action="store_true", help="Also store description of modifications as a JSON file")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
