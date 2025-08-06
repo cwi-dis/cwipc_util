@@ -14,15 +14,22 @@ class AnalyzePointCloud:
         self.args = args
         self.verbose = args.verbose
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.target_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
         self.analyzer_algorithm = RegistrationAnalyzer
             
     def load_source(self, source: str):
         pc = cwipc.cwipc_read(source, 0)
         self.source_pc = pc
+
+    def load_target(self, target: str):
+        pc = cwipc.cwipc_read(target, 0)
+        self.target_pc = pc
     
     def run(self):
         assert self.source_pc
+        if self.target_pc == None:
+            self.target_pc = self.source_pc
         tiles = get_tiles_used(self.source_pc)
         if (not tiles or len(tiles) <= 1) and not self.args.toself:
             print(f"Source point cloud {self.source_pc} has no tiles or only one tile, cannot analyze registration.")
@@ -30,7 +37,11 @@ class AnalyzePointCloud:
         print(f"Tiles used in source: {tiles}")
         allResults = []
         todo : List[Tuple[int, int]] = []
-        if self.args.toself:
+        if self.args.togroundtruth:
+            title = "Distance between this tile and ground-truth"
+            for tile in tiles:
+                todo.append([tile, 0])
+        elif self.args.toself:
             title = "Distance between adjacent points in the same tile"
             for tile in tiles:
                 todo.append((tile, tile))
@@ -51,15 +62,17 @@ class AnalyzePointCloud:
                 targettile = 255 - sourcetile
                 todo.append((sourcetile, targettile))
         for sourcetile, targettile in todo:
-            results = self.analyze_pointclouds(self.source_pc, sourcetile, targettile)
+            results = self.analyze_pointclouds(self.source_pc, sourcetile, self.target_pc, targettile)
             allResults.append(results)
         allResults.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+        if self.args.method:
+            title += f"\n(correspondence: {self.args.method})"
         if self.args.plot:
             plotter = Plotter(title=title)
             plotter.set_results(allResults)
             plotter.plot(show=True)
  
-    def analyze_pointclouds(self, source: cwipc.cwipc_wrapper, sourcetile : int, targettile : int) -> AnalysisResults:
+    def analyze_pointclouds(self, source: cwipc.cwipc_wrapper, sourcetile : int, target : cwipc.cwipc_wrapper, targettile : int) -> AnalysisResults:
         analyzer = self.analyzer_algorithm()
         if self.args.toself:
             analyzer.set_ignore_nearest(self.args.nth)
@@ -73,7 +86,7 @@ class AnalyzePointCloud:
             analyzer.set_ignore_floor(True)
         analyzer.verbose = self.verbose
         analyzer.set_source_pointcloud(source, sourcetile)
-        analyzer.set_reference_pointcloud(source, targettile)
+        analyzer.set_reference_pointcloud(target, targettile)
         analyzer.run()
         results = analyzer.get_results()
         correspondence = results.minCorrespondence
@@ -90,7 +103,7 @@ class AnalyzePointCloud:
             overlap_analyzer = OverlapAnalyzer()
             overlap_analyzer.verbose = self.verbose
             # NOTE: we are reversing the roles of source and target here, because we want to compute the overlap of the source tile with the target tile
-            overlap_analyzer.set_reference_pointcloud(source, sourcetile)
+            overlap_analyzer.set_reference_pointcloud(target, sourcetile)
             overlap_analyzer.set_source_pointcloud(source, targettile)
             overlap_analyzer.set_correspondence(correspondence + sigma)
             overlap_analyzer.run()
@@ -106,6 +119,7 @@ def main():
     parser.add_argument("--pairwise", action="store_true", help="Analyze pairwise registration of all tilecombinations, not just tile to all other tiles")
     parser.add_argument("--toself", action="store_true", help="Analyze self-registration (source and target tile the same), for judging capture quality")
     parser.add_argument("--totile", type=int, metavar="NUM", default=-1, help="Analyze registration of source tile NUM to each individual other tiles")
+    parser.add_argument("--togroundtruth", type=str, metavar="PLYFILE", help="Analyze registration of every tile in the source to a ground truth point cloud TARGET")
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--max_corr", type=float, default=-1, metavar="DIST", help="Maximum distance between two points to be considered the same point (default: -1, i.e. no limit)")
     parser.add_argument("--min_corr", type=float, default=0.0, metavar="DIST", help="Minimum distance between two points that is meaningful to consider (default: 0.0, i.e. no limit)")
@@ -122,6 +136,8 @@ def main():
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
     finder = AnalyzePointCloud(args)
+    if args.togroundtruth:
+        finder.load_target(args.togroundtruth)
     finder.load_source(args.source)
     finder.run()
     
