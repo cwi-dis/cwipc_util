@@ -3,9 +3,10 @@ from typing import Optional
 import argparse
 import traceback
 import cwipc
-from cwipc.registration.multicamera import DEFAULT_MULTICAMERA_ALGORITHM
-from cwipc.registration.fine import DEFAULT_FINE_ALIGNMENT_ALGORITHM
-from cwipc.registration.analyze import DEFAULT_ANALYZER_ALGORITHM, AnalysisResults
+import cwipc.registration
+import cwipc.registration.multicamera
+import cwipc.registration.fine
+import cwipc.registration.analyze
 from cwipc.registration.util import transformation_topython, cwipc_tilefilter_masked
 from cwipc.registration.plot import Plotter
 
@@ -14,13 +15,32 @@ class AlignmentFinder:
         self.args = args
         self.plot = args.plot
         self.verbose = args.verbose
-#        self.correspondence = args.correspondence
+        self.correspondence = args.correspondence
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.multi_aligner = DEFAULT_MULTICAMERA_ALGORITHM()
+
+        if self.args.algorithm_multicamera:
+            self.multicamera_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_multicamera)
+        else:
+            self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
+
+        if self.args.algorithm_fine:
+            self.alignment_class = getattr(cwipc.registration.fine, args.algorithm_fine)
+        else:
+            self.alignment_class = None # The fine alignment class is determined by the multicamera aligner chosen.
+
+        if self.args.algorithm_analyzer:
+            self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
+        else:
+            self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
+
+        self.multi_aligner = self.multicamera_aligner_class()
         self.multi_aligner.verbose = self.verbose
-        self.multi_aligner.set_analyzer_class(DEFAULT_ANALYZER_ALGORITHM)
-        self.multi_aligner.set_aligner_class(DEFAULT_FINE_ALIGNMENT_ALGORITHM)
+        if self.correspondence:
+            self.multi_aligner.set_max_correspondence(self.correspondence)
+        self.multi_aligner.set_analyzer_class(self.analyzer_class)
+        if self.alignment_class is not None:
+            self.multi_aligner.set_aligner_class(self.alignment_class)
         self.multi_aligner.show_plot = self.plot
             
     def load_input(self, source: str):
@@ -46,7 +66,11 @@ def main():
     parser.add_argument("input", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("output", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
-#    parser.add_argument("--correspondence", type=float, metavar="FLOAT", default=-1, help="Correspondence threshold for alignment (default: use analysis result)")
+    parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
+    parser.add_argument("--algorithm_multicamera", action="store", help="Fine alignment outer algorithm to use, for multiple cameras")
+    parser.add_argument("--algorithm_fine", action="store", help="Fine alignment inner registration algorithm to use")
+    parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
+    parser.add_argument("--correspondence", type=float, metavar="D", help="Maximum correspondence distance for alignment (default: use analysis result)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
@@ -56,6 +80,11 @@ def main():
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
+    if args.help_algorithms:
+        print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
+        print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
+        print(cwipc.registration.multicamera.HELP_MULTICAMERA_ALGORITHMS)
+        return 0
     finder = AlignmentFinder(args)
     finder.load_input(args.input)
     finder.run()
