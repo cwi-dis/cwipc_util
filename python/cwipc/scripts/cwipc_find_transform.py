@@ -40,6 +40,10 @@ class TransformFinder:
             pc = new_pc
         self.target_pc = pc
 
+    def save_output(self, filename: str):
+            assert self.result_pc
+            cwipc.cwipc_write(filename, self.result_pc)
+            
     def _fnmod(self) -> str:
         if self.source_tile or self.target_tile:
             return f"_{self.source_tile}_{self.target_tile}"
@@ -105,6 +109,7 @@ def main():
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
     parser.add_argument("--correspondence", type=float, metavar="FLOAT", default=-1, help="Correspondence threshold for alignment (default: use analysis result)")
+    parser.add_argument("--output", help="Output point cloud, as .ply or .cwipc file. NOTE: this is a single tile if --sourcetile is specified.")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
@@ -118,6 +123,8 @@ def main():
     finder.load_source(args.source)
     finder.load_target(args.target)
     finder.run()
+    if args.output:
+        finder.save_output(args.output)
     
 if __name__ == '__main__':
     main()
