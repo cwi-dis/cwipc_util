@@ -13,7 +13,7 @@ from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, c
 from .abstract import *
 from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
 from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
-from .analyze import RegistrationAnalyzerIgnoreNearest
+from .analyze import RegistrationAnalyzer
 from .plot import Plotter
 
 OrderedCameraList = List[Tuple[int, float, float]] # Cameranumber, correspondence, belowcorrespondencefraction
@@ -32,6 +32,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     change : List[float]
     cellsize_factor : float
     proposed_cellsize : float
+    correspondence : Optional[float]
 
     def __init__(self):
         MulticamAlignmentAlgorithm.__init__(self)
@@ -49,6 +50,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.change = []
         self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
         self.proposed_cellsize = 0
+        self.correspondence = None
+        
+    def set_max_correspondence(self, max_correspondence: float) -> None:
+        """Set the maximum correspondence for this algorithm"""
+        self.correspondence = max_correspondence
 
     def _prepare_analyze(self) -> AnalysisAlgorithm:
         analyzer = None
@@ -94,7 +100,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             tilemask = self.tilemask_for_camera_index(camnum)
             othertilemask = 0xff ^ tilemask
             if toSelf:
-                analyzer = RegistrationAnalyzerIgnoreNearest()
+                analyzer = RegistrationAnalyzer()
                 analyzer.verbose = self.verbose
             else:
                 analyzer = self._prepare_analyze()
@@ -270,7 +276,7 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
-        todo = self._pre_analyse(toself=False)
+        todo = self._pre_analyse(toSelf=False)
 
         for camnum, corr, fraction in todo:
             aligner = self._prepare_aligner()
@@ -278,6 +284,8 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
             othertilemask = 0xff ^ tilemask
             aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
             aligner.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            if self.correspondence is not None:
+                corr = self.correspondence
             aligner.set_correspondence(corr)
             aligner.run()
             
@@ -415,6 +423,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             if len(self.todo) > 1:
                 self._mid_analyse(step)
             camnum, corr, fraction = self._select_next()
+            if self.correspondence is not None:
+                corr = self.correspondence
             if self.verbose:
                 print(f"{self.__class__.__name__}: Step {step}: Next camera to align is {camnum}. corr={corr}, fraction={fraction}")
             next_pc = self._get_pc_for_camnum(camnum)
