@@ -70,6 +70,8 @@ q,ESC         Quit
             if 'paused' in args and args.paused:
                 self.paused = True
                 self.single_step = True
+            self.endpaused = 'endpaused' in args and args.endpaused
+
         for k in kwargs:
             # Should only be the ones that can also be in args, but hey...
             setattr(self, k, kwargs[k])
@@ -112,11 +114,16 @@ q,ESC         Quit
     def _continue_running(self) -> bool:
         if self.stop_requested:
             return False
+        rv = False
         if self.producer:
-            return self.producer.is_alive()
-        if self.source:
-            return not self.source.eof()
-        return False
+            rv = self.producer.is_alive()
+        elif self.source:
+            rv = not self.source.eof()
+        if self.endpaused:
+            self.single_step = True
+            self.nodrop = True
+            return True
+        return rv
     
     def run(self) -> None:
         while self._continue_running():

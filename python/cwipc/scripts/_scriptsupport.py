@@ -38,6 +38,7 @@ if False:
 
 __all__ = [ 
     "SetupStackDumper",
+    "BaseArgumentParser",
     "ArgumentParser",
     "cwipc_genericsource_factory",
     "SourceServer",
@@ -331,14 +332,17 @@ class SourceServer:
             fmtstring = 'grab: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
+def BaseArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
     parser.add_argument("--debugpy", action="store_true", help="Pause at begin of run to wait for debugpy attaching")
     parser.add_argument("--debuglibrary", action="append", default=[], metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
+    return parser
 
+def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
+    parser = BaseArgumentParser(*args, **kwargs)
     input_selection_args = parser.add_argument_group("input source selection").add_mutually_exclusive_group()
     parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.json). auto for any attached camera without configuration.")
     input_selection_args.add_argument("--realsense", action="store_true", help="Use Intel Realsense capturer (default: from camera configuration)")

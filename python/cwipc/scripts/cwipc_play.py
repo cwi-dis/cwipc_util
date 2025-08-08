@@ -1,0 +1,101 @@
+import sys
+import threading
+import argparse
+import traceback
+from ._scriptsupport import *
+from ..net.abstract import *
+from ..io.visualizer import Visualizer
+
+def help_commands():
+    print(Visualizer.HELP)
+
+def main():
+    SetupStackDumper()
+    parser = BaseArgumentParser(description="View prerecorded point clouds or point cloud streams", formatter_class=argparse.RawDescriptionHelpFormatter)
+#    parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
+#    parser.add_argument("--paused", action="store_true", help="Start paused")
+#    parser.add_argument("--skeleton", action="store_true", help="Get and render skeleton from the capture (in stead of point cloud). Only for source --kinect or --k4aoffline")
+#    parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
+#    parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
+#    parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
+#    parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
+#    parser.add_argument("--timestamps", action="store_true", help="Print detailed timestamp information about every point cloud displayed")
+    parser.add_argument("--help_commands", action="store_true", help="List interactive commands and exit")
+    parser.add_argument("input", help="Point cloud (ply, cwipcdump) or directory of those")
+    args = parser.parse_args()
+    if args.help_commands:
+        help_commands()
+        sys.exit(0)
+    args.help_filters = False
+    if args.input.endswith(".json"):
+        args.cameraconfig = args.input
+    else:
+        args.playback = args.input
+        args.cameraconfig = None
+    args.endpaused = True
+    args.loop = False
+    args.nodecode = False
+    args.kinect = None
+    args.k4aoffline = None
+    args.realsense = None
+    args.synthetic = None
+    args.proxy = None
+    args.certh = None
+    args.fps = None
+    args.inpoint = None
+    args.outpoint = None
+    args.retimestamp = None
+    args.nodrop = None
+    args.rgb = None
+    args.rgb_full = None
+    args.rgb_cw = None
+    args.rgb_ccw = None
+    args.count = None
+    args.filter = None
+    # xxxjack or pause-at-end?
+    beginOfRun(args)
+    #
+    # Create source
+    #
+    sourceFactory, source_name = cwipc_genericsource_factory(args)
+    source = sourceFactory()
+    visualizer = Visualizer(args.verbose, nodrop=args.nodrop, args=args)
+
+    sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
+    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_play.SourceServer")
+    if visualizer:
+        visualizer.set_producer(sourceThread)
+        visualizer.set_source(source)
+
+    #
+    # Run everything
+    #
+    try:
+        sourceThread.start()
+
+        if visualizer:
+            visualizer.run()
+            sourceServer.stop()
+            
+        sourceThread.join()
+    except KeyboardInterrupt:
+        print("Interrupted.")
+        sourceServer.stop()
+    except:
+        traceback.print_exc()
+    
+    #
+    # It is safe to call join (or stop) multiple times, so we ensure to cleanup
+    #
+    sourceServer.stop()
+    sourceThread.join()
+    sourceServer.statistics()
+    del visualizer
+    del sourceServer
+    endOfRun(args)
+    
+if __name__ == '__main__':
+    main()
+    
+    
+    

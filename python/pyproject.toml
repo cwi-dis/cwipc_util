@@ -33,6 +33,7 @@ cwipc_timing = "cwipc.scripts.cwipc_timing:main"
 cwipc_find_transform = "cwipc.scripts.cwipc_find_transform:main"
 cwipc_analyze_registration = "cwipc.scripts.cwipc_analyze_registration:main"
 cwipc_netserver = "cwipc.scripts.cwipc_netserver:main"
+cwipc_play = "cwipc.scripts.cwipc_play:main"
 
 [tool.setuptools.packages.find]
 exclude = ["build*"]
