@@ -44,7 +44,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.gaussian_bw_method = None
         self.ignore_nearest : int = 0
         self.ignore_floor : bool = False
-        self.use_kde = False
+        self.use_kde = True
 
     @override
     def set_correspondence_method(self, method : Optional[str]):
@@ -155,7 +155,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     
     def _continuous_increase_decrease(self, derivative: NDArray[Any]) -> Tuple[bool, int]:
         length = derivative.shape[0]
-        fudge = 1
+        fudge = 0
         i = 0
         while i < length and derivative[i] >= -fudge:
             i += 1
@@ -232,6 +232,10 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.results.minCorrespondenceSigma = stddev
         elif self.correspondence_method == "median":
             self.results.minCorrespondence = median
+            self.results.minCorrespondenceSigma = 0
+        elif self.correspondence_method.startswith("q="):
+            percentile = int(self.correspondence_method[2:])
+            self.results.minCorrespondence = float(np.percentile(overlap_distances, percentile))
             self.results.minCorrespondenceSigma = 0
         elif self.correspondence_method == "mode":
             mode, tailSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
