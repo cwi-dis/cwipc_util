@@ -29,9 +29,12 @@ def main():
     args.help_filters = False
     if args.input.endswith(".json"):
         args.cameraconfig = args.input
+        args.playback = None
     else:
         args.playback = args.input
         args.cameraconfig = None
+    args.netclient = None
+    args.lldplay = None
     args.endpaused = True
     args.loop = False
     args.nodecode = False
