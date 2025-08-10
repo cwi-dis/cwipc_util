@@ -27,7 +27,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
 
     def __init__(self):
         BaseAlgorithm.__init__(self)
-        self.correspondence = 0 # Distance in meters between candidate points to be matched, so this is a ridiculously large value
+        self.correspondence = np.inf # Distance in meters between candidate points to be matched, so this is a ridiculously large value
         self.our_points_nparray = None
         self.reference_points_nparray = None
 
