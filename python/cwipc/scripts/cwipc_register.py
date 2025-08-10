@@ -72,7 +72,8 @@ def main():
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
     parser.add_argument("--analyze", action="store_true", help="Analyze the pointclouds and show a graph of the results")
-
+    parser.add_argument("--correspondence", type=float, metavar="FLOAT", help="Correspondence threshold for fine calibration alignment (default: use analysis result)")
+    
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
     parser.add_argument("--algorithm_multicamera", action="store", help="Fine alignment outer algorithm to use, for multiple cameras")
     parser.add_argument("--algorithm_fine", action="store", help="Fine alignment inner registration algorithm to use")
@@ -698,6 +699,10 @@ class Registrator:
             print(f"cwipc_register: Use fine aligner class {self.multicamera_aligner_class.__name__}")
         multicam = self.multicamera_aligner_class()
         multicam.verbose = self.verbose
+        if self.args.correspondence:
+            multicam.set_max_correspondence(self.args.correspondence)
+            if True or self.verbose:
+                print(f"cwipc_register: override max correspondence to {self.args.correspondence}")
         if self.alignment_class:
             multicam.set_aligner_class(self.alignment_class)
         multicam.set_analyzer_class(self.analyzer_class)
