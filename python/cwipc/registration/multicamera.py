@@ -128,12 +128,12 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         if self.show_plot:
             self._plot(f"{self.__class__.__name__}: Capture {label}", self.pre_analysis_results)
 
-        camnums_and_correspondences : OrderedCameraList = []
+        rv : OrderedCameraList = []
         for i in range(len(self.pre_analysis_results)):
             r = self.pre_analysis_results[i]
-            camnums_and_correspondences.append((i, r.minCorrespondence, r.minCorrespondenceCount/r.sourcePointCount))
-        camnums_and_correspondences.sort(key=lambda x: x[1])
-        return camnums_and_correspondences
+            rv.append((i, r.minCorrespondence, r.minCorrespondenceCount/r.sourcePointCount))
+        rv.sort(key=lambda x: x[1])
+        return rv
     
     @abstractmethod
     def run(self) -> bool:
@@ -435,11 +435,14 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     Next we pick a camera with the best overlap with the destination set and align it to the destination set.
     We repeat this until all cameras are aligned.
     """
-    resultant_pointcloud : Optional[cwipc_wrapper]
+    current_step_target_pointcloud : Optional[cwipc_wrapper]
+    current_step_in_pointcloud : Optional[cwipc_wrapper]
+    current_step_out_pointcloud : Optional[cwipc_wrapper]
+    current_step_results : List[AnalysisResults]
 
     def __init__(self):
         super().__init__()
-        self.resultant_pointcloud = None
+        self.current_step_target_pointcloud = None
     
     def _get_pc_for_camnum(self, camnum: int) -> cwipc_wrapper:
         """Get the pointcloud for a given camera number"""
@@ -450,12 +453,12 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             raise ValueError(f"Camera {camnum} has no point cloud")
         return pc
     
-    def _mid_analyse(self, stepnum : int) -> None:
+    def _pre_step_analyse(self, stepnum : int) -> None:
         """
         Analyze the remaining camera pointclouds for how well they match the current result. Returns a list of camera indices in order of best to worst correspondence.
         """
         assert self.original_pointcloud
-        assert self.resultant_pointcloud
+        assert self.current_step_target_pointcloud
         assert self.camera_count() > 1
         assert self.todo
         remaining = self.todo
@@ -464,7 +467,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             tilemask = self.tilemask_for_camera_index(camnum)
             analyzer = self._prepare_analyze()
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
-            analyzer.set_reference_pointcloud(self.resultant_pointcloud)
+            analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
             analyzer.run()
             results = analyzer.get_results()
             remaining_results.append(results)
@@ -472,30 +475,41 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         if self.verbose:
             self._print_correspondences(f"{self.__class__.__name__}: Step {stepnum}:  Per-camera correspondence", remaining_results)
 
+    def _post_step_analyse(self) -> List[AnalysisResults]:
+        """
+        Analyze the alignment before and after this step.
+        Will be used to judge whether the step was successful.
+        """
+        rv : List[AnalysisResults] = []
+        assert self.original_pointcloud
+        assert self.current_step_target_pointcloud
+        assert self.current_step_in_pointcloud
+        assert self.current_step_out_pointcloud
+        rv : List[AnalysisResults] = []
 
-        camnums_and_mismatch : OrderedCameraList = []
-        for i in range(len(remaining_results)):
-            r = remaining_results[i]
-            assert r.tilemask
-            camnum = self.camera_index_for_tilemask(r.tilemask)
-            if False:
-                mismatch = (r.minCorrespondence + r.minCorrespondenceSigma) * (r.sourcePointCount - r.minCorrespondenceCount)
-            else:
-                mismatch = r.minCorrespondence
-            camnums_and_mismatch.append((camnum, mismatch, r.minCorrespondenceCount / r.sourcePointCount))
-        camnums_and_mismatch.sort(key=lambda x: -x[2])
-        print(f"xxxjack: {self.__class__.__name__}: Step {stepnum}:  Sorted cameras by expected improvement: {camnums_and_mismatch}")
+        analyzer = self._prepare_analyze()
+        analyzer.set_source_pointcloud(self.current_step_in_pointcloud)
+        analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
+        analyzer.run()
+        results = analyzer.get_results()
+        results.tilemask = "before"
+        rv.append(results)
 
-        if self.show_plot:
-            self._plot(f"{self.__class__.__name__}: Before step {stepnum}", remaining_results)
+        analyzer = self._prepare_analyze()
+        analyzer.set_source_pointcloud(self.current_step_out_pointcloud)
+        analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
+        analyzer.run()
+        results = analyzer.get_results()
+        results.tilemask = "after"
+        rv.append(results)
 
-        self.todo = camnums_and_mismatch
+        return rv
 
     def _accept_step(self) -> bool:
         """Allows subclasses to not accept the result of this step"""
         return True
     
-    def _done(self, camnum : int) -> bool:
+    def _done_step(self, camnum : int) -> bool:
         """This tile has been aligned (and accepted). Remove from todo list."""
         for i in range(len(self.todo)):
             if self.todo[i][0] == camnum:
@@ -503,11 +517,11 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 return True
         assert False, f"Camnum {camnum} not in self.todo"
 
-    def _select_first(self) -> int:
+    def _select_first_step(self) -> int:
         """Select first camera, to align others to. Can be overridden by subclasses"""
         return self.todo[0][0]
     
-    def _select_next(self) -> Tuple[int, float, float]:
+    def _select_next_step(self) -> Tuple[int, float, float]:
         """Select next tile to align. Can be overridden by subclasses."""
         assert self.todo
         return self.todo[0]
@@ -532,47 +546,53 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.todo = self._pre_analyse(toSelf=True)
 
         # The first point cloud we keep as-is, and use it as the destination set.
-        first = self._select_first()
-        self._done(first)
+        first = self._select_first_step()
+        self._done_step(first)
         if self.verbose:
             print(f"{self.__class__.__name__}: First camera (not aligned) is {first}")
-        self.resultant_pointcloud = self._get_pc_for_camnum(first)
+        self.current_step_target_pointcloud = self._get_pc_for_camnum(first)
         step = 0
         while self.todo:
             step += 1
             if len(self.todo) > 1:
-                self._mid_analyse(step)
-            camnum, corr, fraction = self._select_next()
+                self._pre_step_analyse(step)
+            camnum, corr, fraction = self._select_next_step()
             if self.correspondence is not None:
                 corr = self.correspondence
             if self.verbose:
                 print(f"{self.__class__.__name__}: Step {step}: Next camera to align is {camnum}. corr={corr}, fraction={fraction}")
-            next_pc = self._get_pc_for_camnum(camnum)
-            self.dump_pointclouds(f"multicamera_iterative_step_{step}_in_cam{camnum}.ply", self.resultant_pointcloud, next_pc)
+            self.current_step_in_pointcloud = self._get_pc_for_camnum(camnum)
+            self.dump_pointclouds(f"multicamera_iterative_step_{step}_in_cam{camnum}.ply", self.current_step_target_pointcloud, self.current_step_in_pointcloud)
             aligner = self._prepare_aligner()
-            aligner.set_source_pointcloud(next_pc)
-            aligner.set_reference_pointcloud(self.resultant_pointcloud)
+            aligner.set_source_pointcloud(self.current_step_in_pointcloud)
+            aligner.set_reference_pointcloud(self.current_step_target_pointcloud)
             aligner.set_correspondence(corr)
             aligner.run()
 
-            new_next_pc = aligner.get_result_pointcloud()
-            self.dump_pointclouds(f"multicamera_iterative_step_{step}_out_cam{camnum}.ply", self.resultant_pointcloud, new_next_pc)
-            new_resultant_pc = cwipc_join(self.resultant_pointcloud, new_next_pc)
+            self.current_step_out_pointcloud = aligner.get_result_pointcloud()
+            self.dump_pointclouds(f"multicamera_iterative_step_{step}_out_cam{camnum}.ply", self.current_step_target_pointcloud, self.current_step_out_pointcloud)
+            self.current_step_results = self._post_step_analyse()
             if self._accept_step():
-                self._done(camnum)
-                self.resultant_pointcloud.free()
-                next_pc.free()
-                self.resultant_pointcloud = new_resultant_pc
+                self._done_step(camnum)
+                new_resultant_pc = cwipc_join(self.current_step_target_pointcloud, self.current_step_out_pointcloud)
+                self.current_step_target_pointcloud.free()
+                self.current_step_in_pointcloud.free()
+                self.current_step_out_pointcloud.free()
+                self.current_step_target_pointcloud = new_resultant_pc
 
                 # Apply new transformation (to the left of the old one)
                 old_transform = self.transformations[camnum]
                 this_transform = aligner.get_result_transformation()
                 new_transform = np.matmul(this_transform, old_transform)
                 self.transformations[camnum] = new_transform
+            else:
+                self.current_step_in_pointcloud.free()
+                self.current_step_out_pointcloud.free()
 
-        self.original_pointcloud = self.resultant_pointcloud
+
+        self.original_pointcloud = self.current_step_target_pointcloud
         self.original_pointcloud_is_new = True
-        self.resultant_pointcloud = None
+        self.current_step_target_pointcloud = None
 
         ok = self._post_analyse()
         return ok
@@ -583,15 +603,34 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     After each step the user can decide to accept it, or reject it and try something else"""
 
     def _accept_step(self) -> bool:
-        return self._ask("Accept this result (yes/no)", "no") == "yes"
+        while True:
+            answer = self._ask("Accept this result (yes/no/show/plot)", "no default")
+            if answer == "yes":
+                return True
+            if answer == "no":
+                return False
+            if answer == "show":
+                self._show_alignment()
+            if answer == "plot":
+                self._plot_alignment()
+
+    def _show_alignment(self):
+        pass
+
+    def _plot_alignment(self):
+        assert len(self.current_step_results) == 2
+        plotter = Plotter(title="Step results")
+        plotter.set_results(self.current_step_results)
+        plotter.plot(show=True)
+
     
-    def _select_first(self):
-        camnum = super()._select_first()
+    def _select_first_step(self):
+        camnum = super()._select_first_step()
         camnum = int(self._ask("Tile index to align to", str(camnum)))
         return camnum
     
-    def _select_next(self) -> Tuple[int, float, float]:
-        camnum, corr, fraction = super()._select_next()
+    def _select_next_step(self) -> Tuple[int, float, float]:
+        camnum, corr, fraction = super()._select_next_step()
         camnum = int(self._ask("Tile index to align", str(camnum)))
         corr = float(self._ask("Max correspondence", str(corr)))
         return camnum, corr, fraction
