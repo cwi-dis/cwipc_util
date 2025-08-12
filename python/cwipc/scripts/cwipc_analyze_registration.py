@@ -31,7 +31,7 @@ class AnalyzePointCloud:
         if self.target_pc == None:
             self.target_pc = self.source_pc
         tiles = get_tiles_used(self.source_pc)
-        if (not tiles or len(tiles) <= 1) and not self.args.toself:
+        if (not tiles or len(tiles) <= 1) and not (self.args.toself or self.args.togroundtruth):
             print(f"Source point cloud {self.source_pc} has no tiles or only one tile, cannot analyze registration.")
             return
         print(f"Tiles used in source: {tiles}")
