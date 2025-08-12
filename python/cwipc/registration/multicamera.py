@@ -89,7 +89,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
 
-    def _pre_analyse(self, toSelf=False) -> OrderedCameraList:
+    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None) -> OrderedCameraList:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
         """
@@ -105,7 +105,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             else:
                 analyzer = self._prepare_analyze()
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
-            if toSelf:
+            if toReference != None:
+                analyzer.set_reference_pointcloud(toReference)
+                analyzer.set_correspondence_method('mode')
+                label = "toreference(mode)"
+            elif toSelf:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
                 analyzer.set_correspondence_method('median')
@@ -136,7 +140,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         """Run the algorithm"""
         assert False
     
-    def _post_analyse(self) -> bool:
+    def _post_analyse(self, toReference : Optional[cwipc_wrapper] = None) -> bool:
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self.results = []
@@ -145,16 +149,23 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             othertilemask = 0xff ^ tilemask
             analyzer = self._prepare_analyze()
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
-            analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+            if toReference:
+                analyzer.set_reference_pointcloud(toReference)
+                analyzer.set_correspondence_method('mode')
+                label = "toreference(mode)"
+            else:
+                analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
+                analyzer.set_correspondence_method('mode')
+                label = "correspondence(mode)"
             analyzer.run()
             results = analyzer.get_results()
             self.results.append(results)
         
         if self.verbose:
-            self._print_correspondences(f"{self.__class__.__name__}: After:  Per-camera correspondence to others", self.results)
+            self._print_correspondences(f"{self.__class__.__name__}: After:  Per-camera {label}", self.results)
 
         if self.show_plot:
-            self._plot(f"{self.__class__.__name__}: After", self.results)
+            self._plot(f"{self.__class__.__name__}: After {label}", self.results)
         
         correspondences = [r.minCorrespondence for r in self.results]
         max_correspondence = max(correspondences)
@@ -304,6 +315,71 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
 
         ok = self._post_analyse()
         return ok
+
+class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
+    """\
+    Align multiple cameras to the floor at Y=0. Requires enough floor to be visible for each camera.
+    A synthetic floor is computed by projecting all points to Y=0.
+    Subsequently each camera is aligned to that floor with a max correspondence of `mode`.
+    """
+    # precision_threshold : float
+
+
+    def __init__(self):
+        super().__init__()
+        # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
+        self.floor_pointcloud : Optional[cwipc_wrapper] = None
+
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert self.original_pointcloud
+        assert self.camera_count() > 0
+        self._init_transformations()
+        self._prepare_floor()
+        assert self.floor_pointcloud
+        todo = self._pre_analyse(toSelf=False, toReference=self.floor_pointcloud)
+        aligned : List[cwipc_wrapper] = []
+        # xxxjack remember resultant point clouds, to combine later.
+        for camnum, corr, fraction in todo:
+            aligner = self._prepare_aligner()
+            tilemask = self.tilemask_for_camera_index(camnum)
+            aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
+            aligner.set_reference_pointcloud(self.floor_pointcloud)
+            if self.correspondence is not None:
+                corr = self.correspondence
+            aligner.set_correspondence(corr)
+            aligner.run()
+            
+            aligned.append(aligner.get_result_pointcloud())
+            if False:
+                # Remember resultant pointcloud
+                old_pc = self.original_pointcloud
+                new_pc = aligner.get_result_pointcloud_full()
+                old_pc.free()
+                self.original_pointcloud = new_pc
+                self.original_pointcloud_is_new = True
+
+            # Apply new transformation (to the left of the old one)
+            old_transform = self.transformations[camnum]
+            this_transform = aligner.get_result_transformation()
+            new_transform = np.matmul(this_transform, old_transform)
+            self.transformations[camnum] = new_transform
+        result = aligned.pop()
+        while aligned:
+            next = aligned.pop()
+            result = cwipc_join(result, next)
+            next.free()
+        self.original_pointcloud = result
+        self.original_pointcloud_is_new = True
+
+        ok = self._post_analyse(toReference=self.floor_pointcloud)
+        return ok
+
+    def _prepare_floor(self) -> None:
+        assert self.original_pointcloud
+        ndarray = self.original_pointcloud.get_numpy_matrix()
+        ndarray[:,1] = 0
+        self.floor_pointcloud = cwipc_from_numpy_matrix(ndarray, 0)
 
     
 
@@ -490,6 +566,7 @@ DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterative
 ALL_MULTICAMERA_ALGORITHMS = [
     MultiCameraNoOp,
     MultiCameraOneToAllOthers,
+    MultiCameraToFloor,
     MultiCameraIterative,
     MultiCameraIterativeInteractive,
 ]
@@ -499,11 +576,13 @@ HELP_MULTICAMERA_ALGORITHMS = """
 
 ## Multicamera algorithms
  
-The multicamera algorithm tries to align multiple cameras to each other. It uses an alignment
-algorithm repeatedly, and an analysis algorithm to determine the effect of an alignment.
+The multicamera algorithm --algorithm_multicamera tries to align multiple cameras to each 
+other. It uses an alignment algorithm repeatedly, and an analysis algorithm to determine 
+the effect of an alignment.
 
 The various multicamera algorithms differ in the way they select the cameras to align, and
-what to try and align it to (either all other cameras, or all cameras that have been previously aligned)
+what to try and align it to (either all other cameras, or all cameras that have been 
+previously aligned).
 
 Default multicamera algorithm is """ + DEFAULT_MULTICAMERA_ALGORITHM.__name__ + """.
 
