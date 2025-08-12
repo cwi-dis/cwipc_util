@@ -62,6 +62,13 @@ def transformation_topython(matrix : RegistrationTransformation) -> List[List[fl
     assert len(rv[0]) == 4
     return rv
 
+def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
+    """Compute the center of a point cloud"""
+    point_matrix = pc.get_numpy_matrix()
+    points = point_matrix[:, :3]
+    centroid = np.mean(points, axis=0)
+    return tuple(centroid)
+
 def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     """Filter a point cloud for specific tiles. Each point tile number is ANDed to the mask, so only points with a tile number that matches the mask are returned.
     The mask is a bitmask."""
