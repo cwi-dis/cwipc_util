@@ -228,10 +228,14 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         """Run the algorithm"""
         self._prepare()
 
+        source=self._get_source_pointcloud()
+        target=self._get_target_pointcloud()
+        self._fix_normal_direction(source, target)
+
         initial_transformation = np.identity(4)
         self.registration_result = open3d.pipelines.registration.registration_icp(
-            source=self._get_source_pointcloud(),
-            target=self._get_target_pointcloud(),
+            source=source,
+            target=target,
             max_correspondence_distance=self.correspondence,
             #init=initial_transformation,
             estimation_method=self._get_estimation_method(),
@@ -260,6 +264,17 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         target_pointcloud.estimate_normals(self._get_normal_search_strategy())
         return target_pointcloud
     
+    def _fix_normal_direction(self, source : open3d.geometry.PointCloud, target : open3d.geometry.PointCloud):
+        source_center = np.mean(np.asarray(source.points), axis=0)
+        target_center = np.mean(np.asarray(target.points), axis=0)
+        overall_center = (source_center + target_center) / 2
+        source_direction = source_center - overall_center
+        target_direction = target_center - overall_center
+        if self.verbose:
+            print(f"{self.__class__.__name__}: aligning normals to source direction={source_direction}, target direction={target_direction}")
+        source.orient_normals_to_align_with_direction(source_direction)
+        target.orient_normals_to_align_with_direction(target_direction)
+
     def _get_normal_search_strategy(self):
         # Jack thinks the 0.02 means "2 cm", which means we're looking for
         # a plane of about 4 cm diameter, which seems about reasonable for a human body.
@@ -278,12 +293,42 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
             max_iteration = 60
         )
         return criteria
+
+class RegistrationComputer_ICP_Generalized(RegistrationComputer_ICP_Point2Plane):
+    """
+    Compute registration for a pointcloud using the Generalized ICP algorithm using only geometry.
+    """
+
+    def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimationForGeneralizedICP:
+        estimation_method = open3d.pipelines.registration.TransformationEstimationForGeneralizedICP()
+        return estimation_method
+
+    @override
+    def run(self) -> bool:
+        """Run the algorithm"""
+        self._prepare()
+
+        source=self._get_source_pointcloud()
+        target=self._get_target_pointcloud()
+        self._fix_normal_direction(source, target)
+
+        initial_transformation = np.identity(4)
+        self.registration_result = open3d.pipelines.registration.registration_generalized_icp(
+            source=source,
+            target=target,
+            max_correspondence_distance=self.correspondence,
+            #init=initial_transformation,
+            estimation_method=self._get_estimation_method(),
+            criteria=self._get_criteria()
+        )
+        return True
     
 DEFAULT_FINE_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Point2Plane
 
 ALL_FINE_ALIGNMENT_ALGORITHMS = [
     RegistrationComputer_ICP_Point2Point,
-    RegistrationComputer_ICP_Point2Plane
+    RegistrationComputer_ICP_Point2Plane,
+    RegistrationComputer_ICP_Generalized
 ]
 
 HELP_FINE_ALIGNMENT_ALGORITHMS = """
