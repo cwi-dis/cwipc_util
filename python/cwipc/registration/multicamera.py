@@ -351,13 +351,6 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
             aligner.run()
             
             aligned.append(aligner.get_result_pointcloud())
-            if False:
-                # Remember resultant pointcloud
-                old_pc = self.original_pointcloud
-                new_pc = aligner.get_result_pointcloud_full()
-                old_pc.free()
-                self.original_pointcloud = new_pc
-                self.original_pointcloud_is_new = True
 
             # Apply new transformation (to the left of the old one)
             old_transform = self.transformations[camnum]
@@ -381,7 +374,58 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         ndarray[:,1] = 0
         self.floor_pointcloud = cwipc_from_numpy_matrix(ndarray, 0)
 
-    
+class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
+    """\
+    Align multiple cameras to a ground truth which needs to be specified with set_groundtruth().
+    Each camera is aligned to that ground truth with a max correspondence of `mode`.
+    """
+    # precision_threshold : float
+
+
+    def __init__(self):
+        super().__init__()
+        # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
+        self.groundtruth_pointcloud : Optional[cwipc_wrapper] = None
+
+    def set_groundtruth(self, pc : cwipc_wrapper):
+        self.groundtruth_pointcloud = pc
+
+    def run(self) -> bool:
+        """Run the algorithm"""
+        assert self.original_pointcloud
+        assert self.groundtruth_pointcloud
+        assert self.camera_count() > 0
+        self._init_transformations()
+        todo = self._pre_analyse(toSelf=False, toReference=self.groundtruth_pointcloud)
+        aligned : List[cwipc_wrapper] = []
+        # xxxjack remember resultant point clouds, to combine later.
+        for camnum, corr, fraction in todo:
+            aligner = self._prepare_aligner()
+            tilemask = self.tilemask_for_camera_index(camnum)
+            aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
+            aligner.set_reference_pointcloud(self.groundtruth_pointcloud)
+            if self.correspondence is not None:
+                corr = self.correspondence
+            aligner.set_correspondence(corr)
+            aligner.run()
+            
+            aligned.append(aligner.get_result_pointcloud())
+
+            # Apply new transformation (to the left of the old one)
+            old_transform = self.transformations[camnum]
+            this_transform = aligner.get_result_transformation()
+            new_transform = np.matmul(this_transform, old_transform)
+            self.transformations[camnum] = new_transform
+        result = aligned.pop()
+        while aligned:
+            next = aligned.pop()
+            result = cwipc_join(result, next)
+            next.free()
+        self.original_pointcloud = result
+        self.original_pointcloud_is_new = True
+
+        ok = self._post_analyse(toReference=self.groundtruth_pointcloud)
+        return ok
 
 class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     """\
@@ -569,6 +613,7 @@ ALL_MULTICAMERA_ALGORITHMS = [
     MultiCameraToFloor,
     MultiCameraIterative,
     MultiCameraIterativeInteractive,
+    MultiCameraToGroundTruth
 ]
 
 

@@ -19,7 +19,9 @@ class AlignmentFinder:
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
 
-        if self.args.algorithm_multicamera:
+        if self.args.togroundtruth:
+            self.multicamera_aligner_class = cwipc.registration.multicamera.MultiCameraToGroundTruth
+        elif self.args.algorithm_multicamera:
             self.multicamera_aligner_class = getattr(cwipc.registration.multicamera, args.algorithm_multicamera)
         else:
             self.multicamera_aligner_class = cwipc.registration.multicamera.DEFAULT_MULTICAMERA_ALGORITHM
@@ -38,6 +40,9 @@ class AlignmentFinder:
         self.multi_aligner.verbose = self.verbose
         if self.correspondence:
             self.multi_aligner.set_max_correspondence(self.correspondence)
+        if self.args.togroundtruth:
+            pc = cwipc.cwipc_read(self.args.togroundtruth, 0)
+            self.multi_aligner.set_groundtruth(pc)
         self.multi_aligner.set_analyzer_class(self.analyzer_class)
         if self.alignment_class is not None:
             self.multi_aligner.set_aligner_class(self.alignment_class)
@@ -69,6 +74,7 @@ def main():
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
     parser.add_argument("--algorithm_multicamera", action="store", help="Fine alignment outer algorithm to use, for multiple cameras")
     parser.add_argument("--algorithm_fine", action="store", help="Fine alignment inner registration algorithm to use")
+    parser.add_argument("--togroundtruth", metavar="PC", help="Use multicamera algorithm MultiCameraToGroundTruth with ground truth PC")
     parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
     parser.add_argument("--correspondence", type=float, metavar="D", help="Maximum correspondence distance for alignment (default: use analysis result)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
