@@ -11,8 +11,8 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm
-from .fine import RegistrationComputer_ICP_Point2Plane, RegistrationComputer_ICP_Point2Point
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center
+from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
 
@@ -67,7 +67,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
     def _prepare_aligner(self) -> AlignmentAlgorithm:
         if not self.aligner_class:
-            self.aligner_class = RegistrationComputer_ICP_Point2Point
+            self.aligner_class = DEFAULT_FINE_ALIGNMENT_ALGORITHM
         if self.verbose:
             print(f"{self.__class__.__name__}: Use aligner class {self.aligner_class.__name__}")
         aligner = self.aligner_class()
@@ -83,7 +83,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.transformations[cam_index] = matrix
 
     def _init_transformations(self) -> None:
-        # Initialize matrices, if not done already (by our caller)
+        # Initialize matrices, if not done already (by our caller calling set_original_transform)
         if len(self.transformations) == 0:
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
