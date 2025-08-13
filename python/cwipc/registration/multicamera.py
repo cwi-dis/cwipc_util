@@ -11,7 +11,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -615,7 +615,20 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
                 self._plot_alignment()
 
     def _show_alignment(self):
-        pass
+        assert self.current_step_in_pointcloud
+        assert self.current_step_out_pointcloud
+        assert self.current_step_target_pointcloud
+        colored_target = cwipc_colormap(self.current_step_target_pointcloud, 0xFFFFFFFF, 0x80808080)
+        colored_in = cwipc_colormap(self.current_step_in_pointcloud, 0xFFFFFFFF, 0x80AA0000)
+        combined = cwipc_join(colored_target, colored_in)
+        colored_target.free()
+        colored_in.free()
+        colored_out = cwipc_colormap(self.current_step_out_pointcloud, 0xFFFFFFFF, 0x8000AA00)
+        combined2 = cwipc_join(combined, colored_out)
+        combined.free()
+        colored_out.free()
+        show_pointcloud("Pre and Post of this step", combined2)
+        combined2.free()
 
     def _plot_alignment(self):
         assert len(self.current_step_results) == 2
