@@ -9,7 +9,6 @@ from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
 from ..net.abstract import *
 from ..filters.abstract import cwipc_abstract_filter
 from ..filters.colorize import ColorizeFilter
-import cv2
 import numpy as np
 
 class Visualizer(cwipc_sink_abstract):
@@ -159,6 +158,7 @@ q,ESC         Quit
             pass
         self.nodrop = False
         if self.show_rgb:
+            import cv2
             if self.rgb_full:
                 cv2.destroyAllWindows()
             else:
@@ -337,11 +337,13 @@ q,ESC         Quit
 
     def draw_rgb(self, pc : cwipc_wrapper) -> None:
         """Draw a window with the RGB data of all cameras."""
+        import cv2
         auxdata = pc.access_auxiliary_data()
         if not auxdata:
             return
         per_camera_images = auxdata.get_all_images("rgb.")
         if self.rgb_full:
+            
             for name, image in per_camera_images.items():
                 cv2.imshow(name, image)
             cv2.waitKey(1)
