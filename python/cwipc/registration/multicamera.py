@@ -92,6 +92,9 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False) -> OrderedCameraList:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
+        If toSelf is true the internal nerest0point distances are computed (a measure of the quality of the capture of this camera).
+        If toReference is passed in this is used as the ground truth, otherwise every camera is compared to all other cameras combined.
+        If ignoreFloor is true any points with Y<0.1 are ignored.
         """
         assert self.original_pointcloud
         assert self.camera_count() > 1
@@ -212,7 +215,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         pc = self.original_pointcloud
         ntiles_orig = len(self.transformations)
         must_free_new = False
-        if self.proposed_cellsize > 0:
+        if self.proposed_cellsize > 0.001:
             pc_new = cwipc_downsample(pc, self.proposed_cellsize)
             must_free_new = True
         else:
