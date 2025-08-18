@@ -64,6 +64,7 @@ def main():
     parser.add_argument("--clean", action="store_true", help=f"Remove old {DEFAULT_FILENAME} and calibrate from scratch")
 
     parser.add_argument("--interactive", action="store_true", help="Interactive mode: show pointclouds (and optional RGB images). w command will attempt registration.")
+    parser.add_argument("--paused", action="store_true", help="Start paused. Use this with --guided for registering recordings")
     parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
@@ -422,13 +423,21 @@ class Registrator:
                 if self.args.guided:
                     print(f"===== The windows will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 if self.debug:
-                    self.save_pc(pc, "step1_capture_coarse")
+                    if pc and pc.count():
+                        self.save_pc(pc, "step1_capture_coarse")
+                        print(f"cwipc_register: debug: saved step1_capture_coarse")
+                    else:
+                        print(f"cwipc_register: debug: no points, did not save step1_capture_coarse")
                 new_pc = self.coarse_registration(pc)
                 pc.free()
                 pc = None
             assert new_pc
             if self.debug:
-                self.save_pc(new_pc, "step2_after_coarse")
+                if pc and pc.count():
+                    self.save_pc(pc, "step2_after_coarse")
+                    print(f"cwipc_register: debug: saved step2_after_coarse")
+                else:
+                    print(f"cwipc_register: debug: no points, did not save step2_after_coarse")
             new_pc.free()
             new_pc = None
             if not self.dry_run:
