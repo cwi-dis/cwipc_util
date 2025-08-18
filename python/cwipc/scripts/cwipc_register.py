@@ -71,8 +71,8 @@ def main():
     parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
     
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
+    parser.add_argument("--nofloor", action="store_true", help="Don't do a floor registration (default: always do it)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
-    parser.add_argument("--analyze", action="store_true", help="Analyze the pointclouds and show a graph of the results")
     parser.add_argument("--correspondence", type=float, metavar="FLOAT", help="Correspondence threshold for fine calibration alignment (default: use analysis result)")
     
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
@@ -408,7 +408,7 @@ class Registrator:
                 print(f"===== Examine RGB images and adjust cameras so marker is visible to all.", file=sys.stderr)
                 print(f"===== Examine RGB images colors and exposure.", file=sys.stderr)
                 print(f"===== Edit cameraconfig.json and change exposure, gain, backlight, etc. ", file=sys.stderr)
-                print(f"===== Ensure there are no negative values in the hardware parameters", file=sys.stderr)
+                print(f"===== Ensure there are no negative values (auto-exposure, etc) in the hardware parameters (but Depth exposure can be on auto)", file=sys.stderr)
                 print(f"===== Ensure the Depth and Color width and height are to your liking", file=sys.stderr)
                 print(f"===== For realsense, turn off all filters and use map_color_to_depth=-1", file=sys.stderr)
                 print(f"===== If you are using sync cables ensure the sync parameters are set correctly", file=sys.stderr)
@@ -448,7 +448,43 @@ class Registrator:
         else:
             if self.verbose:
                 print(f"cwipc_register: skipping coarse registration, cameraconfig already has matrices")
-        if self.cameraconfig.camera_count() > 1 and not self.args.nofine or self.args.analyze:
+        if not self.args.nofloor:
+            while True:
+                if must_reload:
+                    self._reload_cameraconfig_to_capturer()
+                    must_reload = False
+                if self.args.guided:
+                    self.args.rgb = False
+                    print(f"\n===================================================================", file=sys.stderr)
+                    print(f"===== Examine point cloud window. You want to capture lots of floor, so we can align it to Y=0.", file=sys.stderr)
+                    print(f"===== Edit cameraconfig.json and change near, far (or threshold_min_distance and threshold_max_distance), height_min, height_max, radius_filter. ", file=sys.stderr)
+                    print(f"===== At this point you want to include some floor, so set height_min to a small negative value.", file=sys.stderr)
+                    print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
+                    print(f"===== Ensure you get a clean capture including the floor.", file=sys.stderr)
+                    print(f"===== There could be a human in the view, this doesn't matter.", file=sys.stderr)
+                    print(f"===== You can use 1234 or 0 to see only per-camera point clouds. ", file=sys.stderr)
+                    print(f"===== Press w in the point cloud window to capture.", file=sys.stderr)
+                    print(f"===================================================================\n", file=sys.stderr)
+
+                self.prompt("Floor registration: capturing some floor")
+                pc = self.capture()
+                if self.args.guided:
+                    print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
+                if self.debug:
+                    self.save_pc(pc, "step3_capture_floor")
+                new_pc = self.fine_registration(pc, aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
+                pc.free()
+                pc = None
+                if self.debug:
+                    self.save_pc(new_pc, "step4_after_floor")
+                new_pc.free()
+                new_pc = None
+                if not self.dry_run:
+                    self.cameraconfig.save()
+                if not self.args.guided:
+                    break
+                must_reload = True
+        if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
             while True:
                 if must_reload:
                     self._reload_cameraconfig_to_capturer()
@@ -475,25 +511,22 @@ class Registrator:
                 if self.args.guided:
                     print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 if self.debug:
-                    self.save_pc(pc, "step3_capture_fine")
-                if self.args.analyze:
-                    self.check_alignment(pc, 0, "analysis")
-                else:
-                    new_pc = self.fine_registration(pc)
-                    pc.free()
-                    pc = None
-                    if self.debug:
-                        self.save_pc(new_pc, "step4_after_fine")
-                    new_pc.free()
-                    new_pc = None
-                    if not self.dry_run:
-                        self.cameraconfig.save()
+                    self.save_pc(pc, "step5_capture_fine")
+                new_pc = self.fine_registration(pc)
+                pc.free()
+                pc = None
+                if self.debug:
+                    self.save_pc(new_pc, "step6_after_fine")
+                new_pc.free()
+                new_pc = None
+                if not self.dry_run:
+                    self.cameraconfig.save()
                 if not self.args.guided:
                     break
                 must_reload = True
         else:
             if self.verbose:
-                print(f"cwipc_register: skipping fine registration, not needed")
+                print(f"cwipc_register: skipping fine registration, not needed or skipped because of --nofine")
         
         return False
     
@@ -700,13 +733,15 @@ class Registrator:
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def fine_registration(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+    def fine_registration(self, pc : cwipc_wrapper, aligner_class=None) -> cwipc_wrapper:
+        if aligner_class is None:
+            aligner_class = self.multicamera_aligner_class
         if not self.verbose:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
-            self.check_alignment(pc, 0, "before fine registration")
+            self.check_alignment(pc, 0, f"before {aligner_class.__name__} registration")
         if True or self.verbose:
-            print(f"cwipc_register: Use fine aligner class {self.multicamera_aligner_class.__name__}")
-        multicam = self.multicamera_aligner_class()
+            print(f"cwipc_register: Use fine aligner class {aligner_class.__name__}")
+        multicam = aligner_class()
         multicam.verbose = self.verbose
         if self.args.correspondence:
             multicam.set_max_correspondence(self.args.correspondence)
@@ -728,9 +763,9 @@ class Registrator:
         ok = multicam.run()
         stop_time = time.time()
         if self.verbose:
-            print(f"cwipc_register: multicamera fine aligner ran for {stop_time-start_time:.3f} seconds")
+            print(f"cwipc_register: {aligner_class.__name__} ran for {stop_time-start_time:.3f} seconds")
         if not ok:
-            print("cwipc_register: Could not do multicamera fine registration")
+            print(f"cwipc_register: Could not do {aligner_class.__name__} registration")
             sys.exit(1)
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = multicam.get_result_transformations()
@@ -740,7 +775,7 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        correspondence = self.check_alignment(new_pc, 0, "after fine registration")
+        correspondence = self.check_alignment(new_pc, 0, f"after {aligner_class.__name__} registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
