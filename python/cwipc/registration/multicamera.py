@@ -595,7 +595,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 this_transform = aligner.get_result_transformation()
                 new_transform = np.matmul(this_transform, old_transform)
                 self.transformations[camnum] = new_transform
-            else:
+            elif not give_up:
                 self.current_step_in_pointcloud.free()
                 self.current_step_out_pointcloud.free()
 
