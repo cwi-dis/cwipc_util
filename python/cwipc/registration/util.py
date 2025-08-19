@@ -181,16 +181,20 @@ class BaseAlgorithm(Algorithm):
     @override
     def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
         """Set the source point cloud for this algorithm"""
+        pre_count = pc.count()
+        if pre_count == 0:
+            print(f"{self.__class__.__name__}: set_source_pointcloud: Warning: pre_count={pre_count}")
         if tilemask is not None:
-            pre_count = pc.count()
             if tilemask != 0:
                 pc = cwipc_tilefilter_masked(pc, tilemask)
             post_count = pc.count()
+            if post_count == 0:
+                print(f"{self.__class__.__name__}: set_source_pointcloud: Warning: tilemask={tilemask}, post_count={post_count}")
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting source point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")
         else:
             if self.verbose:
-                print(f"{self.__class__.__name__}: Setting source point cloud with {pc.count()} points")
+                print(f"{self.__class__.__name__}: Setting source point cloud with {pre_count} points")
 
         self.source_pointcloud = pc
         self.source_tilemask = tilemask
@@ -198,11 +202,15 @@ class BaseAlgorithm(Algorithm):
     @override
     def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud for this algorithm"""
+        pre_count = pc.count()
+        if pre_count == 0:
+            print(f"{self.__class__.__name__}: set_reference_pointcloud: Warning: pre_count={pre_count}")
         if tilemask is not None:
-            pre_count = pc.count()
             if tilemask != 0:
                 pc = cwipc_tilefilter_masked(pc, tilemask)
             post_count = pc.count()
+            if post_count == 0:
+                print(f"{self.__class__.__name__}: set_reference_pointcloud: Warning: tilemask={tilemask}, post_count={post_count}")
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting target point cloud with {post_count} (of {pre_count}) points using tilemask {tilemask:#x}")
         else:
