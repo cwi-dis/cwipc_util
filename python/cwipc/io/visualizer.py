@@ -2,7 +2,7 @@ import os
 import sys
 from typing import Dict, Any
 import time
-import time
+import subprocess
 import argparse
 import queue
 from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
@@ -36,6 +36,7 @@ w             Write PLY file
 t             Timelapse: like w but after a 5 second delay
 p             Timelapse pause: pause after 5 seconds
 c             Reload cameraconfig
+e             Edit cameraconfig
 ?,h           Help
 q,ESC         Quit
     """
@@ -236,7 +237,7 @@ q,ESC         Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cfwtpamirsn0123456789", interaction_duration)
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cefwtpamirsn0123456789", interaction_duration)
         # First handle the timelapse
         if self.timelapse_write_at > 0:
             now = time.time()
@@ -318,6 +319,8 @@ q,ESC         Quit
             print("reload: reloading cameraconfig.json...", file=sys.stderr)
             self.reload_cameraconfig()
             print("reload: reloaded cameraconfig.json.", file=sys.stderr)
+        elif cmd == 'e':
+            self.edit_cameraconfig()
         elif cmd == 'f':
             if self.display_filter == None:
                 self.display_filter = ColorizeFilter(0.8, "camera")
@@ -380,6 +383,12 @@ q,ESC         Quit
         except Exception as e:
             print(f"reload_cameraconfig: Exception: {e}")
     
+    def edit_cameraconfig(self) -> None:
+        editor = os.environ.get("EDITOR", "code")
+        cameraconfig = self.cameraconfig or "cameraconfig.json"
+        print(f"edit_cameraconfig: run: {editor} {cameraconfig}")
+        subprocess.run([editor, cameraconfig])
+        print(f"edit_cameraconfig: don't forget to use 'c' command to reload cameraconfig.json when done")
     def select_mode(self, newmode):
         self.filter_mode = newmode
         print(f"tilefilter mask mode: {self.filter_mode}. Showing all tiles", flush=True)
