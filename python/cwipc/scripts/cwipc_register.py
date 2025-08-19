@@ -315,7 +315,16 @@ class Registrator:
 
     def prompt(self, message : str):
         print(f"{message}")
-        
+
+    def ask(self, prompt : str, default : str) -> str:
+        sys.stdout.write(f"{prompt} [{default}] ? ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        line = line.strip()
+        if not line: 
+            return default
+        return line
+
     def run(self) -> bool:
         if self.args.recording:
             # Special case: register a recording. First make sure we actually have a
@@ -449,40 +458,38 @@ class Registrator:
             if self.verbose:
                 print(f"cwipc_register: skipping coarse registration, cameraconfig already has matrices")
         if not self.args.nofloor:
-            while True:
-                if must_reload:
-                    self._reload_cameraconfig_to_capturer()
-                    must_reload = False
-                if self.args.guided:
-                    self.args.rgb = False
-                    print(f"\n===================================================================", file=sys.stderr)
-                    print(f"===== Examine point cloud window. You want to capture lots of floor, so we can align it to Y=0.", file=sys.stderr)
-                    print(f"===== Edit cameraconfig.json and change near, far (or threshold_min_distance and threshold_max_distance), height_min, height_max, radius_filter. ", file=sys.stderr)
-                    print(f"===== At this point you want to include some floor, so set height_min to a small negative value.", file=sys.stderr)
-                    print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
-                    print(f"===== Ensure you get a clean capture including the floor.", file=sys.stderr)
-                    print(f"===== There could be a human in the view, this doesn't matter.", file=sys.stderr)
-                    print(f"===== You can use 1234 or 0 to see only per-camera point clouds. ", file=sys.stderr)
-                    print(f"===== Press w in the point cloud window to capture.", file=sys.stderr)
-                    print(f"===================================================================\n", file=sys.stderr)
+            if must_reload:
+                self._reload_cameraconfig_to_capturer()
+                must_reload = False
+            if self.args.guided:
+                self.args.rgb = False
+                print(f"\n===================================================================", file=sys.stderr)
+                print(f"===== Examine point cloud window. You want to capture lots of floor, so we can align it to Y=0.", file=sys.stderr)
+                print(f"===== Edit cameraconfig.json and change near, far (or threshold_min_distance and threshold_max_distance), height_min, height_max, radius_filter. ", file=sys.stderr)
+                print(f"===== At this point you want to include some floor, so set height_min to a small negative value.", file=sys.stderr)
+                print(f"===== Press c in point cloud window (or restart cwipc_register) to reload cameraconfig.json", file=sys.stderr)
+                print(f"===== Ensure you get a clean capture including the floor.", file=sys.stderr)
+                print(f"===== There could be a human in the view, this doesn't matter.", file=sys.stderr)
+                print(f"===== You can use 1234 or 0 to see only per-camera point clouds. ", file=sys.stderr)
+                print(f"===== Press w in the point cloud window to capture.", file=sys.stderr)
+                print(f"===================================================================\n", file=sys.stderr)
 
-                self.prompt("Floor registration: capturing some floor")
-                pc = self.capture()
-                if self.args.guided:
-                    print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-                if self.debug:
-                    self.save_pc(pc, "step3_capture_floor")
-                new_pc = self.fine_registration(pc, aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
-                pc.free()
-                pc = None
+            self.prompt("Floor registration: capturing some floor")
+            pc = self.capture()
+            if self.args.guided:
+                print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
+            if self.debug:
+                self.save_pc(pc, "step3_capture_floor")
+            new_pc = self.fine_registration(pc, aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
+            pc.free()
+            pc = None
+            if new_pc:
                 if self.debug:
                     self.save_pc(new_pc, "step4_after_floor")
                 new_pc.free()
                 new_pc = None
                 if not self.dry_run:
                     self.cameraconfig.save()
-                if not self.args.guided:
-                    break
                 must_reload = True
         if self.cameraconfig.camera_count() > 1 and not self.args.nofine:
             while True:
@@ -515,15 +522,16 @@ class Registrator:
                 new_pc = self.fine_registration(pc)
                 pc.free()
                 pc = None
-                if self.debug:
-                    self.save_pc(new_pc, "step6_after_fine")
-                new_pc.free()
-                new_pc = None
-                if not self.dry_run:
-                    self.cameraconfig.save()
+                if new_pc:
+                    if self.debug:
+                        self.save_pc(new_pc, "step6_after_fine")
+                    new_pc.free()
+                    new_pc = None
+                    if not self.dry_run:
+                        self.cameraconfig.save()
+                    must_reload = True
                 if not self.args.guided:
                     break
-                must_reload = True
         else:
             if self.verbose:
                 print(f"cwipc_register: skipping fine registration, not needed or skipped because of --nofine")
@@ -733,9 +741,23 @@ class Registrator:
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def fine_registration(self, pc : cwipc_wrapper, aligner_class=None) -> cwipc_wrapper:
+    def ask_aligner_class(self, default: type[MulticamAlignmentAlgorithm]) -> Optional[type[MulticamAlignmentAlgorithm]]:
+        defaultName = default.__name__
+        allNames = ' / '.join(["None"]+[klass.__name__ for klass in cwipc.registration.multicamera.ALL_MULTICAMERA_ALGORITHMS])
+        klassName = self.ask(f"Multicamera alignment algorithm to use ({allNames})", defaultName)
+        if klassName == "None":
+            return None
+        klass = getattr(cwipc.registration.multicamera, klassName)
+        return klass
+
+    def fine_registration(self, pc : cwipc_wrapper, aligner_class=None) -> Optional[cwipc_wrapper]:
         if aligner_class is None:
             aligner_class = self.multicamera_aligner_class
+        if self.args.guided:
+            aligner_class = self.ask_aligner_class(aligner_class)
+            if aligner_class == None:
+                print(f"cwpic_register: skipping registration")
+                return None
         if not self.verbose:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
             self.check_alignment(pc, 0, f"before {aligner_class.__name__} registration")
