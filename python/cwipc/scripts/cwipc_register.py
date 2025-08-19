@@ -87,14 +87,11 @@ def main():
     
     parser.add_argument("--plot", action="store_true", help="After each fine aligner step show a graph of the results")
     parser.add_argument("--plotstyle", action="store", help="Plot style for the fine alignment step. Comma-separated list of 'count', 'cumulative', 'delta', 'all', 'log'.")
-    parser.add_argument("--debug", action="store_true", help="Produce step-by-step pointclouds and cameraconfigs in directory cwipc_register_debug. Implies --verbose.")
     parser.add_argument("--dry_run", action="store_true", help="Don't modify cameraconfig file")
     
     parser.add_argument("recording", nargs='?', help="A directory with recordings (realsense or kinect) for which to do registration")
     args = parser.parse_args()
     beginOfRun(args)
-    if args.debug:
-        args.verbose = True
     if args.help_algorithms:
         print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
         print(cwipc.registration.fine.HELP_FINE_ALIGNMENT_ALGORITHMS)
@@ -261,7 +258,6 @@ class Registrator:
         self.show_plot = self.args.plot
         if args.plotstyle:
             self.show_plot = True
-        self.debug = self.args.debug
         self.dry_run = self.args.dry_run
         self.check_coarse_alignment = False # This can be a very expensive operation...
         #
@@ -302,11 +298,6 @@ class Registrator:
         if not self.args.cameraconfig:
             self.args.cameraconfig = DEFAULT_FILENAME
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
-        if self.debug:
-            if os.path.exists("cwipc_register_debug"):
-                shutil.rmtree("cwipc_register_debug")
-            os.mkdir("cwipc_register_debug")
-            print(f"cwipc_register: Will produce debug files in ./cwipc_register_debug")
 
     def __del__(self):
         if self.capturer != None:
@@ -431,22 +422,10 @@ class Registrator:
                 pc = self.capture()
                 if self.args.guided:
                     print(f"===== The windows will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-                if self.debug:
-                    if pc and pc.count():
-                        self.save_pc(pc, "step1_capture_coarse")
-                        print(f"cwipc_register: debug: saved step1_capture_coarse")
-                    else:
-                        print(f"cwipc_register: debug: no points, did not save step1_capture_coarse")
                 new_pc = self.coarse_registration(pc)
                 pc.free()
                 pc = None
             assert new_pc
-            if self.debug:
-                if pc and pc.count():
-                    self.save_pc(pc, "step2_after_coarse")
-                    print(f"cwipc_register: debug: saved step2_after_coarse")
-                else:
-                    print(f"cwipc_register: debug: no points, did not save step2_after_coarse")
             new_pc.free()
             new_pc = None
             if not self.dry_run:
@@ -478,14 +457,10 @@ class Registrator:
             pc = self.capture()
             if self.args.guided:
                 print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-            if self.debug:
-                self.save_pc(pc, "step3_capture_floor")
             new_pc = self.fine_registration(pc, aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
             pc.free()
             pc = None
             if new_pc:
-                if self.debug:
-                    self.save_pc(new_pc, "step4_after_floor")
                 new_pc.free()
                 new_pc = None
                 if not self.dry_run:
@@ -517,14 +492,10 @@ class Registrator:
                 pc = self.capture()
                 if self.args.guided:
                     print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-                if self.debug:
-                    self.save_pc(pc, "step5_capture_fine")
                 new_pc = self.fine_registration(pc)
                 pc.free()
                 pc = None
                 if new_pc:
-                    if self.debug:
-                        self.save_pc(new_pc, "step6_after_fine")
                     new_pc.free()
                     new_pc = None
                     if not self.dry_run:
@@ -701,21 +672,13 @@ class Registrator:
             sys.exit(1)
         return captured_pc
 
-    def save_pc(self, pc : cwipc_wrapper, label : str) -> None:
-        if self.debug:
-            filename = f"cwipc_register_debug/{label}-pointcloud.ply"
-            cwipc.cwipc_write(filename, pc)
-            filename = f"cwipc_register_debug/{label}-cameraconfig.json"
-            self.cameraconfig.save_to(filename)
-            print(f"cwipc_register: Saved pointcloud and cameraconfig for {label}")
-            
     def coarse_registration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
         if True or self.verbose:
             print(f"cwipc_register: Use coarse alignment class {self.coarse_aligner_class.__name__}")
         assert self.capturer
         aligner = self.coarse_aligner_class()
-        aligner.verbose = self.verbose
-        aligner.debug = self.debug
+        aligner.verbose = self.verbose > 2
+        aligner.debug = self.verbose > 3
         aligner.set_tiled_pointcloud(pc)
         serial_dict = self.cameraconfig.get_serial_dict()
         aligner.set_serial_dict(serial_dict)
@@ -764,7 +727,8 @@ class Registrator:
         if True or self.verbose:
             print(f"cwipc_register: Use fine aligner class {aligner_class.__name__}")
         multicam = aligner_class()
-        multicam.verbose = self.verbose
+        multicam.verbose = self.verbose > 2
+        multicam.debug = self.verbose > 3
         if self.args.correspondence:
             multicam.set_max_correspondence(self.args.correspondence)
             if True or self.verbose:
@@ -772,7 +736,6 @@ class Registrator:
         if self.alignment_class:
             multicam.set_aligner_class(self.alignment_class)
         multicam.set_analyzer_class(self.analyzer_class)
-        multicam.debug = self.debug
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
         original_capture_precision = 0.001

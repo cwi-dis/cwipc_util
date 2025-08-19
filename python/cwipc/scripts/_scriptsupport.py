@@ -335,7 +335,7 @@ class SourceServer:
 def BaseArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--version", action="store_true", help="Print version and exit")
-    parser.add_argument("--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
     parser.add_argument("--debugpy", action="store_true", help="Pause at begin of run to wait for debugpy attaching")
     parser.add_argument("--debuglibrary", action="append", default=[], metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
