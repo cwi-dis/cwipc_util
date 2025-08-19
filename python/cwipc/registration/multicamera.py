@@ -533,17 +533,6 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         assert self.todo
         return self.todo[0] + (None,)
     
-    def dump_pointclouds(self, filename: str, source: cwipc_wrapper, target: cwipc_wrapper):
-        if self.verbose:
-            print(f"Dumping point clouds to {filename}")
-        colored_source = cwipc_colormap(source, 0xFFFFFFFF, 0xAAFF0000)
-        colored_target = cwipc_colormap(target, 0xFFFFFFFF, 0xAA00FF00)
-        combined = cwipc_join(colored_source, colored_target)
-        cwipc_write(filename, combined)
-        colored_source.free()
-        colored_target.free()
-        combined.free()
-
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -571,7 +560,6 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 ttile = "" if targettile is None else f", targettile={targettile}"
                 print(f"{self.__class__.__name__}: Step {step}: Next camera to align is {camnum}. corr={corr}, fraction={fraction}{ttile}")
             self.current_step_in_pointcloud = self._get_pc_for_camnum(camnum)
-            self.dump_pointclouds(f"multicamera_iterative_step_{step}_in_cam{camnum}.ply", self.current_step_target_pointcloud, self.current_step_in_pointcloud)
             aligner = self._prepare_aligner()
             aligner.set_source_pointcloud(self.current_step_in_pointcloud)
             aligner.set_reference_pointcloud(self.current_step_target_pointcloud, targettile)
@@ -579,7 +567,6 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             aligner.run()
 
             self.current_step_out_pointcloud = aligner.get_result_pointcloud()
-            self.dump_pointclouds(f"multicamera_iterative_step_{step}_out_cam{camnum}.ply", self.current_step_target_pointcloud, self.current_step_out_pointcloud)
             self.current_step_results = self._post_step_analyse()
             accept_step, give_up = self._accept_step()
             if accept_step:
