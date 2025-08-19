@@ -147,6 +147,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     
     def _post_analyse(self, toReference : Optional[cwipc_wrapper] = None) -> bool:
         assert self.original_pointcloud
+        assert self.original_pointcloud.count() > 0
         assert self.camera_count() > 0
         self.results = []
         for camnum in range(self.camera_count()):
@@ -550,6 +551,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         step = 0
         give_up = False
         while self.todo and not give_up:
+            assert self.current_step_target_pointcloud
+            assert self.current_step_target_pointcloud.count() > 0
             step += 1
             if len(self.todo) > 1:
                 self._pre_step_analyse(step)
@@ -571,10 +574,12 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             accept_step, give_up = self._accept_step()
             if accept_step:
                 self._done_step(camnum)
-                new_resultant_pc = cwipc_join(self.current_step_target_pointcloud, self.current_step_out_pointcloud)
+                new_resultant_pc = aligner.get_result_pointcloud_full()
                 self.current_step_target_pointcloud.free()
                 self.current_step_in_pointcloud.free()
+                self.current_step_in_pointcloud = None
                 self.current_step_out_pointcloud.free()
+                self.current_step_out_pointcloud = None
                 self.current_step_target_pointcloud = new_resultant_pc
 
                 # Apply new transformation (to the left of the old one)
@@ -584,9 +589,22 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 self.transformations[camnum] = new_transform
             elif not give_up:
                 self.current_step_in_pointcloud.free()
+                self.current_step_in_pointcloud = None
                 self.current_step_out_pointcloud.free()
+                self.current_step_out_pointcloud = None
 
+        # If we gave up there are still tiles in self.todo that we have to merge into the
+        # resultant full point cloud
+        while self.todo:
+            camnum, _, _ = self.todo.pop()
+            tile_pc = self._get_pc_for_camnum(camnum)
+            new_pc = cwipc_join(self.current_step_target_pointcloud, tile_pc)
+            self.current_step_target_pointcloud.free()
+            tile_pc.free()
+            self.current_step_target_pointcloud = new_pc
 
+        assert self.current_step_target_pointcloud
+        assert self.current_step_target_pointcloud.count() > 0
         self.original_pointcloud = self.current_step_target_pointcloud
         self.original_pointcloud_is_new = True
         self.current_step_target_pointcloud = None
