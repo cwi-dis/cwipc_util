@@ -5,7 +5,8 @@ import time
 import subprocess
 import argparse
 import queue
-from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
+from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper, cwipc_from_packet
+from ..util import cwipc_sink_wrapper
 from ..net.abstract import *
 from ..filters.abstract import cwipc_abstract_filter
 from ..filters.colorize import ColorizeFilter
@@ -24,12 +25,11 @@ mouse_left    Rotate viewpoint
 mouse_scroll  Zoom in/out
 mouse_right   Up/down viewpoint
 +/-           Increase/decrease point size
-0-9           Select single tile/stream to view ( 0=All )
-n             Select next tile/stream to view
-a             Show all tiles/streams
-m             Toggle tile/stream selection tile mask mode
-i             Toggle tile/stream selection tile index mode
-s             Toggle tile/stream selection stream mode
+0-9           Select single tile to view ( 0=All )
+n             Select next tile to view
+a             Show all tiles
+m             Toggle tile selection mask mode
+i             Toggle tile selection index mode
 f             Colorize points to show contributing cameras
 r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
@@ -40,58 +40,58 @@ e             Edit cameraconfig
 ?,h           Help
 q,ESC         Quit
     """
-    output_queue : queue.Queue[Optional[cwipc_wrapper]]
-    display_filter : Optional[cwipc_abstract_filter]
 
     def __init__(self, verbose=False, nodrop=False, args : Optional[argparse.Namespace]=None, title="cwipc_view", **kwargs):
-        self.title = title
-        self.visualiser = None
-        self.producer = None
-        self.source = None
-        self.cameraconfig = None
-        self.show_rgb = False
-        self.rgb_cw = False
-        self.rgb_ccw = False
-        self.rgb_full = False
-        self.timestamps = False
-        self.paused = False
-        self.single_step = False
-        self.redraw_requested = False
-        self.display_filter = None
+        self.title : str = title
+        self.visualiser : Optional[cwipc_sink_wrapper] = None
+        self.producer : Optional[cwipc_producer_abstract] = None
+        self.source : Optional[cwipc_source_abstract] = None
         if args:
-            self.cameraconfig = args.cameraconfig
-            self.show_rgb = args.rgb
-            self.rgb_full = args.rgb_full
-            self.rgb_cw = args.rgb_cw
-            self.rgb_ccw = args.rgb_ccw
-            if 'timestamp' in args:
-                self.timestamps = args.timestamps
-            # If we want paused we actually set single_step (so we get the first point cloud)
-            if 'paused' in args and args.paused:
-                self.paused = True
-                self.single_step = True
-            self.endpaused = 'endpaused' in args and args.endpaused
+            self.args = args
+        else:
+            self.args = argparse.Namespace(
+                cameraconfig=None,
+                rgb=False,
+                rgb_cw=False,
+                rgb_ccw=False,
+                rgb_full=False,
+                timestamps=False,
+                endpaused=False,
+                nodrop=False,
+                verbose=False,
+            )
+        if self.args.rgb_cw or self.args.rgb_ccw or self.args.rgb_full:
+            self.args.rgb = True
+        self.paused : bool = False
+        self.single_step : bool = False
+        self.recompute_display_pc : bool = False
+        self.display_filter : Optional[cwipc_abstract_filter] = None
+        # If we want paused we actually set single_step (so we get the first point cloud)
+        if 'paused' in self.args and self.args.paused:
+            self.paused = True
+            self.single_step = True
+        self.endpaused = 'endpaused' in self.args and self.args.endpaused
 
         for k in kwargs:
             # Should only be the ones that can also be in args, but hey...
-            setattr(self, k, kwargs[k])
-        queue_size = 1 if self.timestamps else 2
-        self.output_queue = queue.Queue(maxsize=queue_size)
-        self.verbose = verbose
-        self.cur_pc = None
-        self.nodrop = nodrop
-        self.tilefilter = None
-        self.filter_mode = 'mask'
-        self.start_window()
-        self.stopped = False
+            setattr(self.args, k, kwargs[k])
+        queue_size = 1 if self.args.timestamps else 2
+        self.input_queue : queue.Queue[Optional[cwipc_wrapper]] = queue.Queue(maxsize=queue_size)
+        self.current_pc : Optional[cwipc_wrapper] = None
+        self.display_pc : Optional[cwipc_wrapper] = None
+        self.tilefilter : Optional[int] = None
+        self.filter_mode : str = 'mask'
+        self.alive : bool = True
         self.stop_requested = False
-        self.point_size_min = 0.0005
-        self.point_size_power = 0
-        self.display_fps = 30
-        self.display_filter = None
-        self.timelapse_write_at = 0
-        self.timelapse_beep_at = 0
-        self.timelapse_pause_at = 0
+        self.point_size_min : float = 0.0005
+        self.point_size_power : int = 0
+        self.display_fps : int = 30
+        # Timelapse settings, while timelapse command active. Zero means not active.
+        self.timelapse_write_at : float = 0
+        self.timelapse_beep_at : float = 0
+        self.timelapse_pause_at : float = 0
+        # Let's go!
+        self.start_window()
         
     def statistics(self) -> None:
         pass
@@ -109,71 +109,111 @@ q,ESC         Quit
         self.source = source
         
     def is_alive(self) -> bool:
-        return not self.stopped  
+        return self.alive  
         
-    def _continue_running(self) -> bool:
-        if self.stop_requested:
-            return False
-        rv = False
+    def _source_is_alive(self) -> bool:
         if self.producer:
             rv = self.producer.is_alive()
         elif self.source:
             rv = not self.source.eof()
-        if self.endpaused:
-            self.single_step = True
-            self.nodrop = True
-            return True
         return rv
+
+    def _continue_running(self) -> bool:
+        if self.stop_requested:
+            return False
+        if self._source_is_alive():
+            return True
+        if self.endpaused:
+            self.paused = True
+            return True
+        return False
     
+    def _get_next_pc(self, drop=False) -> bool:
+        get_timeout = (1.0 / self.display_fps)
+        try:
+            pc = self.input_queue.get(timeout=get_timeout)
+        except queue.Empty:
+            return False
+        if drop:
+            if pc: pc.free()
+            pc = None
+            return False
+        if pc:
+            if self.current_pc and self.current_pc != self.display_pc:
+                self.current_pc.free()
+            self.current_pc = pc
+            if self.args.timestamps:
+                self._show_timestamps(pc, "timestamps")
+            return True
+        return False
+
+    def _get_new_display_pc(self) -> None:
+        assert self.current_pc
+        if self.display_pc and self.display_pc != self.current_pc:
+            self.display_pc.free()
+            self.display_pc = None
+        pc_to_show = self.current_pc
+        if self.display_filter:
+            pc_to_filter = cwipc_from_packet(self.current_pc.get_packet())
+            pc_to_show = self.display_filter.filter(pc_to_show)
+        if self.tilefilter:
+            new_pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
+            if pc_to_show != self.current_pc:
+                pc_to_show.free()
+            pc_to_show = new_pc_to_show
+        self.display_pc = pc_to_show
+        cellsize = max(self.display_pc.cellsize(), self.point_size_min)
+        self.display_pc._set_cellsize(cellsize*pow(2,self.point_size_power))
+            
     def run(self) -> None:
         while self._continue_running():
-            try:
-                if self.paused and self.nodrop:
-                    self.draw_pc(None)
-                    continue
-                get_timeout = (1.0 / self.display_fps)
-                pc = self.output_queue.get(timeout=get_timeout)
-                if self.paused:
-                    if pc: pc.free()
-                    pc = None
-                self.draw_pc(pc)
-                if not self.paused:
-                    if self.cur_pc:
-                        self.cur_pc.free()
-                    self.cur_pc = pc
-                if self.single_step and pc != None:
-                    self._show_timestamps(pc, 'single_step')
-                    self.paused = True
-                    self.single_step = False
-            except queue.Empty:
-                pass
-        if self.cur_pc:
-            self.cur_pc.free()
-            self.cur_pc = None
-        self.stopped = True
+            got_new_pc = False
+            if self.current_pc is None:
+                # If we have no point cloud we get one.
+                got_new_pc = self._get_next_pc()
+            elif self.paused and not self.args.nodrop:
+                got_new_pc = self._get_next_pc(drop=True)
+            else:
+                got_new_pc = self._get_next_pc()
+            if self.current_pc is None:
+                assert not got_new_pc
+                continue
+            if self.single_step and self.current_pc != None:
+                self._show_timestamps(self.current_pc, 'single_step')
+                self.paused = True
+                self.single_step = False
+            if got_new_pc or self.recompute_display_pc:
+                self._get_new_display_pc()
+            self._draw_pc()
+        if self.current_pc and self.current_pc != self.display_pc:
+            self.current_pc.free()
+            self.current_pc = None
+        if self.display_pc:
+            self.display_pc.free()
+            self.display_pc = None
+        self.alive = False
         # Empty queue
         try:
             while True:
-                pc = self.output_queue.get(block=False)
+                pc = self.input_queue.get(block=False)
         except queue.Empty:
             pass
-        self.nodrop = False
-        if self.show_rgb:
+        if self.args.rgb:
             import cv2
-            if self.rgb_full:
+            if self.args.rgb_full:
                 cv2.destroyAllWindows()
             else:
                 cv2.destroyWindow("RGB")
         if self.visualiser:
             self.visualiser.free()
         self.visualiser = None
-        
+                
     def feed(self, pc : cwipc_wrapper) -> None:
         try:
-            if self.nodrop:
-                self.output_queue.put(pc)
+            if self.args.nodrop:
+                self.input_queue.put(pc)
             else:
-                self.output_queue.put(pc, timeout=0.5)
+                self.input_queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
@@ -181,7 +221,7 @@ q,ESC         Quit
         cwd = os.getcwd()   # Workaround for cwipc_window changing working directory
         self.visualiser = cwipc_window(self.title)
         os.chdir(cwd)
-        if self.verbose: print('display: started', flush=True)
+        if self.args.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
     def _show_timestamps(self, pc: cwipc_wrapper, label : str) -> None:
@@ -195,38 +235,20 @@ q,ESC         Quit
                 descr = auxdata.description(i)
                 print(f'{label}:    {auxname}: {descr}')
 
-    def draw_pc(self, pc : Optional[cwipc_wrapper]) -> None:
+    def _draw_pc(self) -> None:
         """Draw pointcloud and interact with the visualizer.
         If None is passed as the pointcloud it will only interact (keeping the previous pointcloud visible)
         """
         assert self.visualiser
-        cellsize = self.point_size_min
-        if self.redraw_requested:
-            self.redraw_requested = False
-            if pc == None:
-                pc = self.cur_pc
-        if pc:
-            if self.timestamps:
-                self._show_timestamps(pc, "timestamps")
-
-            # First show RGB, if wanted
-            if self.show_rgb:
-                self.draw_rgb(pc)
-            cellsize = max(pc.cellsize(), cellsize)
-            pc._set_cellsize(cellsize*pow(2,self.point_size_power))
-            pc_to_show = pc
-            if self.verbose:
+        if self.current_pc and self.args.rgb:
+            # First show RGB, if wanted, from current PC read.
+            if self.args.rgb:
+                self.draw_rgb(self.current_pc)
+        if self.display_pc:
+            if self.args.verbose:
                 if not self.paused:
-                    print(f'display: showing pointcloud timestamp={pc.timestamp()} cellsize={pc.cellsize()} latency={time.time() - pc.timestamp()/1000.0:.3f}')
-            if self.display_filter:
-                pc_to_show = self.display_filter.filter(pc_to_show)
-            if self.tilefilter:
-                pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
-                if self.verbose:
-                    print(f'display: selected {pc_to_show.count()} of {pc.count()} points')
-            ok = self.visualiser.feed(pc_to_show, True)
-            if pc_to_show != pc:
-                pc_to_show.free()
+                    print(f'display: showing pointcloud timestamp={self.display_pc.timestamp()} cellsize={self.display_pc.cellsize()} latency={time.time() - self.display_pc.timestamp()/1000.0:.3f}')
+            ok = self.visualiser.feed(self.display_pc, True)
             if not ok: 
                 print('display: window.feed() returned False')
                 self.stop()
@@ -255,15 +277,15 @@ q,ESC         Quit
                 print(f"timelapse: pause", file=sys.stderr)
                 self.paused = True
                 self.timelapse_pause_at = 0
-                if self.cur_pc:
-                    self._show_timestamps(self.cur_pc, 'pause')
+                if self.current_pc:
+                    self._show_timestamps(self.current_pc, 'pause')
         # Now handle the commands
         if cmd == "q" or cmd == "\x1b":
             self.stop()
             return
         elif cmd == '?' or cmd == 'h':
             print(self.HELP)
-        elif cmd == "w" and self.cur_pc:
+        elif cmd == "w" and self.current_pc:
             self.write_current_pointcloud()
         elif cmd == "t":
             now = time.time()
@@ -279,8 +301,8 @@ q,ESC         Quit
         elif cmd == " ":
             self.paused = not self.paused
             if self.paused:
-                if self.cur_pc:
-                    self._show_timestamps(self.cur_pc, 'pause')
+                if self.current_pc:
+                    self._show_timestamps(self.current_pc, 'pause')
         elif cmd == ".":
             self.single_step = True
             self.paused = False
@@ -289,29 +311,27 @@ q,ESC         Quit
                 print("Input source does not support seek")
             self.paused = False
         elif cmd == 'a':
-            self.select_tile_or_stream(all=True)
-            self.redraw_requested = True
+            self.select_tile(all=True)
+            self.recompute_display_pc = True
         elif cmd == 'm':
             self.select_mode('mask')
         elif cmd == 'i':
             self.select_mode('index')
-        elif cmd == 's':
-            self.select_mode('stream')
         elif cmd == 'n':
-            self.select_tile_or_stream(increment=True)
-            self.redraw_requested = True
+            self.select_tile(increment=True)
+            self.recompute_display_pc = True
         elif cmd == 'r':
             pass # toggle skeleton rendering (managed on cwipc_view)
         elif cmd in '0123456789':
-            self.select_tile_or_stream(number=int(cmd))
-            self.redraw_requested = True
+            self.select_tile(number=int(cmd))
+            self.recompute_display_pc = True
         elif cmd == '+':
             self.point_size_power += 1
-            self.redraw_requested = True
+            self.recompute_display_pc = True
         elif cmd == '-':
             if self.point_size_power>0:
                 self.point_size_power -= 1
-                self.redraw_requested = True
+                self.recompute_display_pc = True
         elif cmd == '\0':
             pass
         elif cmd == 'c':
@@ -326,16 +346,16 @@ q,ESC         Quit
                 self.display_filter = ColorizeFilter(0.8, "camera")
             else:
                 self.display_filter = None
-            self.redraw_requested = True
+            self.recompute_display_pc = True
         else:
             print(f"Unknown command {repr(cmd)}")
             print(self.HELP, flush=True)
     
     def write_current_pointcloud(self):
         """Save the current point cloud. May be overridden in subclasses to do something else."""
-        assert self.cur_pc
-        filename = f'pointcloud_{self.cur_pc.timestamp()}.ply'
-        cwipc_write(filename, self.cur_pc, True) #writing in binary
+        assert self.current_pc
+        filename = f'pointcloud_{self.current_pc.timestamp()}.ply'
+        cwipc_write(filename, self.current_pc, True) #writing in binary
         print(f'Saved as {filename} in {os.getcwd()}')
 
     def draw_rgb(self, pc : cwipc_wrapper) -> None:
@@ -345,7 +365,7 @@ q,ESC         Quit
         if not auxdata:
             return
         per_camera_images = auxdata.get_all_images("rgb.")
-        if self.rgb_full:
+        if self.args.rgb_full:
             
             for name, image in per_camera_images.items():
                 cv2.imshow(name, image)
@@ -356,7 +376,7 @@ q,ESC         Quit
 
         if len(all_images) == 0:
             return
-        if self.rgb_cw or self.rgb_ccw:
+        if self.args.rgb_cw or self.args.rgb_ccw:
             full_image = cv2.hconcat(all_images)
         else:
             full_image = cv2.vconcat(all_images)
@@ -377,7 +397,7 @@ q,ESC         Quit
         assert self.source
         assert hasattr(self.source, "reload_config")
         try:
-            ok = self.source.reload_config(self.cameraconfig) # type: ignore
+            ok = self.source.reload_config(self.args.cameraconfig) # type: ignore
             if not ok:
                 print("reload_cameraconfig: failed to reload cameraconfig")
         except Exception as e:
@@ -385,50 +405,37 @@ q,ESC         Quit
     
     def edit_cameraconfig(self) -> None:
         editor = os.environ.get("EDITOR", "code")
-        cameraconfig = self.cameraconfig or "cameraconfig.json"
+        cameraconfig = self.args.cameraconfig or "cameraconfig.json"
         print(f"edit_cameraconfig: run: {editor} {cameraconfig}")
         subprocess.run([editor, cameraconfig])
         print(f"edit_cameraconfig: don't forget to use 'c' command to reload cameraconfig.json when done")
+    
     def select_mode(self, newmode):
         self.filter_mode = newmode
         print(f"tilefilter mask mode: {self.filter_mode}. Showing all tiles", flush=True)
         self.tilefilter = None
-        self.select_tile_or_stream(all=True)
+        self.select_tile(all=True)
         
-    def select_tile_or_stream(self, *, number : Optional[int]=None, all=False, increment=False):
+    def select_tile(self, *, number : Optional[int]=None, all=False, increment=False):
         assert self.source
-        if self.filter_mode == 'stream':
-            if not hasattr(self.source, 'select_stream'):
-                print('Input does not support stream selection')
-                return
-            if all:
-                number = 0
-            if number == None:
-                print('Network input only supports numeric stream selection')
-                return
-            ok = self.source.select_stream(number) # type: ignore
-            if ok:
-                print(f'Selecting input stream {number}')
+    
+        if all:
+            self.tilefilter = None
+            print("Showing all tiles")
+        elif increment:
+            if not self.tilefilter:
+                self.tilefilter = 1
             else:
-                print(f'Error selecting input stream {number}, probably non-existent')
+                self.tilefilter = self.tilefilter + 1
+            print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
         else:
-            if all:
-                self.tilefilter = None
-                print("Showing all tiles")
-            elif increment:
-                if not self.tilefilter:
-                    self.tilefilter = 1
-                else:
-                    self.tilefilter = self.tilefilter + 1
-                print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
+            assert number != None
+            if number == 0:
+                self.tilefilter = 0
+                print("Showing all tiles", flush=True)
             else:
-                assert number != None
-                if number == 0:
-                    self.tilefilter = 0
-                    print("Showing all tiles", flush=True)
+                if self.filter_mode == 'mask':
+                    self.tilefilter = pow(2,number-1)
                 else:
-                    if self.filter_mode == 'mask':
-                        self.tilefilter = pow(2,number-1)
-                    else:
-                        self.tilefilter = number
-                    print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)
+                    self.tilefilter = number
+                print(f"Showing tile number {self.tilefilter} mask 0x{self.tilefilter:x}", flush=True)

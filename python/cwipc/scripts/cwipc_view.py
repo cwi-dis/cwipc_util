@@ -32,7 +32,7 @@ def main():
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
     if not args.nodisplay:
-        visualizer = Visualizer(args.verbose, nodrop=args.nodrop, args=args)
+        visualizer = Visualizer(args=args)
     else:
         visualizer = None
 
