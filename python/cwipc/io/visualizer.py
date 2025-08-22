@@ -195,7 +195,8 @@ q,ESC         Quit
             self.display_pc.free()
             self.display_pc = None
         self.alive = False
-        # Empty queue
+        # Empty queue. First clear nodrop so the producer won't block.
+        self.args.nodrop = False
         try:
             while True:
                 pc = self.input_queue.get(block=False)
