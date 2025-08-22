@@ -135,7 +135,8 @@ q,ESC         Quit
         except queue.Empty:
             return False
         if drop:
-            if pc: pc.free()
+            if pc:
+                pc.free()
             pc = None
             return False
         if pc:
@@ -149,13 +150,14 @@ q,ESC         Quit
 
     def _get_new_display_pc(self) -> None:
         assert self.current_pc
+        assert self.current_pc._cwipc
         if self.display_pc and self.display_pc != self.current_pc:
             self.display_pc.free()
             self.display_pc = None
         pc_to_show = self.current_pc
         if self.display_filter:
             pc_to_filter = cwipc_from_packet(self.current_pc.get_packet())
-            pc_to_show = self.display_filter.filter(pc_to_show)
+            pc_to_show = self.display_filter.filter(pc_to_filter)
         if self.tilefilter:
             new_pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
             if pc_to_show != self.current_pc:
@@ -171,8 +173,9 @@ q,ESC         Quit
             if self.current_pc is None:
                 # If we have no point cloud we get one.
                 got_new_pc = self._get_next_pc()
-            elif self.paused and not self.args.nodrop:
-                got_new_pc = self._get_next_pc(drop=True)
+            elif self.paused:
+                if not self.args.nodrop:
+                    got_new_pc = self._get_next_pc(drop=True)
             else:
                 got_new_pc = self._get_next_pc()
             if self.current_pc is None:
