@@ -64,9 +64,9 @@ class AnalyzePointCloud:
         for sourcetile, targettile in todo:
             results = self.analyze_pointclouds(self.source_pc, sourcetile, self.target_pc, targettile)
             allResults.append(results)
-        allResults.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
-        if self.args.method:
-            title += f"\n(correspondence: {self.args.method})"
+        # xxxjack better not to sort allResults.sort(key=lambda r: (r.minCorrespondence))
+        if self.args.measure:
+            title += f"\n(correspondence: {self.args.measure[0]})"
         if self.args.plot:
             plotter = Plotter(title=title)
             plotter.set_results(allResults)
@@ -80,8 +80,8 @@ class AnalyzePointCloud:
             analyzer.set_max_correspondence_distance(self.args.max_corr)
         if self.args.min_corr > 0:
             analyzer.set_min_correspondence_distance(self.args.min_corr)
-        if self.args.method:
-            analyzer.set_correspondence_method(self.args.method)
+        if self.args.measure:
+            analyzer.set_correspondence_measure(*self.args.measure)
         if self.args.ignore_floor:
             analyzer.set_ignore_floor(True)
         analyzer.verbose = self.verbose
@@ -90,22 +90,19 @@ class AnalyzePointCloud:
         analyzer.run()
         results = analyzer.get_results()
         correspondence = results.minCorrespondence
-        sigma = results.minCorrespondenceSigma
-        count = results.minCorrespondenceCount
         assert analyzer.source_pointcloud is not None
-        percentage = 100.0 * count / analyzer.source_pointcloud.count()
         if self.args.toself:
             label = f"{sourcetile:#x} self, nth={self.args.nth}"
         else:
             label = f"{sourcetile:#x} to {targettile:#x}"
-        print(f"Alignment {label}: correspondence: {correspondence:.6f}, sigma: {sigma:.6f}, count: {count}, percentage: {percentage:.2f}%")
+        print(f"Alignment {label}: {results.tostr()}")
         if self.args.overlap:
             overlap_analyzer = OverlapAnalyzer()
             overlap_analyzer.verbose = self.verbose
             # NOTE: we are reversing the roles of source and target here, because we want to compute the overlap of the source tile with the target tile
             overlap_analyzer.set_reference_pointcloud(target, sourcetile)
             overlap_analyzer.set_source_pointcloud(source, targettile)
-            overlap_analyzer.set_correspondence(correspondence + sigma)
+            overlap_analyzer.set_correspondence(correspondence)
             overlap_analyzer.run()
             overlap_results = overlap_analyzer.get_results()
             print(f"Alignment {label}: overlap fitness: {overlap_results.fitness:.6f}, inlier rmse: {overlap_results.rmse:.6f}")
@@ -123,7 +120,7 @@ def main():
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--max_corr", type=float, default=-1, metavar="DIST", help="Maximum distance between two points to be considered the same point (default: -1, i.e. no limit)")
     parser.add_argument("--min_corr", type=float, default=0.0, metavar="DIST", help="Minimum distance between two points that is meaningful to consider (default: 0.0, i.e. no limit)")
-    parser.add_argument("--method", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, or mode (default: None, i.e. use mean)")
+    parser.add_argument("--measure", action="append", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, or mode (default: mean) ")
     parser.add_argument("--ignore_floor", action="store_true", help="Remove floor (low Y points)")
     parser.add_argument("--overlap", action="store_true", help="Also compute overlap between source and target tile")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")

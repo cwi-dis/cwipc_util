@@ -110,16 +110,16 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference != None:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_method('mode')
+                analyzer.set_correspondence_measure('mode')
                 label = "toreference(mode)"
             elif toSelf:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
-                analyzer.set_correspondence_method('median')
+                analyzer.set_correspondence_measure('median')
                 label = "precision(median)"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
-                analyzer.set_correspondence_method('mode')
+                analyzer.set_correspondence_measure('mode')
                 label = "correspondence(mode)"
             if ignoreFloor:
                 analyzer.set_ignore_floor(True)
@@ -157,11 +157,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_method('mode')
+                analyzer.set_correspondence_measure('mode')
                 label = "toreference(mode)"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
-                analyzer.set_correspondence_method('mode')
+                analyzer.set_correspondence_measure('mode')
                 label = "correspondence(mode)"
             analyzer.run()
             results = analyzer.get_results()
@@ -248,18 +248,19 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             self.original_pointcloud_is_new = True
         return self.original_pointcloud
   
-    def _plot(self, title : str, data : List[AnalysisResults]) -> None:
-        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+    def _plot(self, title : str, results : List[AnalysisResults]) -> None:
+        # xxxjack removing this so we may get camera order:
+        # results.sort(key=lambda r: (r.minCorrespondence))
         plotter = Plotter(title=title)
-        plotter.set_results(data)
+        plotter.set_results(results)
         plotter.plot(show=True)
        
-    def _print_correspondences(self, label: str, data : List[AnalysisResults]) -> None:
-        data.sort(key=lambda r: (r.minCorrespondence + r.minCorrespondenceSigma))
+    def _print_correspondences(self, label: str, results : List[AnalysisResults]) -> None:
+        # xxxjack better not to sort. results.sort(key=lambda r: (r.minCorrespondence))
         print(f"{label}:")
-        for i in range(len(data)):
-            r = data[i]
-            print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, correspondence={r.minCorrespondence}, stddev={r.minCorrespondenceSigma}, count={r.minCorrespondenceCount}")
+        for i in range(len(results)):
+            r = results[i]
+            print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, {r.tostr()}")
 
 class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
     """\

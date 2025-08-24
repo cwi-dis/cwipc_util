@@ -776,7 +776,7 @@ class Registrator:
             analyzer = self.analyzer_class()
             analyzer.set_source_pointcloud(pc, targettile)
             analyzer.set_reference_pointcloud(pc, othertile)
-            analyzer.set_correspondence_method('mode')
+            analyzer.set_correspondence_measure('mode')
             analyzer.run()
             results = analyzer.get_results()
             allResults.append(results)

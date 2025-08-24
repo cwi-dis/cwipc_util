@@ -36,7 +36,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.histogram_bincount = 400
         self.max_correspondence_distance : float = np.inf
         self.histogram_binsize : float = 0.0
-        self.correspondence_method : Optional[str] = None
+        self.correspondence_measure : str = "mean"
+        self.all_measures : List[str] = []
         self.source_ndarray = None
         self.reference_ndarray = None
         self.reference_kdtree = None
@@ -45,10 +46,14 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.ignore_nearest : int = 0
         self.ignore_floor : bool = False
         self.use_kde = True
+        self.variants : List[str] = []
 
     @override
-    def set_correspondence_method(self, method : Optional[str]):
-        self.correspondence_method = method
+    def set_correspondence_measure(self, method : str, *other_methods : Tuple[str]):
+        self.correspondence_measure = method
+        self.all_measures = list(other_methods)
+        if not self.correspondence_measure in self.all_measures:
+            self.all_measures.append(self.correspondence_measure)
 
     @override
     def set_min_correspondence_distance(self, correspondence: float) -> None:
@@ -64,10 +69,12 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def set_ignore_nearest(self, ignore_nearest: int) -> None:
         """Set the number of nearest points to ignore"""
         self.ignore_nearest = ignore_nearest
+        self.variants.append(f"ignore_nearest={ignore_nearest}")
 
     @override
     def set_ignore_floor(self, ignoreFloor: bool) -> None:
         self.ignore_floor = ignoreFloor
+        self.variants.append("ignore_floor")
 
     def _prepare(self):
         self.source_ndarray = None
@@ -82,6 +89,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.results = AnalysisResults()
         self.results.tilemask = self.source_tilemask
         self.results.referenceTilemask = self.reference_tilemask
+        if self.variants:
+            self.results.variant = ",".join(self.variants)
 
     def _prepare_source_ndarray(self):
         assert self.source_pointcloud
@@ -131,8 +140,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _mode_from_histogram(self, histogram, histogramEdges) -> Tuple[float, float]:
         mode_index = np.argmax(histogram)
         mode = histogramEdges[mode_index+1]
-        sigma = histogramEdges[mode_index+1] - histogramEdges[mode_index]
-        return mode, sigma
+        return mode
     
     def _compute_histogram_parameters(self, distances: NDArray[Any]) -> bool:
         """Ensure histogram_binsize and histogram_bincount are set and consistent. Return False if all distances are the same."""
@@ -186,44 +194,48 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _compute_correspondence_errors(self, raw_distances: NDArray[Any]) -> None:
         overlap_distances = copy.deepcopy(raw_distances)
-        mean = 0
-        stddev = 0
+        mean = None
+        stddev = None
+        median = None
+        mode = None
+        if not self.all_measures:
+            self.all_measures = [self.correspondence_measure]
+        if "median" in self.all_measures:
+            median = float(np.median(overlap_distances))
+        if "mean" in self.all_measures:
+            mean = float(np.mean(overlap_distances))
+            stddev = float(np.std(overlap_distances))
+        if "mode" in self.all_measures:
+            mode = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
+            
+        self.results.median = median
+        self.results.mode = mode
+        self.results.mean = mean
+        self.results.stddev = stddev
         
-        median = float(np.median(overlap_distances))
-        mean = float(np.mean(overlap_distances))
-        stddev = float(np.std(overlap_distances))
         if self.verbose:
-            print(f"\t\tmedian={median}, mean={mean}, std={stddev}, nPoint={len(overlap_distances)}")
+            print(f"\t\tmedian={median}, mean={mean}, stddev={stddev}, mode={mode}, nPoint={len(overlap_distances)}")
             
         # Last step: see how many points are below our new-found correspondence
         assert self.results
-        if self.correspondence_method == None or self.correspondence_method == "mean":
+        if self.correspondence_measure == "mean":
             self.results.minCorrespondence = mean
-            self.results.minCorrespondenceSigma = stddev
-        elif self.correspondence_method == "median":
+        elif self.correspondence_measure == "median":
             self.results.minCorrespondence = median
-            self.results.minCorrespondenceSigma = 0
-        elif self.correspondence_method.startswith("q="):
-            percentile = int(self.correspondence_method[2:])
-            self.results.minCorrespondence = float(np.percentile(overlap_distances, percentile))
-            self.results.minCorrespondenceSigma = 0
-        elif self.correspondence_method == "mode":
-            mode, modeSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
+        elif self.correspondence_measure == "mode":
             self.results.minCorrespondence = mode
-            self.results.minCorrespondenceSigma = modeSigma
-            if self.verbose:
-                print(f"\t\tmode={mode}, modeSigma={modeSigma}")
+        elif self.correspondence_measure.startswith("q="):
+            percentile = int(self.correspondence_measure[2:])
+            self.results.minCorrespondence = float(np.percentile(overlap_distances, percentile))
         else:
-            assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
-        filter = raw_distances <= self.results.minCorrespondence + self.results.minCorrespondenceSigma
+            assert False, f"Unknown correspondence_method '{self.correspondence_measure}'"
+        filter = raw_distances <= self.results.minCorrespondence
         matched_point_count = np.count_nonzero(filter)
         self.results.minCorrespondenceCount = matched_point_count
         total_point_count = self.results.sourcePointCount
         fraction = matched_point_count/total_point_count
         if self.verbose:
-            print(f"\t\tresult: tilemask={self.results.tilemask}, corr={self.results.minCorrespondence}, sigma={self.results.minCorrespondenceSigma}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
-
-
+            print(f"\t\tresult: tilemask={self.results.tilemask}, corr={self.results.minCorrespondence}, nPoint={matched_point_count} of {total_point_count}, fraction={fraction}")
 
 class RegistrationAnalyzer(BaseRegistrationAnalyzer):
     """
@@ -247,7 +259,6 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
             print("Warning: all distances are the same")
             value = distances[0]
             self.results.minCorrespondence = value
-            self.results.minCorrespondenceSigma = 0
             self.results.minCorrespondenceCount = distances.shape[0]
             self.results.histogram = [value]
             self.results.histogramEdges = [value, value]

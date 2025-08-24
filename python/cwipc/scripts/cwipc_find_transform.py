@@ -56,7 +56,7 @@ class TransformFinder:
             self.dump_pointclouds(f"find_transform_before{self._fnmod()}.ply", self.source_pc, self.target_pc)
         analysis_results = self.analyze_pointclouds("Before", self.source_pc, self.target_pc)
         if self.correspondence < 0:
-            self.correspondence = analysis_results.minCorrespondence + analysis_results.minCorrespondenceSigma
+            self.correspondence = analysis_results.minCorrespondence
         print(f"Using aligner {self.aligner.__class__.__name__} with correspondence threshold {self.correspondence}")
         self.aligner.set_reference_pointcloud(self.target_pc)
         self.aligner.set_source_pointcloud(self.source_pc)
@@ -87,13 +87,11 @@ class TransformFinder:
         analyzer.verbose = self.verbose
         analyzer.set_reference_pointcloud(target)
         analyzer.set_source_pointcloud(source)
+        if self.args.measure:
+            analyzer.set_correspondence_measure(*self.args.measure)
         analyzer.run()
         results = analyzer.get_results()
-        correspondence = results.minCorrespondence
-        sigma = results.minCorrespondenceSigma
-        count = results.minCorrespondenceCount
-        percentage = 100.0 * count / source.count()
-        print(f"{label} alignment: correspondence: {correspondence}, sigma: {sigma}, count: {count}, percentage: {percentage:.2f}%")
+        print(f"{label} alignment: {results.tostr()}")
         if self.plot:
             plotter = Plotter(title=label)
             plotter.set_results([results])
@@ -106,6 +104,7 @@ def main():
     parser.add_argument("target", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
     parser.add_argument("--dump", help="Dump combined pre and post point clouds to files (color-coded)", action="store_true")
+    parser.add_argument("--measure", action="append", type=str, default=None, metavar="METHOD", help="Method to use for correspondence analysis: mean, median, or mode (default: mean). Specify multiple to see more statistics.")
     parser.add_argument("--sourcetile", type=int, metavar="NUM", default=0, help="Filter source point cloud to tile NUM before alignment")
     parser.add_argument("--targettile", type=int, metavar="NUM", default=0, help="Filter target point cloud to tile NUM before alignment")
     parser.add_argument("--correspondence", type=float, metavar="FLOAT", default=-1, help="Correspondence threshold for alignment (default: use analysis result)")

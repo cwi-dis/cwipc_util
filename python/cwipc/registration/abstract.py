@@ -54,12 +54,22 @@ class Algorithm(ABC):
 
 class AnalysisResults:
     """Class to hold the results of an analysis algorithm"""
-    #: minimum correspondence for each camera
+    def tostr(self) -> str:
+        return ""
+    #: minimum correspondence for each camera. Usually based on next values.
     minCorrespondence : float
-    #: stddev for minimum correspondence
-    minCorrespondenceSigma : float
-    #: number of points that were used for the minimum correspondence for each camera
+    #: number of points that in source cloud that are below minCorrespondence
     minCorrespondenceCount : int
+
+    #: Mean of distances to closes point in other cloud
+    mean : Optional[float]
+    #: Mean of distances to closes point in other cloud
+    stddev : Optional[float]
+    #: Mode of distances to closes point in other cloud
+    mode : Optional[float]
+    #: Median of distances to closes point in other cloud
+    median : Optional[float]
+
     #: total number of points in the source point cloud
     sourcePointCount : int
     #: total number of points in the reference point cloud
@@ -73,6 +83,38 @@ class AnalysisResults:
     #: edges of the histogram
     histogramEdges : Optional[numpy.typing.NDArray[numpy.float64]]
 
+    #: Algorithm variant used to compute these results
+    variant : Optional[str]
+
+    def __init__(self):
+        self.minCorrespondence = 0
+        self.minCorrespondenceCount = 0
+        self.mean = None
+        self.stddev = None
+        self.mode = None
+        self.median = None
+        self.sourcePointCount = 0
+        self.referencePointCount = 0
+        self.tilemask = None
+        self.referenceTilemask = None
+        self.histogram = None
+        self.histogramEdges = None
+        self.variant = None
+
+    def tostr(self) -> str:
+        """Returns human-readable representation of the statistics"""
+        percentage = (self.minCorrespondenceCount / self.sourcePointCount) * 100
+        rv : str = f"correspondence: {self.minCorrespondence:.4f}, count: {self.minCorrespondenceCount}, percentage: {percentage:.0f}%"
+        if self.mean != None:
+            rv += f", mean={self.mean:.4f}"
+        if self.stddev != None:
+            rv += f", stddev={self.stddev:.4f}"
+        if self.mode != None:
+            rv += f", mode={self.mode:.4f}"
+        if self.median != None:
+            rv += f", median={self.median:.4f}"
+        return rv
+
 class AnalysisAlgorithm(Algorithm):
     """ABC for a pointcloud analysis algorithm between two point clouds which returns a minimum distance histogram and values"""
 
@@ -80,7 +122,7 @@ class AnalysisAlgorithm(Algorithm):
     correspondence_method: Optional[str]
 
     @abstractmethod
-    def set_correspondence_method(self, method : Optional[str]):
+    def set_correspondence_measure(self, method : str, *other_methods : Tuple[str]):
         """Set the algorithm used to comput point cloud correspondence based on point distances.
         Values are mean, median, or mode."""
         ...
