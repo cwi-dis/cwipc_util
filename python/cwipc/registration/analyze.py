@@ -133,36 +133,6 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         mode = histogramEdges[mode_index+1]
         sigma = histogramEdges[mode_index+1] - histogramEdges[mode_index]
         return mode, sigma
-
-    def _tail_from_histogram(self, histogram, histogramEdges) -> Tuple[float, float]:
-        current_histogram = histogram
-        current_histogramEdges = histogramEdges
-        binFactor = 1
-        while True:
-            derivative = self._compute_derivative(current_histogram)
-            cid, index = self._continuous_increase_decrease(derivative)
-            if cid:
-                # We have the correct binsize. Index indicates from where we are ever-decreasing
-                return current_histogramEdges[index], current_histogramEdges[index]-current_histogramEdges[index-1]
-            # We need to increase the binsize.
-            if self.verbose:
-                print(f"\t\tIncreasing binFactor from {binFactor} to {binFactor+1} to recompute histogram")
-            binFactor = binFactor+1
-            current_histogram, current_histogramEdges = self._recompute_histogram(histogram, histogramEdges, binFactor)
-        
-    def _compute_derivative(self, histogram: NDArray[Any]) -> NDArray[Any]:
-        return np.diff(histogram, prepend=0)
-    
-    def _continuous_increase_decrease(self, derivative: NDArray[Any]) -> Tuple[bool, int]:
-        length = derivative.shape[0]
-        fudge = 0
-        i = 0
-        while i < length and derivative[i] >= -fudge:
-            i += 1
-        decrease_index = i
-        while i < length and derivative[i] <= fudge:
-            i += 1
-        return i == length, decrease_index
     
     def _compute_histogram_parameters(self, distances: NDArray[Any]) -> bool:
         """Ensure histogram_binsize and histogram_bincount are set and consistent. Return False if all distances are the same."""
@@ -238,17 +208,11 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.results.minCorrespondence = float(np.percentile(overlap_distances, percentile))
             self.results.minCorrespondenceSigma = 0
         elif self.correspondence_method == "mode":
-            mode, tailSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
+            mode, modeSigma = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
             self.results.minCorrespondence = mode
-            self.results.minCorrespondenceSigma = tailSigma
+            self.results.minCorrespondenceSigma = modeSigma
             if self.verbose:
-                print(f"\t\tmode={mode}, modeSigma={tailSigma}")
-        elif self.correspondence_method == "tail":
-            tail, tailSigma = self._tail_from_histogram(self.results.histogram, self.results.histogramEdges)
-            self.results.minCorrespondence = tail
-            self.results.minCorrespondenceSigma = tailSigma
-            if self.verbose:
-                print(f"\t\ttail={tail}, tailSigma={tailSigma}")
+                print(f"\t\tmode={mode}, modeSigma={modeSigma}")
         else:
             assert False, f"Unknown correspondence_method '{self.correspondence_method}'"
         filter = raw_distances <= self.results.minCorrespondence + self.results.minCorrespondenceSigma
