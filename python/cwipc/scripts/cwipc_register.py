@@ -43,8 +43,10 @@ class RegistrationVisualizer(Visualizer):
         self.reload_cameraconfig_callback = None
 
     def write_current_pointcloud(self):
-        self.captured_pc = self.cur_pc
-        self.cur_pc = None
+        self.captured_pc = self.current_pc
+        # We need to detach the current point cloud from the visualizer, otheriwse it will free it.
+        self.current_pc = None
+        self.display_pc = None
         self.stop()
 
     def reload_cameraconfig(self) -> None:
@@ -69,7 +71,8 @@ def main():
     parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
     parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
     parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
-    
+    parser.add_argument("--timestamps", action="store_true", help="Print detailed timestamp information about every point cloud displayed")
+
     parser.add_argument("--coarse", action="store_true", help="Do coarse registration (default: only if needed)")
     parser.add_argument("--nofloor", action="store_true", help="Don't do a floor registration (default: always do it)")
     parser.add_argument("--nofine", action="store_true", help="Don't do fine registration (default: always do it)")
@@ -295,6 +298,10 @@ class Registrator:
                 print("cwipc_register: Cannot use --cameraconfig with a recording")
                 sys.exit(1)
             self.args.cameraconfig = os.path.realpath(os.path.join(self.args.recording, DEFAULT_FILENAME))
+            if self.args.guided:
+                self.args.paused = True
+                self.args.nodrop = True
+                print("cwipc_register: --guided implies --paused and --nodrop when registering a recording")
         if not self.args.cameraconfig:
             self.args.cameraconfig = DEFAULT_FILENAME
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
