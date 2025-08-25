@@ -53,6 +53,7 @@ class Plotter:
                 ax_cum.set_yscale('log')
             ax_cum.set_ylabel(do_log_cumulative and "log(cumulative)" or "cumulative")
         corr_box_text = "Correspondence:\n"
+        corr_box_dict = {}
         assert self.results
         variant = None
         for cam_i in range(nCamera):
@@ -68,6 +69,7 @@ class Plotter:
             if ref_tilenum:
                 label += f" vs {ref_tilenum}"
             corr_box_text += f"\n{label}: {results.tostr()}"
+            corr_box_dict[label] = results.tostr()
             assert histogram is not None
             assert histogramEdges is not None
             #(histogram, edges, cumsum, normsum, plot_label, raw_distances) = h_data
@@ -98,8 +100,11 @@ class Plotter:
             title = f"{title} ({variant})"
         plt.title(title)
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-        plot_ax.text(0.98, 0.1, corr_box_text, transform=plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
-        plot_ax.legend()
+        #plot_ax.text(0.98, 0.1, corr_box_text, transform=plot_ax.transAxes, fontsize='small', verticalalignment='bottom', horizontalalignment="right", bbox=props)
+        handles, labels = plot_ax.get_legend_handles_labels()
+        labels = [x + ": " + corr_box_dict.get(x, "") for x in labels]
+        plot_fig.subplots_adjust(bottom=0.2)
+        plot_fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.0))
         if filename:
             plt.savefig(filename)
         if show:
