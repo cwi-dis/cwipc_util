@@ -266,15 +266,19 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
     def camera_count(self):
         return len(self.per_camera_tilenum)
 
-#    def _get_pc_for_cam(self, pc : cwipc_wrapper, tilemask : int) -> Optional[cwipc_wrapper]:
-#        rv = cwipc_tilefilter(pc, tilemask)
-#        if rv.count() != 0:
-#            return rv
-#        rv.free()
-#        return None
-
-#    @override
-#    def get_pointcloud_for_tilenum(self, tilenum : int) -> cwipc_wrapper:
-#        """Returns the point cloud for this tilenumber"""
-#        cam_index = self.camera_index_for_tilenum(tilenum)
-#        return self.per_camera_pointclouds[cam_index]
+    def get_pc_for_tilemask(self, tilemask: int) -> cwipc_wrapper:
+        """Get the pointcloud for a given camera number"""
+        assert self.original_pointcloud
+        pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
+        if not pc:
+            raise ValueError(f"CamTilemaskera {tilemask} has no point cloud")
+        return pc
+        
+    def get_pc_for_camnum(self, camnum: int) -> cwipc_wrapper:
+        """Get the pointcloud for a given camera number"""
+        assert self.original_pointcloud
+        tilemask = self.tilemask_for_camera_index(camnum)
+        pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
+        if not pc:
+            raise ValueError(f"Camera {camnum} has no point cloud")
+        return pc
