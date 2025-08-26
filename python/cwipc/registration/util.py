@@ -6,7 +6,8 @@ except ImportError:
     from typing_extensions import override
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet
+from ..filters import colorize
 import open3d
 import open3d.visualization
 import numpy as np
@@ -68,6 +69,16 @@ def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
     points = point_matrix[:, :3]
     centroid = np.mean(points, axis=0)
     return tuple(centroid)
+
+def cwipc_deepcopy(pc : cwipc_wrapper) -> cwipc_wrapper:
+    return cwipc_from_packet(pc.get_packet())
+
+def cwipc_colorized_copy(pc : cwipc_wrapper) -> cwipc_wrapper:
+    cf = colorize.ColorizeFilter(0.8, "camera")
+    # Filters free incoming pc, so copy it first.
+    copied_pc = cwipc_deepcopy(pc)
+    new_pc = cf.filter(copied_pc)
+    return new_pc
 
 def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     """Filter a point cloud for specific tiles. Each point tile number is ANDed to the mask, so only points with a tile number that matches the mask are returned.
