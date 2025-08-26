@@ -464,15 +464,23 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
-            analyzer.set_correspondence_measure("mean", "mode")
+            analyzer.set_correspondence_measure("mode", "mean")
             analyzer.run()
             results = analyzer.get_results()
             remaining_results.append(results)
 
+        remaining_results.sort(key=lambda rr: rr.minCorrespondence)
+        
         if self.verbose or self.is_interactive:
             self._print_correspondences(f"{self.__class__.__name__}: Step {stepnum}:  Per-tile correspondence to target", remaining_results)
         self.remaining_results = remaining_results
-    
+
+    def _get_pre_step_result_for_tilemask(self, tilemask : int) -> AnalysisResults:
+        for rr in self.remaining_results:
+            if rr.tilemask == tilemask:
+                return rr
+        assert False, "No remaining_results for {tilemask}"
+
     def _post_step_analyse(self) -> List[AnalysisResults]:
         """
         Analyze the alignment before and after this step.
@@ -522,11 +530,14 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
     def _select_first_step(self) -> int:
         """Select first camera, to align others to. Returns tilemask. Can be overridden by subclasses"""
-        return self.pre_analysis_results[0].tilemask
+        rr = self.pre_analysis_results[0]
+        assert rr.tilemask != None
+        return rr.tilemask
     
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
         """Select next tile to align. Can be overridden by subclasses."""
         rr = self.remaining_results[0]
+        assert rr.tilemask != None
         rv = (rr.tilemask, rr.minCorrespondence, None)
         return rv
     
@@ -671,14 +682,19 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
         tilemask, corr, ttile = super()._select_next_step()
         tilemask = int(self._ask("Tilemask to align", tilemask, options=self._still_to_do()))
+        rr = self._get_pre_step_result_for_tilemask(tilemask)
+        assert rr.mean
+        assert rr.stddev
+        corr = rr.mean + rr.stddev
         corr = float(self._ask("Max correspondence", str(corr)))
+        assert self.current_step_target_pointcloud
         target_tiles = get_tiles_used(self.current_step_target_pointcloud)
         if len(target_tiles) > 1:
             ttile_str = self._ask(f"Target tilemask to align to", "all", options=target_tiles)
             ttile = None if ttile_str == "all" else int(ttile_str)
         return tilemask, corr, ttile
 
-    def _ask(self, prompt : str, default : str, options : List[Any] = []) -> str:
+    def _ask(self, prompt : str, default : Any, options : List[Any] = []) -> Any:
         option_str = ""
         if options:
             option_str_list = [str(o) for o in options]
