@@ -27,6 +27,7 @@ def main():
         help_commands()
         sys.exit(0)
     args.help_filters = False
+    args.timestamps = False
     if args.input.endswith(".json"):
         args.cameraconfig = args.input
         args.playback = None
