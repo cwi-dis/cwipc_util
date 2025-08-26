@@ -296,7 +296,7 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
 
 class RegistrationComputer_ICP_Generalized(RegistrationComputer_ICP_Point2Plane):
     """
-    Compute registration for a pointcloud using the Generalized ICP algorithm using only geometry.
+    Compute registration for a pointcloud using the Generalized ICP algorithm (plane-to-plane) using only geometry.
     """
 
     def _get_estimation_method(self) -> open3d.pipelines.registration.TransformationEstimationForGeneralizedICP:
@@ -323,7 +323,7 @@ class RegistrationComputer_ICP_Generalized(RegistrationComputer_ICP_Point2Plane)
         )
         return True
     
-DEFAULT_FINE_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Point2Plane
+DEFAULT_FINE_ALIGNMENT_ALGORITHM = RegistrationComputer_ICP_Generalized
 
 ALL_FINE_ALIGNMENT_ALGORITHMS = [
     RegistrationComputer_ICP_Point2Point,
