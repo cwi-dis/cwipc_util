@@ -11,7 +11,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -42,6 +42,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.original_transformations = []
         self.pre_analysis_results = []
         self.results = []
+        self.aligner_class = DEFAULT_FINE_ALIGNMENT_ALGORITHM
 
         self.verbose = False
         self.show_plot = False
@@ -52,6 +53,9 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.proposed_cellsize = 0
         self.correspondence = None
         
+    def get_colorized_pointcloud(self):
+        pass
+
     def set_max_correspondence(self, max_correspondence: float) -> None:
         """Set the maximum correspondence for this algorithm"""
         self.correspondence = max_correspondence
@@ -498,6 +502,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer = self._prepare_analyze()
         analyzer.set_source_pointcloud(self.current_step_in_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
+        analyzer.set_ignore_floor(True)
+        analyzer.set_correspondence_measure("mean", "mode", "median")
         analyzer.run()
         results = analyzer.get_results()
         results.tilemask = "before"
@@ -507,6 +513,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_ignore_floor(True)
         analyzer.set_source_pointcloud(self.current_step_out_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
+        analyzer.set_ignore_floor(True)
+        analyzer.set_correspondence_measure("mean", "mode", "median")
         analyzer.run()
         results = analyzer.get_results()
         results.tilemask = "after"
@@ -659,7 +667,10 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     
     def _select_first_step(self):
         camnum = super()._select_first_step()
-        camnum = int(self._ask("Tile index to align to", str(camnum)))
+        pc_to_show = cwipc_colorized_copy(self.original_pointcloud)
+        show_pointcloud("Captured point cloud", pc_to_show)
+        camnum = int(self._ask("Tile index to use as reference", str(camnum)))
+        pc_to_show.free()
         return camnum
     
     def _select_next_step(self) -> Tuple[int, float, float, Optional[int]]:

@@ -464,7 +464,7 @@ class Registrator:
             pc = self.capture()
             if self.args.guided:
                 print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-            new_pc = self.fine_registration(pc, aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
+            new_pc = self.fine_registration(pc, multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
             pc.free()
             pc = None
             if new_pc:
@@ -720,20 +720,20 @@ class Registrator:
         klass = getattr(cwipc.registration.multicamera, klassName)
         return klass
 
-    def fine_registration(self, pc : cwipc_wrapper, aligner_class=None) -> Optional[cwipc_wrapper]:
-        if aligner_class is None:
-            aligner_class = self.multicamera_aligner_class
+    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None) -> Optional[cwipc_wrapper]:
+        if multicam_aligner_class is None:
+            multicam_aligner_class = self.multicamera_aligner_class
         if self.args.guided:
-            aligner_class = self.ask_aligner_class(aligner_class)
-            if aligner_class == None:
+            multicam_aligner_class = self.ask_aligner_class(multicam_aligner_class)
+            if multicam_aligner_class == None:
                 print(f"cwpic_register: skipping registration")
                 return None
         if not self.verbose:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
-            self.check_alignment(pc, 0, f"before {aligner_class.__name__} registration")
+            self.check_alignment(pc, 0, f"before {multicam_aligner_class.__name__} registration")
         if True or self.verbose:
-            print(f"cwipc_register: Use fine aligner class {aligner_class.__name__}")
-        multicam = aligner_class()
+            print(f"cwipc_register: Use multicam aligner class {multicam_aligner_class.__name__}")
+        multicam = multicam_aligner_class()
         multicam.verbose = self.verbose > 2
         multicam.debug = self.verbose > 3
         if self.args.correspondence:
@@ -742,6 +742,8 @@ class Registrator:
                 print(f"cwipc_register: override max correspondence to {self.args.correspondence}")
         if self.alignment_class:
             multicam.set_aligner_class(self.alignment_class)
+        if True or self.verbose:
+            print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
         multicam.set_analyzer_class(self.analyzer_class)
         # This number sets a threashold for the best possible alignment.
         # xxxjack it should be computed from the source point clouds
@@ -755,9 +757,9 @@ class Registrator:
         ok = multicam.run()
         stop_time = time.time()
         if self.verbose:
-            print(f"cwipc_register: {aligner_class.__name__} ran for {stop_time-start_time:.3f} seconds")
+            print(f"cwipc_register: {multicam_aligner_class.__name__} ran for {stop_time-start_time:.3f} seconds")
         if not ok:
-            print(f"cwipc_register: Could not do {aligner_class.__name__} registration")
+            print(f"cwipc_register: Could not do {multicam_aligner_class.__name__} registration")
             sys.exit(1)
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = multicam.get_result_transformations()
@@ -767,7 +769,7 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        correspondence = self.check_alignment(new_pc, 0, f"after {aligner_class.__name__} registration")
+        correspondence = self.check_alignment(new_pc, 0, f"after {multicam_aligner_class.__name__} registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
