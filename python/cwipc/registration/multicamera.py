@@ -53,9 +53,15 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.proposed_cellsize = 0
         self.correspondence = None
         
-    def get_colorized_pointcloud(self):
-        pass
-
+    def _get_pc_for_camnum(self, camnum: int) -> cwipc_wrapper:
+        """Get the pointcloud for a given camera number"""
+        assert self.original_pointcloud
+        tilemask = self.tilemask_for_camera_index(camnum)
+        pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
+        if not pc:
+            raise ValueError(f"Camera {camnum} has no point cloud")
+        return pc
+    
     def set_max_correspondence(self, max_correspondence: float) -> None:
         """Set the maximum correspondence for this algorithm"""
         self.correspondence = max_correspondence
@@ -265,21 +271,6 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         for i in range(len(results)):
             r = results[i]
             print(f"\tcamnum={r.tilemask}, reference={r.referenceTilemask}, {r.tostr()}")
-
-class MultiCameraNoOp(BaseMulticamAlignmentAlgorithm):
-    """\
-    No-op algorithm for testing purposes. Only computes distances between each tile and all other tiles.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def run(self) -> bool:
-        """Run the algorithm"""
-        assert self.original_pointcloud
-        assert self.camera_count() > 1
-        _ = self._pre_analyse()
-
-        return True
     
 class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
     """\
@@ -454,15 +445,6 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     def __init__(self):
         super().__init__()
         self.current_step_target_pointcloud = None
-    
-    def _get_pc_for_camnum(self, camnum: int) -> cwipc_wrapper:
-        """Get the pointcloud for a given camera number"""
-        assert self.original_pointcloud
-        tilemask = self.tilemask_for_camera_index(camnum)
-        pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
-        if not pc:
-            raise ValueError(f"Camera {camnum} has no point cloud")
-        return pc
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
@@ -696,7 +678,6 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
 DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterative
 
 ALL_MULTICAMERA_ALGORITHMS = [
-    MultiCameraNoOp,
     MultiCameraOneToAllOthers,
     MultiCameraToFloor,
     MultiCameraIterative,
