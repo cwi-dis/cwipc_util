@@ -5,7 +5,7 @@ import time
 import subprocess
 import argparse
 import queue
-from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper, cwipc_from_packet
+from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
 from ..util import cwipc_sink_wrapper
 from ..net.abstract import *
 from ..filters.abstract import cwipc_abstract_filter
@@ -156,8 +156,7 @@ q,ESC         Quit
             self.display_pc = None
         pc_to_show = self.current_pc
         if self.display_filter:
-            pc_to_filter = cwipc_from_packet(self.current_pc.get_packet())
-            pc_to_show = self.display_filter.filter(pc_to_filter)
+            pc_to_show = self.display_filter.filter(pc_to_show)
         if self.tilefilter:
             new_pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
             if pc_to_show != self.current_pc:
@@ -348,6 +347,7 @@ q,ESC         Quit
         elif cmd == 'f':
             if self.display_filter == None:
                 self.display_filter = ColorizeFilter(0.8, "camera")
+                self.display_filter.set_keep_source()
             else:
                 self.display_filter = None
             self.recompute_display_pc = True

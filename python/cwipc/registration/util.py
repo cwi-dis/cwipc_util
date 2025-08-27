@@ -70,14 +70,10 @@ def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
     centroid = np.mean(points, axis=0)
     return tuple(centroid)
 
-def cwipc_deepcopy(pc : cwipc_wrapper) -> cwipc_wrapper:
-    return cwipc_from_packet(pc.get_packet())
-
 def cwipc_colorized_copy(pc : cwipc_wrapper) -> cwipc_wrapper:
     cf = colorize.ColorizeFilter(0.8, "camera")
-    # Filters free incoming pc, so copy it first.
-    copied_pc = cwipc_deepcopy(pc)
-    new_pc = cf.filter(copied_pc)
+    cf.set_keep_source()
+    new_pc = cf.filter(pc)
     return new_pc
 
 def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
