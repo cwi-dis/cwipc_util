@@ -92,6 +92,12 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 
+def cwipc_direction_filter(pc : cwipc_wrapper, direction : Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
+    pc_np = pc.get_numpy_matrix()
+    new_pc = cwipc_from_numpy_matrix(pc_np, pc.timestamp())
+    new_pc._set_cellsize(pc.cellsize())
+    return new_pc
+
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
     
