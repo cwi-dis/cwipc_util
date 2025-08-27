@@ -93,8 +93,33 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     return new_pc
 
 def cwipc_direction_filter(pc : cwipc_wrapper, direction : Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
+    # Convert direction to normalized vector
+    dir_vec = np.array(direction)
+    assert np.shape(dir_vec) == (3,)
+    norm = np.linalg.norm(direction)
+    if norm != 0:
+        dir_vec = dir_vec / norm
+    # Get Numpy array of the point cloud
     pc_np = pc.get_numpy_matrix()
-    new_pc = cwipc_from_numpy_matrix(pc_np, pc.timestamp())
+    # Use Open3D to guess the normals
+    points = pc_np[:, 0:3]
+    center = np.mean(points, axis=0)
+    o3d_pc = open3d.geometry.PointCloud()
+    o3d_pc.points = open3d.utility.Vector3dVector(points)
+    strategy = open3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=30)
+    o3d_pc.estimate_normals(strategy)
+    # Note: the next line orients the normals in exactly the wrong direction (inwards)
+    o3d_pc.orient_normals_towards_camera_location(center)
+    normals = np.asarray(o3d_pc.normals)
+    normals = -normals # This aligns the normals outwards again.
+    # Create a filter based on the normals and the direction vector
+    dot_products = normals @ dir_vec
+    filter = dot_products >= threshold
+    # Filter the points
+    pc_np_filtered = pc_np[filter]
+    # Create the resultant point cloud
+    
+    new_pc = cwipc_from_numpy_matrix(pc_np_filtered, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 

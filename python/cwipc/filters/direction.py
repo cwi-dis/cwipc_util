@@ -8,7 +8,7 @@ class DirectionFilter(cwipc_abstract_filter):
     """
     direction - Filter point cloud to points that are approximately oriented in a certain direction.
         Arguments:
-            direction: tuple, vector of 3 floats x, y and z
+            x, y, z: Direction vector
             threshold: float between -1.0 and 1.0. 1.0 is fully aligned with direction, -1.0 is opposite. Default 0.0.
         For each point a normal is computed, based on a surface with adjacent points.
         The dot product between these normals and the direction vector is computed, and any point
