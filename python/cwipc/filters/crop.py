@@ -22,13 +22,20 @@ class CropFilter(cwipc_abstract_filter):
         self.times = []
         self.original_pointcounts = []
         self.pointcounts = []
+        self.keep_source = False
+        
+    def set_keep_source(self) -> None:
+        """Set the filter to keep the source point cloud instead of freeing it after processing.
+        If the filter returns the same point cloud as it received as an argument it will never be freed."""
+        self.keep_source = True
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         self.count += 1
         t1_d = time.time()
         self.original_pointcounts.append(pc.count())
         cropped_pc = cwipc_crop(pc, self.bounding_box)
-        pc.free()
+        if not self.keep_source:
+            pc.free()
         pc = cropped_pc
         t2_d = time.time()
         self.times.append(t2_d-t1_d)

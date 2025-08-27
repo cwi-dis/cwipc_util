@@ -18,6 +18,12 @@ class NoiseFilter(cwipc_abstract_filter):
         self.distance = distance
         self.count = 0
         self.times = []
+        self.keep_source = False
+        
+    def set_keep_source(self) -> None:
+        """Set the filter to keep the source point cloud instead of freeing it after processing.
+        If the filter returns the same point cloud as it received as an argument it will never be freed."""
+        self.keep_source = True
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         self.count += 1
@@ -30,7 +36,8 @@ class NoiseFilter(cwipc_abstract_filter):
         point_matrix[:, :3] = xyz_matrix
         new_pc = cwipc_from_numpy_matrix(point_matrix, pc.timestamp())
         new_pc._set_cellsize(pc.cellsize())
-        pc.free()
+        if not self.keep_source:
+            pc.free()
         pc = new_pc
         t2_d = time.time()
         self.times.append(t2_d-t1_d)

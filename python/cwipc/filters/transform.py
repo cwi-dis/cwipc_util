@@ -22,7 +22,12 @@ class TransformFilter(cwipc_abstract_filter):
         self.scale = scale
         self.count = 0
         self.times = []
+        self.keep_source = False
         
+    def set_keep_source(self) -> None:
+        """Set the filter to keep the source point cloud instead of freeing it after processing.
+        If the filter returns the same point cloud as it received as an argument it will never be freed."""
+        self.keep_source = True        
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         """xxxjack this method should be rewritten using numpy"""
@@ -39,7 +44,8 @@ class TransformFilter(cwipc_abstract_filter):
             newpoints.append(p)
         newpc = cwipc_from_points(newpoints, timestamp)
         newpc._set_cellsize(cellsize * self.scale)
-        pc.free()
+        if not self.keep_source:
+            pc.free()
         t2_d = time.time()
         self.times.append(t2_d-t1_d)
         return newpc

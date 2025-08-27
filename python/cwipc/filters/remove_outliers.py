@@ -23,6 +23,12 @@ class RemoveOutliersFilter(cwipc_abstract_filter):
         self.times = []
         self.original_pointcounts = []
         self.pointcounts = []
+        self.keep_source = False
+        
+    def set_keep_source(self) -> None:
+        """Set the filter to keep the source point cloud instead of freeing it after processing.
+        If the filter returns the same point cloud as it received as an argument it will never be freed."""
+        self.keep_source = True
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
         self.count += 1
@@ -30,7 +36,8 @@ class RemoveOutliersFilter(cwipc_abstract_filter):
         self.original_pointcounts.append(pc.count())
         t1_o = time.time()
         clean_pc = cwipc_remove_outliers(pc, self.kNeighbours, self.threshold, self.perTile)
-        pc.free()
+        if not self.keep_source:
+            pc.free()
         pc = clean_pc
         t2_o = time.time()
         self.times.append(t2_o-t1_o)

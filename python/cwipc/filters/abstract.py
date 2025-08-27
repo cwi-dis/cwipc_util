@@ -14,3 +14,8 @@ class cwipc_abstract_filter(ABC):
         """Print statistics on the usage of the filter. This can be things like total runtime used,
         number of point clouds processed, average point counts per cloud, etc."""
         ...
+        
+    def set_keep_source(self) -> None:
+        """Set the filter to keep the source point cloud instead of freeing it after processing.
+        If the filter returns the same point cloud as it received as an argument it will never be freed."""
+        pass
