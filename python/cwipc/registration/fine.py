@@ -265,6 +265,8 @@ class RegistrationComputer_ICP_Point2Plane(RegistrationComputer):
         return target_pointcloud
     
     def _fix_normal_direction(self, source : open3d.geometry.PointCloud, target : open3d.geometry.PointCloud):
+        # xxxjack would be better to use a correct source_direction and target_direction
+        # xxxjack I should not forget that the center of the point cloud may not be at (0, Y, 0)
         source_center = np.mean(np.asarray(source.points), axis=0)
         target_center = np.mean(np.asarray(target.points), axis=0)
         overall_center = (source_center + target_center) / 2
