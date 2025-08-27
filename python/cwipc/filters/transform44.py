@@ -8,11 +8,7 @@ class Transform44Filter(cwipc_abstract_filter):
     """
     transform - Adjust coordinate system of the point clouds.
         Arguments:
-            x: offset to add to X coordinates
-            y: offset to add to Y coordinates
-            z: offset to add to Z coordinates
-            scale: scale factor to apply (after the offsets)
-        The analyze filter will give an educated guess for the parameters, for point clouds of humans.
+            matrix: 4x4 transformation matrix as a list of lists.
     """
     filtername = "transform"
 
@@ -28,7 +24,6 @@ class Transform44Filter(cwipc_abstract_filter):
         self.keep_source = True        
         
     def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
-        """xxxjack this method should be rewritten using numpy"""
         self.count += 1
         t1_d = time.time()
         newpc = cwipc_transform(pc, self.transform)
