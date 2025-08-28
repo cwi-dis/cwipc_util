@@ -24,6 +24,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     original_pointcloud : Optional[cwipc_wrapper]
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
+    camera_positions : List[Vector3]
     pre_analysis_results : List[AnalysisResults]
     results : List[AnalysisResults]
     verbose : bool
@@ -90,6 +91,13 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             for i in range(self.camera_count()):
                 self.transformations.append(transformation_identity())
         self.original_transformations = copy.deepcopy(self.transformations)
+        assert len(self.camera_positions) == 0
+        for i in range(self.camera_count()):
+            trafo = self.transformations[i]
+            translation : Vector3 = trafo[3, 0:3] # type: ignore
+            campos = -translation
+            self.camera_positions.append(campos)
+            print(f"xxxjack cam {i} pos {campos}")
 
     def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr') -> None:
         """
@@ -148,6 +156,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         rv : OrderedCameraList = []
         for i in range(len(self.pre_analysis_results)):
             r = self.pre_analysis_results[i]
+            assert type(r.tilemask) == int
             rv.append((i, r.tilemask, r.minCorrespondence, r.minCorrespondenceCount/r.sourcePointCount))
         return rv
     
@@ -403,7 +412,7 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
         todo = self._todo_from_pre_analysis_results()
         aligned : List[cwipc_wrapper] = []
         # xxxjack remember resultant point clouds, to combine later.
-        for camnum, filemask, corr, fraction in todo:
+        for camnum, tilemask, corr, fraction in todo:
             aligner = self._prepare_aligner()
             aligner.set_source_pointcloud(self.original_pointcloud, tilemask)
             aligner.set_reference_pointcloud(self.groundtruth_pointcloud)
@@ -460,6 +469,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         remaining_results : List[AnalysisResults] = []
         for rr in old_remaining_results:
             tilemask = rr.tilemask
+            assert type(tilemask) == int
             analyzer = self._prepare_analyze()
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
@@ -531,19 +541,19 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     def _select_first_step(self) -> int:
         """Select first camera, to align others to. Returns tilemask. Can be overridden by subclasses"""
         rr = self.pre_analysis_results[0]
-        assert rr.tilemask != None
+        assert type(rr.tilemask) == int
         return rr.tilemask
     
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
         """Select next tile to align. Can be overridden by subclasses."""
         rr = self.remaining_results[0]
-        assert rr.tilemask != None
+        assert type(rr.tilemask) == int
         rv = (rr.tilemask, rr.minCorrespondence, None)
         return rv
     
     def _still_to_do(self) -> List[int]:
         """Return list of tilemasks that still need to be aligned"""
-        rv = list([rr.tilemask for rr in self.remaining_results])
+        rv : List[int] = list([rr.tilemask for rr in self.remaining_results]) # type: ignore
         return rv
     
     def run(self) -> bool:
@@ -673,6 +683,7 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     
     def _select_first_step(self):
         tilemask = super()._select_first_step()
+        assert self.original_pointcloud
         pc_to_show = cwipc_colorized_copy(self.original_pointcloud)
         show_pointcloud("Captured point cloud", pc_to_show)
         tilemask = int(self._ask("Tilemask to use as reference", tilemask, options=self._still_to_do()))

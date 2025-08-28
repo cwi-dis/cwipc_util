@@ -49,7 +49,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.variants : List[str] = []
 
     @override
-    def set_correspondence_measure(self, method : str, *other_methods : Tuple[str]):
+    def set_correspondence_measure(self, method : str, *other_methods : str):
         self.correspondence_measure = method
         self.all_measures = list(other_methods)
         if not self.correspondence_measure in self.all_measures:

@@ -381,7 +381,7 @@ class Registrator:
         if self.args.tabletop:
             assert self.cameraconfig.camera_count() == 1
             t = self.cameraconfig.get_transform(0)
-            matrix = np.array(
+            matrix : RegistrationTransformation = np.array(
                 [
                     [1.0, 0.0, 0.0, 0.0],
                     [0.0, -1.0, 0.0,  1.0],
@@ -737,12 +737,13 @@ class Registrator:
         multicam.verbose = self.verbose > 2
         multicam.debug = self.verbose > 3
         if self.args.correspondence:
-            multicam.set_max_correspondence(self.args.correspondence)
+            multicam.set_max_correspondence(self.args.correspondence) # type: ignore
             if True or self.verbose:
                 print(f"cwipc_register: override max correspondence to {self.args.correspondence}")
         if self.alignment_class:
             multicam.set_aligner_class(self.alignment_class)
         if True or self.verbose:
+            assert multicam.aligner_class
             print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
         multicam.set_analyzer_class(self.analyzer_class)
         # This number sets a threashold for the best possible alignment.
