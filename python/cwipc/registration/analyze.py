@@ -93,8 +93,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             self.results.variant = ",".join(self.variants)
 
     def _prepare_source_ndarray(self):
-        assert self.source_pointcloud
-        self.source_ndarray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.source_ndarray = self.get_filtered_source_pointcloud().get_numpy_matrix(onlyGeometry=True)
         if self.ignore_floor:
             not_floor = self.source_ndarray[:,1] > 0.1
             filtered = self.source_ndarray[not_floor]
@@ -104,8 +103,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.results.sourcePointCount = self.source_ndarray.shape[0]
 
     def _prepare_reference_ndarray(self):
-        assert self.reference_pointcloud
-        self.reference_ndarray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.reference_ndarray = self.get_filtered_reference_pointcloud().get_numpy_matrix(onlyGeometry=True)
         if self.ignore_floor:
             not_floor = self.reference_ndarray[:,1] > 0.1
             filtered = self.reference_ndarray[not_floor]
@@ -290,16 +288,14 @@ class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
         self.correspondence = correspondence
 
     def _get_source_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
-        assert self.source_pointcloud
         source_o3d_pointcloud = open3d.geometry.PointCloud()
-        source_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        source_points_nparray = self.get_filtered_source_pointcloud().get_numpy_matrix(onlyGeometry=True)
         source_o3d_pointcloud.points = open3d.utility.Vector3dVector(source_points_nparray)
         return source_o3d_pointcloud
     
     def _get_reference_o3d_pointcloud(self) -> open3d.geometry.PointCloud:
-        assert self.reference_pointcloud
         reference_o3d_pointcloud = open3d.geometry.PointCloud()
-        reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        reference_points_nparray = self.get_filtered_reference_pointcloud().get_numpy_matrix(onlyGeometry=True)
         reference_o3d_pointcloud.points = open3d.utility.Vector3dVector(reference_points_nparray)
         return reference_o3d_pointcloud
     

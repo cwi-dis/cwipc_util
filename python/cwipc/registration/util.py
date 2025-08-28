@@ -33,7 +33,8 @@ def transformation_identity() -> RegistrationTransformation:
         0, 0, 1, 0,
         0, 0, 0, 1
     ], dtype=float)
-    return np.reshape(values, (4, 4))
+    rv : RegistrationTransformation = np.reshape(values, (4, 4)) # type: ignore
+    return rv
 
 def transformation_invert(orig_transform : RegistrationTransformation) -> RegistrationTransformation:
     """Invert an affine transformation"""
@@ -50,10 +51,11 @@ def transformation_invert(orig_transform : RegistrationTransformation) -> Regist
     transform[:3, :3] = inv_matrix
     transform[:3, 3] = inv_translation
     transform[3, :] = [0, 0, 0, 1]
-    return transform
+    rv : RegistrationTransformation = transform # type: ignore
+    return rv
 
 def transformation_frompython(trafo : List[List[float]]) -> RegistrationTransformation:
-    rv = np.array(trafo)
+    rv : RegistrationTransformation = np.array(trafo) # type: ignore
     assert rv.shape == (4, 4)
     return rv
 
@@ -210,9 +212,11 @@ class BaseAlgorithm(Algorithm):
     """
 
     def __init__(self):
-        self.source_pointcloud : Optional[cwipc_wrapper] = None
+        self._source_pointcloud : Optional[cwipc_wrapper] = None
+        self._filtered_source_pointcloud : Optional[cwipc_wrapper] = None
         self.source_tilemask : Optional[int] = None
-        self.reference_pointcloud : Optional[cwipc_wrapper] = None
+        self._reference_pointcloud : Optional[cwipc_wrapper] = None
+        self._filtered_reference_pointcloud : Optional[cwipc_wrapper] = None
         self.reference_tilemask : Optional[int] = None
         self.verbose = False
 
@@ -234,7 +238,7 @@ class BaseAlgorithm(Algorithm):
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting source point cloud with {pre_count} points")
 
-        self.source_pointcloud = pc
+        self._source_pointcloud = pc
         self.source_tilemask = tilemask
     
     @override
@@ -254,10 +258,26 @@ class BaseAlgorithm(Algorithm):
         else:
             if self.verbose:
                 print(f"{self.__class__.__name__}: Setting target point cloud with {pc.count()} points")
-        self.reference_pointcloud = pc
+        self._reference_pointcloud = pc
         self.reference_tilemask = tilemask
 
+    def get_source_pointcloud(self) -> cwipc_wrapper:
+        assert self._source_pointcloud
+        return self._source_pointcloud
     
+    def get_filtered_source_pointcloud(self) -> cwipc_wrapper:
+        if self._filtered_source_pointcloud:
+            return self._filtered_source_pointcloud
+        return self.get_source_pointcloud()
+    
+    def get_reference_pointcloud(self) -> cwipc_wrapper:
+        assert self._reference_pointcloud
+        return self._reference_pointcloud
+    
+    def get_filtered_reference_pointcloud(self) -> cwipc_wrapper:
+        if self._filtered_reference_pointcloud:
+            return self._filtered_reference_pointcloud
+        return self.get_reference_pointcloud()
 class BaseMulticamAlgorithm(MulticamAlgorithm):
     """Base class for most algorithms, both registration and alignment.
 

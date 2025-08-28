@@ -42,29 +42,24 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         return True
 
     def _prepare(self) -> None:
-        assert self.source_pointcloud is not None, "source point cloud must be set before running the algorithm"
-        assert self.reference_pointcloud is not None, "reference point cloud must be set before running the algorithm"
-        self.our_points_nparray = self.source_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.our_points_nparray = self.get_filtered_source_pointcloud().get_numpy_matrix(onlyGeometry=True)
         # If set_reference_pointcloud() was not called, we'll use the combined point clouds of all other cameras as reference
-        self.reference_points_nparray = self.reference_pointcloud.get_numpy_matrix(onlyGeometry=True)
+        self.reference_points_nparray = self.get_filtered_reference_pointcloud().get_numpy_matrix(onlyGeometry=True)
         if self.verbose:
             print(f"{self.__class__.__name__}: with {len(self.our_points_nparray)} points and {len(self.reference_points_nparray)} reference points")
-        self._compute_centroids()
+        if self.correspondence == 0:
+            self._compute_correspondence()
 
-    def _compute_centroids(self) -> None:
+    def _compute_correspondence(self) -> None:
         assert not self.our_points_nparray is None
         assert not self.reference_points_nparray is None
         our_centroid = np.mean(self.our_points_nparray, axis=0)
         reference_centroid = np.mean(self.reference_points_nparray, axis=0)
-        self.our_centroid = our_centroid
-        self.reference_centroid = reference_centroid
         our_centroid[1] = 0
         reference_centroid[1] = 0
-        if self.correspondence == 0:
-            # If correspondence is not set use distance between the (floor-based) centroids.
-            self.correspondence = float(np.linalg.norm(our_centroid - reference_centroid)) / 2
-            if self.verbose:
-                print(f"{self.__class__.__name__}: set correspondence to {self.correspondence:.4f} meters")
+        self.correspondence = float(np.linalg.norm(our_centroid - reference_centroid)) / 2
+        if self.verbose:
+            print(f"{self.__class__.__name__}: set correspondence to {self.correspondence:.4f} meters")
     
     @override
     def get_result_transformation(self, nonverbose=False) -> RegistrationTransformation:
@@ -72,17 +67,15 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     
     @override
     def get_result_pointcloud(self) -> cwipc_wrapper:
-        pc = self.source_pointcloud
-        assert pc is not None
+        pc = self.get_source_pointcloud()
         transform = self.get_result_transformation(nonverbose=True)
         new_pc = cwipc_transform(pc, transform)
         return new_pc
     
     @override
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
-        assert self.reference_pointcloud is not None
         part_pc = self.get_result_pointcloud()
-        new_part_pc = cwipc_join(part_pc, self.reference_pointcloud)
+        new_part_pc = cwipc_join(part_pc, self.get_reference_pointcloud())
         part_pc.free()
         part_pc = new_part_pc
         return part_pc

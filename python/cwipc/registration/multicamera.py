@@ -454,7 +454,9 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
     def __init__(self):
         super().__init__()
-        self.current_step_target_pointcloud : Optional[cwipc_wrapper] = None
+        self.current_step_target_pointcloud = None
+        self.current_step_in_pointcloud = None
+        self.current_step_out_pointcloud = None
         self.remaining_results : List[AnalysisResults] = []
     
     def _pre_step_analyse(self, stepnum : int) -> None:
