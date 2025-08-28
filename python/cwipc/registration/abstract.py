@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Any, List, Tuple, Type, Container
+from typing import Optional, Union, Any, List, Tuple, Type, Container, Literal
 import math
+import numpy as np
 import numpy.typing
 from ..abstract import *
 from .. import cwipc_wrapper
 
 __all__ = [
     "RegistrationTransformation",
+    "Vector3",
 
     "AnalysisResults",
 
@@ -27,8 +29,9 @@ __all__ = [
 ]
 
 #RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
-RegistrationTransformation = numpy.typing.NDArray[numpy.float64] # Should be: NDArray[(4,4), float]
-
+# RegistrationTransformation = numpy.typing.NDArray[(4,4), numpy.float64] # Should be: NDArray[(4,4), float]
+RegistrationTransformation = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
+Vector3 = np.ndarray[tuple[Literal[3]], np.dtype[np.float64]]
 class Algorithm(ABC):
     """Abstract base class for any algorithm that operates on two point clouds.
     Contains the methods for adding the pointclouds, running the algorithm, and returning the result.
@@ -75,7 +78,7 @@ class AnalysisResults:
     #: total number of points in the reference point cloud
     referencePointCount : int
     #: tile mask for this analysis data, if applicable
-    tilemask : Optional[int]
+    tilemask : Optional[int | str]
     #: target tilemask, if applicable
     referenceTilemask : Optional[int]
     #: histogram of distances
@@ -122,7 +125,7 @@ class AnalysisAlgorithm(Algorithm):
     correspondence_method: Optional[str]
 
     @abstractmethod
-    def set_correspondence_measure(self, method : str, *other_methods : Tuple[str]):
+    def set_correspondence_measure(self, method : str, *other_methods : str):
         """Set the algorithm used to comput point cloud correspondence based on point distances.
         Values are mean, median, or mode."""
         ...
