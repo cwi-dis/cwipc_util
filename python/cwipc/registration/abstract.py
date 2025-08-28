@@ -28,10 +28,9 @@ __all__ = [
     
 ]
 
-#RegistrationTransformation = numpy.typing.ArrayLike # Should be: NDArray[(4,4), float]
-# RegistrationTransformation = numpy.typing.NDArray[(4,4), numpy.float64] # Should be: NDArray[(4,4), float]
 RegistrationTransformation = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
 Vector3 = np.ndarray[tuple[Literal[3]], np.dtype[np.float64]]
+
 class Algorithm(ABC):
     """Abstract base class for any algorithm that operates on two point clouds.
     Contains the methods for adding the pointclouds, running the algorithm, and returning the result.
@@ -57,8 +56,6 @@ class Algorithm(ABC):
 
 class AnalysisResults:
     """Class to hold the results of an analysis algorithm"""
-    def tostr(self) -> str:
-        return ""
     #: minimum correspondence for each camera. Usually based on next values.
     minCorrespondence : float
     #: number of points that in source cloud that are below minCorrespondence
@@ -187,7 +184,7 @@ class OverlapAnalysisAlgorithm(Algorithm):
 
 AnalysisAlgorithmFactory = Type[AnalysisAlgorithm]
 
-class AlignmentAlgorithm(Algorithm): # xxxjack wrong base class
+class AlignmentAlgorithm(Algorithm):
     """ABC for an algorithm that tries to find the best alignment for one tile (or possibly between two tiles, but always returning a new
     matrix for a single tile only)"""
 
@@ -201,10 +198,11 @@ class AlignmentAlgorithm(Algorithm): # xxxjack wrong base class
         """After a successful run(), returns the transformation applied to the tile-under-test"""
         ...
     
+    @abstractmethod
     def get_result_pointcloud(self) -> cwipc_wrapper:
         """After a successful run(), returns the point cloud for the tile-under-test after the transformation has been applied"""
         ...
-    
+    @abstractmethod
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
          """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
          ...
