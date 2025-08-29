@@ -37,7 +37,9 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     change : List[float]
     cellsize_factor : float
     proposed_cellsize : float
+    # Optional functionality
     correspondence : Optional[float]
+    randomize_floor : bool
 
     def __init__(self):
         MulticamAlignmentAlgorithm.__init__(self)
@@ -58,12 +60,22 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.change = []
         self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
         self.proposed_cellsize = 0
+
         self.correspondence = None
+        self.randomize_floor = False
     
     @override
     def set_max_correspondence(self, max_correspondence: float) -> None:
         """Set the maximum correspondence for this algorithm"""
         self.correspondence = max_correspondence
+
+    @override
+    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+        """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
+        if self.randomize_floor:
+            pass
+        else:
+            super().set_tiled_pointcloud(pc)
 
     def _prepare_analyze(self) -> AnalysisAlgorithm:
         analyzer = None
@@ -481,7 +493,9 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.current_step_in_pointcloud = None
         self.current_step_out_pointcloud = None
         self.remaining_results : List[AnalysisResults] = []
-        self.orientation_filter : Optional[float] = None
+        # Optional functionality
+        self.orientation_filter : Optional[float] = 0.0
+        self.select_target_tile : bool = False
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
@@ -745,10 +759,12 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         corr = rr.mean + rr.stddev
         corr = float(self._ask("Max correspondence", str(corr)))
         assert self.current_step_target_pointcloud
-        target_tiles = get_tiles_used(self.current_step_target_pointcloud)
-        if len(target_tiles) > 1:
-            ttile_str = self._ask(f"Target tilemask to align to", "all", options=target_tiles)
-            ttile = None if ttile_str == "all" else int(ttile_str)
+        ttile = None
+        if self.select_target_tile:
+            target_tiles = get_tiles_used(self.current_step_target_pointcloud)
+            if len(target_tiles) > 1:
+                ttile_str = self._ask(f"Target tilemask to align to", "all", options=target_tiles)
+                ttile = None if ttile_str == "all" else int(ttile_str)
         return tilemask, corr, ttile
 
     def _ask(self, prompt : str, default : Any, options : List[Any] = []) -> Any:

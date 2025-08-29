@@ -98,7 +98,7 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     return new_pc
 
 def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
-    # Convert direction to normalized vector
+    """Filter a point cloud to keep only points that are somewhat facing a direction."""
     if type(direction) == tuple:
         direction = np.array(list(direction)) # type: ignore
     assert np.shape(direction) == (3,)
@@ -127,6 +127,18 @@ def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, 
     
     new_pc = cwipc_from_numpy_matrix(pc_np_filtered, pc.timestamp())
     new_pc._set_cellsize(pc.cellsize())
+    return new_pc
+
+def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrapper:
+    pc_np = pc.get_numpy_matrix()
+    is_floor_point = pc_np[:,1] < level
+    pc_np_floor = pc_np[is_floor_point]
+    pc_np_nonfloor = pc_np[~is_floor_point]
+    floor_tiles = pc_np_floor[:,6]
+    np.random.shuffle(floor_tiles)
+    pc_np_floor[:,6] = floor_tiles
+    new_pc_np = np.concatenate((pc_np_floor, pc_np_nonfloor), axis=0)
+    new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc
 
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):

@@ -20,13 +20,14 @@ def main():
 #    parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
 #    parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
 #    parser.add_argument("--timestamps", action="store_true", help="Print detailed timestamp information about every point cloud displayed")
+    parser.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
+    parser.add_argument("--help_filters", action="store_true", help="List available filters and exit")
     parser.add_argument("--help_commands", action="store_true", help="List interactive commands and exit")
     parser.add_argument("input", help="Point cloud (ply, cwipcdump) or directory of those")
     args = parser.parse_args()
     if args.help_commands:
         help_commands()
         sys.exit(0)
-    args.help_filters = False
     args.timestamps = False
     if args.input.endswith(".json"):
         args.cameraconfig = args.input
@@ -55,7 +56,6 @@ def main():
     args.rgb_cw = None
     args.rgb_ccw = None
     args.count = None
-    args.filter = None
     # xxxjack or pause-at-end?
     beginOfRun(args)
     #
