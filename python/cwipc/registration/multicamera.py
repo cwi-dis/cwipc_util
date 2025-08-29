@@ -73,7 +73,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         if self.randomize_floor:
-            pass
+            new_pc = cwipc_randomize_floor(pc)
+            super().set_tiled_pointcloud(new_pc)
         else:
             super().set_tiled_pointcloud(pc)
 
