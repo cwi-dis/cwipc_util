@@ -118,7 +118,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _kdtree_get_distances_for_points(self, tree : KD_TREE_TYPE, points : NDArray[Any]) -> NDArray[Any]:
         """For each point in points, get the distance to the nearest point in the tree"""
-        distances, _ = tree.query(points, k=[self.ignore_nearest+1], workers=-1, distance_upper_bound=self.max_correspondence_distance)
+        distances, _ = tree.query(points, k=[self.ignore_nearest+1], workers=-1, distance_upper_bound=self.max_correspondence_distance) # type: ignore
         return distances
     
     def _filter_infinites(self, distances : NDArray[Any]) -> NDArray[Any]:
@@ -135,7 +135,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         assert self.results
         return self.results
     
-    def _mode_from_histogram(self, histogram, histogramEdges) -> Tuple[float, float]:
+    def _mode_from_histogram(self, histogram, histogramEdges) -> float:
         mode_index = np.argmax(histogram)
         mode = histogramEdges[mode_index+1]
         return mode
@@ -217,10 +217,13 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         # Last step: see how many points are below our new-found correspondence
         assert self.results
         if self.correspondence_measure == "mean":
+            assert mean != None
             self.results.minCorrespondence = mean
         elif self.correspondence_measure == "median":
+            assert median != None
             self.results.minCorrespondence = median
         elif self.correspondence_measure == "mode":
+            assert mode != None
             self.results.minCorrespondence = mode
         elif self.correspondence_measure.startswith("q="):
             percentile = int(self.correspondence_measure[2:])
@@ -258,8 +261,8 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
             value = distances[0]
             self.results.minCorrespondence = value
             self.results.minCorrespondenceCount = distances.shape[0]
-            self.results.histogram = [value]
-            self.results.histogramEdges = [value, value]
+            self.results.histogram = np.array([value])
+            self.results.histogramEdges = np.array([value, value])
             return False
         if self.use_kde:
             histogram, edges = self._compute_histogram_kde(distances)
