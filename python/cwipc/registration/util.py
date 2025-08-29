@@ -25,7 +25,6 @@ def algdoc(klass : type, indent : int) -> str:
 Point_array_xyz = NDArray[Any]
 Point_array_rgb = NDArray[Any]
 
-
 def transformation_identity() -> RegistrationTransformation:
     values  = np.array([
         1, 0, 0, 0,
@@ -65,6 +64,10 @@ def transformation_topython(matrix : RegistrationTransformation) -> List[List[fl
     assert len(rv[0]) == 4
     return rv
 
+def transformation_get_translation(matrix : RegistrationTransformation) -> Vector3:
+    rv : Vector3 = matrix[3, 0:3] # type: ignore
+    return rv
+
 def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
     """Compute the center of a point cloud"""
     point_matrix = pc.get_numpy_matrix()
@@ -94,13 +97,14 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 
-def cwipc_direction_filter(pc : cwipc_wrapper, direction : Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
+def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
     # Convert direction to normalized vector
-    dir_vec = np.array(direction)
-    assert np.shape(dir_vec) == (3,)
+    if type(direction) == tuple:
+        direction = np.array(list(direction)) # type: ignore
+    assert np.shape(direction) == (3,)
     norm = np.linalg.norm(direction)
     if norm != 0:
-        dir_vec = dir_vec / norm
+        direction = direction / norm # type: ignore
     # Get Numpy array of the point cloud
     pc_np = pc.get_numpy_matrix()
     # Use Open3D to guess the normals
@@ -115,7 +119,7 @@ def cwipc_direction_filter(pc : cwipc_wrapper, direction : Tuple[float, float, f
     normals = np.asarray(o3d_pc.normals)
     normals = -normals # This aligns the normals outwards again.
     # Create a filter based on the normals and the direction vector
-    dot_products = normals @ dir_vec
+    dot_products = normals @ direction
     filter = dot_products >= threshold
     # Filter the points
     pc_np_filtered = pc_np[filter]
