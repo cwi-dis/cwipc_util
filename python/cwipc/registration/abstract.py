@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Any, List, Tuple, Type, Container, Literal
+from typing import Optional, Union, Any, List, Tuple, Type, Container, Literal, Callable
 import math
 import numpy as np
 import numpy.typing
@@ -30,6 +30,7 @@ __all__ = [
 
 RegistrationTransformation = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
 Vector3 = np.ndarray[tuple[Literal[3]], np.dtype[np.float64]]
+PointCloudFilter = Callable[[cwipc_wrapper], cwipc_wrapper]
 
 class Algorithm(ABC):
     """Abstract base class for any algorithm that operates on two point clouds.
@@ -52,6 +53,16 @@ class Algorithm(ABC):
     @abstractmethod
     def run(self) -> bool:
         """Run the algorithm. Returns false in case of a failure."""
+        ...
+
+    @abstractmethod
+    def apply_source_filter(self, filter : PointCloudFilter) -> None:
+        """Apply a filter to the source point cloud before applying the algorithm"""
+        ...
+
+    @abstractmethod
+    def apply_reference_filter(self, filter : PointCloudFilter) -> None:
+        """Apply a filter to the reference point cloud before applying the algorithm"""
         ...
 
 class AnalysisResults:
