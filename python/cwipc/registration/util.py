@@ -7,7 +7,6 @@ except ImportError:
 from ..abstract import *
 from .abstract import *
 from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet
-from ..filters import colorize
 import open3d
 import open3d.visualization
 import numpy as np
@@ -76,6 +75,7 @@ def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
     return tuple(centroid)
 
 def cwipc_colorized_copy(pc : cwipc_wrapper) -> cwipc_wrapper:
+    from ..filters import colorize
     cf = colorize.ColorizeFilter(0.8, "camera")
     cf.set_keep_source()
     new_pc = cf.filter(pc)

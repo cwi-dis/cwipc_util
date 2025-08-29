@@ -90,7 +90,6 @@ class AnalyzePointCloud:
         analyzer.run()
         results = analyzer.get_results()
         correspondence = results.minCorrespondence
-        assert analyzer.source_pointcloud is not None
         if self.args.toself:
             label = f"{sourcetile:#x} self, nth={self.args.nth}"
         else:

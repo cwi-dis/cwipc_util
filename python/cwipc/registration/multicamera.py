@@ -481,7 +481,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.current_step_in_pointcloud = None
         self.current_step_out_pointcloud = None
         self.remaining_results : List[AnalysisResults] = []
-        self.orientation_filter : Optional[float] = 0.0
+        self.orientation_filter : Optional[float] = None
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
