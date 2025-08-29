@@ -278,6 +278,13 @@ class BaseAlgorithm(Algorithm):
         if self._filtered_reference_pointcloud:
             return self._filtered_reference_pointcloud
         return self.get_reference_pointcloud()
+    
+    def apply_source_filter(self, filter : PointCloudFilter) -> None:
+        self._filtered_source_pointcloud = filter(self.get_filtered_source_pointcloud())
+
+    def apply_reference_filter(self, filter : PointCloudFilter) -> None:
+        self._filtered_reference_pointcloud = filter(self.get_filtered_reference_pointcloud())
+
 class BaseMulticamAlgorithm(MulticamAlgorithm):
     """Base class for most algorithms, both registration and alignment.
 
