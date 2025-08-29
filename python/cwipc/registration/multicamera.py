@@ -15,7 +15,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -145,8 +145,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference != None:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_measure('mode')
-                label = "toreference(mode)"
+                analyzer.set_correspondence_measure('median')
+                label = "toreference(median)"
             elif toSelf:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
@@ -208,8 +208,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_measure('mode')
-                label = "toreference(mode)"
+                analyzer.set_correspondence_measure('median')
+                label = "toreference(median)"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
                 analyzer.set_correspondence_measure('mode')
