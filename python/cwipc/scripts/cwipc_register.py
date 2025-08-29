@@ -381,13 +381,7 @@ class Registrator:
         if self.args.tabletop:
             assert self.cameraconfig.camera_count() == 1
             t = self.cameraconfig.get_transform(0)
-            matrix : RegistrationTransformation = np.array(
-                [
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, -1.0, 0.0,  1.0],
-                    [0.0, 0.0, -1.0,  0.60],
-                    [0, 0, 0, 1]
-                ])
+            matrix = transformation_identity()
             t.set_matrix(matrix)
             self.cameraconfig.save()
             return True
@@ -707,7 +701,7 @@ class Registrator:
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = aligner.get_result_pointcloud_full()
         if self.check_coarse_alignment:
-            correspondence = self.check_alignment(new_pc, 0, "after coarse registration")
+            correspondence = self.check_alignment(new_pc, "after coarse registration")
             self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
@@ -721,23 +715,24 @@ class Registrator:
         return klass
 
     def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None) -> Optional[cwipc_wrapper]:
-        if multicam_aligner_class is None:
+        fixed_aligner = multicam_aligner_class != None
+        if not fixed_aligner:
             multicam_aligner_class = self.multicamera_aligner_class
-        if self.args.guided:
-            multicam_aligner_class = self.ask_aligner_class(multicam_aligner_class)
-            if multicam_aligner_class == None:
-                print(f"cwpic_register: skipping registration")
-                return None
+            if self.args.guided:
+                multicam_aligner_class = self.ask_aligner_class(multicam_aligner_class)
+                if multicam_aligner_class == None:
+                    print(f"cwpic_register: skipping registration")
+                    return None
         if not self.verbose:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
-            self.check_alignment(pc, 0, f"before {multicam_aligner_class.__name__} registration")
+            self.check_alignment(pc, f"before {multicam_aligner_class.__name__} registration")
         if True or self.verbose:
             print(f"cwipc_register: Use multicam aligner class {multicam_aligner_class.__name__}")
         multicam = multicam_aligner_class()
         multicam.verbose = self.verbose > 2
         multicam.debug = self.verbose > 3
-        if self.args.correspondence:
-            multicam.set_max_correspondence(self.args.correspondence) # type: ignore
+        if not fixed_aligner and self.args.correspondence:
+            multicam.set_max_correspondence(self.args.correspondence)
             if True or self.verbose:
                 print(f"cwipc_register: override max correspondence to {self.args.correspondence}")
         if self.alignment_class:
@@ -746,9 +741,6 @@ class Registrator:
             assert multicam.aligner_class
             print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
         multicam.set_analyzer_class(self.analyzer_class)
-        # This number sets a threashold for the best possible alignment.
-        # xxxjack it should be computed from the source point clouds
-        original_capture_precision = 0.001
 
         multicam.show_plot = self.show_plot
         multicam.set_tiled_pointcloud(pc)
@@ -770,11 +762,11 @@ class Registrator:
             t.set_matrix(matrix)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        correspondence = self.check_alignment(new_pc, 0, f"after {multicam_aligner_class.__name__} registration")
+        correspondence = self.check_alignment(new_pc, f"after {multicam_aligner_class.__name__} registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def check_alignment(self, pc : cwipc_wrapper, original_capture_precision : float, label : str) -> float:
+    def check_alignment(self, pc : cwipc_wrapper, label : str) -> float:
         assert self.analyzer_class
         if True or self.verbose:
             print(f"cwipc_register: Use analyzer class {self.analyzer_class.__name__}")

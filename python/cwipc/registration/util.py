@@ -65,7 +65,7 @@ def transformation_topython(matrix : RegistrationTransformation) -> List[List[fl
     return rv
 
 def transformation_get_translation(matrix : RegistrationTransformation) -> Vector3:
-    rv : Vector3 = matrix[3, 0:3] # type: ignore
+    rv : Vector3 = matrix[0:3, 3] # type: ignore
     return rv
 
 def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
@@ -265,27 +265,33 @@ class BaseAlgorithm(Algorithm):
         self._reference_pointcloud = pc
         self.reference_tilemask = tilemask
 
+    @override
     def get_source_pointcloud(self) -> cwipc_wrapper:
         assert self._source_pointcloud
         return self._source_pointcloud
     
+    @override
     def get_filtered_source_pointcloud(self) -> cwipc_wrapper:
         if self._filtered_source_pointcloud:
             return self._filtered_source_pointcloud
         return self.get_source_pointcloud()
     
+    @override
     def get_reference_pointcloud(self) -> cwipc_wrapper:
         assert self._reference_pointcloud
         return self._reference_pointcloud
     
+    @override
     def get_filtered_reference_pointcloud(self) -> cwipc_wrapper:
         if self._filtered_reference_pointcloud:
             return self._filtered_reference_pointcloud
         return self.get_reference_pointcloud()
     
+    @override
     def apply_source_filter(self, filter : PointCloudFilter) -> None:
         self._filtered_source_pointcloud = filter(self.get_filtered_source_pointcloud())
 
+    @override
     def apply_reference_filter(self, filter : PointCloudFilter) -> None:
         self._filtered_reference_pointcloud = filter(self.get_filtered_reference_pointcloud())
 

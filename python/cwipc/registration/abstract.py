@@ -9,6 +9,7 @@ from .. import cwipc_wrapper
 __all__ = [
     "RegistrationTransformation",
     "Vector3",
+    "PointCloudFilter",
 
     "AnalysisResults",
 
@@ -65,6 +66,25 @@ class Algorithm(ABC):
         """Apply a filter to the reference point cloud before applying the algorithm"""
         ...
 
+    @abstractmethod
+    def get_source_pointcloud(self) -> cwipc_wrapper:
+        """Get original source point cloud"""
+        ...
+
+    @abstractmethod
+    def get_filtered_source_pointcloud(self) -> cwipc_wrapper:
+        """Get filtered source point cloud used during algorithm run"""
+        ...
+    
+    @abstractmethod
+    def get_reference_pointcloud(self) -> cwipc_wrapper:
+        """Get original reference point cloud"""
+        ...
+    
+    @abstractmethod
+    def get_filtered_reference_pointcloud(self) -> cwipc_wrapper:
+        """Get filtered point cloud used during algorithm run"""
+        ...
 class AnalysisResults:
     """Class to hold the results of an analysis algorithm"""
     #: minimum correspondence for each camera. Usually based on next values.
@@ -279,6 +299,14 @@ class MulticamAlignmentAlgorithm(MulticamAlgorithm):
         """Set the class to be used for aligning individual tiles"""
         self.aligner_class = aligner_class
     
+    def set_max_correspondence(self, max_correspondence: float) -> None:
+        """Override maximum correspondence (distance at which potentially matching points are sought)"""
+        assert False, f"{self.__class__.__name__} does not implement set_max_correspondence()"
+
+    def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
+        """Communicate original matrices to the aligner. Must be overridden if allowed"""
+        assert False, f"{self.__class__.__name__} does not implement set_original_transform()"
+
     @abstractmethod
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         """After a successful run(), returns the list of transformations applied to each tile"""

@@ -3,6 +3,10 @@ from abc import ABC, abstractmethod
 import copy
 import math
 from typing import List, Optional, Any, Tuple
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 import numpy as np
 import scipy.spatial
 from matplotlib import pyplot as plt
@@ -41,6 +45,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.original_pointcloud = None
         self.transformations  = []
         self.original_transformations = []
+        self.camera_positions = []
         self.pre_analysis_results = []
         self.results = []
         self.aligner_class = DEFAULT_FINE_ALIGNMENT_ALGORITHM
@@ -54,9 +59,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
         self.proposed_cellsize = 0
         self.correspondence = None
-
-        self.orientation_filter : Optional[float] = None
     
+    @override
     def set_max_correspondence(self, max_correspondence: float) -> None:
         """Set the maximum correspondence for this algorithm"""
         self.correspondence = max_correspondence
@@ -79,6 +83,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         aligner.verbose = self.verbose
         return aligner
 
+    @override
     def set_original_transform(self, cam_index : int, matrix : RegistrationTransformation) -> None:
         assert self.original_pointcloud
         nCamera = get_tiles_used(self.original_pointcloud)
@@ -96,11 +101,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         assert len(self.camera_positions) == 0
         for i in range(self.camera_count()):
             translation = transformation_get_translation(self.transformations[i])
-            campos = -translation
+            campos = translation
             self.camera_positions.append(campos)
             print(f"xxxjack cam {i} pos {campos}")
 
-    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr') -> None:
+    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
         If toSelf is true the internal nearest-point distances are computed (a measure of the quality of the capture of this camera).
@@ -110,6 +115,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         - "corr" for lowest correspondence first
         - "corrcount" for highest count for below-correspondence points first
         - "sourcecount" for highest source cloud point count first
+        if target_dirfilter is specified it first filters the target point cloud to only include points with a normal
+        in the appropriate direction of the source camera.
         """
         assert self.original_pointcloud
         assert self.camera_count() > 1
@@ -138,11 +145,12 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 label = "correspondence(mode)"
             if ignoreFloor:
                 analyzer.set_ignore_floor(True)
-            if self.orientation_filter != None:
-                threshold = self.orientation_filter
+            if target_dirfilter != None:
+                threshold = target_dirfilter
                 direction = self.camera_positions[camnum]
                 filter = lambda pc : cwipc_direction_filter(pc, direction, threshold)
                 analyzer.apply_reference_filter(filter)
+                label += f" (dirfilter={target_dirfilter})"
             analyzer.run()
             results = analyzer.get_results()
             self.pre_analysis_results.append(results)
@@ -267,9 +275,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         if must_free_new:
             pc_new.free()
 
+    @override
     def get_result_transformations(self) -> List[RegistrationTransformation]:
         return self.transformations
     
+    @override
     def get_result_pointcloud_full(self) -> cwipc_wrapper:
         assert self.original_pointcloud
         if not self.original_pointcloud_is_new:
@@ -304,6 +314,7 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
         super().__init__()
         # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -352,6 +363,7 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
         self.floor_pointcloud : Optional[cwipc_wrapper] = None
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -412,6 +424,7 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
     def set_groundtruth(self, pc : cwipc_wrapper):
         self.groundtruth_pointcloud = pc
 
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -468,6 +481,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.current_step_in_pointcloud = None
         self.current_step_out_pointcloud = None
         self.remaining_results : List[AnalysisResults] = []
+        self.orientation_filter : Optional[float] = 0.0
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
@@ -487,6 +501,12 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
             analyzer.set_correspondence_measure("mode", "mean")
+            if self.orientation_filter != None:
+                threshold = self.orientation_filter
+                camnum = self.camera_index_for_tilemask(tilemask)
+                direction = self.camera_positions[camnum]
+                filter = lambda pc : cwipc_direction_filter(pc, direction, threshold)
+                analyzer.apply_reference_filter(filter)
             analyzer.run()
             results = analyzer.get_results()
             remaining_results.append(results)
@@ -494,7 +514,10 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         remaining_results.sort(key=lambda rr: rr.minCorrespondence)
         
         if self.verbose or self.is_interactive:
-            self._print_correspondences(f"{self.__class__.__name__}: Step {stepnum}:  Per-tile correspondence to target", remaining_results)
+            label = f"{self.__class__.__name__}: Step {stepnum}:  Per-tile correspondence to target"
+            if self.orientation_filter != None:
+                label += f" (dirfilter={self.orientation_filter})"
+            self._print_correspondences(label, remaining_results)
         self.remaining_results = remaining_results
 
     def _get_pre_step_result_for_tilemask(self, tilemask : int) -> AnalysisResults:
@@ -520,6 +543,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
         analyzer.set_correspondence_measure("mean", "mode", "median")
+        # xxxjack should we apply target_filter?
         analyzer.run()
         results = analyzer.get_results()
         results.tilemask = "before"
@@ -531,6 +555,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
         analyzer.set_correspondence_measure("mean", "mode", "median")
+        # xxxjack should we apply target filter?
         analyzer.run()
         results = analyzer.get_results()
         results.tilemask = "after"
@@ -538,7 +563,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
         return rv
 
-    def _accept_step(self) -> Tuple[bool, bool]:
+    def _accept_step(self, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
         """Allows subclasses to accept the result of this step (or not) and to give up (or continue)"""
         return True, False
     
@@ -568,6 +593,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         rv : List[int] = list([rr.tilemask for rr in self.remaining_results]) # type: ignore
         return rv
     
+    @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
@@ -600,11 +626,17 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             aligner.set_source_pointcloud(self.current_step_in_pointcloud)
             aligner.set_reference_pointcloud(self.current_step_target_pointcloud, targettile)
             aligner.set_correspondence(corr)
+            if self.orientation_filter != None:
+                threshold = self.orientation_filter
+                camnum = self.camera_index_for_tilemask(tilemask)
+                direction = self.camera_positions[camnum]
+                filter = lambda pc : cwipc_direction_filter(pc, direction, threshold)
+                aligner.apply_reference_filter(filter)
             aligner.run()
 
             self.current_step_out_pointcloud = aligner.get_result_pointcloud()
             self.current_step_results = self._post_step_analyse()
-            accept_step, give_up = self._accept_step()
+            accept_step, give_up = self._accept_step(aligner)
             if accept_step:
                 self._done_step(tilemask)
                 new_resultant_pc = aligner.get_result_pointcloud_full()
@@ -656,7 +688,8 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         super().__init__()
         self.is_interactive = True
 
-    def _accept_step(self) -> Tuple[bool, bool]:
+    @override
+    def _accept_step(self, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
         while True:
             answer = self._ask("Accept this result (yes/no/giveup/show/plot)", "no default")
             if answer == "yes":
@@ -666,15 +699,14 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
             if answer == "giveup":
                 return False, True
             if answer == "show":
-                self._show_alignment()
+                self._show_alignment(aligner)
             if answer == "plot":
                 self._plot_alignment()
 
-    def _show_alignment(self):
+    def _show_alignment(self, aligner : AlignmentAlgorithm):
         assert self.current_step_in_pointcloud
         assert self.current_step_out_pointcloud
-        assert self.current_step_target_pointcloud
-        colored_target = cwipc_colormap(self.current_step_target_pointcloud, 0xFFFFFFFF, 0x80808080)
+        colored_target = cwipc_colormap(aligner.get_filtered_reference_pointcloud(), 0xFFFFFFFF, 0x80808080)
         colored_in = cwipc_colormap(self.current_step_in_pointcloud, 0xFFFFFFFF, 0x80AA0000)
         combined = cwipc_join(colored_target, colored_in)
         colored_target.free()
@@ -693,6 +725,7 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         plotter.plot(show=True)
 
     
+    @override
     def _select_first_step(self):
         tilemask = super()._select_first_step()
         assert self.original_pointcloud
@@ -702,6 +735,7 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         pc_to_show.free()
         return tilemask
     
+    @override
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
         tilemask, corr, ttile = super()._select_next_step()
         tilemask = int(self._ask("Tilemask to align", tilemask, options=self._still_to_do()))
