@@ -11,7 +11,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -54,6 +54,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
         self.proposed_cellsize = 0
         self.correspondence = None
+
+        self.orientation_filter : Optional[float] = None
     
     def set_max_correspondence(self, max_correspondence: float) -> None:
         """Set the maximum correspondence for this algorithm"""
@@ -93,8 +95,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.original_transformations = copy.deepcopy(self.transformations)
         assert len(self.camera_positions) == 0
         for i in range(self.camera_count()):
-            trafo = self.transformations[i]
-            translation : Vector3 = trafo[3, 0:3] # type: ignore
+            translation = transformation_get_translation(self.transformations[i])
             campos = -translation
             self.camera_positions.append(campos)
             print(f"xxxjack cam {i} pos {campos}")
@@ -102,9 +103,13 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr') -> None:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
-        If toSelf is true the internal nerest0point distances are computed (a measure of the quality of the capture of this camera).
+        If toSelf is true the internal nearest-point distances are computed (a measure of the quality of the capture of this camera).
         If toReference is passed in this is used as the ground truth, otherwise every camera is compared to all other cameras combined.
         If ignoreFloor is true any points with Y<0.1 are ignored.
+        sortBy can be one of
+        - "corr" for lowest correspondence first
+        - "corrcount" for highest count for below-correspondence points first
+        - "sourcecount" for highest source cloud point count first
         """
         assert self.original_pointcloud
         assert self.camera_count() > 1
@@ -133,6 +138,11 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 label = "correspondence(mode)"
             if ignoreFloor:
                 analyzer.set_ignore_floor(True)
+            if self.orientation_filter != None:
+                threshold = self.orientation_filter
+                direction = self.camera_positions[camnum]
+                filter = lambda pc : cwipc_direction_filter(pc, direction, threshold)
+                analyzer.apply_reference_filter(filter)
             analyzer.run()
             results = analyzer.get_results()
             self.pre_analysis_results.append(results)
