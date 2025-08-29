@@ -458,7 +458,7 @@ class Registrator:
             pc = self.capture()
             if self.args.guided:
                 print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-            new_pc = self.fine_registration(pc, multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor)
+            new_pc = self.fine_registration(pc, multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor, aligner_class=cwipc.registration.fine.RegistrationComputer_ICP_Point2Point)
             pc.free()
             pc = None
             if new_pc:
@@ -714,9 +714,9 @@ class Registrator:
         klass = getattr(cwipc.registration.multicamera, klassName)
         return klass
 
-    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None) -> Optional[cwipc_wrapper]:
-        fixed_aligner = multicam_aligner_class != None
-        if not fixed_aligner:
+    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None, aligner_class=None) -> Optional[cwipc_wrapper]:
+        fixed_multicam_aligner = multicam_aligner_class != None
+        if not fixed_multicam_aligner:
             multicam_aligner_class = self.multicamera_aligner_class
             if self.args.guided:
                 multicam_aligner_class = self.ask_aligner_class(multicam_aligner_class)
@@ -731,12 +731,14 @@ class Registrator:
         multicam = multicam_aligner_class()
         multicam.verbose = self.verbose > 2
         multicam.debug = self.verbose > 3
-        if not fixed_aligner and self.args.correspondence:
+        if not fixed_multicam_aligner and self.args.correspondence:
             multicam.set_max_correspondence(self.args.correspondence)
             if True or self.verbose:
                 print(f"cwipc_register: override max correspondence to {self.args.correspondence}")
-        if self.alignment_class:
-            multicam.set_aligner_class(self.alignment_class)
+        if aligner_class == None:
+            aligner_class = self.alignment_class
+        if aligner_class:
+            multicam.set_aligner_class(aligner_class)
         if True or self.verbose:
             assert multicam.aligner_class
             print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
