@@ -62,7 +62,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.proposed_cellsize = 0
 
         self.correspondence = None
-        self.randomize_floor = False
+        self.randomize_floor = True
     
     @override
     def set_max_correspondence(self, max_correspondence: float) -> None:
@@ -515,7 +515,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
-            analyzer.set_correspondence_measure("mode", "mean")
+            analyzer.set_correspondence_measure("tmean", "mode", "mean")
             if self.orientation_filter != None:
                 threshold = self.orientation_filter
                 camnum = self.camera_index_for_tilemask(tilemask)
@@ -541,7 +541,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 return rr
         assert False, "No remaining_results for {tilemask}"
 
-    def _post_step_analyse(self) -> List[AnalysisResults]:
+    def _post_step_analyse(self, stepnum : int, camnum : int) -> List[AnalysisResults]:
         """
         Analyze the alignment before and after this step.
         Will be used to judge whether the step was successful.
@@ -557,7 +557,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_source_pointcloud(self.current_step_in_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
-        analyzer.set_correspondence_measure("mean", "mode", "median")
+        analyzer.set_correspondence_measure("tmean", "mean", "mode", "median")
         # xxxjack should we apply target_filter?
         analyzer.run()
         results = analyzer.get_results()
@@ -569,12 +569,18 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_source_pointcloud(self.current_step_out_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
-        analyzer.set_correspondence_measure("mean", "mode", "median")
+        analyzer.set_correspondence_measure("tmean", "mean", "mode", "median")
         # xxxjack should we apply target filter?
         analyzer.run()
         results = analyzer.get_results()
         results.tilemask = "after"
         rv.append(results)
+
+        if self.verbose or self.is_interactive:
+            label = f"{self.__class__.__name__}: Step {stepnum}: camnum {camnum}: Pre/post correspondences"
+            if self.orientation_filter != None:
+                label += f" (dirfilter={self.orientation_filter})"
+            self._print_correspondences(label, rv)
 
         return rv
 
@@ -625,12 +631,15 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.current_step_target_pointcloud = self.get_pc_for_tilemask(first_tilemask)
         step = 0
         give_up = False
+        failures_this_step = 0
+        need_new_analysis = True
         while self.remaining_results and not give_up:
             assert self.current_step_target_pointcloud
             assert self.current_step_target_pointcloud.count() > 0
             step += 1
-            self._pre_step_analyse(step)
-            tilemask, corr, targettile = self._select_next_step()
+            if need_new_analysis:
+                self._pre_step_analyse(step)
+                tilemask, corr, targettile = self._select_next_step()
             if self.correspondence is not None:
                 corr = self.correspondence
             if self.verbose:
@@ -650,9 +659,13 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             aligner.run()
 
             self.current_step_out_pointcloud = aligner.get_result_pointcloud()
-            self.current_step_results = self._post_step_analyse()
+            self.current_step_results = self._post_step_analyse(step, tilemask)
             accept_step, give_up = self._accept_step(aligner)
             if accept_step:
+                failures_this_step = 0
+                need_new_analysis = True
+                if self.verbose or self.is_interactive:
+                    print(f"{self.__class__.__name__}: Step {step}: accepted alignment for camnum={tilemask}")
                 self._done_step(tilemask)
                 new_resultant_pc = aligner.get_result_pointcloud_full()
                 self.current_step_target_pointcloud.free()
@@ -668,10 +681,22 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 new_transform = np.matmul(this_transform, old_transform)
                 self.transformations[camnum] = new_transform
             elif not give_up:
+                failures_this_step += 1
+                need_new_analysis = False
+                if self.verbose or self.is_interactive:
+                    print(f"{self.__class__.__name__}: Step {step}: failed for camnum={tilemask}")
                 self.current_step_in_pointcloud.free()
                 self.current_step_in_pointcloud = None
                 self.current_step_out_pointcloud.free()
                 self.current_step_out_pointcloud = None
+                # If we have tried everything we give up.
+                if failures_this_step > len(self.remaining_results) + 1:
+                    print(f"{self.__class__.__name__}: failed {failures_this_step} times.")
+                    if not self.is_interactive:
+                        give_up = True
+                # Re-arrange remaining_results so we try something else.
+                first_rr = self.remaining_results.pop(0)
+                self.remaining_results.append(first_rr)
 
         # If we gave up there are still tiles in self.remaining_results that we have to merge into the
         # resultant full point cloud
@@ -739,16 +764,24 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         plotter.set_results(self.current_step_results)
         plotter.plot(show=True)
 
-    
     @override
     def _select_first_step(self):
         tilemask = super()._select_first_step()
         assert self.original_pointcloud
-        pc_to_show = cwipc_colorized_copy(self.original_pointcloud)
-        show_pointcloud("Captured point cloud", pc_to_show)
-        tilemask = int(self._ask("Tilemask to use as reference", tilemask, options=self._still_to_do()))
-        pc_to_show.free()
-        return tilemask
+        options = list([self.tilemask_for_camera_index(camnum) for camnum in range(self.camera_count())]) + ["show", "plot"]
+        while True:
+            tilemask_str = self._ask("Tilemask to use as reference", tilemask, options=options)
+            if tilemask_str == "show":
+                pc_to_show = cwipc_colorized_copy(self.original_pointcloud)
+                show_pointcloud("Captured point cloud", pc_to_show)
+                pc_to_show.free()
+            elif tilemask_str == "plot":
+                plotter = Plotter(title="Pre-analysis results")
+                plotter.set_results(self.pre_analysis_results)
+                plotter.plot(show=True)
+            else:
+                tilemask = int(tilemask_str)
+                return tilemask
     
     @override
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:

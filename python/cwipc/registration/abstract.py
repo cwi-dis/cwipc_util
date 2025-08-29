@@ -92,13 +92,15 @@ class AnalysisResults:
     #: number of points that in source cloud that are below minCorrespondence
     minCorrespondenceCount : int
 
-    #: Mean of distances to closes point in other cloud
+    #: Mean of distances to closest point in other cloud
     mean : Optional[float]
-    #: Mean of distances to closes point in other cloud
+    #: Mean of distances to closest point in other cloud
     stddev : Optional[float]
-    #: Mode of distances to closes point in other cloud
+    #: Trimmed mean of distances to closest point in other cloud. Top and bottom 5% are ignored.
+    tmean : Optional[float]
+    #: Mode of distances to closest point in other cloud
     mode : Optional[float]
-    #: Median of distances to closes point in other cloud
+    #: Median of distances to closest point in other cloud
     median : Optional[float]
 
     #: total number of points in the source point cloud
@@ -122,6 +124,7 @@ class AnalysisResults:
         self.minCorrespondenceCount = 0
         self.mean = None
         self.stddev = None
+        self.tmean = None
         self.mode = None
         self.median = None
         self.sourcePointCount = 0
@@ -140,6 +143,8 @@ class AnalysisResults:
             rv += f", mean={self.mean:.4f}"
         if self.stddev != None:
             rv += f", stddev={self.stddev:.4f}"
+        if self.tmean != None:
+            rv += f", tmean={self.tmean:.4f}"
         if self.mode != None:
             rv += f", mode={self.mode:.4f}"
         if self.median != None:
@@ -155,7 +160,7 @@ class AnalysisAlgorithm(Algorithm):
     @abstractmethod
     def set_correspondence_measure(self, method : str, *other_methods : str):
         """Set the algorithm used to comput point cloud correspondence based on point distances.
-        Values are mean, median, or mode."""
+        Values are mean, median, tmean or mode."""
         ...
         
     @abstractmethod

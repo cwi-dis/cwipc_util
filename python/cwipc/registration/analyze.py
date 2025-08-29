@@ -193,6 +193,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
     def _compute_correspondence_errors(self, raw_distances: NDArray[Any]) -> None:
         overlap_distances = copy.deepcopy(raw_distances)
         mean = None
+        tmean = None
         stddev = None
         median = None
         mode = None
@@ -203,6 +204,8 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         if "mean" in self.all_measures:
             mean = float(np.mean(overlap_distances))
             stddev = float(np.std(overlap_distances))
+        if "tmean" in self.all_measures:
+            tmean = float(scipy.stats.trim_mean(overlap_distances, 0.1))
         if "mode" in self.all_measures:
             mode = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
             
@@ -210,15 +213,16 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         self.results.mode = mode
         self.results.mean = mean
         self.results.stddev = stddev
+        self.results.tmean = tmean
         
-        if self.verbose:
-            print(f"\t\tmedian={median}, mean={mean}, stddev={stddev}, mode={mode}, nPoint={len(overlap_distances)}")
-            
         # Last step: see how many points are below our new-found correspondence
         assert self.results
         if self.correspondence_measure == "mean":
             assert mean != None
             self.results.minCorrespondence = mean
+        elif self.correspondence_measure == "tmean":
+            assert tmean != None
+            self.results.minCorrespondence = tmean
         elif self.correspondence_measure == "median":
             assert median != None
             self.results.minCorrespondence = median
