@@ -495,7 +495,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.current_step_out_pointcloud = None
         self.remaining_results : List[AnalysisResults] = []
         # Optional functionality
-        self.orientation_filter : Optional[float] = 0.0
+        self.orientation_filter : Optional[float] = -0.3
         self.select_target_tile : bool = False
     
     def _pre_step_analyse(self, stepnum : int) -> None:
@@ -639,7 +639,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             step += 1
             if need_new_analysis:
                 self._pre_step_analyse(step)
-                tilemask, corr, targettile = self._select_next_step()
+            tilemask, corr, targettile = self._select_next_step()
             if self.correspondence is not None:
                 corr = self.correspondence
             if self.verbose:
