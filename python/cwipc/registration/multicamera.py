@@ -8,6 +8,7 @@ try:
 except ImportError:
     from typing_extensions import override
 import numpy as np
+import numpy.linalg
 import scipy.spatial
 from matplotlib import pyplot as plt
 from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join
@@ -15,7 +16,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -34,7 +35,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     verbose : bool
     show_plot : bool
     nCamera : int
-    change : List[float]
+    change : List[Tuple[Vector3, Vector3]]
     cellsize_factor : float
     proposed_cellsize : float
     # Optional functionality
@@ -63,6 +64,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
         self.correspondence = None
         self.randomize_floor = True
+
+        np.set_printoptions(precision=4, formatter={"float_kind": lambda x: "%.4f" % x}) # xxxjack completely the wrong place to set this
     
     @override
     def set_max_correspondence(self, max_correspondence: float) -> None:
@@ -116,7 +119,6 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             translation = transformation_get_translation(self.transformations[i])
             campos = translation
             self.camera_positions.append(campos)
-            print(f"xxxjack cam {i} pos {campos}")
 
     def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
         """
@@ -231,36 +233,21 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
         self.proposed_cellsize = min_correspondence*self.cellsize_factor
         self._compute_change()
-        if self.verbose:
+        if True or self.verbose:
             print(f"{self.__class__.__name__}: Change in matrices after alignment:")
             for cam_index in range(len(self.change)):
-                print(f"\tcamindex={cam_index}, change={self.change[cam_index]}")
+                translation, rotation = self.change[cam_index]
+                print(f"\tcamindex={cam_index}, distance={numpy.linalg.norm(translation):.4f}, angle={numpy.linalg.norm(rotation):.1f}, translation={translation}, rotation={rotation}")
         self._compute_new_tiles()
         return True
 
     def _compute_change(self):
         for cam_index in range(len(self.transformations)):
-            orig_transform : np.ndarray = self.original_transformations[cam_index] # type: ignore
-            orig_transform_inv = np.linalg.inv(orig_transform)
-            new_transform : np.ndarray = self.transformations[cam_index] # type: ignore
-            new_transform_inv = np.linalg.inv(new_transform)
-            #if self.verbose:
-            #    print(f"camindex={cam_index} old: {orig_transform}")
-            #    print(f"camindex={cam_index} new: {new_transform}")
-            # Compute how far the point cloud moved
-            # we take four points and compute the average move
-            total_delta = 0.0
-            for point in [
-                    np.array([0, 0, 0, 1]),
-                    np.array([0, 2, 0, 1]),
-                    np.array([[-0.5, 1, 0, 1]]),
-                    np.array([0, 1, 0.5, 1]),
-                    ]:
-                tmp = orig_transform_inv @ point.transpose()
-                new_point = (new_transform @ tmp).transpose()
-                delta : float = float(np.linalg.norm(point - new_point))
-                total_delta += delta
-            self.change.append(total_delta / 4)
+            orig_transform  = self.original_transformations[cam_index] # type: ignore
+            new_transform  = self.transformations[cam_index] # type: ignore
+            translation, rotation = transformation_compare(orig_transform, new_transform)
+
+            self.change.append((translation, rotation))
 
     def _compute_new_tiles(self):
         assert self.original_pointcloud

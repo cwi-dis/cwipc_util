@@ -11,6 +11,8 @@ import open3d
 import open3d.visualization
 import numpy as np
 from numpy.typing import NDArray
+import numpy.linalg
+from scipy.spatial.transform import RigidTransform
 import textwrap
 
 def algdoc(klass : type, indent : int) -> str:
@@ -66,6 +68,14 @@ def transformation_topython(matrix : RegistrationTransformation) -> List[List[fl
 def transformation_get_translation(matrix : RegistrationTransformation) -> Vector3:
     rv : Vector3 = matrix[0:3, 3] # type: ignore
     return rv
+
+def transformation_compare(old : RegistrationTransformation, new : RegistrationTransformation) -> Tuple[Vector3, Vector3]:
+    """Returns the translation and rotation (as rotation vector in degrees) that are the difference between old and new"""
+    diff = new @ numpy.linalg.inv(old)
+    trafo = RigidTransform.from_matrix(diff)
+    translation : Vector3 = trafo.translation
+    rotation : Vector3 = trafo.rotation.as_rotvec(degrees=True)
+    return translation, rotation
 
 def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
     """Compute the center of a point cloud"""

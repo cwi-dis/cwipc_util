@@ -63,7 +63,7 @@ class AlignmentFinder:
         self.output_pc = self.multi_aligner.get_result_pointcloud_full()
         transformations = self.multi_aligner.get_result_transformations()
         for i in range(len(transformations)):
-            print(f"Tile {i} transformation: {transformation_topython(transformations[i])}")
+            print(f"Tile {i} transformation:\n {transformations[i]}")
 
     
 def main():
