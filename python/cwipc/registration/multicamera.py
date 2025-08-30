@@ -515,7 +515,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
-            analyzer.set_correspondence_measure("tmean", "mode", "mean")
+            analyzer.set_correspondence_measure("mode", "tmean", "mean")
             if self.orientation_filter != None:
                 threshold = self.orientation_filter
                 camnum = self.camera_index_for_tilemask(tilemask)
@@ -557,7 +557,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_source_pointcloud(self.current_step_in_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
-        analyzer.set_correspondence_measure("tmean", "mean", "mode", "median")
+        analyzer.set_correspondence_measure("mode", "mean", "tmean", "median")
         # xxxjack should we apply target_filter?
         analyzer.run()
         results = analyzer.get_results()
@@ -569,7 +569,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         analyzer.set_source_pointcloud(self.current_step_out_pointcloud)
         analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
         analyzer.set_ignore_floor(True)
-        analyzer.set_correspondence_measure("tmean", "mean", "mode", "median")
+        analyzer.set_correspondence_measure("mode", "mean", "tmean", "median")
         # xxxjack should we apply target filter?
         analyzer.run()
         results = analyzer.get_results()
