@@ -786,11 +786,23 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     @override
     def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
         tilemask, corr, ttile = super()._select_next_step()
-        tilemask = int(self._ask("Tilemask to align", tilemask, options=self._still_to_do()))
+        options = self._still_to_do() + ["plot"]
+        while True:
+            answer = self._ask("Tilemask to align", tilemask, options=options)
+            if answer == "plot":
+                plotter = Plotter(title="Candidates")
+                plotter.set_results(self.remaining_results)
+                plotter.plot(show=True)
+            else:
+                tilemask = int(answer)
+                break
         rr = self._get_pre_step_result_for_tilemask(tilemask)
-        assert rr.mean
-        assert rr.stddev
-        corr = rr.mean + rr.stddev
+        if False:
+            assert rr.mean
+            assert rr.stddev
+            corr = rr.mean + rr.stddev
+        else:
+            corr = rr.minCorrespondence
         corr = float(self._ask("Max correspondence", str(corr)))
         assert self.current_step_target_pointcloud
         ttile = None
