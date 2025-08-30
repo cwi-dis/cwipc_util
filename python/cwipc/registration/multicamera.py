@@ -515,7 +515,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
-            analyzer.set_correspondence_measure("mode", "tmean", "mean")
+            analyzer.set_correspondence_measure("q=30", "mode", "tmean", "mean")
             if self.orientation_filter != None:
                 threshold = self.orientation_filter
                 camnum = self.camera_index_for_tilemask(tilemask)
