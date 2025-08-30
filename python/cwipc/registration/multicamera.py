@@ -620,7 +620,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
-        self._pre_analyse(toSelf=True, ignoreFloor=True, sortBy='sourcecount')
+        self._pre_analyse(toSelf=False, ignoreFloor=True, sortBy='corr')
 
         # The first point cloud we keep as-is, and use it as the destination set.
         first_tilemask = self._select_first_step()
