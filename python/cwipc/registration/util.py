@@ -139,6 +139,16 @@ def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, 
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 
+def cwipc_floor_filter(pc : cwipc_wrapper, level : float = 0.1, keep : bool = False) -> cwipc_wrapper:
+    pc_np = pc.get_numpy_matrix()
+    is_floor_point = pc_np[:,1] < level
+    if keep:
+        new_pc_np = pc_np[is_floor_point]
+    else:
+        new_pc_np = pc_np[~is_floor_point]
+    new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
+    return new_pc    
+
 def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrapper:
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level

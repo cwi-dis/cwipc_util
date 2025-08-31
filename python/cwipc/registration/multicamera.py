@@ -16,7 +16,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -63,7 +63,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.proposed_cellsize = 0
 
         self.correspondence = None
-        self.randomize_floor = True
+        self.randomize_floor = False
 
         np.set_printoptions(precision=4, formatter={"float_kind": lambda x: "%.4f" % x}) # xxxjack completely the wrong place to set this
     
@@ -120,7 +120,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             campos = translation
             self.camera_positions.append(campos)
 
-    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
+    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, onlyFloor : bool = False, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
         If toSelf is true the internal nearest-point distances are computed (a measure of the quality of the capture of this camera).
@@ -130,6 +130,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         - "corr" for lowest correspondence first
         - "corrcount" for highest count for below-correspondence points first
         - "sourcecount" for highest source cloud point count first
+        - "none" don't sort
         if target_dirfilter is specified it first filters the target point cloud to only include points with a normal
         in the appropriate direction of the source camera.
         """
@@ -147,8 +148,13 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference != None:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_measure('median')
-                label = "toreference(median)"
+                if onlyFloor:
+                    analyzer.apply_source_filter(lambda pc : cwipc_floor_filter(pc, keep=True))
+                    analyzer.set_correspondence_measure('q=95')
+                    label = "flooronly(q=95)"
+                else:
+                    analyzer.set_correspondence_measure('median')
+                    label = "toreference(median)"
             elif toSelf:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, tilemask)
                 analyzer.set_ignore_nearest(1) # xxxjack may want to experiment with larger values.
@@ -176,6 +182,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             self.pre_analysis_results.sort(key=lambda r : r.minCorrespondenceCount, reverse=True)
         elif sortBy == 'sourcecount':
             self.pre_analysis_results.sort(key=lambda r : r.sourcePointCount, reverse=True)
+        elif sortBy == 'none':
+            pass
         else:
             assert False, f"Unknown sortBy={sortBy}"
 
@@ -198,7 +206,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         """Run the algorithm"""
         assert False
     
-    def _post_analyse(self, toReference : Optional[cwipc_wrapper] = None) -> bool:
+    def _post_analyse(self, toReference : Optional[cwipc_wrapper] = None, onlyFloor=False) -> bool:
         assert self.original_pointcloud
         assert self.original_pointcloud.count() > 0
         assert self.camera_count() > 0
@@ -210,8 +218,13 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             if toReference:
                 analyzer.set_reference_pointcloud(toReference)
-                analyzer.set_correspondence_measure('median')
-                label = "toreference(median)"
+                if onlyFloor:
+                    analyzer.apply_source_filter(lambda pc : cwipc_floor_filter(pc, keep=True))
+                    analyzer.set_correspondence_measure('q=95')
+                    label = "flooronly(q=95)"
+                else:
+                    analyzer.set_correspondence_measure('median')
+                    label = "toreference(median)"
             else:
                 analyzer.set_reference_pointcloud(self.original_pointcloud, othertilemask)
                 analyzer.set_correspondence_measure('mode')
@@ -312,8 +325,7 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
 
     def __init__(self):
         super().__init__()
-        # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
-
+        
     @override
     def run(self) -> bool:
         """Run the algorithm"""
@@ -371,7 +383,7 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         self._init_transformations()
         self._prepare_floor()
         assert self.floor_pointcloud
-        self._pre_analyse(toSelf=False, toReference=self.floor_pointcloud, sortBy='corrcount')
+        self._pre_analyse(toSelf=False, toReference=self.floor_pointcloud, onlyFloor=True, sortBy='none')
         todo = self._todo_from_pre_analysis_results()
         aligned : List[cwipc_wrapper] = []
         # xxxjack remember resultant point clouds, to combine later.
@@ -399,7 +411,7 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         self.original_pointcloud = result
         self.original_pointcloud_is_new = True
 
-        ok = self._post_analyse(toReference=self.floor_pointcloud)
+        ok = self._post_analyse(toReference=self.floor_pointcloud, onlyFloor=True)
         return ok
 
     def _prepare_floor(self) -> None:
@@ -484,6 +496,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         # Optional functionality
         self.orientation_filter : Optional[float] = -0.3
         self.select_target_tile : bool = False
+        self.randomize_floor = True
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
