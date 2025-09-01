@@ -829,7 +829,7 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
             return default
         return line
     
-DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterative
+DEFAULT_MULTICAMERA_ALGORITHM = MultiCameraIterativeInteractive
 
 ALL_MULTICAMERA_ALGORITHMS = [
     MultiCameraOneToAllOthers,
