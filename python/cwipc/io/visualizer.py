@@ -62,6 +62,7 @@ q,ESC         Quit
             )
         if self.args.rgb_cw or self.args.rgb_ccw or self.args.rgb_full:
             self.args.rgb = True
+        self.forcedrop : bool = False
         self.paused : bool = False
         self.single_step : bool = False
         self.recompute_display_pc : bool = False
@@ -173,7 +174,7 @@ q,ESC         Quit
                 # If we have no point cloud we get one.
                 got_new_pc = self._get_next_pc()
             elif self.paused:
-                if not self.args.nodrop:
+                if self.forcedrop or not self.args.nodrop:
                     got_new_pc = self._get_next_pc(drop=True)
             else:
                 got_new_pc = self._get_next_pc()
@@ -195,7 +196,7 @@ q,ESC         Quit
             self.display_pc = None
         self.alive = False
         # Empty queue. First clear nodrop so the producer won't block.
-        self.args.nodrop = False
+        self.forcedrop = True
         try:
             while True:
                 pc = self.input_queue.get(block=False)
@@ -213,7 +214,7 @@ q,ESC         Quit
                 
     def feed(self, pc : cwipc_wrapper) -> None:
         try:
-            if self.args.nodrop:
+            if self.args.nodrop and not self.forcedrop:
                 self.input_queue.put(pc)
             else:
                 self.input_queue.put(pc, timeout=0.5)
