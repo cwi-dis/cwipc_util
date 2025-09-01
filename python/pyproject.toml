@@ -11,13 +11,13 @@ authors=[
     {name="Jack Jansen", email="Jack.Jansen@cwi.nl"}
 ]
 dynamic = ["version"]
-requires-python = ">= 3.10"
+requires-python = ">= 3.12"
 dependencies = [
     "numpy ~= 2.2", 
     "open3d ~= 0.19", 
-    "pillow ~= 11.1", 
-    "opencv-python ~= 4.10", 
-    "scipy ~= 1.15", 
+    "pillow ~= 11.3", 
+    "opencv-python ~= 4.12", 
+    "scipy ~= 1.16", 
     "matplotlib ~= 3.10",
     "debugpy ~= 1.8"
 ]
