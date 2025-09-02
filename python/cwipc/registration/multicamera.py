@@ -11,7 +11,7 @@ import numpy as np
 import numpy.linalg
 import scipy.spatial
 from matplotlib import pyplot as plt
-from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join
+from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join, CwipcError
 
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
@@ -264,20 +264,23 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
     def _compute_new_tiles(self):
         assert self.original_pointcloud
-        pc = self.original_pointcloud
+        # Remove the floor.
+        pc = cwipc_floor_filter(self.original_pointcloud)
         ntiles_orig = len(self.transformations)
-        must_free_new = False
-        if self.proposed_cellsize > 0.001:
-            pc_new = cwipc_downsample(pc, self.proposed_cellsize)
-            must_free_new = True
+        if self.proposed_cellsize > 0:
+            try:
+                pc_downsampled = cwipc_downsample(pc, self.proposed_cellsize)
+            except CwipcError:
+                print(f"{self.__class__.__name__}: Warning: Cannot downsample pc. Cannot compute new tiles.")
+                return
         else:
-            pc_new = pc
-            must_free_new = False
+            print(f"{self.__class__.__name__}: Warning: proposed_cellsize==0. Cannot compute new tiles.")
+            return
         if self.verbose:
-            print(f"{self.__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_new.count()}, was {pc.count()}")
+            print(f"{self.__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_downsampled.count()}, was {pc.count()}")
         pointcounts = []
         for i in range(2**ntiles_orig):
-            pc_tile = cwipc_tilefilter(pc_new, i)
+            pc_tile = cwipc_tilefilter(pc_downsampled, i)
             pointcount = pc_tile.count()
             pc_tile.free()
             pointcounts.append(pointcount)
@@ -285,8 +288,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             print(f"{self.__class__.__name__}: Pointcounts per tile, after voxelizing:")
             for i in range(len(pointcounts)):
                 print(f"\ttile {i}: {pointcounts[i]}")
-        if must_free_new:
-            pc_new.free()
+        pc.free()
+        pc_downsampled.free()
 
     @override
     def get_result_transformations(self) -> List[RegistrationTransformation]:
