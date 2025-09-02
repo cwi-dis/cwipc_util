@@ -52,6 +52,12 @@ cwipc* cwipc_downsample(cwipc *pc, float voxelsize) {
         grid.setSaveLeafLayout(true);
         grid.filter(*dst);
 
+        if (dst->empty()) {
+            // No points, algorithm apparently failed.
+            std::cerr << "cwipc_downsample: pcl::VoxelGrid returned empty cloud" << std::endl;
+            return NULL;
+        }
+
         // Step 2 - Clear tile numbers in destination
         for (auto& dstpt : dst->points) {
             dstpt.a = 0;

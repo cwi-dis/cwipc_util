@@ -521,6 +521,8 @@ class cwipc_wrapper(cwipc_abstract):
     def __init__(self, _cwipc : Optional[cwipc_p]=None):
         if _cwipc != None:
             assert isinstance(_cwipc, cwipc_p)
+            if _cwipc.value == None:
+                raise CwipcError("NULL pointer returned from cwipc native method")
         self._cwipc = _cwipc
         self._points = None
         self._bytes = None
