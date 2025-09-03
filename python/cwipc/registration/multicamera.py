@@ -499,7 +499,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         # Optional functionality
         self.orientation_filter : Optional[float] = -0.3
         self.select_target_tile : bool = False
-        self.randomize_floor = True
+        self.randomize_floor : bool = True
+        self.candidate_measure : str = "q=80"
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
@@ -518,7 +519,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             analyzer.set_ignore_floor(True)
             analyzer.set_source_pointcloud(self.original_pointcloud, tilemask)
             analyzer.set_reference_pointcloud(self.current_step_target_pointcloud)
-            analyzer.set_correspondence_measure("q=30", "mode", "tmean", "mean")
+            analyzer.set_correspondence_measure(self.candidate_measure, "mode", "tmean", "mean")
             if self.orientation_filter != None:
                 threshold = self.orientation_filter
                 camnum = self.camera_index_for_tilemask(tilemask)
