@@ -588,11 +588,24 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
         return rv
 
-    def _accept_step(self, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
+    def _accept_step(self, step: int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
         """Allows subclasses to accept the result of this step (or not) and to give up (or continue)"""
-        return True, False
+        old_rr = self.current_step_results[0]
+        new_rr = self.current_step_results[1]
+        corr_improvement = old_rr.minCorrespondence / new_rr.minCorrespondence
+        corr_count_improvement = new_rr.minCorrespondenceCount / old_rr.minCorrespondenceCount
+        if corr_improvement >= 1 and corr_count_improvement >= 1:
+            accept = True
+            print(f"{self.__class__.__name__}: Step {step}: very good, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+        elif corr_improvement >= 0.5 and corr_count_improvement >= 0.5 and corr_improvement * corr_count_improvement >= 1.2:
+            accept = True
+            print(f"{self.__class__.__name__}: Step {step}: reasonable, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+        else:
+            accept = False
+            print(f"{self.__class__.__name__}: Step {step}: bad, reject, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+        return accept, False
     
-    def _done_step(self, tilemask : int) -> bool:
+    def _done_step(self, step : int, tilemask : int) -> bool:
         """This tile has been aligned (and accepted). Remove from todo list."""
         for i in range(len(self.remaining_results)):
             if self.remaining_results[i].tilemask == tilemask:
@@ -604,13 +617,15 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         """Select first camera, to align others to. Returns tilemask. Can be overridden by subclasses"""
         rr = self.pre_analysis_results[0]
         assert type(rr.tilemask) == int
+        print(f"{self.__class__.__name__}: Step 0: tile={rr.tilemask}")
         return rr.tilemask
     
-    def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
+    def _select_next_step(self, step : int) -> Tuple[int, float, Optional[int]]:
         """Select next tile to align. Can be overridden by subclasses."""
         rr = self.remaining_results[0]
         assert type(rr.tilemask) == int
         rv = (rr.tilemask, rr.minCorrespondence, None)
+        print(f"{self.__class__.__name__}: Step {step}: tile={rr.tilemask}, corr={rr.minCorrespondence:.4f}")
         return rv
     
     def _still_to_do(self) -> List[int]:
@@ -629,7 +644,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         # The first point cloud we keep as-is, and use it as the destination set.
         first_tilemask = self._select_first_step()
         self.remaining_results = copy.copy(self.pre_analysis_results)
-        self._done_step(first_tilemask)
+        self._done_step(0, first_tilemask)
         if self.verbose:
             print(f"{self.__class__.__name__}: First tilemask (not aligned) is {first_tilemask}")
         self.current_step_target_pointcloud = self.get_pc_for_tilemask(first_tilemask)
@@ -643,7 +658,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             step += 1
             if need_new_analysis:
                 self._pre_step_analyse(step)
-            tilemask, corr, targettile = self._select_next_step()
+            tilemask, corr, targettile = self._select_next_step(step)
             if self.correspondence is not None:
                 corr = self.correspondence
             if self.verbose:
@@ -664,13 +679,13 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
             self.current_step_out_pointcloud = aligner.get_result_pointcloud()
             self.current_step_results = self._post_step_analyse(step, tilemask)
-            accept_step, give_up = self._accept_step(aligner)
+            accept_step, give_up = self._accept_step(step, aligner)
             if accept_step:
                 failures_this_step = 0
                 need_new_analysis = True
                 if self.verbose or self.is_interactive:
                     print(f"{self.__class__.__name__}: Step {step}: accepted alignment for camnum={tilemask}")
-                self._done_step(tilemask)
+                self._done_step(step, tilemask)
                 new_resultant_pc = aligner.get_result_pointcloud_full()
                 self.current_step_target_pointcloud.free()
                 self.current_step_in_pointcloud.free()
@@ -687,7 +702,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
             elif not give_up:
                 failures_this_step += 1
                 need_new_analysis = False
-                if self.verbose or self.is_interactive:
+                if True or self.verbose or self.is_interactive:
                     print(f"{self.__class__.__name__}: Step {step}: failed for camnum={tilemask}")
                 self.current_step_in_pointcloud.free()
                 self.current_step_in_pointcloud = None
@@ -733,7 +748,7 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         self.is_interactive = True
 
     @override
-    def _accept_step(self, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
+    def _accept_step(self, step : int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
         while True:
             answer = self._ask("Accept this result (yes/no/giveup/show/plot)", "no default")
             if answer == "yes":
@@ -788,8 +803,8 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
                 return tilemask
     
     @override
-    def _select_next_step(self) -> Tuple[int, float, Optional[int]]:
-        tilemask, corr, ttile = super()._select_next_step()
+    def _select_next_step(self, step : int) -> Tuple[int, float, Optional[int]]:
+        tilemask, corr, ttile = super()._select_next_step(step)
         options = self._still_to_do() + ["plot"]
         while True:
             answer = self._ask("Tilemask to align", tilemask, options=options)
