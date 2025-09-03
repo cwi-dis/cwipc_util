@@ -250,7 +250,8 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             print(f"{self.__class__.__name__}: Change in matrices after alignment:")
             for cam_index in range(len(self.change)):
                 translation, rotation = self.change[cam_index]
-                print(f"\tcamindex={cam_index}, distance={numpy.linalg.norm(translation):.4f}, angle={numpy.linalg.norm(rotation):.1f}, translation={translation}, rotation={rotation}")
+                tile = self.tilemask_for_camera_index(cam_index)
+                print(f"\ttile={tile}, distance={numpy.linalg.norm(translation):.4f}, angle={numpy.linalg.norm(rotation):.1f}, translation={translation}, rotation={rotation}")
         self._compute_new_tiles()
         return True
 
@@ -597,8 +598,12 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         if corr_improvement >= 1 and corr_count_improvement >= 1:
             accept = True
             print(f"{self.__class__.__name__}: Step {step}: very good, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+        elif corr_improvement >= 0.95 and corr_count_improvement >= 0.95 and corr_improvement * corr_count_improvement >= 1:
+            accept = True
+            print(f"{self.__class__.__name__}: Step {step}: little change, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
         elif corr_improvement >= 0.5 and corr_count_improvement >= 0.5 and corr_improvement * corr_count_improvement >= 1.2:
             accept = True
+            # xxxjack this needs work. We need some other way to judge what has happened.
             print(f"{self.__class__.__name__}: Step {step}: reasonable, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
         else:
             accept = False
