@@ -501,7 +501,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         self.orientation_filter : Optional[float] = -0.3
         self.select_target_tile : bool = False
         self.randomize_floor : bool = True
-        self.candidate_measure : str = "q=80"
+        self.candidate_measure : str = "q=30"
     
     def _pre_step_analyse(self, stepnum : int) -> None:
         """
