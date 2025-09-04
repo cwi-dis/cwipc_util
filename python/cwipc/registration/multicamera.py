@@ -268,7 +268,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
             self.change.append((translation, rotation))
 
-    def _compute_new_tiles(self):
+    def _compute_new_tiles(self) -> bool:
         assert self.original_pointcloud
         # Remove the floor.
         pc = cwipc_floor_filter(self.original_pointcloud)
@@ -278,10 +278,10 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 pc_downsampled = cwipc_downsample(pc, self.proposed_cellsize)
             except CwipcError:
                 print(f"{self.__class__.__name__}: Warning: Cannot downsample pc. Cannot compute new tiles.")
-                return
+                return False
         else:
             print(f"{self.__class__.__name__}: Warning: proposed_cellsize==0. Cannot compute new tiles.")
-            return
+            return False
         if True or self.verbose:
             print(f"{self.__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_downsampled.count()}, was {pc.count()}")
         tilenum_and_pointcount : List[Tuple[int, int]] = []
@@ -297,6 +297,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
                 print(f"\ttile {tile}: {pointcount}")
         pc.free()
         pc_downsampled.free()
+        return True
 
     @override
     def get_result_transformations(self) -> List[RegistrationTransformation]:
@@ -430,6 +431,10 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         ndarray[:,1] = 0
         self.floor_pointcloud = cwipc_from_numpy_matrix(ndarray, 0)
 
+    @override
+    def _compute_new_tiles(self) -> bool:
+        return False
+    
 class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
     """\
     Align multiple cameras to a ground truth which needs to be specified with set_groundtruth().
@@ -483,6 +488,10 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
 
         ok = self._post_analyse(toReference=self.groundtruth_pointcloud)
         return ok
+
+    @override
+    def _compute_new_tiles(self) -> bool:
+        return False
 
 class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     """\
