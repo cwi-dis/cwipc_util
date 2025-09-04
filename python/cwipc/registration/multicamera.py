@@ -36,7 +36,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     show_plot : bool
     nCamera : int
     change : List[Tuple[Vector3, Vector3]]
-    cellsize_factor : float
+    proposed_cellsize_factor : float
     proposed_cellsize : float
     # Optional functionality
     correspondence : Optional[float]
@@ -59,8 +59,9 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.nCamera = 0
 
         self.change = []
-        self.cellsize_factor = math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
-        self.proposed_cellsize = 0
+        self.proposed_cellsize_factor : float = 1 # math.sqrt(0.5) # xxxjack or 1, or math.sqrt(2)
+        self.proposed_cellsize_method : str = "max"
+        self.proposed_cellsize : float = 0
 
         self.correspondence = None
         self.randomize_floor = False
@@ -240,11 +241,15 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             self._plot(f"{self.__class__.__name__}: After {label}", self.results)
         
         correspondences = [r.minCorrespondence for r in self.results]
-        max_correspondence = max(correspondences)
-        min_correspondence = min(correspondences)
-        avg_correspondence = (max_correspondence+min_correspondence)/2
+        if self.proposed_cellsize_method == "max":
+            correspondence = max(correspondences)
+        elif self.proposed_cellsize_method == "min":
+            correspondence = min(correspondences)
+        elif self.proposed_cellsize_method == "avg":
+            correspondence = sum(correspondences) / len(correspondences)
 
-        self.proposed_cellsize = min_correspondence*self.cellsize_factor
+        self.proposed_cellsize = correspondence * self.proposed_cellsize_factor
+
         self._compute_change()
         if True or self.verbose:
             print(f"{self.__class__.__name__}: Change in matrices after alignment:")
@@ -277,18 +282,19 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         else:
             print(f"{self.__class__.__name__}: Warning: proposed_cellsize==0. Cannot compute new tiles.")
             return
-        if self.verbose:
+        if True or self.verbose:
             print(f"{self.__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_downsampled.count()}, was {pc.count()}")
-        pointcounts = []
-        for i in range(2**ntiles_orig):
+        tilenum_and_pointcount : List[Tuple[int, int]] = []
+        for i in range(1, 2**ntiles_orig):
             pc_tile = cwipc_tilefilter(pc_downsampled, i)
             pointcount = pc_tile.count()
             pc_tile.free()
-            pointcounts.append(pointcount)
-        if self.verbose:
+            tilenum_and_pointcount.append((i, pointcount))
+        tilenum_and_pointcount.sort(key=lambda tp:tp[1], reverse=True)
+        if True or self.verbose:
             print(f"{self.__class__.__name__}: Pointcounts per tile, after voxelizing:")
-            for i in range(len(pointcounts)):
-                print(f"\ttile {i}: {pointcounts[i]}")
+            for tile, pointcount in tilenum_and_pointcount:
+                print(f"\ttile {tile}: {pointcount}")
         pc.free()
         pc_downsampled.free()
 
@@ -754,6 +760,8 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
 
     @override
     def _accept_step(self, step : int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:
+        accept, giveup = super()._accept_step(step, aligner)
+        print(f"{self.__class__.__name__}: Step {step}: automatic decision: {'accept' if accept else 'reject'}, {'give up' if giveup else 'continue'}")
         while True:
             answer = self._ask("Accept this result (yes/no/giveup/show/plot)", "no default")
             if answer == "yes":
