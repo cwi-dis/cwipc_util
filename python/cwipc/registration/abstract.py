@@ -116,6 +116,9 @@ class AnalysisResults:
     #: edges of the histogram
     histogramEdges : Optional[numpy.typing.NDArray[numpy.float64]]
 
+    #: Algorithm used to compute these results
+    algorithm : str
+    
     #: Algorithm variant used to compute these results
     variant : Optional[str]
 

@@ -87,6 +87,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
 
     def _prepare_results(self):
         self.results = AnalysisResults()
+        self.results.algorithm = self.__class__.__name__
         self.results.tilemask = self.source_tilemask
         self.results.referenceTilemask = self.reference_tilemask
         if self.variants:
@@ -277,6 +278,55 @@ class RegistrationAnalyzer(BaseRegistrationAnalyzer):
         self._compute_correspondence_errors(distances)
         return True
 
+class RegistrationAnalyzerSymmetric(RegistrationAnalyzer):
+    """
+    This algorithm computes the registration between two point clouds.
+    It uses scipy.spatial.KDtree.query to find the distances between points in the two clouds.
+    It does this in both directions (source to reference and reference to source) and produces the aggregate results.
+    """
+    
+    def __init__(self):
+        RegistrationAnalyzer.__init__(self)
+        self.source_kdtree : Optional[KD_TREE_TYPE] = None
+
+    def _prepare_source_kdtree(self):
+        assert self.source_ndarray is not None
+        self.source_kdtree = KD_TREE_TYPE(self.source_ndarray)
+
+    @override
+    def _prepare(self):
+        super()._prepare()
+        self._prepare_source_kdtree()
+        
+    @override
+    def run(self) -> bool:
+        """Run the algorithm"""
+        self._prepare()
+        assert self.source_ndarray is not None
+        assert self.source_kdtree is not None
+        assert self.reference_ndarray is not None
+        assert self.reference_kdtree is not None
+        distances1 = self._kdtree_get_distances_for_points(self.reference_kdtree, self.source_ndarray)
+        distances2 = self._kdtree_get_distances_for_points(self.source_kdtree, self.reference_ndarray)
+        distances = np.concatenate((distances1, distances2))
+        distances = self._filter_infinites(distances)
+        
+        if not self._compute_histogram_parameters(distances):
+            print("Warning: all distances are the same")
+            value = distances[0]
+            self.results.minCorrespondence = value
+            self.results.minCorrespondenceCount = distances.shape[0]
+            self.results.histogram = np.array([value])
+            self.results.histogramEdges = np.array([value, value])
+            return False
+        if self.use_kde:
+            histogram, edges = self._compute_histogram_kde(distances)
+        else:
+            histogram, edges = self._compute_histogram(distances)
+        self.results.histogram = histogram
+        self.results.histogramEdges = edges
+        self._compute_correspondence_errors(distances)
+        return True
 
 class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
     """

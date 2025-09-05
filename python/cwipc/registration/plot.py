@@ -56,6 +56,7 @@ class Plotter:
         corr_box_dict = {}
         assert self.results
         variant = None
+        algorithm = None
         for cam_i in range(nCamera):
             results = self.results[cam_i]
             cam_tilenum = results.tilemask
@@ -64,7 +65,7 @@ class Plotter:
             histogramEdges = results.histogramEdges
             corr = results.minCorrespondence
             variant = results.variant # Assumes they are all the same
-
+            algorithm = results.algorithm   # Assumes they are all the same
             label = f"{cam_tilenum}"
             if ref_tilenum:
                 label += f" vs {ref_tilenum}"
@@ -96,6 +97,8 @@ class Plotter:
                 plot_ax.plot([new_edges[0], new_edges[-1]], [0, 0], linestyle="solid", label="_nolegend_", color="black", linewidth=0.2)
                 plot_ax.plot(new_edges[1:-1], delta, marker=".", linewidth=0, label="_nolegend_", color=PLOT_COLORS[cam_i % len(PLOT_COLORS)])
         title = self.title
+        if algorithm:
+            title = f"{title}\n{algorithm}"
         if variant:
             title = f"{title} ({variant})"
         plt.title(title)
