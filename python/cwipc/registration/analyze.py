@@ -386,7 +386,7 @@ class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
         assert self.results
         return self.results
 
-DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
+DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzerSymmetric
 
 ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzer,
