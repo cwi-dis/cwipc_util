@@ -141,7 +141,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         for camnum in range(self.camera_count()):
             tilemask = self.tilemask_for_camera_index(camnum)
             othertilemask = 0xff ^ tilemask
-            if toSelf:
+            if toSelf or toReference != None:
                 analyzer = RegistrationAnalyzer()
                 analyzer.verbose = self.verbose
             else:
