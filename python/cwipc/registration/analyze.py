@@ -207,7 +207,7 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
             stddev = float(np.std(overlap_distances))
         if "tmean" in self.all_measures:
             tmean = float(scipy.stats.trim_mean(overlap_distances, 0.1))
-        if "mode" in self.all_measures:
+        if "mode" in self.all_measures or "2mode" in self.all_measures:
             mode = self._mode_from_histogram(self.results.histogram, self.results.histogramEdges)
             
         self.results.median = median
@@ -230,6 +230,9 @@ class BaseRegistrationAnalyzer(AnalysisAlgorithm, BaseAlgorithm):
         elif self.correspondence_measure == "mode":
             assert mode != None
             self.results.minCorrespondence = mode
+        elif self.correspondence_measure == "2mode":
+            assert mode != None
+            self.results.minCorrespondence = 2 * mode
         elif self.correspondence_measure.startswith("q="):
             percentile = int(self.correspondence_measure[2:])
             self.results.minCorrespondence = float(np.percentile(overlap_distances, percentile))
@@ -326,6 +329,10 @@ class RegistrationAnalyzerSymmetric(RegistrationAnalyzer):
         self.results.histogram = histogram
         self.results.histogramEdges = edges
         self._compute_correspondence_errors(distances)
+        # Adjust point counts
+        total_count = self.results.sourcePointCount + self.results.referencePointCount
+        self.results.sourcePointCount = total_count
+        self.results.referencePointCount = total_count
         return True
 
 class OverlapAnalyzer(OverlapAnalysisAlgorithm, BaseAlgorithm):
@@ -383,13 +390,14 @@ DEFAULT_ANALYZER_ALGORITHM = RegistrationAnalyzer
 
 ALL_ANALYZER_ALGORITHMS = [
     RegistrationAnalyzer,
+    RegistrationAnalyzerSymmetric,
     OverlapAnalyzer
 ]
 
 HELP_ANALYZER_ALGORITHMS = """
 ## Analyzer algorithms
 
-The analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
+The --algorithm_analyzer algorithm looks at a source point cloud and a target point cloud and tries to determine how well they are aligned.
 
 The default analyzer algorithm is """ + DEFAULT_ANALYZER_ALGORITHM.__name__ + """
 
