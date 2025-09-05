@@ -1,10 +1,18 @@
 import sys
 import os
+import subprocess
 from typing import List, Tuple
 import pkgutil
 from . import scripts, cwipc_get_version
 
 MAIN_COMMANDS = ['view', 'play', 'grab', 'register']
+
+if sys.platform == 'win32':
+    def execv(cmd : str, args : List[str]):
+        sts = subprocess.run(args, executable=cmd)
+        sys.exit(sts.returncode)
+else:
+    from os import execv
 
 def find_scripts() -> Tuple[List[str], List[str]]:
     scripts_list = []
@@ -65,7 +73,7 @@ def run_check() -> int:
         for path in totry:
             if os.path.exists(path):
                 check_script = path
-                os.execv(check_script, [check_script] + sys.argv[2:])
+                execv(check_script, [check_script] + sys.argv[2:])
                 assert 0, "execv failed"
         parent = os.path.dirname(mydir)
         if parent == mydir:
@@ -74,7 +82,7 @@ def run_check() -> int:
         mydir = parent
     
 def run_python() -> None:
-    os.execv(sys.executable, [sys.executable] + sys.argv[2:])
+    execv(sys.executable, [sys.executable] + sys.argv[2:])
     assert 0, "execv failed"
 
 def main():
