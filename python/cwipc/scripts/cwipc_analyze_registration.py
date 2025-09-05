@@ -8,7 +8,7 @@ import traceback
 import cwipc
 from cwipc.registration.abstract import AnalysisResults
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
-from cwipc.registration.analyze import RegistrationAnalyzer, OverlapAnalyzer
+import cwipc.registration.analyze
 from cwipc.registration.util import transformation_topython, get_tiles_used
 from cwipc.registration.plot import Plotter
 
@@ -19,7 +19,10 @@ class AnalyzePointCloud:
         self.source_pc : Optional[cwipc.cwipc_wrapper] = None
         self.target_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.analyzer_algorithm = RegistrationAnalyzer
+        if self.args.algorithm_analyzer:
+            self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
+        else:
+            self.analyzer_class = cwipc.registration.analyze.DEFAULT_ANALYZER_ALGORITHM
             
     def load_source(self, source: str):
         pc = cwipc.cwipc_read(source, 0)
@@ -76,7 +79,7 @@ class AnalyzePointCloud:
             plotter.plot(show=True)
  
     def analyze_pointclouds(self, source: cwipc.cwipc_wrapper, sourcetile : int, target : cwipc.cwipc_wrapper, targettile : int) -> AnalysisResults:
-        analyzer = self.analyzer_algorithm()
+        analyzer = self.analyzer_class()
         if self.args.toself:
             analyzer.set_ignore_nearest(self.args.nth)
         if self.args.max_corr >= 0:
@@ -99,7 +102,7 @@ class AnalyzePointCloud:
             label = f"{sourcetile:#x} to {targettile:#x}"
         print(f"Alignment {label}: {results.tostr()}")
         if self.args.overlap:
-            overlap_analyzer = OverlapAnalyzer()
+            overlap_analyzer = cwipc.registration.analyze.OverlapAnalyzer()
             overlap_analyzer.verbose = self.verbose
             # NOTE: we are reversing the roles of source and target here, because we want to compute the overlap of the source tile with the target tile
             overlap_analyzer.set_reference_pointcloud(target, sourcetile)
@@ -126,6 +129,8 @@ def main():
     parser.add_argument("--measure", action="append", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, or mode (default: mean) ")
     parser.add_argument("--ignore_floor", action="store_true", help="Remove floor (low Y points)")
     parser.add_argument("--overlap", action="store_true", help="Also compute overlap between source and target tile")
+    parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
+    parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
     args = parser.parse_args()
@@ -135,6 +140,9 @@ def main():
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
+    if args.help_algorithms:
+        print(cwipc.registration.analyze.HELP_ANALYZER_ALGORITHMS)
+        return 0
     finder = AnalyzePointCloud(args)
     if args.togroundtruth:
         finder.load_target(args.togroundtruth)
