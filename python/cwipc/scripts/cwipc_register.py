@@ -1,3 +1,6 @@
+"""
+Initialize RGBD camera setup or raw recording so they produce overlapping point clouds.
+"""
 import sys
 import os
 import time
@@ -55,7 +58,8 @@ class RegistrationVisualizer(Visualizer):
             self.reload_cameraconfig_callback()
 
 def main():
-    parser = ArgumentParser(description="Register cwipc cameras (realsense, kinect, virtual) so they produce overlapping point clouds.")
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     def twofloats(s):
         f1, f2 = s.split(',')
         return float(f1), float(f2)

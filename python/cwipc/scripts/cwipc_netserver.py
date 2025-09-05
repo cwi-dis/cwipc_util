@@ -1,3 +1,6 @@
+"""
+Forward point cloud stream to multiple receivers.
+"""
 import sys
 import socketserver
 import argparse
@@ -200,9 +203,9 @@ class IngestServer(socketserver.TCPServer):
 
 def main():
     global verbose
-
+    assert __doc__ is not None
     parser = argparse.ArgumentParser(
-        description="TCP reflection server"
+        description=__doc__.strip(),
     )
 
     parser.add_argument(

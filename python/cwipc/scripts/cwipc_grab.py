@@ -1,3 +1,6 @@
+"""
+Capture and save point clouds from a stream source. Can also convert, compress, etc.
+"""
 import sys
 import os
 import threading
@@ -200,7 +203,8 @@ class FileWriter(cwipc_sink_abstract):
         
 def main():
     SetupStackDumper()
-    parser = ArgumentParser(description="Capture and save pointclouds")
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip())
     parser.add_argument("--nopointclouds", action="store_true", help="Don't save pointclouds")
     parser.add_argument("--cwipcdump", action="store_true", help="Save pointclouds as .cwipcdump (default: .ply)")
     parser.add_argument("--compress", action="store_true", help="Save pointclouds as compressed .cwicpc (default: .ply)")

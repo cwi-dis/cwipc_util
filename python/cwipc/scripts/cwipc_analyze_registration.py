@@ -1,3 +1,6 @@
+"""
+Find registration of a tiled point cloud.
+"""
 import sys
 from typing import Optional, List, Tuple
 import argparse
@@ -109,7 +112,8 @@ class AnalyzePointCloud:
         return results
 
 def main():
-    parser = argparse.ArgumentParser(description="Find registration of a tiled point cloud", formatter_class=argparse.RawDescriptionHelpFormatter)
+    assert __doc__ is not None
+    parser = argparse.ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")
     parser.add_argument("--pairwise", action="store_true", help="Analyze pairwise registration of all tilecombinations, not just tile to all other tiles")

@@ -1,3 +1,6 @@
+"""
+Join multiple point clouds into a single point cloud.
+"""
 import sys
 import os
 import time
@@ -9,7 +12,8 @@ import numpy
 import cwipc
 
 def main():
-    parser = argparse.ArgumentParser(description="Join multiple point clouds into a single point cloud.")
+    assert __doc__ is not None
+    parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument("output", help="Output point cloud file, as .ply or .cwipc")
     parser.add_argument("input", nargs='+', help="Input point cloud files, as .ply or .cwipc")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")

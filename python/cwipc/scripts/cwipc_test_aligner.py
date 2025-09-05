@@ -1,3 +1,6 @@
+"""
+Find transform between two point clouds and apply it to align them.
+"""
 import sys
 from typing import Optional
 import argparse
@@ -67,7 +70,8 @@ class AlignmentFinder:
 
     
 def main():
-    parser = argparse.ArgumentParser(description="Find transform between two pointclouds", formatter_class=argparse.RawDescriptionHelpFormatter)
+    assert __doc__ is not None
+    parser = argparse.ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("input", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("output", help="Point cloud, as .ply or .cwipc file")
     parser.add_argument("--plot", action="store_true", help="Plot analysis distance distribution")

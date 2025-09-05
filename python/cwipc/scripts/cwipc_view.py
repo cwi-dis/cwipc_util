@@ -1,3 +1,6 @@
+"""
+View live point cloud streams from cameras, network sources or recordings.
+"""
 import sys
 import threading
 import argparse
@@ -11,7 +14,8 @@ def help_commands():
 
 def main():
     SetupStackDumper()
-    parser = ArgumentParser(description="View pointcloud streams", formatter_class=argparse.RawDescriptionHelpFormatter)
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
     parser.add_argument("--paused", action="store_true", help="Start paused")
     parser.add_argument("--skeleton", action="store_true", help="Get and render skeleton from the capture (in stead of point cloud). Only for source --kinect or --k4aoffline")

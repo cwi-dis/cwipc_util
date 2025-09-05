@@ -1,3 +1,6 @@
+"""
+Send point cloud stream to cwipc_proxy API. Legacy.
+"""
 import sys
 import os
 import time
@@ -58,7 +61,8 @@ class Sender(cwipc_sink_abstract):
 
 def main():
     SetupStackDumper()
-    parser = ArgumentParser(description="Send pointcloud stream to cwipc_proxy")
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip())
     parser.add_argument("host", action="store", help="Hostname where cwipc_proxy server is running")
     parser.add_argument("port", type=int, action="store", help="Port where cwipc_proxy server is running")
     args = parser.parse_args()

@@ -1,3 +1,6 @@
+"""
+Get detailed timestamp information from a point cloud stream.
+"""
 import sys
 import argparse
 import threading
@@ -152,8 +155,8 @@ class DropWriter(cwipc_sink_abstract):
          
 def main():
     SetupStackDumper()
-    
-    parser = ArgumentParser(description="Get detailed timestamps from a capturer")
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip())
     parser.add_argument("--details", action="store_true", help="Output detailed timing records")
     parser.add_argument("--savergb", metavar="N", type=int, default=0, help="Save RGB images for every N-th frame")
     parser.add_argument("--output", "-o", metavar="FILE", type=str, help="Store CSV output in FILE")

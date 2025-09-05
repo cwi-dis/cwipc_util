@@ -1,3 +1,6 @@
+"""
+Forward point cloud streams to cwipc_netserver or other server, or serve them directly.
+"""
 import sys
 import os
 import time
@@ -15,7 +18,8 @@ from ._scriptsupport import *
 
 def main():
     SetupStackDumper()
-    parser = ArgumentParser(description="Forward pointcloud streams", formatter_class=argparse.RawDescriptionHelpFormatter)
+    assert __doc__ is not None
+    parser = ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--noforward", action="store_true", help="Don't forward pointclouds, only prints statistics at the end")
     
     output_selection_args = parser.add_argument_group("output selection").add_mutually_exclusive_group()

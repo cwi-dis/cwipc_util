@@ -1,3 +1,6 @@
+"""
+Create a point cloud for testing analysis and registration.
+"""
 import sys
 import os.path
 import json
@@ -139,7 +142,8 @@ class AnalysisTestCreator:
         self.output_pc = cwipc_joined_pc
        
 def main():
-    parser = argparse.ArgumentParser(description="Create a point cloud for testing analysis and registration", formatter_class=argparse.RawDescriptionHelpFormatter)
+    assert __doc__ is not None
+    parser = argparse.ArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("input", help="Input point cloud .ply file")
     parser.add_argument("output", help="Output point cloud .ply file")
     parser.add_argument("--ncamera", type=int, metavar="NUM", default=1, help="Number of cameras to simulate")
