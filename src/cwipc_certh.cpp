@@ -85,7 +85,7 @@ cwipc* cwipc_from_certh(void* certhPC, float *origin, float *bbox, uint64_t time
             point.r = r;
             point.g = g;
             point.b = b;
-            point.a = tile;
+            point.tile = tile;
             pclPC->points.push_back(point);
         }
     }

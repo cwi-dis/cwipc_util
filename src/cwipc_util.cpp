@@ -107,14 +107,14 @@ public:
 
         for (int i=0; i<npoint; i++) {
             cwipc_pcl_point point;
-
+            // xxxjack can we simply copy? The memory layout should be the same...
             point.x = pointData[i].x;
             point.y = pointData[i].y;
             point.z = pointData[i].z;
             point.r = pointData[i].r;
             point.g = pointData[i].g;
             point.b = pointData[i].b;
-            point.a = pointData[i].tile;
+            point.tile = pointData[i].tile;
 
             pc->points.push_back(point);
         }
@@ -200,7 +200,7 @@ public:
             pointData[i].r = (*m_pc)[i].r;
             pointData[i].g = (*m_pc)[i].g;
             pointData[i].b = (*m_pc)[i].b;
-            pointData[i].tile = (*m_pc)[i].a;
+            pointData[i].tile = (*m_pc)[i].tile.getvalue();
         }
 
         // iterate_over_octree();

@@ -9,45 +9,96 @@
 #include <pcl/point_types.h>
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
-struct EIGEN_ALIGN16 _PointXYZRGBMask
+struct _cwipc_bitmask {
+//    union {
+//        struct {
+//            bool b0 : 1;
+//            bool b1 : 1;
+//            bool b2 : 1;
+//            bool b3 : 1;
+//            bool b4 : 1;
+//            bool b5 : 1;
+//            bool b6 : 1;
+//            bool b7 : 1;
+//        };
+        uint8_t allbits;
+//    };
+};
+
+struct cwipc_bitmask : public _cwipc_bitmask {
+    // inline cwipc_bitmask() { allbits = 0; }
+    // inline cwipc_bitmask(uint8_t value) { allbits = value; }
+    inline uint8_t getvalue() { return allbits; }
+//    cwipc_bitmask& operator=(const cwipc_bitmask& other) { allbits = other.allbits; return *this; }
+    cwipc_bitmask& operator=(uint8_t value) { allbits = value; return *this; }
+    cwipc_bitmask& operator|=(const cwipc_bitmask& other) { allbits |= other.allbits; return *this; }
+//    operator uint8_t() {return allbits; }
+};
+
+struct EIGEN_ALIGN16 _PointXYZRGBTile
 {
     PCL_ADD_POINT4D; // This adds the members x,y,z which can also be accessed using the point (which is float[4])
-    PCL_ADD_RGB;
+      union
+      {
+        union
+        {
+          struct
+          {
+            std::uint8_t b;
+            std::uint8_t g;
+            std::uint8_t r;
+            cwipc_bitmask tile;
+          };
+          float rgb;
+        };
+        std::uint32_t rgbtile;
+      };
+
+    // inline Eigen::Vector3i getRGBVector3i () { return (Eigen::Vector3i (r, g, b)); }
+    // inline const Eigen::Vector3i getRGBVector3i () const { return (Eigen::Vector3i (r, g, b)); }
+    // inline Eigen::Vector4i getRGBVector4i () { return (Eigen::Vector4i (r, g, b, a)); }
+    // inline const Eigen::Vector4i getRGBVector4i () const { return (Eigen::Vector4i (r, g, b, a)); }
+    // inline Eigen::Vector4i getRGBAVector4i () { return (Eigen::Vector4i (r, g, b, a)); }
+    // inline const Eigen::Vector4i getRGBAVector4i () const { return (Eigen::Vector4i (r, g, b, a)); }
+    // inline pcl::Vector3cMap getBGRVector3cMap () { return (pcl::Vector3cMap (reinterpret_cast<std::uint8_t*> (&rgbtile))); }
+    // inline pcl::Vector3cMapConst getBGRVector3cMap () const { return (pcl::Vector3cMapConst (reinterpret_cast<const std::uint8_t*> (&rgbtile))); } \
+    // inline pcl::Vector4cMap getBGRAVector4cMap () { return (pcl::Vector4cMap (reinterpret_cast<std::uint8_t*> (&rgba))); } \
+    // inline pcl::Vector4cMapConst getBGRAVector4cMap () const { return (pcl::Vector4cMapConst (reinterpret_cast<const std::uint8_t*> (&rgba))); }
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-struct EIGEN_ALIGN16 PointXYZRGBMask : public _PointXYZRGBMask
+struct EIGEN_ALIGN16 PointXYZRGBTile : public _PointXYZRGBTile
 {
-    inline PointXYZRGBMask (const _PointXYZRGBMask &p)
+    inline PointXYZRGBTile (const _PointXYZRGBTile &p)
     {
         x = p.x; y = p.y; z = p.z; data[3] = 1.0f;
-        rgba = p.rgba;
+        rgbtile = p.rgbtile;
     }
     
-    inline PointXYZRGBMask ()
+    inline PointXYZRGBTile ()
     {
         x = y = z = 0.0f;
         data[3] = 1.0f;
         r = g = b = 0;
-        a = 0;
+        tile = 0;
     }
     
-    friend std::ostream& operator << (std::ostream& os, const PointXYZRGBMask& p);
+    friend std::ostream& operator << (std::ostream& os, const PointXYZRGBTile& p);
 };
 
-PCL_EXPORTS std::ostream& operator << (std::ostream& os, const PointXYZRGBMask& p);
+PCL_EXPORTS std::ostream& operator << (std::ostream& os, const PointXYZRGBTile& p);
 
-POINT_CLOUD_REGISTER_POINT_STRUCT (_PointXYZRGBMask,           // here we assume a XYZ + "test" (as fields)
+POINT_CLOUD_REGISTER_POINT_STRUCT (_PointXYZRGBTile,
                                    (float, x, x)
                                    (float, y, y)
                                    (float, z, z)
-                                   (std::uint32_t, rgba, rgba)
+                                   (std::uint32_t, rgbtile, rgbtile)
                                    )
-POINT_CLOUD_REGISTER_POINT_WRAPPER(PointXYZRGBMask, _PointXYZRGBMask)
+POINT_CLOUD_REGISTER_POINT_WRAPPER(PointXYZRGBTile, _PointXYZRGBTile)
 
 /** \brief PCL point, as supported by this library.
  */
-typedef PointXYZRGBMask cwipc_pcl_point;
+typedef PointXYZRGBTile cwipc_pcl_point;
 
 /** \brief PCL Pointcloud, as supported by this library.
  */

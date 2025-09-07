@@ -50,6 +50,7 @@ cwipc* cwipc_downsample(cwipc *pc, float voxelsize) {
         grid.setInputCloud(src);
         grid.setLeafSize(voxelsize, voxelsize, voxelsize);
         grid.setSaveLeafLayout(true);
+        grid.setDownsampleAllData(true);
         grid.filter(*dst);
 
         if (dst->empty()) {
@@ -60,14 +61,14 @@ cwipc* cwipc_downsample(cwipc *pc, float voxelsize) {
 
         // Step 2 - Clear tile numbers in destination
         for (auto& dstpt : dst->points) {
-            dstpt.a = 0;
+            dstpt.tile = 0;
         }
 
         // Step 3 - Do OR of all contribution point tile numbers in destination.
         for (auto& srcpt : src->points) {
             int dstIndex = grid.getCentroidIndex(srcpt);
             auto& dstpt = dst->points[dstIndex];
-            dstpt.a |= srcpt.a;
+            dstpt.tile |= srcpt.tile;
         }
     } catch (pcl::PCLException& e) {
         std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
@@ -155,7 +156,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             std::vector< int > tiles;
 
             for (auto pt : src->points) {
-                int tile = pt.a;
+                int tile = pt.tile.getvalue();
 
                 if (std::find(tiles.begin(), tiles.end(), tile) != tiles.end()) {
                     //std::cout << "Element found";
@@ -222,7 +223,7 @@ cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
     cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 
     for (auto pt : src->points) {
-        if (tile == 0 || tile == pt.a) {
+        if (tile == 0 || tile == pt.tile.getvalue()) {
             dst->points.push_back(pt);
         }
     }
@@ -260,7 +261,7 @@ cwipc* cwipc_tilemap(cwipc *pc, uint8_t map[256]) {
     cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 
     for (auto pt : src->points) {
-        pt.a = map[pt.a];
+        pt.tile = map[pt.tile.getvalue()];
         dst->points.push_back(pt);
     }
 
@@ -317,8 +318,8 @@ cwipc* cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits) {
     cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
 
     for (auto pt : src->points) {
-        pt.rgba &= ~clearBits;
-        pt.rgba |= setBits;
+        pt.rgbtile &= ~clearBits;
+        pt.rgbtile |= setBits;
         dst->points.push_back(pt);
     }
 
