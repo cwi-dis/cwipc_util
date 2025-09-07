@@ -18,6 +18,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/exceptions.h>
 
+#include <pcl/octree/octree.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 
@@ -25,7 +26,76 @@ namespace pcl {
     template class VoxelGrid<cwipc_pcl_point>;
 }
 
+cwipc* cwipc_downsample_approx(cwipc *pc, float cellsize) {
+    if (pc == NULL) {
+        return NULL;
+    }
+
+    cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
+
+    if (src == NULL) {
+        return NULL;
+    }
+    pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(cellsize);
+    octree.setInputCloud(src);
+    cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    octree.addPointsFromInputCloud();
+    for(auto it_leaf = octree.leaf_depth_begin(); it_leaf != octree.leaf_depth_end(); it_leaf++) {
+        auto& points = it_leaf.getLeafContainer();
+        auto& indices = points.getPointIndicesVector();
+        float sum_x = 0;
+        float sum_y = 0;
+        float sum_z = 0;
+        int sum_r = 0;
+        int sum_g = 0;
+        int sum_b = 0;
+        uint8_t mask = 0;
+        int count = 0;
+
+        for(auto it_idx = indices.begin(); it_idx != indices.end(); it_idx++) {
+            auto pt = src->at(*it_idx);
+            sum_x += pt.x;
+            sum_y += pt.y;
+            sum_z += pt.z;
+            sum_r += pt.r;
+            sum_g += pt.g;
+            sum_b += pt.b;
+            mask |= pt.a;
+            count++;
+        }
+
+        sum_x /= count;
+        sum_y /= count;
+        sum_z /= count;
+        sum_r /= count;
+        sum_g /= count;
+        sum_b /= count;
+
+        cwipc_pcl_point pt_new;
+        pt_new.x = sum_x;
+        pt_new.y = sum_y;
+        pt_new.z = sum_z;
+        pt_new.r = sum_r;
+        pt_new.g = sum_g;
+        pt_new.b = sum_b;
+        pt_new.a = mask;
+        dst->push_back(pt_new);
+    }
+    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    rv->_set_cellsize(cellsize); // xxxjack should we limit to old cellsize? Or maybe recompute from octree?
+
+    // copy src auxdata to dst pointcloud
+    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
+    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    src_ad->_move(dst_ad);
+
+    return rv;
+}
+
 cwipc* cwipc_downsample(cwipc *pc, float voxelsize) {
+    if (voxelsize < 0) {
+        return cwipc_downsample_approx(pc, -voxelsize);
+    }
     if (pc == NULL) {
         return NULL;
     }
