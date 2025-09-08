@@ -16,7 +16,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter, cwipc_compute_tile_occupancy
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -270,34 +270,16 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
 
     def _compute_new_tiles(self) -> bool:
         assert self.original_pointcloud
-        # Remove the floor.
-        pc = cwipc_floor_filter(self.original_pointcloud)
-        ntiles_orig = len(self.transformations)
-        if self.proposed_cellsize > 0:
-            try:
-                pc_downsampled = cwipc_downsample(pc, self.proposed_cellsize)
-            except CwipcError:
-                print(f"{self.__class__.__name__}: Warning: Cannot downsample pc. Cannot compute new tiles.")
-                return False
-        else:
+        if self.proposed_cellsize == 0:
             print(f"{self.__class__.__name__}: Warning: proposed_cellsize==0. Cannot compute new tiles.")
             return False
         if True or self.verbose:
-            print(f"{self.__class__.__name__}: Voxelizing with {self.proposed_cellsize}: point count {pc_downsampled.count()}, was {pc.count()}")
-        tilenum_and_pointcount : List[Tuple[int, int]] = []
-        for i in range(1, 2**ntiles_orig):
-            pc_tile = cwipc_tilefilter(pc_downsampled, i)
-            pointcount = pc_tile.count()
-            pc_tile.free()
-            tilenum_and_pointcount.append((i, pointcount))
-        tilenum_and_pointcount.sort(key=lambda tp:tp[1], reverse=True)
+            print(f"{self.__class__.__name__}: Computing tile occupancy with {self.proposed_cellsize}")
+        tilenum_and_pointcount = cwipc_compute_tile_occupancy(self.original_pointcloud, cellsize=self.proposed_cellsize, filterfloor=True)
         if True or self.verbose:
             print(f"{self.__class__.__name__}: Pointcounts per tile, after voxelizing:")
             for tile, pointcount in tilenum_and_pointcount:
-                if pointcount != 0:
-                    print(f"\ttile {tile}: {pointcount} ({tile.bit_count()} contributors)")
-        pc.free()
-        pc_downsampled.free()
+                print(f"\ttile {tile}: {pointcount} ({tile.bit_count()} contributors)")
         return True
 
     @override

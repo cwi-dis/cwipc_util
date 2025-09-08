@@ -9,7 +9,7 @@ import cwipc
 from cwipc.registration.abstract import AnalysisResults
 from cwipc.registration.fine import RegistrationComputer_ICP_Point2Point
 import cwipc.registration.analyze
-from cwipc.registration.util import transformation_topython, get_tiles_used
+from cwipc.registration.util import transformation_topython, get_tiles_used, cwipc_compute_tile_occupancy
 from cwipc.registration.plot import Plotter
 
 class AnalyzePointCloud:
@@ -77,6 +77,10 @@ class AnalyzePointCloud:
             plotter = Plotter(title=title)
             plotter.set_results(allResults)
             plotter.plot(show=True)
+        if self.args.occupancy >= 0:
+            tiles_and_counts = cwipc_compute_tile_occupancy(self.source_pc, cellsize=self.args.occupancy, filterfloor=self.args.ignore_floor)
+            for tilenum, count in tiles_and_counts:
+                print(f"Occupancy: tilenum={tilenum}, count={count}, ncamera={tilenum.bit_count()}")
  
     def analyze_pointclouds(self, source: cwipc.cwipc_wrapper, sourcetile : int, target : cwipc.cwipc_wrapper, targettile : int) -> AnalysisResults:
         analyzer = self.analyzer_class()
@@ -111,7 +115,6 @@ class AnalyzePointCloud:
             overlap_analyzer.run()
             overlap_results = overlap_analyzer.get_results()
             print(f"Alignment {label}: overlap fitness: {overlap_results.fitness:.6f}, inlier rmse: {overlap_results.rmse:.6f}")
-
         return results
 
 def main():
@@ -126,9 +129,10 @@ def main():
     parser.add_argument("--nth", type=int, default=1, metavar="NTH", help="For --toself, use the NTH closest point to each point in the same tile (default: 1, i.e. nearest point)")
     parser.add_argument("--max_corr", type=float, default=-1, metavar="DIST", help="Maximum distance between two points to be considered the same point (default: -1, i.e. no limit)")
     parser.add_argument("--min_corr", type=float, default=0.0, metavar="DIST", help="Minimum distance between two points that is meaningful to consider (default: 0.0, i.e. no limit)")
-    parser.add_argument("--measure", action="append", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, or mode (default: mean) ")
+    parser.add_argument("--measure", action="append", type=str, default=None, metavar="METHOD", help="Method to use for correspondence: mean, median, mode or 2mode (default: mean) ")
     parser.add_argument("--ignore_floor", action="store_true", help="Remove floor (low Y points)")
     parser.add_argument("--overlap", action="store_true", help="Also compute overlap between source and target tile")
+    parser.add_argument("--occupancy", action="store", type=float, metavar="DIST", default=-1, help="Also compute source tile occupancy (after downsampling to DIST if DIST > 0)")
     parser.add_argument("--algorithm_analyzer", action="store", help="Analyzer algorithm to use")
     parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")

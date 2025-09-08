@@ -6,7 +6,7 @@ except ImportError:
     from typing_extensions import override
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample
 import open3d
 import open3d.visualization
 import numpy as np
@@ -161,6 +161,33 @@ def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrap
     new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc
 
+def cwipc_compute_tile_occupancy(pc : cwipc_wrapper, cellsize : float = 0, filterfloor : bool=False) -> List[Tuple[int, int]]:
+    """
+    Returns list of (tilenum, pointcount) of a point cloud, optionally after downsampling with cellsize and/or removing the floor.
+    The list is sorted by point count, and empty tiles are omitted.
+    """
+    must_free = False
+    if filterfloor:
+        pc = cwipc_floor_filter(pc)
+        must_free = True
+    if cellsize != 0:
+        new_pc = cwipc_downsample(pc, cellsize)
+        if must_free:
+            pc.free()
+        pc = new_pc
+        must_free = True
+    tiles_used = get_tiles_used(pc)
+    rv : List[Tuple[int, int]] = []
+    for tilenum in tiles_used:
+        pc_tile = cwipc_tilefilter(pc, tilenum)
+        pointcount = pc_tile.count()
+        rv.append((tilenum, pointcount))
+        pc_tile.free()
+    rv.sort(key=lambda tp : tp[1], reverse=True)
+    if must_free:
+        pc.free()
+    return rv
+    
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
     
