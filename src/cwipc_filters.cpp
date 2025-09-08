@@ -109,51 +109,53 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
     }
 
     cwipc_pcl_pointcloud dst = new_cwipc_pcl_pointcloud();
+    cwipc_pcl_pointcloud grid_input = new_cwipc_pcl_pointcloud();
+    cwipc_pcl_pointcloud grid_output = new_cwipc_pcl_pointcloud();
 
+    const int octree_count = 8*8*8; // we will average 8x8x8 cells into one
+    float octree_cellsize = octree_count * cellsize;
+    
     try {
-        pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(cellsize);
+        // At the upper levels we will use an octree to split the work into smaller parts.
+        pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(octree_cellsize);
+
+        // At the lower levels we will use a VoxelGrid to do the averaging.
+        pcl::VoxelGrid<cwipc_pcl_point> grid;
+        grid.setLeafSize(cellsize, cellsize, cellsize);
+        
         octree.setInputCloud(src);
         octree.addPointsFromInputCloud();
+        
+        // Upper level: get all leaf nodes from the octree
         for(auto it_leaf = octree.leaf_depth_begin(); it_leaf != octree.leaf_depth_end(); it_leaf++) {
+            // Upper level: for each octree leaf put all points in a temporary pointcloud
             auto& points = it_leaf.getLeafContainer();
+            grid_input->clear();
             auto& indices = points.getPointIndicesVector();
-            float sum_x = 0;
-            float sum_y = 0;
-            float sum_z = 0;
-            int sum_r = 0;
-            int sum_g = 0;
-            int sum_b = 0;
-            uint8_t mask = 0;
-            int count = 0;
-
-            for(auto it_idx = indices.begin(); it_idx != indices.end(); it_idx++) {
-                auto pt = src->at(*it_idx);
-                sum_x += pt.x;
-                sum_y += pt.y;
-                sum_z += pt.z;
-                sum_r += pt.r;
-                sum_g += pt.g;
-                sum_b += pt.b;
-                mask |= pt.a;
-                count++;
+            for(auto point_idx : indices) {
+                grid_input->push_back(src->at(point_idx));
+            }
+            // Lower level step 1 - Voxelize the points in the temporary pointcloud
+            grid_output->clear();
+            grid.setInputCloud(grid_input);
+            grid.filter(*grid_output);
+            if(grid_output->empty()) {
+                continue;
             }
 
-            sum_x /= count;
-            sum_y /= count;
-            sum_z /= count;
-            sum_r /= count;
-            sum_g /= count;
-            sum_b /= count;
+            // Lower level step 2 - Clear tile numbers in destination
+            for (auto& dstpt : grid_output->points) {
+                dstpt.a = 0;
+            }
 
-            cwipc_pcl_point pt_new;
-            pt_new.x = sum_x;
-            pt_new.y = sum_y;
-            pt_new.z = sum_z;
-            pt_new.r = sum_r;
-            pt_new.g = sum_g;
-            pt_new.b = sum_b;
-            pt_new.a = mask;
-            dst->push_back(pt_new);
+            // Lower level step 3 - Do OR of all contribution point tile numbers in destination.
+            for (auto& srcpt : grid_input->points) {
+                int dstIndex = grid.getCentroidIndex(srcpt);
+                auto& dstpt = grid_output->points[dstIndex];
+                dstpt.a |= srcpt.a;
+            }
+            // Final step: add the results to the final destination pointcloud
+            *dst += *grid_output;
         }
     } catch (pcl::PCLException& e) {
         std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
@@ -162,10 +164,11 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
         std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
         return NULL;
     }
+    // Now create the cwipc point cloud from the pcl point cloud
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
-    rv->_set_cellsize(cellsize); // xxxjack should we limit to old cellsize? Or maybe recompute from octree?
-
-    // copy src auxdata to dst pointcloud
+    // And copy the metadata
+    rv->_set_cellsize(cellsize);
+    // And copy src auxdata to dst pointcloud
     cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
     cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
     src_ad->_move(dst_ad);
