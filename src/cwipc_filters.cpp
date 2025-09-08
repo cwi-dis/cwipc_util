@@ -112,16 +112,12 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
     cwipc_pcl_pointcloud grid_input = new_cwipc_pcl_pointcloud();
     cwipc_pcl_pointcloud grid_output = new_cwipc_pcl_pointcloud();
 
-    const int octree_count = 8*8*8; // we will average 8x8x8 cells into one
+    const int octree_count = 8*8; // we will first split the point cloud into 8x8 cells
     float octree_cellsize = octree_count * cellsize;
     
     try {
         // At the upper levels we will use an octree to split the work into smaller parts.
         pcl::octree::OctreePointCloud<cwipc_pcl_point> octree(octree_cellsize);
-
-        // At the lower levels we will use a VoxelGrid to do the averaging.
-        pcl::VoxelGrid<cwipc_pcl_point> grid;
-        grid.setLeafSize(cellsize, cellsize, cellsize);
         
         octree.setInputCloud(src);
         octree.addPointsFromInputCloud();
@@ -137,6 +133,11 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
             }
             // Lower level step 1 - Voxelize the points in the temporary pointcloud
             grid_output->clear();
+            // At the lower levels we will use a VoxelGrid to do the averaging.
+            pcl::VoxelGrid<cwipc_pcl_point> grid;
+            grid.setLeafSize(cellsize, cellsize, cellsize);
+      
+            grid.setSaveLeafLayout(true);
             grid.setInputCloud(grid_input);
             grid.filter(*grid_output);
             if(grid_output->empty()) {
@@ -149,7 +150,7 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
             }
 
             // Lower level step 3 - Do OR of all contribution point tile numbers in destination.
-            for (auto& srcpt : grid_input->points) {
+            for (auto& srcpt : grid.getInputCloud()->points) {
                 int dstIndex = grid.getCentroidIndex(srcpt);
                 auto& dstpt = grid_output->points[dstIndex];
                 dstpt.a |= srcpt.a;
