@@ -564,7 +564,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         # xxxjack should we apply target_filter?
         analyzer.run()
         results = analyzer.get_results()
-        results.tilemask = "{results.tilemask} before"
+        results.tilemask = f"{results.tilemask} before"
         rv.append(results)
 
         analyzer = self._prepare_analyze()
@@ -576,7 +576,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         # xxxjack should we apply target filter?
         analyzer.run()
         results = analyzer.get_results()
-        results.tilemask = "{results.tilemask} after"
+        results.tilemask = f"{results.tilemask} after"
         rv.append(results)
 
         if self.verbose or self.is_interactive:
@@ -593,7 +593,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         new_rr = self.current_step_results[1]
         corr_improvement = old_rr.minCorrespondence / new_rr.minCorrespondence
         corr_count_improvement = new_rr.minCorrespondenceCount / old_rr.minCorrespondenceCount
-        if corr_improvement >= 1 and corr_count_improvement >= 1:
+        if corr_improvement >= 0.99 and corr_count_improvement >= 0.99:
             accept = True
             print(f"{self.__class__.__name__}: Step {step}: very good, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
         elif corr_improvement >= 0.8 and corr_count_improvement >= 0.8 and corr_improvement * corr_count_improvement >= 1:
@@ -602,7 +602,11 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         elif corr_improvement >= 2 and corr_improvement * corr_count_improvement >= 2:
             accept = True
             # xxxjack this needs work. We need some other way to judge what has happened.
-            print(f"{self.__class__.__name__}: Step {step}: great at cost of count, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+            print(f"{self.__class__.__name__}: Step {step}: great (but at cost of count), accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
+        elif corr_improvement >= 1.5 and corr_improvement * corr_count_improvement >= 1.5:
+            accept = True
+            # xxxjack this needs work. We need some other way to judge what has happened.
+            print(f"{self.__class__.__name__}: Step {step}: borderline, accept, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
         else:
             accept = False
             print(f"{self.__class__.__name__}: Step {step}: bad, reject, tile={old_rr.tilemask}, improvement={corr_improvement:.2f}, count_improvement={corr_count_improvement:.2f}")
