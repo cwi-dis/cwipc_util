@@ -69,7 +69,7 @@ class AnalysisTestCreator:
 
     def run(self):
         assert self.input_pc
-        sim_filter = SimulatecamsFilter(self.args.ncamera)
+        sim_filter = SimulatecamsFilter(self.args.ncamera, hard=False, skew=self.args.skew)
         tiled_pc = sim_filter.filter(self.input_pc)
         if self.verbose:
             print(f"Input point cloud tiled into {self.args.ncamera} cameras, {tiled_pc.count()} points in total.")
@@ -147,6 +147,7 @@ def main():
     parser.add_argument("input", help="Input point cloud .ply file")
     parser.add_argument("output", help="Output point cloud .ply file")
     parser.add_argument("--ncamera", type=int, metavar="NUM", default=1, help="Number of cameras to simulate")
+    parser.add_argument("--skew", type=float, metavar="FACTOR", default=1, help="Skew point camera distribution towards the closest one by this factor")
     parser.add_argument("--move", type=float, action="append", metavar="D", help="Distance to move a tile (in meters) in the Y=0 plane, random XZ angle. Repeat for each tile.")
     parser.add_argument("--rotate", type=float, action="append", metavar="RAD", help="Angle to rotate a tile (in radians) around the Y axis. Repeat for each tile.")
     parser.add_argument("--tilt", type=float, action="append", metavar="RAD", help="Angle to rotate a tile (in radians) around the X or Z axis. Repeat for each tile.")
