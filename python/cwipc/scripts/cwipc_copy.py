@@ -1,5 +1,5 @@
 """
-Capture and save point clouds from a live point cloud stream source. Can also convert, compress, etc.
+Copy a point cloud, a recorded point cloud stream or a raw RGBD camera recording. Can also convert, compress, etc.
 """
 import sys
 import os
@@ -204,20 +204,83 @@ class FileWriter(cwipc_sink_abstract):
 def main():
     SetupStackDumper()
     assert __doc__ is not None
-    parser = ArgumentParser(description=__doc__.strip())
-    parser.add_argument("--nopointclouds", action="store_true", help="Don't save pointclouds")
-    parser.add_argument("--cwipcdump", action="store_true", help="Save pointclouds as .cwipcdump (default: .ply)")
-    parser.add_argument("--compress", action="store_true", help="Save pointclouds as compressed .cwicpc (default: .ply)")
+    parser = BaseArgumentParser(description=__doc__.strip())
+    parser.add_argument("--nopointclouds", action="store_true", help="For sequences, don't save pointclouds (but will save rgb, depth and skeletons if requested and available)")
+    parser.add_argument("--cwipcdump", action="store_true", help="For sequences, save pointclouds as .cwipcdump (default: .ply or dependent on output filename)")
+    parser.add_argument("--compress", action="store_true", help="For sequences, save pointclouds as compressed .cwicpc (default: .ply or dependent on output filename)")
     parser.add_argument("--compress_param", action="append", metavar="NAME=VALUE", help="Add compressor parameter (help=1 for help)")
     parser.add_argument("--binary", action="store_true", help="Save pointclouds as binary .ply (default: ASCII .ply)")
-    parser.add_argument("--rgb", action="store", metavar="EXT", help="Save RGB auxiliary data as images of type EXT")
-    parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
-    parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton auxiliary data as files of type EXT")
-    parser.add_argument("--fpattern", action="store", metavar="VAR", default="count:04d", help="Construct filenames using VAR, which can be count or timestamp (default)")
-    parser.add_argument("--incore", action="store_true", help="Attempt to store all captures, at the expense of horrendous memory usage. Requires --count")
-    parser.add_argument("outputdir", action="store", help="Save output files in this directory")
+    parser.add_argument("--rgb", action="store", metavar="EXT", help="For sequences, save RGB auxiliary data as images of type EXT")
+    parser.add_argument("--depth", action="store", metavar="EXT", help="For sequences, save depth auxiliary data as images of type EXT")
+    parser.add_argument("--skeleton", action="store", metavar="EXT", help="For sequences, save skeleton auxiliary data as files of type EXT")
+    parser.add_argument("--fpattern", action="store", metavar="VAR", default="count:04d", help="For sequences, construct filenames using VAR, which can be count or timestamp (default)")
+    parser.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
+    parser.add_argument("--help_filters", action="store_true", help="List available filters and exit")
+    parser.add_argument("input", help="Point cloud (ply, cwipcdump, cwicpc) or directory of those, or cameraconfig.json file")
+    parser.add_argument("output", action="store", help="Output filename (ply, cwipcdump, cwicpc) for single inputs, output directory for streams")
 
     args = parser.parse_args()
+    stream_input = True
+    stream_output = True
+    if args.input.endswith(".json"):
+        args.cameraconfig = args.input
+        args.playback = None
+        stream_input = True
+    elif os.path.isdir(args.input):
+        args.playback = args.input
+        args.cameraconfig = None
+        stream_input = True
+    else:
+        args.playback = args.input
+        args.cameraconfig = None
+        stream_input = False
+    if args.output.endswith(".ply"):
+        stream_output = False
+        args.cwipcdump = False
+        args.compress = False
+    elif args.output.endswith(".cwipcdump"):
+        stream_output = False
+        args.cwipcdump = True
+        args.compress = False
+    elif args.output.endswith(".cwicpc"):
+        stream_output = False
+        args.cwipcdump = False
+        args.compress = True
+    elif os.path.isdir(args.output):
+        stream_output = True
+    elif os.path.exists(args.output):
+        print(f"{parser.prog}: unknown extension in output file: {args.output}", file=sys.stderr)
+        return 2
+    else:
+        os.mkdir(args.output)
+        stream_output = True
+    if stream_input and not stream_output:
+        print(f"{parser.prog}: Cannot convert stream input to single point cloud output file", file=sys.stderr)
+        return 1
+    if not stream_input and stream_output:
+        print(f"{parser.prog}: Cannot convert single point cloud input to stream output", file=sys.stderr)
+        return 1
+    if not stream_input and (args.rgb or args.nopointclouds or args.depth or args.skeleton):
+        print(f"{parser.prog}: Arguments --rgb, --nopointclouds, --depth or --skeleton only make sense for streams")
+        return 1
+    # Fill argument values that we don't use but are needed by some of the modules.
+    args.netclient = None
+    args.lldplay = None
+    args.endpaused = True
+    args.loop = False
+    args.nodecode = False
+    args.kinect = None
+    args.k4aoffline = None
+    args.realsense = None
+    args.synthetic = None
+    args.proxy = None
+    args.certh = None
+    args.fps = None
+    args.inpoint = None # xxxjack might be useful
+    args.outpoint = None # xxxjack might be useful
+    args.retimestamp = None # xxxjack might be useful
+    args.nodrop = True
+    args.count = None    
     beginOfRun(args)
     #
     # Create source
@@ -228,33 +291,33 @@ def main():
     # Determine which output formats we want, set output filename pattern
     # and ensure the requested data is included by the capturer
     #
-    if args.nopointclouds:
-        pcpattern = None
-    elif args.cwipcdump:
-        pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.cwipcdump"
-    elif args.compress:
-        pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.cwicpc"
-    else:
-        pcpattern = f"{args.outputdir}/pointcloud-{{{args.fpattern}}}.ply"
-    rgbpattern = None
-    if args.rgb:
-        rgbpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.rgb}"
-        source.request_auxiliary_data("rgb")
-    depthpattern = None
-    if args.depth:
-        depthpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.depth}"
-        source.request_auxiliary_data("depth")
-    skeletonpattern = None
-    if args.skeleton:
-        skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
-        source.request_auxiliary_data("skeleton")
-        
-    kwargs = {}
-    if args.incore: # Attempt realtime capturing by storing all frames incore
-        if args.count:
-            kwargs['queuesize'] = args.count
+    if stream_output:
+        if args.nopointclouds:
+            pcpattern = None
+        elif args.cwipcdump:
+            pcpattern = f"{args.output}/pointcloud-{{{args.fpattern}}}.cwipcdump"
+        elif args.compress:
+            pcpattern = f"{args.output}/pointcloud-{{{args.fpattern}}}.cwicpc"
         else:
-            kwargs['queuesize'] = 2000 # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
+            pcpattern = f"{args.output}/pointcloud-{{{args.fpattern}}}.ply"
+        rgbpattern = None
+        if args.rgb:
+            rgbpattern = f"{args.output}/{{name}}-{{{args.fpattern}}}.{args.rgb}"
+            source.request_auxiliary_data("rgb")
+        depthpattern = None
+        if args.depth:
+            depthpattern = f"{args.output}/{{name}}-{{{args.fpattern}}}.{args.depth}"
+            source.request_auxiliary_data("depth")
+        skeletonpattern = None
+        if args.skeleton:
+            skeletonpattern = f"{args.output}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
+            source.request_auxiliary_data("skeleton")
+    else:
+        pcpattern = args.output
+        rgbpattern = None
+        depthpattern = None
+        skeletonpattern = None
+    kwargs = {}
     if args.nodrop:
         kwargs['nodrop'] = True
     if args.binary:
@@ -274,7 +337,7 @@ def main():
             params[k] = eval(v)
         writer.setup_encoder(params)
     sourceServer = SourceServer(source, writer, args, source_name=source_name)
-    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_grab.SourceServer")
+    sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_copy.SourceServer")
     writer.set_producer(sourceThread)
 
     #
@@ -284,12 +347,9 @@ def main():
     try:
         sourceThread.start()
 
-        if not args.incore:
-            ok = writer.run()
+        ok = writer.run()
             
         sourceThread.join()
-        if args.incore:
-            ok = writer.run()
     except KeyboardInterrupt:
         print("Interrupted.")
         sourceServer.stop()
@@ -305,10 +365,12 @@ def main():
     del sourceServer
     endOfRun(args)
     if not ok:
-        sys.exit(1)
+        return 1
+    return 0
     
 if __name__ == '__main__':
-    main()
+    sts = main()
+    sys.exit(sts)
     
     
     

@@ -5,7 +5,7 @@ from typing import List, Tuple
 import pkgutil
 from . import scripts, cwipc_get_version
 
-MAIN_COMMANDS = ['view', 'play', 'grab', 'register']
+MAIN_COMMANDS = ['view', 'grab', 'play', 'copy', 'register']
 
 if sys.platform == 'win32':
     def execv(cmd : str, args : List[str]):
