@@ -731,7 +731,7 @@ class Registrator:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
             self.check_alignment(pc, f"before {multicam_aligner_class.__name__} registration")
         if True or self.verbose:
-            print(f"cwipc_register: Use multicam aligner class {multicam_aligner_class.__name__}")
+            print(f"cwipc_register: Fine multicamera alignment using aligner class {multicam_aligner_class.__name__}")
         multicam = multicam_aligner_class()
         multicam.verbose = self.verbose > 2
         multicam.debug = self.verbose > 3
@@ -748,7 +748,6 @@ class Registrator:
             print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
         multicam.set_analyzer_class(self.analyzer_class)
 
-        multicam.show_plot = self.show_plot
         multicam.set_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
             multicam.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
@@ -760,15 +759,35 @@ class Registrator:
         if not ok:
             print(f"cwipc_register: Could not do {multicam_aligner_class.__name__} registration")
             sys.exit(1)
+        # Get the newly aligned pointcloud to test for alignment, and return it
+        new_pc = multicam.get_result_pointcloud_full()
+        correspondence = self.check_alignment(new_pc, f"after {multicam_aligner_class.__name__} registration")
+        #
+        # For --guided, give the user the option to accept, reject or inspect the results.
+        #
+        if self.args.guided:
+            while True:
+                answer = self.ask("Accept (yes/no/show/plot)", "no default")
+                if answer == "yes":
+                    break
+                if answer == "no":
+                    return None
+                if answer == "plot":
+                    pass
+                if answer == "show":
+                    show_pc = multicam.get_result_pointcloud_full()
+                    show_pointcloud("Result after alignment", show_pc)
+                if answer == "plot":
+                    results = multicam.results  # type: ignore
+                    plotter = cwipc.registration.plot.Plotter(title="Results after alignment")
+                    plotter.set_results(results)
+                    plotter.plot(show=True)
         # Get the resulting transformations, and store them in cameraconfig.
         transformations = multicam.get_result_transformations()
         for cam_num in range(len(transformations)):
             matrix = transformations[cam_num]
             t = self.cameraconfig.get_transform(cam_num)
             t.set_matrix(matrix)
-        # Get the newly aligned pointcloud to test for alignment, and return it
-        new_pc = multicam.get_result_pointcloud_full()
-        correspondence = self.check_alignment(new_pc, f"after {multicam_aligner_class.__name__} registration")
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
