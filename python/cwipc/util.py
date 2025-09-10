@@ -939,8 +939,8 @@ def cwipc_get_version() -> str:
     c_version = cwipc_util_dll_load().cwipc_get_version()
     version = c_version.decode('utf8')
     try:
-        import pkg_resources
-        py_version = pkg_resources.require("cwipc_util")[0].version
+        import importlib.metadata
+        py_version = importlib.metadata.version("cwipc_util")
         if py_version and py_version != version:
             version = f'{version} (python wrapper: {py_version})'
     except ImportError:
