@@ -19,8 +19,31 @@ from .abstract import *
 from .util import get_tiles_used, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
 
-MarkerPosition = List[Tuple[float, float, float]] # Position (outline) of a marker in 3D coordinates
-MarkerPositions = Dict[int, MarkerPosition]   # map marks IDs to positions
+OldMarkerPosition = List[Tuple[float, float, float]] # Position (outline) of a marker in 3D coordinates
+OldMarkerPositions = Dict[int, OldMarkerPosition]   # map marks IDs to positions
+
+class Marker:
+    """A marker is an object with 4 3D points (its corners) and an identity"""
+    def __init__(self, id: int, p1 : Vector3, p2 : Vector3, p3 : Vector3, p4 : Vector3):
+        self.id = id
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.p4 = p4
+
+class MarkerStore:
+    """Store a number of markers"""
+    def __init__(self):
+        self.markers : Dict[int, Marker] = {}
+
+    def add(self, m : Marker) -> None:
+        if m.id in self.markers:
+            # Don't add markers we already know
+            return
+        self.markers[m.id] = m
+
+        
+        
 
 class MultiCameraCoarse(MulticamAlignmentAlgorithm):
     """Align multiple cameras.
@@ -35,8 +58,8 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         self.grabber : Optional[cwipc_tiledsource_abstract] = None
         self.transformations : List[RegistrationTransformation] = []
         
-        self.known_marker_positions : MarkerPositions = dict()
-        self.markers : List[MarkerPositions] = []
+        self.known_marker_positions : OldMarkerPositions = dict()
+        self.markers : List[OldMarkerPositions] = []
 
         self.computer_class = RegistrationComputer_ICP_Point2Point
 
@@ -179,7 +202,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
                         if tile_transform_valid:
                             # Good! We have found a marker we didn't know about.
                             # Convert the camera-local coordinates to world coordinates
-                            new_area : MarkerPosition = []
+                            new_area : OldMarkerPosition = []
                             for cam_point in area:
                                 x = float(cam_point[0])
                                 y = float(cam_point[1])
@@ -216,18 +239,18 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
             self.markers.append(markers)
         assert len(self.per_camera_o3d_pointclouds) == len(self.markers)
         
-    def _check_marker(self, marker : MarkerPosition) -> bool:
+    def _check_marker(self, marker : OldMarkerPosition) -> bool:
         """Return False if the MarkerPosition cannot be a valid marker"""
         if len(marker) == 4:
             return True
         print(f"cwipc_register: Error: marker has {len(marker)} corners in stead of 4")
         return False
     
-    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> OldMarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         return {}
     
-    def _align_marker(self, camindex : int, pc : open3d.geometry.PointCloud, target : MarkerPosition, dst : MarkerPosition) -> Optional[RegistrationTransformation]:
+    def _align_marker(self, camindex : int, pc : open3d.geometry.PointCloud, target : OldMarkerPosition, dst : OldMarkerPosition) -> Optional[RegistrationTransformation]:
         """Find the transformation that will align pc so that the target marker matches best with the dst marker"""
         # Create the pointcloud that we want to align to
         tilenum = self.tilemask_for_camera_index(camindex)
@@ -297,7 +320,7 @@ class MultiCameraCoarseColorTarget(MultiCameraCoarse):
         self.prompt = "Select blue, red, yellow and pink corners (in that order) in 3D. The press ESC."
     
     @override
-    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> OldMarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID, which is always 9999).
         The markers are "found" by having the user select the points in 3D space.
         """
@@ -336,7 +359,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         }
     
     @override
-    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> OldMarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)
         The markers are found by mapping the point cloud to a color image and depth image, then finding Aruco markers
         in that color image, then using the depth image to compute the 3D coordinates.
@@ -352,7 +375,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         np_rgb_image_float = np_bgr_image_float[:,:,[2,1,0]]
         np_rgb_image = (np_rgb_image_float * 255).astype(np.uint8)
         areas_2d, ids = self._find_aruco_in_image(passnum, camindex, np_rgb_image)
-        rv : MarkerPositions = {}
+        rv : OldMarkerPositions = {}
         if not ids is None:
             viewControl = vis.get_view_control()
             pinholeCamera = viewControl.convert_to_pinhole_camera_parameters()
@@ -365,7 +388,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         vis.destroy_window()
         return rv
     
-    def _deproject(self, passnum : int, camnum : int, ids : Sequence[int], areas_2d : List[List[Sequence[float]]], pinholeCamera, o3d_depth_image_float) -> List[MarkerPosition]:
+    def _deproject(self, passnum : int, camnum : int, ids : Sequence[int], areas_2d : List[List[Sequence[float]]], pinholeCamera, o3d_depth_image_float) -> List[OldMarkerPosition]:
         show_depth_map = self.debug
 
         # First get the camera parameters
@@ -531,7 +554,7 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
 class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
 
     @override
-    def _find_markers(self, passnum : int, camindex : int) -> MarkerPositions:
+    def _find_markers(self, passnum : int, camindex : int) -> OldMarkerPositions:
         """Return a dictionary of all markers found in the point cloud (indexed by marker ID)"""
         tilenum = self.per_camera_tilenum[camindex]
         np_rgb_image, np_depth_image = self._get_rgb_depth_images(camindex)
@@ -539,7 +562,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
             print(f"cwipc_register: camera {camindex}: Warning: RGB or Depth image not captured. Revert to interactive image capture.")
             return MultiCameraCoarseAruco._find_markers(self, passnum, camindex)
         areas_2d, ids = self._find_aruco_in_image(passnum, camindex, np_rgb_image)
-        rv : MarkerPositions = {}
+        rv : OldMarkerPositions = {}
         if self.verbose:
             print(f"cwipc_register: camera {camindex}: _find_markers: Auruco-IDs: {ids}, 2D-Areas: {areas_2d}")
         for i in range(len(ids)):
