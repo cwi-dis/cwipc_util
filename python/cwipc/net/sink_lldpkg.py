@@ -9,7 +9,7 @@ from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_r
 
 _lldpkg_dll_reference = None
 
-LLDASH_PACKAGER_API_VERSION = 0x20250722
+LLDASH_PACKAGER_API_VERSION = 0x20250724
 
 class LLDashPackagerError(RuntimeError):
     pass
@@ -64,7 +64,7 @@ def _lldpkg_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _lldpkg_dll_reference.lldpkg_create.argtypes = [ctypes.c_char_p, LLDashPackagerErrorCallbackType, ctypes.c_int, ctypes.c_int, ctypes.POINTER(streamDesc), ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64]
     _lldpkg_dll_reference.lldpkg_create.restype = lldpkg_handle_p
     
-    _lldpkg_dll_reference.lldpkg_destroy.argtypes = [lldpkg_handle_p]
+    _lldpkg_dll_reference.lldpkg_destroy.argtypes = [lldpkg_handle_p, ctypes.c_bool]
     _lldpkg_dll_reference.lldpkg_destroy.restype = None
     
     _lldpkg_dll_reference.lldpkg_push_buffer.argtypes = [lldpkg_handle_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
@@ -204,7 +204,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         if self.handle:
             assert self.dll
             self.lldash_log(event="lldpkg_destroy_call", url=self.url)
-            self.dll.lldpkg_destroy(self.handle)
+            self.dll.lldpkg_destroy(self.handle, True)
             self.lldash_log(event="lldpkg_destroy_returned", url=self.url)
             self.handle = None
             
