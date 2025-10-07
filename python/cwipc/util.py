@@ -4,6 +4,11 @@ import ctypes.util
 import warnings
 import os
 import sys
+if sys.platform == "darwin":
+    # Workaround for open3d 0.19 including a faulty libomp.dylib (too old version for some other packages such as libpcl)
+    # We load it from the system library path first.
+    import ctypes
+    ctypes.cdll.LoadLibrary("libomp.dylib")
 import open3d
 import numpy
 import numpy.typing
