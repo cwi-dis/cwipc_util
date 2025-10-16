@@ -144,6 +144,7 @@ def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, 
     return new_pc
 
 def cwipc_floor_filter(pc : cwipc_wrapper, level : float = 0.1, keep : bool = False) -> cwipc_wrapper:
+    """Remove all points that are probably on the floor (Y ~= 0). If keep=True in stead only keep those points."""
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level
     if keep:
@@ -154,6 +155,7 @@ def cwipc_floor_filter(pc : cwipc_wrapper, level : float = 0.1, keep : bool = Fa
     return new_pc    
 
 def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrapper:
+    """Randomly assign all floor points (Y ~= 0) to different tiles."""
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level
     pc_np_floor = pc_np[is_floor_point]
