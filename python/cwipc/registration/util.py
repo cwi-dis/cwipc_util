@@ -69,8 +69,12 @@ def transformation_get_translation(matrix : RegistrationTransformation) -> Vecto
     rv : Vector3 = matrix[0:3, 3] # type: ignore
     return rv
 
-def transformation_compare(old : RegistrationTransformation, new : RegistrationTransformation) -> Tuple[Vector3, Vector3]:
+def transformation_compare(old : Optional[RegistrationTransformation], new : Optional[RegistrationTransformation]) -> Tuple[Vector3, Vector3]:
     """Returns the translation and rotation (as rotation vector in degrees) that are the difference between old and new"""
+    if old is None:
+        old = transformation_identity()
+    if new is None:
+        new = transformation_identity()
     diff = new @ numpy.linalg.inv(old)
     trafo = RigidTransform.from_matrix(diff)
     translation : Vector3 = trafo.translation

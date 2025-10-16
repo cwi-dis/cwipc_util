@@ -685,6 +685,14 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
 
             self.current_step_out_pointcloud = aligner.get_result_pointcloud()
             self.current_step_results = self._post_step_analyse(step, tilemask)
+            if self.verbose or self.is_interactive:
+                # show change in understandable terms
+                new_transform = aligner.get_result_transformation()
+                translation, rotation = transformation_compare(None, new_transform)
+                translation_dist = numpy.linalg.norm(translation)
+                rotation_dist = numpy.linalg.norm(rotation)
+                print(f"{self.__class__.__name__}: Step {step}: change: distance={translation_dist:.4f}, angle={rotation_dist:.1f}, translation={translation}, rotation={rotation}")
+
             accept_step, give_up = self._accept_step(step, aligner)
             if accept_step:
                 failures_this_step = 0
