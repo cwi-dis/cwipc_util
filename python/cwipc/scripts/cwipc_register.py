@@ -461,8 +461,11 @@ class Registrator:
             self.prompt("Floor registration: capturing some floor")
             pc = self.capture()
             if self.args.guided:
-                print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
-            new_pc = self.fine_registration(pc, multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor, aligner_class=cwipc.registration.fine.RegistrationComputer_ICP_Point2Point)
+                print(f"===== The window will now close, the floor alignment will run, and after that the windows will reopen.", file=sys.stderr)
+            new_pc = self.fine_registration(pc, 
+                            multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor, 
+                            aligner_class=cwipc.registration.fine.RegistrationComputer_ICP_Point2Point,
+                            analyzer_class=cwipc.registration.analyze.RegistrationAnalyzer)
             pc.free()
             pc = None
             if new_pc:
@@ -718,7 +721,9 @@ class Registrator:
         klass = getattr(cwipc.registration.multicamera, klassName)
         return klass
 
-    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None, aligner_class=None) -> Optional[cwipc_wrapper]:
+    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None, aligner_class=None, analyzer_class=None) -> Optional[cwipc_wrapper]:
+        if analyzer_class is None:
+            analyzer_class = self.analyzer_class
         fixed_multicam_aligner = multicam_aligner_class != None
         if not fixed_multicam_aligner:
             multicam_aligner_class = self.multicamera_aligner_class
@@ -729,7 +734,7 @@ class Registrator:
                     return None
         if not self.verbose:
             # We only do this if we are not running verbosely (because then the alignment classes will print this info)
-            self.check_alignment(pc, f"before {multicam_aligner_class.__name__} registration")
+            self.check_alignment(pc, f"before {multicam_aligner_class.__name__} registration", analyzer_class)
         if True or self.verbose:
             print(f"cwipc_register: Fine multicamera alignment using aligner class {multicam_aligner_class.__name__}")
         multicam = multicam_aligner_class()
@@ -746,7 +751,7 @@ class Registrator:
         if True or self.verbose:
             assert multicam.aligner_class
             print(f"cwipc_register: Use fine aligner class {multicam.aligner_class.__name__}")
-        multicam.set_analyzer_class(self.analyzer_class)
+        multicam.set_analyzer_class(analyzer_class)
 
         multicam.set_tiled_pointcloud(pc)
         for cam_index in range(self.cameraconfig.camera_count()):
@@ -761,7 +766,7 @@ class Registrator:
             sys.exit(1)
         # Get the newly aligned pointcloud to test for alignment, and return it
         new_pc = multicam.get_result_pointcloud_full()
-        correspondence = self.check_alignment(new_pc, f"after {multicam_aligner_class.__name__} registration")
+        correspondence = self.check_alignment(new_pc, f"after {multicam_aligner_class.__name__} registration", analyzer_class=analyzer_class)
         #
         # For --guided, give the user the option to accept, reject or inspect the results.
         #
@@ -791,16 +796,18 @@ class Registrator:
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def check_alignment(self, pc : cwipc_wrapper, label : str) -> float:
-        assert self.analyzer_class
+    def check_alignment(self, pc : cwipc_wrapper, label : str, analyzer_class = None) -> float:
+        if analyzer_class is None:
+            assert self.analyzer_class
+            analyzer_class = self.analyzer_class
         if True or self.verbose:
-            print(f"cwipc_register: Use analyzer class {self.analyzer_class.__name__}")
+            print(f"cwipc_register: Use analyzer class {analyzer_class.__name__}")
         allResults : List[AnalysisResults] = []
         start_time = time.time()
         for cam_index in range(self.cameraconfig.camera_count()):
             targettile = 1 << cam_index
             othertile = 255 - targettile
-            analyzer = self.analyzer_class()
+            analyzer = analyzer_class()
             analyzer.set_source_pointcloud(pc, targettile)
             analyzer.set_reference_pointcloud(pc, othertile)
             analyzer.set_correspondence_measure('mode')
