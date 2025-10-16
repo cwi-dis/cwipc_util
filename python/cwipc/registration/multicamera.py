@@ -251,20 +251,19 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.proposed_cellsize = correspondence * self.proposed_cellsize_factor
 
         self._compute_change()
-        if True or self.verbose:
-            print(f"{self.__class__.__name__}: Change in matrices after alignment:")
-            for cam_index in range(len(self.change)):
-                translation, rotation = self.change[cam_index]
-                tile = self.tilemask_for_camera_index(cam_index)
-                print(f"\ttile={tile}, distance={numpy.linalg.norm(translation):.4f}, angle={numpy.linalg.norm(rotation):.1f}, translation={translation}, rotation={rotation}")
         self._compute_new_tiles()
         return True
 
     def _compute_change(self):
+        print(f"{self.__class__.__name__}: Change in matrices after alignment:")
         for cam_index in range(len(self.transformations)):
             orig_transform  = self.original_transformations[cam_index] # type: ignore
             new_transform  = self.transformations[cam_index] # type: ignore
             translation, rotation = transformation_compare(orig_transform, new_transform)
+            tile = self.tilemask_for_camera_index(cam_index)
+            translation_dist = numpy.linalg.norm(translation)
+            rotation_dist = numpy.linalg.norm(rotation)
+            print(f"\ttile={tile}, distance={translation_dist:.4f}, angle={rotation_dist:.1f}, translation={translation}, rotation={rotation}")
 
             self.change.append((translation, rotation))
 
