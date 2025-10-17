@@ -16,7 +16,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter, cwipc_compute_tile_occupancy
+from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter, cwipc_compute_tile_occupancy, cwipc_downsample_pertile
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -639,14 +639,23 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         rv : List[int] = list([rr.tilemask for rr in self.remaining_results]) # type: ignore
         return rv
     
+    def _downsample_size(self) -> float:
+        return 0
+    
     @override
     def run(self) -> bool:
         """Run the algorithm"""
         assert self.original_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
+        self._pre_analyse(toSelf=True, ignoreFloor=True, sortBy='corr')
         self._pre_analyse(toSelf=False, ignoreFloor=True, sortBy='corr')
 
+        cellsize = self._downsample_size()
+        if cellsize > 0:
+            self.original_pointcloud = cwipc_downsample_pertile(self.original_pointcloud, cellsize)
+            self._pre_analyse(toSelf=True, ignoreFloor=True, sortBy='corr')
+            self._pre_analyse(toSelf=False, ignoreFloor=True, sortBy='corr')
         # The first point cloud we keep as-is, and use it as the destination set.
         first_tilemask = self._select_first_step()
         self.remaining_results = copy.copy(self.pre_analysis_results)
@@ -760,6 +769,10 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     def __init__(self):
         super().__init__()
         self.is_interactive = True
+   
+    @override
+    def _downsample_size(self) -> float:
+        return float(self._ask("Downsample size (0 for no downsampling)", 0.0))
 
     @override
     def _accept_step(self, step : int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:

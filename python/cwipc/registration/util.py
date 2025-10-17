@@ -6,7 +6,7 @@ except ImportError:
     from typing_extensions import override
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample
+from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample, cwipc_join
 import open3d
 import open3d.visualization
 import numpy as np
@@ -166,6 +166,24 @@ def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrap
     new_pc_np = np.concatenate((pc_np_floor, pc_np_nonfloor), axis=0)
     new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc
+
+def cwipc_downsample_pertile(pc : cwipc_wrapper, cellsize : float) -> cwipc_wrapper:
+    """Per-tile downsample, so points in different tiles are not combined."""
+    tiles_used = get_tiles_used(pc)
+    result_pc = None
+    for tilenum in tiles_used:
+        tile_pc = cwipc_tilefilter(pc, tilenum)
+        tile_pc_downsampled = cwipc_downsample(tile_pc, cellsize)
+        tile_pc.free()
+        if result_pc == None:
+            result_pc = tile_pc_downsampled
+        else:
+            new_result_pc = cwipc_join(result_pc, tile_pc_downsampled)
+            result_pc.free()
+            tile_pc_downsampled.free()
+            result_pc = new_result_pc
+    assert result_pc
+    return result_pc
 
 def cwipc_compute_tile_occupancy(pc : cwipc_wrapper, cellsize : float = 0, filterfloor : bool=False) -> List[Tuple[int, int]]:
     """
