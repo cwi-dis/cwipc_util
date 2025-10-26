@@ -786,6 +786,11 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         source_radius, source_nonfloor_radius, source_floor_radius = cwipc_compute_radius(self.current_step_in_pointcloud)
         print(f"{self.__class__.__name__}: Step: target radius: all={target_radius}, nonfloor={target_nonfloor_radius}, floor={target_floor_radius}")
         print(f"{self.__class__.__name__}: Step: source radius: all={source_radius}, nonfloor={source_nonfloor_radius}, floor={source_floor_radius}")
+        radius = float(self._ask("Radius for floorfilter (0 for no filtering)", 0.0))
+        if radius > 0:
+            filtered_pc = cwipc_limit_floor_to_radius(self.current_step_in_pointcloud, radius)
+            # xxxjack should call free() probably
+            self.current_step_in_pointcloud = filtered_pc
 
     @override
     def _accept_step(self, step : int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:

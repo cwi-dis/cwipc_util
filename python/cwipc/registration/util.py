@@ -227,6 +227,19 @@ def cwipc_compute_radius(pc : cwipc_wrapper, level : float = 0.1) -> Tuple[float
     nonfloor_max_distance = numpy.percentile(nonfloor_distances, 99)
     max_distance = max(floor_max_distance, nonfloor_max_distance)
     return max_distance, nonfloor_max_distance, floor_max_distance
+
+def cwipc_limit_floor_to_radius(pc : cwipc_wrapper, radius : float, level : float=0.1) -> cwipc_wrapper:
+    """Return the point cloud with floor points further away from the Y axis than radius removed"""
+    pc_np = pc.get_numpy_matrix()
+    is_floor_point = pc_np[:,1] < level
+    floor_pc_np = pc_np[is_floor_point]
+    nonfloor_pc_np = pc_np[~is_floor_point]
+    floor_distances = numpy.linalg.norm(floor_pc_np[:,0:3], axis=1)
+    floor_distance_filter = floor_distances < radius
+    filtered_floor_pc_np = floor_pc_np[floor_distance_filter]
+    new_pc_np = np.concatenate((filtered_floor_pc_np, nonfloor_pc_np), axis=0)
+    new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
+    return new_pc
     
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
