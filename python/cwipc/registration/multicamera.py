@@ -16,7 +16,7 @@ from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwi
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
-from .util import transformation_identity, algdoc, get_tiles_used, BaseMulticamAlgorithm, cwipc_center, show_pointcloud, cwipc_colorized_copy, transformation_get_translation, cwipc_direction_filter, cwipc_randomize_floor, transformation_compare, cwipc_floor_filter, cwipc_compute_tile_occupancy, cwipc_downsample_pertile
+from .util import *
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
 from .analyze import RegistrationAnalyzer
 from .plot import Plotter
@@ -642,6 +642,9 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     def _downsample_size(self) -> float:
         return 0
     
+    def _optional_apply_floor_filter(self) -> None:
+        pass
+
     @override
     def run(self) -> bool:
         """Run the algorithm"""
@@ -680,6 +683,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 ttile = "" if targettile is None else f", targettile={targettile}"
                 print(f"{self.__class__.__name__}: Step {step}: Next tilemask to align is {tilemask}. corr={corr}{ttile}")
             self.current_step_in_pointcloud = self.get_pc_for_tilemask(tilemask)
+            self._optional_apply_floor_filter()
             aligner = self._prepare_aligner()
             aligner.set_source_pointcloud(self.current_step_in_pointcloud)
             aligner.set_reference_pointcloud(self.current_step_target_pointcloud, targettile)
@@ -773,6 +777,15 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
     @override
     def _downsample_size(self) -> float:
         return float(self._ask("Downsample size (0 for no downsampling)", 0.0))
+
+    @override
+    def _optional_apply_floor_filter(self) -> None:
+        assert self.current_step_target_pointcloud
+        assert self.current_step_in_pointcloud
+        target_radius, target_nonfloor_radius, target_floor_radius = cwipc_compute_radius(self.current_step_target_pointcloud)
+        source_radius, source_nonfloor_radius, source_floor_radius = cwipc_compute_radius(self.current_step_in_pointcloud)
+        print(f"{self.__class__.__name__}: Step: target radius: all={target_radius}, nonfloor={target_nonfloor_radius}, floor={target_floor_radius}")
+        print(f"{self.__class__.__name__}: Step: source radius: all={source_radius}, nonfloor={source_nonfloor_radius}, floor={source_floor_radius}")
 
     @override
     def _accept_step(self, step : int, aligner : AlignmentAlgorithm) -> Tuple[bool, bool]:

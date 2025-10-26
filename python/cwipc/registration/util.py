@@ -211,6 +211,22 @@ def cwipc_compute_tile_occupancy(pc : cwipc_wrapper, cellsize : float = 0, filte
     if must_free:
         pc.free()
     return rv
+
+def cwipc_compute_radius(pc : cwipc_wrapper, level : float = 0.1) -> Tuple[float, float, float]:
+    """Compute the radius in the XZ plane (ignoring outliers). Three numbers are returned,
+    the overall radius, the radius ignoring the floor (only points with Y>0.1) and the radius of the floor (only points with Y<0.1)"""
+    pc_np = pc.get_numpy_matrix(onlyGeometry=True)
+    is_floor_point = pc_np[:,1] < level
+    floor_pc_np = pc_np[is_floor_point]
+    nonfloor_pc_np = pc_np[~is_floor_point]
+    floor_pc_np[:,1] = 0
+    nonfloor_pc_np[:,1] = 0
+    floor_distances = numpy.linalg.norm(floor_pc_np, axis=1)
+    nonfloor_distances = numpy.linalg.norm(nonfloor_pc_np, axis=1)
+    floor_max_distance = numpy.percentile(floor_distances, 99)
+    nonfloor_max_distance = numpy.percentile(nonfloor_distances, 99)
+    max_distance = max(floor_max_distance, nonfloor_max_distance)
+    return max_distance, nonfloor_max_distance, floor_max_distance
     
 def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
