@@ -440,7 +440,7 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
         assert self.groundtruth_pointcloud
         assert self.camera_count() > 0
         self._init_transformations()
-        self._pre_analyse(toSelf=False, toReference=self.groundtruth_pointcloud, sortBy='corrcount')
+        self._pre_analyse(toSelf=False, toReference=self.groundtruth_pointcloud, ignoreFloor=True, sortBy='none')
         todo = self._todo_from_pre_analysis_results()
         aligned : List[cwipc_wrapper] = []
         # xxxjack remember resultant point clouds, to combine later.

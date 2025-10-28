@@ -24,6 +24,10 @@ class AlignmentFinder:
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
         self.transformations : List[RegistrationTransformation] = []
+        self.cameraconfig : Optional[CameraConfig] = None
+        if self.args.cameraconfig:
+            self.cameraconfig = CameraConfig(self.args.cameraconfig)
+            self.cameraconfig.load_from_file()
 
         if self.args.togroundtruth:
             self.multicamera_aligner_class = cwipc.registration.multicamera.MultiCameraToGroundTruth
@@ -65,25 +69,20 @@ class AlignmentFinder:
     def run(self):
         assert self.input_pc
         self.multi_aligner.set_tiled_pointcloud(self.input_pc)
+        if self.cameraconfig:
+            for cam_index in range(self.cameraconfig.camera_count()):
+                self.multi_aligner.set_original_transform(cam_index, self.cameraconfig.get_transform(cam_index).get_matrix())
         self.multi_aligner.run()
         self.output_pc = self.multi_aligner.get_result_pointcloud_full()
         self.transformations = self.multi_aligner.get_result_transformations()
         for i in range(len(self.transformations)):
             print(f"Tile {i} transformation:\n {self.transformations[i]}")
-
-    def apply_to_cameraconfig(self, filename : str) -> None:
-        assert self.transformations
-        cameraconfig = CameraConfig(filename)
-        cameraconfig.load_from_file()
-        for cam_num in range(len(self.transformations)):
-            matrix = self.transformations[cam_num]
-            t = cameraconfig.get_transform(cam_num)
-            t.apply_matrix(matrix)
-        if cameraconfig.is_dirty():
-            cameraconfig.save()
-            print(f"Applied transformations to {filename}")
-        else:
-            print(f"No change, did not modify {filename}")
+            if self.cameraconfig:
+                matrix = self.transformations[i]
+                t = self.cameraconfig.get_transform(i)
+                t.set_matrix(matrix)
+        if self.cameraconfig and self.cameraconfig.is_dirty():
+            self.cameraconfig.save()
     
 def main():
     assert __doc__ is not None
@@ -116,8 +115,6 @@ def main():
     finder.load_input(args.input)
     finder.run()
     finder.save_output(args.output)
-    if args.cameraconfig:
-        finder.apply_to_cameraconfig(args.cameraconfig)
     
 if __name__ == '__main__':
     main()
