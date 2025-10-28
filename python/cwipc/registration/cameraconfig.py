@@ -42,6 +42,11 @@ class Transform:
         self.trafo = transformation_topython(self.matrix)
         self.changed = True
 
+    def apply_matrix(self, matrix : RegistrationTransformation) -> None:
+        old_transform = self.get_matrix()
+        new_transform = np.matmul(matrix, old_transform)
+        self.set_matrix(new_transform)
+
     def is_identity(self) -> bool:
         return numpy.array_equal(self.matrix, transformation_identity())
     
@@ -111,6 +116,10 @@ class CameraConfig:
         # Actually bug also exists, but differently, for kinect_offline.
         self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
 
+    def load_from_file(self) -> None:
+        jsondata = open(self.filename, 'rb').read()
+        self.load(jsondata)
+        
     def save(self) -> None:
         # First time keep the original config file
         self.refresh_transforms()

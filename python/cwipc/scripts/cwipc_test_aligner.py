@@ -2,7 +2,7 @@
 Find transform between two point clouds and apply it to align them.
 """
 import sys
-from typing import Optional
+from typing import Optional, List
 import argparse
 import traceback
 import cwipc
@@ -10,8 +10,10 @@ import cwipc.registration
 import cwipc.registration.multicamera
 import cwipc.registration.fine
 import cwipc.registration.analyze
+from cwipc.registration.abstract import RegistrationTransformation
 from cwipc.registration.util import transformation_topython, cwipc_tilefilter_masked
 from cwipc.registration.plot import Plotter
+from cwipc.registration.cameraconfig import CameraConfig
 
 class AlignmentFinder:
     def __init__(self, args : argparse.Namespace):
@@ -21,6 +23,7 @@ class AlignmentFinder:
         self.correspondence = args.correspondence
         self.input_pc : Optional[cwipc.cwipc_wrapper] = None
         self.result_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.transformations : List[RegistrationTransformation] = []
 
         if self.args.togroundtruth:
             self.multicamera_aligner_class = cwipc.registration.multicamera.MultiCameraToGroundTruth
@@ -64,10 +67,23 @@ class AlignmentFinder:
         self.multi_aligner.set_tiled_pointcloud(self.input_pc)
         self.multi_aligner.run()
         self.output_pc = self.multi_aligner.get_result_pointcloud_full()
-        transformations = self.multi_aligner.get_result_transformations()
-        for i in range(len(transformations)):
-            print(f"Tile {i} transformation:\n {transformations[i]}")
+        self.transformations = self.multi_aligner.get_result_transformations()
+        for i in range(len(self.transformations)):
+            print(f"Tile {i} transformation:\n {self.transformations[i]}")
 
+    def apply_to_cameraconfig(self, filename : str) -> None:
+        assert self.transformations
+        cameraconfig = CameraConfig(filename)
+        cameraconfig.load_from_file()
+        for cam_num in range(len(self.transformations)):
+            matrix = self.transformations[cam_num]
+            t = cameraconfig.get_transform(cam_num)
+            t.apply_matrix(matrix)
+        if cameraconfig.is_dirty():
+            cameraconfig.save()
+            print(f"Applied transformations to {filename}")
+        else:
+            print(f"No change, did not modify {filename}")
     
 def main():
     assert __doc__ is not None
@@ -80,6 +96,7 @@ def main():
     parser.add_argument("--algorithm_fine", action="store", help="Fine alignment inner registration algorithm to use")
     parser.add_argument("--togroundtruth", metavar="PC", help="Use multicamera algorithm MultiCameraToGroundTruth with ground truth PC")
     parser.add_argument("--help_algorithms", action="store_true", help="Show available algorithms and a short description of them")
+    parser.add_argument("--cameraconfig", metavar="CCFILE", help="Apply resulting transformations to cameraconfig.json file")
     parser.add_argument("--correspondence", type=float, metavar="D", help="Maximum correspondence distance for alignment (default: use analysis result)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--debugpy", action="store_true", help="Wait for debugpy client to attach")
@@ -99,6 +116,8 @@ def main():
     finder.load_input(args.input)
     finder.run()
     finder.save_output(args.output)
+    if args.cameraconfig:
+        finder.apply_to_cameraconfig(args.cameraconfig)
     
 if __name__ == '__main__':
     main()
