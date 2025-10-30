@@ -88,9 +88,6 @@ def main():
             td = [source.get_tileinfo_dict(i) for i in range(tilecount)] # type: ignore
             tiledescriptions = filter(lambda e: e['cameraMask'] != 0, td)
             tiledescriptions = list(tiledescriptions)
-            if len(tiledescriptions) < len(td):
-                if args.verbose:
-                    print(f'cwipc_forward: ignoring full tile', file=sys.stderr)
         elif args.tile:
             tiledescriptions = [source.get_tileinfo_dict(i) for i in args.tile] # type: ignore
         else:

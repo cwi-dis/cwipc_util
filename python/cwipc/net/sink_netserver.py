@@ -7,7 +7,7 @@ import queue
 import cwipc
 import cwipc.codec
 import struct
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Tuple
 from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract
 
 class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
@@ -37,12 +37,18 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.times_forward = []
         self.sizes_forward = []
         self.bandwidths_forward = []
+        self.streamDescs : List[Tuple] = []
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', port))
         self.socket.listen()
         self.conn_sockets = []
     
+    def add_streamDesc(self, *args) -> None:
+        if self.streamDescs:
+            raise RuntimeError("netserver: only single stream supported")
+        self.streamDescs = [args]
+
     def start(self) -> None:
         threading.Thread.start(self)
         self.started = True

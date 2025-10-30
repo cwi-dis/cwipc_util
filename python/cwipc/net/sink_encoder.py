@@ -6,6 +6,8 @@ import cwipc.codec
 from typing import Optional, List, Any
 from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
 
+DEFAULT_OCTREE_BITS=9
+DEFAULT_JPEG_QUALITY=85
 class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     """A pointcloud sink that compresses pointclouds and forwards them to a rawsink."""
     
@@ -40,14 +42,22 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.encoders = []
         
         self.tiledescriptions = [{}]
-        self.octree_bits = None
-        self.jpeg_quality = None
+        self.octree_bits : List[int] = [DEFAULT_OCTREE_BITS]
+        self.jpeg_quality : List[int] = [DEFAULT_JPEG_QUALITY]
         
-    def set_encoder_params(self, tiles : Optional[List[cwipc.cwipc_tileinfo_pythonic]] = None, octree_bits : Optional[int]=None, jpeg_quality : Optional[int]=None) -> None:
+    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_pythonic], octree_bits : int|List[int], jpeg_quality : int|List[int]) -> None:
         if tiles == None: tiles = [{}]
         self.tiledescriptions = tiles
-        self.octree_bits = octree_bits
-        self.jpeg_quality = jpeg_quality
+        if type(octree_bits) == int:
+            self.octree_bits = [octree_bits]
+        else:
+            assert type(octree_bits) == list
+            self.octree_bits = octree_bits
+        if type(jpeg_quality) == int:
+            self.jpeg_quality = [jpeg_quality]
+        else:
+            assert type(jpeg_quality) == list
+            self.jpeg_quality = jpeg_quality
         
     def start(self) -> None:
         self._init_encoders()
@@ -112,15 +122,8 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
             pc.free()
     
     def _init_encoders(self):
-        if not self.octree_bits:
-            self.octree_bits = 9
-        if type(self.octree_bits) != type([]):
-            self.octree_bits = [self.octree_bits]
-       
-        if not self.jpeg_quality:
-            self.jpeg_quality = 85
-        if type(self.jpeg_quality) != type([]):
-            self.jpeg_quality = [self.jpeg_quality]
+        assert self.octree_bits
+        assert self.jpeg_quality
             
         voxelsize = 0
         
@@ -132,22 +135,17 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
             for octree_bits in self.octree_bits:
                 for jpeg_quality in self.jpeg_quality:
                     srctile = self.tiledescriptions[tile].get('ncamera', tile)
+                    if self.verbose:
+                        print(f"encoder: {len(self.encoders)}: tile={srctile}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}")
                     encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, srctile, voxelsize)
                     encoder = self.encoder_group.addencoder(params=encparams)
                     self.encoders.append(encoder)
-                    if hasattr(self.sink, 'add_streamDesc'):
-                        # Our sink can handle multiple tiles/quality streams.
-                        # Initialize to the best of our knowledge
-                        if not 'normal' in self.tiledescriptions[tile]:
-                            print(f'encoder: warning: tile {tile} description has no normal vector: {self.tiledescriptions[tile]}')
-                        normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
-                        streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z']) # type: ignore
-                        if self.verbose:
-                            print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
-                    else:
-                        # Single stream sink.
-                        streamNum = 0
-                    assert streamNum == len(self.encoders)-1 # Fails if multi-stream not supported by network sink.
+                    if not 'normal' in self.tiledescriptions[tile] and srctile != 0:
+                        print(f'encoder: warning: tile {srctile} description has no normal vector: {self.tiledescriptions[tile]}')
+                    normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
+                    streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z']) # type: ignore
+                    if self.verbose:
+                        print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
 
     def statistics(self):
         self.print1stat('encode_duration', self.times_encode)
