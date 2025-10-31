@@ -33,6 +33,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.nodrop = nodrop
         self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
+        self.verbose = True
         self.nodrop = nodrop
         self.stopped = False
         self.started = False
@@ -45,15 +46,19 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.octree_bits : List[int] = [DEFAULT_OCTREE_BITS]
         self.jpeg_quality : List[int] = [DEFAULT_JPEG_QUALITY]
         
-    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_pythonic], octree_bits : int|List[int], jpeg_quality : int|List[int]) -> None:
+    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_pythonic], octree_bits : int|List[int]|None = None, jpeg_quality : int|List[int]|None = None) -> None:
         if tiles == None: tiles = [{}]
         self.tiledescriptions = tiles
-        if type(octree_bits) == int:
+        if octree_bits == None:
+            pass
+        elif type(octree_bits) == int:
             self.octree_bits = [octree_bits]
         else:
             assert type(octree_bits) == list
             self.octree_bits = octree_bits
-        if type(jpeg_quality) == int:
+        if jpeg_quality == None:
+            pass
+        elif type(jpeg_quality) == int:
             self.jpeg_quality = [jpeg_quality]
         else:
             assert type(jpeg_quality) == list
