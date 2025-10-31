@@ -24,20 +24,23 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     fourcc : Optional[vrt_fourcc_type]
     conn_sockets : List[socket.socket]
 
-    def __init__(self, port : int, verbose : bool=False, nodrop : bool=False):
+    def __init__(self, port : int, verbose : bool=False, nodrop : bool=False, nonblocking : bool = False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._Sink_NetServer'
         self.producer = None
         self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
         self.nodrop = nodrop
+        self.nonblocking = nonblocking
         self.stopped = False
         self.started = False
         self.fourcc = None
+        self.port = port
+        self.dropcount = 0
         self.times_forward = []
         self.sizes_forward = []
         self.bandwidths_forward = []
-        self.streamDescs : List[Tuple] = []
+        self.streamDesc : Tuple = ()
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', port))
@@ -47,7 +50,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     def add_streamDesc(self, *args) -> None:
         if self.streamDescs:
             raise RuntimeError("netserver: only single stream supported")
-        self.streamDescs = [args]
+        self.streamDescs = args
 
     def start(self) -> None:
         threading.Thread.start(self)
@@ -150,14 +153,17 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         timestamp = int(time.time() * 1000)
         return struct.pack("=LLQ", VRT_4CC(self.fourcc), datalen, timestamp)
     
-    def feed(self, data : bytes) -> None:
+    def feed(self, data : bytes) -> bool:
         try:
             if self.nodrop:
                 self.input_queue.put(data)
             else:
-                self.input_queue.put(data, timeout=self.QUEUE_FULL_TIMEOUT)
+                self.input_queue.put(data, block=not self.nonblocking, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
-            if self.verbose: print(f"netserver: queue full, drop packet")            
+            if self.verbose: print(f"netserver: queue full, drop packet")
+            self.dropcount += 1
+            return False
+        return True           
     
     def _encode_pc(self, pc : cwipc.cwipc_wrapper) -> bytes:
         encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
@@ -178,20 +184,56 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
-            print('netserver: {}: count=0'.format(name))
+            print('netserver: {}: port={}, dropped={}, count=0'.format(name, self.port, self.dropcount))
             return
         minValue = min(values)
         maxValue = max(values)
         avgValue = sum(values) / count
         if isInt:
-            fmtstring = 'netserver: {}: count={}, average={:.3f}, min={:d}, max={:d}'
+            fmtstring = 'netserver: {}: port={}, dropped={}, count={}, average={:.3f}, min={:d}, max={:d}'
         else:
-            fmtstring = 'netserver: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
-        print(fmtstring.format(name, count, avgValue, minValue, maxValue))
+            fmtstring = 'netserver: {}: port={}, dropped={}, count={}, average={:.3f}, min={:.3f}, max={:.3f}'
+        print(fmtstring.format(name, self.port, self.dropcount, count, avgValue, minValue, maxValue))
 
+class _Sink_MultiNetServer(cwipc_rawsink_abstract):
+    def __init__(self, port : int, nstream : int, verbose : bool=False, nodrop : bool=False):
+        if nodrop:
+            raise RuntimeError("netserver: cannot use nodrop with multiple streams")
+        self.streams : List[_Sink_NetServer] = [
+            _Sink_NetServer(port+i, verbose=verbose, nonblocking=True)
+            for i in range(nstream)
+        ]
+
+    def add_streamDesc(self, *args) -> None:
+        pass
+
+    def start(self) -> None:
+        for s in self.streams:
+            s.start()
+
+    def stop(self) -> None:
+        for s in self.streams:
+            s.stop()
+
+    def feed(self, data : bytes, stream_index : int = 0) -> bool:
+        s = self.streams[stream_index]
+        return s.feed(data)
+    
+    def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
+        for s in self.streams:
+            s.set_fourcc(fourcc)
+
+    def set_producer(self, producer : cwipc_producer_abstract) -> None:
+        for s in self.streams:
+            s.set_producer(producer)
+
+    def statistics(self) -> None:
+        for s in self.streams:
+            s.statistics()
+    
 def cwipc_sink_netserver(port : int, verbose : bool=False, nodrop : bool=False, nstream : int=1) -> cwipc_rawsink_abstract:
     """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
     if nstream == 1:
         return _Sink_NetServer(port, verbose=verbose, nodrop=nodrop)
     else:
-        raise RuntimeError("cwipc_sink_netserver: only single-stream supported")
+        return _Sink_MultiNetServer(port, nstream, verbose=verbose, nodrop=nodrop)

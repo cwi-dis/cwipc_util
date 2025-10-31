@@ -108,8 +108,7 @@ def main():
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
         )
-    if tiledescriptions:
-        forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions) # type: ignore
+    forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions) # type: ignore
 
     sourceServer = SourceServer(source, forwarder, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_forward.SourceServer")
