@@ -189,6 +189,9 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
             fmtstring = 'netserver: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_netserver(port : int, verbose : bool=False, nodrop : bool=False) -> cwipc_rawsink_abstract:
+def cwipc_sink_netserver(port : int, verbose : bool=False, nodrop : bool=False, nstream : int=1) -> cwipc_rawsink_abstract:
     """Create a cwipc_sink object that serves compressed pointclouds on a TCP network port"""
-    return _Sink_NetServer(port, verbose=verbose, nodrop=nodrop)
+    if nstream == 1:
+        return _Sink_NetServer(port, verbose=verbose, nodrop=nodrop)
+    else:
+        raise RuntimeError("cwipc_sink_netserver: only single-stream supported")

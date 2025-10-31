@@ -42,6 +42,30 @@ def main():
     #
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
+    #
+    # Check how many streams we need
+    #
+    tiledescriptions = None
+    if args.octree_bits or args.jpeg_quality or args.tiled:
+        if args.tiled:
+            assert hasattr(source, 'maxtile')
+            tilecount = source.maxtile() # type: ignore
+            td = [source.get_tileinfo_dict(i) for i in range(tilecount)] # type: ignore
+            tiledescriptions = filter(lambda e: e['cameraMask'] != 0, td)
+            tiledescriptions = list(tiledescriptions)
+        elif args.tile:
+            tiledescriptions = [source.get_tileinfo_dict(i) for i in args.tile] # type: ignore
+        else:
+            tiledescriptions = None
+    n_tiles = len(tiledescriptions) if tiledescriptions else 1
+    n_quality = len(args.jpeg_quality) if args.jpeg_quality and type(args.jpeg_quality) == list else 1
+    n_octree_bits = len(args.octree_bits) if args.octree_bits and type(args.octree_bits) == list else 1
+    n_streams = n_tiles * n_quality * n_octree_bits
+    if args.verbose:
+        print(f"cwipc_forward: {n_streams} streams")
+    #
+    # Find correct encoder factory
+    #
     if args.noencode:
         encoder_factory = sink_passthrough.cwipc_sink_passthrough
     else:
@@ -55,7 +79,8 @@ def main():
                 seg_dur_in_ms=args.seg_dur,
                 timeshift_buffer_depth_in_ms=args.timeshift_buffer, 
                 verbose=(args.verbose > 1),
-                nodrop=args.nodrop
+                nodrop=args.nodrop,
+                nstream=n_streams
             ),
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
@@ -65,7 +90,8 @@ def main():
             sink_netingest.cwipc_sink_netingest(
                 args.forward,
                 verbose=(args.verbose > 1),
-                nodrop=args.nodrop
+                nodrop=args.nodrop,
+                nstream=n_streams
             ),
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
@@ -76,23 +102,13 @@ def main():
             sink_netserver.cwipc_sink_netserver(
                 args.port, 
                 verbose=(args.verbose > 1),
-                nodrop=args.nodrop
+                nodrop=args.nodrop,
+                nstream=n_streams
             ),
             verbose=(args.verbose > 1),
             nodrop=args.nodrop
         )
-    if args.octree_bits or args.jpeg_quality or args.tiled:
-        if args.tiled:
-            assert hasattr(source, 'maxtile')
-            tilecount = source.maxtile() # type: ignore
-            td = [source.get_tileinfo_dict(i) for i in range(tilecount)] # type: ignore
-            tiledescriptions = filter(lambda e: e['cameraMask'] != 0, td)
-            tiledescriptions = list(tiledescriptions)
-        elif args.tile:
-            tiledescriptions = [source.get_tileinfo_dict(i) for i in args.tile] # type: ignore
-        else:
-            tiledescriptions = None
-        assert hasattr(forwarder, 'set_encoder_params')
+    if tiledescriptions:
         forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions) # type: ignore
 
     sourceServer = SourceServer(source, forwarder, args, source_name=source_name)

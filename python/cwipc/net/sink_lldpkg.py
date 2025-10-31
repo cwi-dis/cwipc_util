@@ -244,6 +244,6 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
             fmtstring = 'lldash_packager: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-def cwipc_sink_lldpkg(url : str, verbose : bool=False, nodrop : bool=False, **kwargs : Any) -> cwipc_rawsink_abstract:
+def cwipc_sink_lldpkg(url : str, verbose : bool=False, nodrop : bool=False, nstream : int = 1, **kwargs : Any) -> cwipc_rawsink_abstract:
     """Create a sink that transmits to a MotionSpell lldash ingestion server."""
     return _LLDashPackagerSink(url, verbose=verbose, nodrop=nodrop, **kwargs)
