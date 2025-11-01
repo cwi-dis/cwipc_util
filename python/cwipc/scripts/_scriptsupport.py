@@ -146,6 +146,20 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 )
             )
         name = None
+    elif args.mt_netclient:
+        s_args = args.mt_netclient.split(':')
+        n_tile = int(s_args[2])
+        n_qual = int(s_args[3])
+        netclient = f"{s_args[0]}:{s_args[1]}"
+        def source_mt_netclient(netclient=netclient, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
+            rdr = source_netclient.cwipc_source_netclient(
+                netclient,
+                verbose=(args.verbose > 1)
+            )
+            dcdr = decoder_factory(rdr)
+            return dcdr
+        source = source_mt_netclient
+
     elif args.lldplay:
         source = lambda : (
             decoder_factory(
@@ -157,6 +171,18 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 )
             )
         name = None
+    elif args.mt_lldplay:
+        url = args.mt_lldplay
+        n_tile = 0
+        n_qual = 0
+        def source_mt_lldplay(url=url, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
+            rdr = source_lldplay.cwipc_source_lldplay(
+                url,
+                verbose = (args.verbose > 1)
+            )
+            dcdr = decoder_factory(rdr)
+            return dcdr
+        source = source_mt_lldplay
     else:
         # Default case: use the generic capturer.
         #
@@ -352,6 +378,8 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Use proxyserver pointcloud source server, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST")
     input_selection_args.add_argument("--lldplay", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL")
+    input_selection_args.add_argument("--mt-netclient", action="store", metavar="HOST:PORT:NT:NQ", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST. Multi-tile multi-quality with given number of tiles and qualities per tile.")
+    input_selection_args.add_argument("--mt-lldplay", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL. Multi-tile, multi-quality.")
     input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Use pointcloud(s) from ply or cwipcdump file or directory (in alphabetical order)")
     input_selection_args.add_argument("--certh", action="store", metavar="URL", help="Use Certh pointcloud stream from Rabbitmq server URL")
 
