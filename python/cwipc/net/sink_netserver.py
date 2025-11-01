@@ -48,9 +48,9 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.conn_sockets = []
     
     def add_streamDesc(self, *args) -> None:
-        if self.streamDescs:
+        if self.streamDesc:
             raise RuntimeError("netserver: only single stream supported")
-        self.streamDescs = args
+        self.streamDesc = args
 
     def start(self) -> None:
         threading.Thread.start(self)
