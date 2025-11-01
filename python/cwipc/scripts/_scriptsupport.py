@@ -12,6 +12,7 @@ from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
 from ..net import source_lldplay
+from ..net import source_synchronizer
 from ..net.abstract import *
 from .. import filters
 
@@ -152,12 +153,18 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         n_qual = int(s_args[3])
         netclient = f"{s_args[0]}:{s_args[1]}"
         def source_mt_netclient(netclient=netclient, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
-            rdr = source_netclient.cwipc_source_netclient(
+            rdr = source_netclient.cwipc_multisource_netclient(
                 netclient,
+                n_tile,
+                n_qual,
                 verbose=(args.verbose > 1)
             )
-            dcdr = decoder_factory(rdr)
-            return dcdr
+            decoders : List[cwipc_source_abstract] = []
+            for i in range(n_tile):
+                dcdr = decoder_factory(rdr.get_tile_source(i))
+                decoders.append(dcdr)
+            syncer = source_synchronizer.cwipc_source_synchronizer(decoders, verbose=(args.verbose > 1))
+            return syncer
         source = source_mt_netclient
 
     elif args.lldplay:

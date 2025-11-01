@@ -70,6 +70,26 @@ class cwipc_rawsource_abstract(ABC):
         """Print statistics."""
         ...
 
+class cwipc_rawmultisource_abstract(ABC):
+    """A source that produces multiple streams of raw data blocks (as bytes).
+
+    It is a container for multiple cwipc_rawsource_abstract.
+
+    An example would be a network protocol receiver for tiled streams.
+    """
+
+    @abstractmethod
+    def get_tile_count(self) -> int:
+        ...
+
+    @abstractmethod
+    def get_tile_source(self, tileIdx : int) -> cwipc_rawsource_abstract:
+        ...
+
+    @abstractmethod
+    def select_tile_quality(self, tileIdx : int, qualityIdx : int) -> None:
+        ...
+
 #    @abstractmethod
 #    def maxtile(self) -> int:
 #        """Return number of tiles this source produces"
