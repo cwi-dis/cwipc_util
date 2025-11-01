@@ -169,8 +169,10 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         split = urllib.parse.urlsplit(url)
         path = split.path
         basepath, mpdname = os.path.split(path)
+        if basepath and basepath[-1] != '/':
+            basepath = basepath + '/'
         if not mpdname:
-            mpdname = "cwpic_lldpkg.mpd"
+            mpdname = "cwipc_lldpkg.mpd"
         mpdbasename, ext = os.path.splitext(mpdname)
         if ext != ".mpd":
             raise LLDashPackagerError(f"lldash_packager: URL {url} does not end with .mpd")
