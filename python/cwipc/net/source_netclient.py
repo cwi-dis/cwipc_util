@@ -122,8 +122,16 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
             while self.running:
                 t1 = time.time()
                 hdr = s.recv(16, socket.MSG_WAITALL)
+                if len(hdr) == 0:
+                    if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
+                    s.close()
+                    s = None
+                    break
                 if len(hdr) != 16:
                     print(f"netclient: {self.port}: received short header ({len(hdr)} bytes in stead of 16)")
+                    if self.verbose: print(f'netclient: disconnect from {s.getpeername()}')
+                    s.close()
+                    s = None
                     break
                 assert len(hdr) == 16
                 h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
@@ -131,9 +139,15 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                     assert VRT_4CC(self.fourcc) == h_fourcc
                 data = s.recv(h_length, socket.MSG_WAITALL)
                 if len(data) == 0:
+                    if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
+                    s.close()
+                    s = None
                     break
                 if len(data) != h_length:
                     print(f"netclient: {self.port}: received data header ({len(data)} bytes in stead of {h_length})")
+                    if self.verbose: print(f'netclient: bad length, disconnect from {s.getpeername()}')
+                    s.close()
+                    s = None
                     break
                 assert h_length == len(data)
                 # Ignore h_timestamp for now.
@@ -146,6 +160,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                 self.output_queue.put(data)
         if self.verbose:
             print(f'netclient: {self.port}: disconnected')
+        if s != None:
+            s.close()
 
         self.output_queue.put(None)
         if self.verbose: print(f"netclient: {self.port}: thread exiting")
