@@ -5,7 +5,7 @@ import threading
 import queue
 from typing import Optional, List, Union
 from .abstract import cwipc_source_abstract, cwipc_abstract, cwipc_rawsource_abstract
-from ..util import cwipc_join, cwipc_wrapper
+from ..util import cwipc_join, cwipc_wrapper, cwipc_from_packet
 
 
 class _Synchronizer(threading.Thread, cwipc_source_abstract):
@@ -129,7 +129,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                         any_empty_input_buffers = True
             # If not all buffers are filled yet we wait, and go through the loop once more.
             if any_empty_input_buffers:
-                if self.verbose: print(f"synchronizer: still missing pointclouds")
+                # if self.verbose: print(f"synchronizer: still missing pointclouds")
                 time.sleep(0.001)
                 continue
             current_timestamps = [pc.timestamp() for pc in self.input_buffers]
@@ -169,13 +169,17 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                     # Don't do this, may be reused later: pc.free()
                     result_pc = new_result_pc
             t1 = time.time()
+            assert result_pc
+            # Sigh... We have to clone so we don't free it next time through the loop
+            result_pc = cwipc_from_packet(result_pc.get_packet())
             result_pc._set_timestamp(current_earliest_timestamp)
             result_pc._set_cellsize(current_cellsize)
+            latency = int(time.time()*1000) - current_earliest_timestamp
             earliest_timestamp = current_earliest_timestamp + 1
             self.combine_times.append(t1-t0)
+            if self.verbose: print(f'synchronizer: produced pointcloud ts={result_pc.timestamp()} with {result_pc.count()} points, latency={latency} ms', flush=True)
             self.output_queue.put(result_pc)
 
-            if self.verbose: print(f'synchronizer: produced pointcloud ts={result_pc.timestamp()} with {result_pc.count()} points', flush=True)
         if self.verbose: print(f"synchronizer: thread exiting", flush=True)
 
 
