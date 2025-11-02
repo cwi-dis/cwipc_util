@@ -58,6 +58,7 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
                     pass
             except queue.Empty:
                 pass
+            self.input_queue.put(None)
         if self.started:
             self.join()
         
@@ -89,6 +90,8 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
                         data = self.input_queue.get(timeout=1)
                     except queue.Empty:
                         continue
+                    if data == None and self.stopped:
+                        break
                     assert data != None
                     hdr = self._gen_header(data)
                     packet = hdr + data

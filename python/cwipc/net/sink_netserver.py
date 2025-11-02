@@ -66,6 +66,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                     pass
             except queue.Empty:
                 pass
+            self.input_queue.put(None)
         if self.started:
             self.join()
         
@@ -106,6 +107,8 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                 if self.conn_sockets:
                     t1 = time.time()
                     data = self.input_queue.get()
+                    if data == None and self.stopped:
+                        break
                     assert data != None
                     hdr = self._gen_header(data)
                     packet = hdr + data

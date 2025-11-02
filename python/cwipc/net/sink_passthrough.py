@@ -44,6 +44,8 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
         if self.verbose: print(f"passthrough: stopping thread")
         self.stopped = True
         self.sink.stop()
+        if self.input_queue:
+            self.input_queue.put(None)
         if self.started:
             self.join()
         
@@ -60,7 +62,8 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
             while not self.stopped and self.producer and self.producer.is_alive():
                 pc = self.input_queue.get()
                 if not pc:
-                    print(f"passthrough: get() returned None")
+                    if not self.stopped:
+                        print(f"passthrough: get() returned None")
                     continue
                 self.pointcounts.append(pc.count())
                 cpc = pc.get_packet()
@@ -69,7 +72,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
                 pc.free()
         finally:
             self.stopped = True
-            if self.verbose: print(f"passthrough: thread stopping")
+            if self.verbose: print(f"passthrough: thread stopped")
         
     def feed(self, pc):
         try:
