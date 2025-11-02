@@ -28,6 +28,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         self.output_queue = queue.Queue(maxsize=2)
         self.times_decode = []
         self.streamNumber = None
+        self.decomp = None
         self._init_tiling()
 
     def _init_tiling(self) -> None:
@@ -100,12 +101,13 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
 
     def _decompress(self, cpc : bytes) -> Optional[cwipc_abstract]:
-        assert codec
-        decomp = codec.cwipc_new_decoder()
-        decomp.feed(cpc)
-        gotData = decomp.available(True)
+        if self.decomp == None:
+            assert codec
+            self.decomp = codec.cwipc_new_decoder()
+        self.decomp.feed(cpc)
+        gotData = self.decomp.available(True)
         if not gotData: return None
-        pc = decomp.get()
+        pc = self.decomp.get()
         return pc
 
     def statistics(self) -> None:
