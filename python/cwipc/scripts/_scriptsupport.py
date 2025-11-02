@@ -333,6 +333,8 @@ class SourceServer:
                         self.stop()
                         continue
                     self.viewer.feed(pc)
+                else:
+                    pc.free()
                 self.latency_grab.append(time.time()-pc_timestamp)
             self.times_grab.append(t1-t0)
             if self.count != None:
