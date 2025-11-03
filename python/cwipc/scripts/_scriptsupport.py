@@ -253,9 +253,9 @@ class SourceServer:
         self.outpoint = args.outpoint
         self.cameraconfig = args.cameraconfig
         self.viewer = viewer
-        self.times_grab = []
-        self.pointcounts_grab = []
-        self.latency_grab = []
+        self.times_grab : List[float] = []
+        self.pointcounts_grab : List[int] = []
+        self.latency_grab : List[float] = []
         self.stopped = True
         self.lastGrabTime = None
         self.fps = None
@@ -367,6 +367,9 @@ class SourceServer:
             fmtstring = 'grab: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
+    def get_latencies(self) -> List[float]:
+        return self.latency_grab
+    
 def BaseArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--version", action="store_true", help="Print version and exit")
