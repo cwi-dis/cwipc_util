@@ -4,7 +4,7 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union
-from .abstract import cwipc_source_abstract, cwipc_abstract, cwipc_rawsource_abstract
+from .abstract import *
 from ..util import cwipc_join, cwipc_wrapper, cwipc_from_packet
 
 
@@ -14,9 +14,10 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
     QUEUE_WAIT_TIMEOUT=1
     output_queue : queue.Queue[Optional[cwipc_abstract]]
 
-    def __init__(self, sources : List[cwipc_source_abstract], verbose : bool=False):
+    def __init__(self, reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetDecoder'
+        self.reader = reader
         self.sources : List[cwipc_source_abstract] = sources
         self.n_tile = len(self.sources)
         self.input_buffers : List[Optional[cwipc_abstract]] = [None] * self.n_tile
@@ -103,7 +104,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             # Throw away outdated heads
             for i in range(self.n_tile):
                 if self.input_buffers[i] and self.input_buffers[i].timestamp() < earliest_timestamp:
-                    print(f"synchronizer: free input_buffer[{i}]")
+                    # print(f"synchronizer: free input_buffer[{i}]")
                     self.input_buffers[i].free()
                     self.input_buffers[i] = None
             # See whether any empty buffer slots can be filled, and see whether any empty ones remain
@@ -127,6 +128,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                             if self.verbose: print(f"synchronizer: tile {i}: too late by {too_late}")
                             pc.free()
                             self.late_per_occurrence.append(too_late)
+                            any_empty_input_buffers = True
                     else:
                         any_empty_input_buffers = True
             # If not all buffers are filled yet we wait, and go through the loop once more.
@@ -218,15 +220,23 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
 class _MQSynchronizer(_Synchronizer):
     """A source that combines point clouds gotten from multiple multi-quality sources into one stream."""
     
-    def __init__(self, sources : List[cwipc_source_abstract], verbose : bool=False):
-        super().__init__(sources, verbose=verbose)
+    def __init__(self, reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
+        super().__init__(reader, sources, verbose=verbose)
+        self.description : cwipc_multistream_description = []
+        self.current_quality : int = 0
         
     def select_next_tile_quality(self) -> Optional[str]:
         """Debug call: select the next quality"""
-        print("synchronizer: select_next_tile_quality")
+        if not self.description:
+            self.description = self.reader.get_description()
+        nQualities = len(self.description[0])
+        self.current_quality = (self.current_quality + 1) % nQualities
+        for tIdx in range(len(self.sources)):
+            self.reader.select_tile_quality(tIdx, self.current_quality)
+        return f"quality {self.current_quality} of {nQualities - 1}"
         
-def cwipc_source_synchronizer(sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_source_abstract:
+def cwipc_source_synchronizer(reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_source_abstract:
     """Return cwipc_source-like object that combines and synchronizes pointclouds from multiple sources"""
-    rv = _MQSynchronizer(sources, verbose=verbose)
+    rv = _MQSynchronizer(reader, sources, verbose=verbose)
     return rv
         

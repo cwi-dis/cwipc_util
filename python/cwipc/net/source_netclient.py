@@ -8,7 +8,7 @@ import struct
 from typing import Optional, Union, List, Tuple
 
 from cwipc.net.abstract import vrt_fourcc_type
-from .abstract import cwipc_rawsource_abstract, cwipc_rawmultisource_abstract, cwipc_abstract
+from .abstract import *
 
 def VRT_4CC(code):
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""
@@ -44,6 +44,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         self._conn_refused = False
         self.verbose = verbose
+        self.verbose = True
         self.output_queue = queue.Queue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
@@ -56,6 +57,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
     def switchport(self, port : int) -> None:
         if port != self.port:
             self.switch_to_port = port
+            if self.verbose: print(f'netclient: will switch to port {port}')
 
     def set_fourcc(self, fourcc: vrt_fourcc_type) -> None:
         self.fourcc = fourcc
@@ -110,6 +112,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                 self.port = self.switch_to_port
                 self.switch_to_port = None
             if s == None:
+                if self.verbose: print(f'netclient: connecting to {self.hostname}:{self.port}')
                 s = socket.socket()
                 try:
                     other = s.connect((self.hostname, self.port))
@@ -121,45 +124,44 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
                     print(f'netclient: connecting to {self.hostname}:{self.port}: {err}')
                     raise
                 if self.verbose: print(f'netclient: connected to {self.hostname}:{self.port}')
-            while self.running:
-                t1 = time.time()
-                hdr = s.recv(16, socket.MSG_WAITALL)
-                if len(hdr) == 0:
-                    if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
-                    s.close()
-                    s = None
-                    break
-                if len(hdr) != 16:
-                    print(f"netclient: {self.port}: received short header ({len(hdr)} bytes in stead of 16)")
-                    if self.verbose: print(f'netclient: disconnect from {s.getpeername()}')
-                    s.close()
-                    s = None
-                    break
-                assert len(hdr) == 16
-                h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
-                if self.fourcc != None:
-                    assert VRT_4CC(self.fourcc) == h_fourcc
-                data = s.recv(h_length, socket.MSG_WAITALL)
-                if len(data) == 0:
-                    if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
-                    s.close()
-                    s = None
-                    break
-                if len(data) != h_length:
-                    print(f"netclient: {self.port}: received data header ({len(data)} bytes in stead of {h_length})")
-                    if self.verbose: print(f'netclient: bad length, disconnect from {s.getpeername()}')
-                    s.close()
-                    s = None
-                    break
-                assert h_length == len(data)
-                # Ignore h_timestamp for now.
-                t2 = time.time()
-                if t2 == t1: t2 = t1 + 0.0005
-                self.times_receive.append(t2-t1)
-                self.sizes_receive.append(len(data))
-                self.bandwidths_receive.append(len(data)/(t2-t1))
-                if self.verbose: print(f'netclient: {self.port}: received {len(data)} bytes')
-                self.output_queue.put(data)
+            t1 = time.time()
+            hdr = s.recv(16, socket.MSG_WAITALL)
+            if len(hdr) == 0:
+                if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
+                s.close()
+                s = None
+                break
+            if len(hdr) != 16:
+                print(f"netclient: {self.port}: received short header ({len(hdr)} bytes in stead of 16)")
+                if self.verbose: print(f'netclient: disconnect from {s.getpeername()}')
+                s.close()
+                s = None
+                break
+            assert len(hdr) == 16
+            h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
+            if self.fourcc != None:
+                assert VRT_4CC(self.fourcc) == h_fourcc
+            data = s.recv(h_length, socket.MSG_WAITALL)
+            if len(data) == 0:
+                if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
+                s.close()
+                s = None
+                break
+            if len(data) != h_length:
+                print(f"netclient: {self.port}: received data header ({len(data)} bytes in stead of {h_length})")
+                if self.verbose: print(f'netclient: bad length, disconnect from {s.getpeername()}')
+                s.close()
+                s = None
+                break
+            assert h_length == len(data)
+            # Ignore h_timestamp for now.
+            t2 = time.time()
+            if t2 == t1: t2 = t1 + 0.0005
+            self.times_receive.append(t2-t1)
+            self.sizes_receive.append(len(data))
+            self.bandwidths_receive.append(len(data)/(t2-t1))
+            if self.verbose: print(f'netclient: {self.port}: received {len(data)} bytes')
+            self.output_queue.put(data)
         if self.verbose:
             print(f'netclient: {self.port}: disconnected')
         if s != None:
@@ -193,6 +195,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
 class _NetClientMultiSource(cwipc_rawmultisource_abstract):
 
     def __init__(self, address : str, nTile : int, nQuality : int, verbose : bool):
+        self.verbose = verbose
+        self.verbose = True
         host, port = address.split(':')
         port = int(port)
         # Create a list of lists that contains all ports
@@ -210,11 +214,16 @@ class _NetClientMultiSource(cwipc_rawmultisource_abstract):
 
     def get_tile_count(self) -> int:
         return len(self.allSources)
+    
+    def get_description(self) -> cwipc_multistream_description:
+        return self.allPorts
 
     def get_tile_source(self, tileIdx : int) -> cwipc_rawsource_abstract:
         return self.allSources[tileIdx]
 
     def select_tile_quality(self, tileIdx : int, qualityIdx : int) -> None:
+        if self.verbose:
+            print(f'netclient multisource: select tile {tileIdx} quality {qualityIdx}')
         src = self.allSources[tileIdx]
         port = self.allPorts[tileIdx][qualityIdx]
         src.switchport(port)

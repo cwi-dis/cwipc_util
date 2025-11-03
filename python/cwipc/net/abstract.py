@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, Callable
+from typing import Union, Callable, List, Any
 import threading
 from ..abstract import *
 
@@ -70,6 +70,11 @@ class cwipc_rawsource_abstract(ABC):
         """Print statistics."""
         ...
 
+# We don't know what describes a stream (and we don't care). But we do know that the
+# object used to describe all tiles, all qualities is first indexed by tile number, then by
+# quality index.
+cwipc_multistream_description = List[List[Any]]
+
 class cwipc_rawmultisource_abstract(ABC):
     """A source that produces multiple streams of raw data blocks (as bytes).
 
@@ -82,6 +87,11 @@ class cwipc_rawmultisource_abstract(ABC):
     def get_tile_count(self) -> int:
         ...
 
+    @abstractmethod
+    def get_description(self) -> cwipc_multistream_description:
+        """Return a description of all streams (tiles and qualities)"""
+        ...
+        
     @abstractmethod
     def get_tile_source(self, tileIdx : int) -> cwipc_rawsource_abstract:
         ...

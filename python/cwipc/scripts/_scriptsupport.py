@@ -163,7 +163,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             for i in range(n_tile):
                 dcdr = decoder_factory(rdr.get_tile_source(i))
                 decoders.append(dcdr)
-            syncer = source_synchronizer.cwipc_source_synchronizer(decoders, verbose=(args.verbose > 1))
+            syncer = source_synchronizer.cwipc_source_synchronizer(rdr, decoders, verbose=(args.verbose > 1))
             return syncer
         source = source_mt_netclient
 
