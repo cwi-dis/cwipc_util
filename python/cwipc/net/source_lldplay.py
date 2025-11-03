@@ -224,7 +224,10 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         
     def stop(self) -> None:
         self.running = False
-        self.output_queue.put(None)
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
         if self.started:
             self.join()
         
@@ -404,7 +407,10 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
                     time.sleep(self.SUB_WAIT_TIME)
         finally:
             self.running = False
-            self.output_queue.put(None)
+            try:
+                self.output_queue.put(None, block=False)
+            except queue.Full:
+                pass
         if self.verbose: print(f"lldash_play: thread exiting")
         
     def statistics(self):

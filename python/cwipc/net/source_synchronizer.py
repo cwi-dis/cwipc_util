@@ -22,7 +22,6 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         self.input_buffers : List[Optional[cwipc_abstract]] = [None] * self.n_tile
         self.running = False
         self.verbose = verbose
-        self.verbose = True
         self.output_queue = queue.Queue(maxsize=2)
         self.prefer_partial_over_unsynced = True
         #self.streamNumber = None
@@ -48,7 +47,10 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         self.running = False
         for s in self.sources:
             s.stop()
-        self.output_queue.put(None)
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
         self.join()
         
     def eof(self) -> bool:

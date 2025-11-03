@@ -69,8 +69,10 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
     def stop(self):
         if self.verbose: print('netclient: stop')
         self.running = False
-        if self.output_queue.empty():
-            self.output_queue.put(None)
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
         self.join()
         
     def eof(self):
@@ -163,7 +165,10 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         if s != None:
             s.close()
 
-        self.output_queue.put(None)
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
         if self.verbose: print(f"netclient: {self.port}: thread exiting")
 
     def statistics(self):

@@ -45,7 +45,10 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
         self.running = False
         if hasattr(self.source, 'stop'):
             self.source.stop()
-        self.output_queue.put(None)
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
         self.join()
         
     def eof(self) -> bool:
