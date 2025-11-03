@@ -215,8 +215,18 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
     def auxiliary_data_requested(self, name: str) -> bool:
         return False
     
+class _MQSynchronizer(_Synchronizer):
+    """A source that combines point clouds gotten from multiple multi-quality sources into one stream."""
+    
+    def __init__(self, sources : List[cwipc_source_abstract], verbose : bool=False):
+        super().__init__(sources, verbose=verbose)
+        
+    def select_next_tile_quality(self) -> Optional[str]:
+        """Debug call: select the next quality"""
+        print("synchronizer: select_next_tile_quality")
+        
 def cwipc_source_synchronizer(sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_source_abstract:
     """Return cwipc_source-like object that combines and synchronizes pointclouds from multiple sources"""
-    rv = _Synchronizer(sources, verbose=verbose)
+    rv = _MQSynchronizer(sources, verbose=verbose)
     return rv
         

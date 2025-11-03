@@ -35,6 +35,7 @@ r             Toggle skeleton rendering (only if executed with --skeleton)
 w             Write PLY file
 t             Timelapse: like w but after a 5 second delay
 p             Timelapse pause: pause after 5 seconds
+z             Next tile quality selection (if available)
 c             Reload cameraconfig
 e             Edit cameraconfig
 ?,h           Help
@@ -263,7 +264,7 @@ q,ESC         Quit
         """Allow user interaction with the visualizer."""
         assert self.visualiser
         interaction_duration = 500 // self.display_fps
-        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cefwtpamirsn0123456789", interaction_duration)
+        cmd = self.visualiser.interact(None, "?h\x1bq .<+-cefwtpamirsnz0123456789", interaction_duration)
         # First handle the timelapse
         if self.timelapse_write_at > 0:
             now = time.time()
@@ -352,6 +353,12 @@ q,ESC         Quit
             else:
                 self.display_filter = None
             self.recompute_display_pc = True
+        elif cmd == 'z':
+            if self.source and hasattr(self.source, "select_next_tile_quality"):
+                selection = self.source.select_next_tile_quality()
+                print(f"Selected tile quality: {selection}")
+            else:
+                print("Input source does not support select_next_tile_quality")
         else:
             print(f"Unknown command {repr(cmd)}")
             print(self.HELP, flush=True)
