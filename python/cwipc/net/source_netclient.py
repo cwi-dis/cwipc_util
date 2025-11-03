@@ -2,12 +2,12 @@ import time
 import os
 import socket
 import threading
-import queue
 import cwipc
 import struct
 from typing import Optional, Union, List, Tuple
 
 from cwipc.net.abstract import vrt_fourcc_type
+from cwipc.net import peek_queue
 from .abstract import *
 
 def VRT_4CC(code):
@@ -45,7 +45,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self._conn_refused = False
         self.verbose = verbose
         self.verbose = True
-        self.output_queue = queue.Queue(maxsize=2)
+        self.output_queue = peek_queue.PeekQueue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -73,7 +73,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         try:
             self.output_queue.put(None, block=False)
-        except queue.Full:
+        except peek_queue.Full:
             pass
         self.join()
         
@@ -87,11 +87,9 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
             return False
         # Note: the following code may reorder packets...
         try:
-            packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-            if packet:
-                self.output_queue.put(packet)
-            return not not packet
-        except queue.Empty:
+            self.output_queue.dont_get(timeout=self.QUEUE_WAIT_TIMEOUT)
+            return True
+        except peek_queue.Empty:
             return False
         
     def get(self):

@@ -4,9 +4,9 @@ import time
 import os
 import sys
 import threading
-import queue
 from typing import Optional, List, Union
 from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract, vrt_fourcc_type
+from cwipc.net import peek_queue
 
 LLDASH_PLAYOUT_API_VERSION = 0x20250722
 
@@ -122,9 +122,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
     unwanted_receive: List[int]
     fourcc : Optional[vrt_fourcc_type]
 
-    output_queue : queue.Queue[Optional[bytes]]
-    popped_queue_head : Optional[bytes]
-    queue_lock : threading.Lock
+    output_queue : peek_queue.PeekQueue[Optional[bytes]]
 
     def __init__(self, url : str, streamIndex : int=0, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -135,9 +133,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         self.started = False
         self.running = False
         self.failed = False
-        self.output_queue = queue.Queue(maxsize=2)
-        self.popped_queue_head = None
-        self.queue_lock = threading.Lock()
+        self.output_queue = peek_queue.PeekQueue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
@@ -226,7 +222,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         try:
             self.output_queue.put(None, block=False)
-        except queue.Full:
+        except peek_queue.Full:
             pass
         if self.started:
             self.join()
@@ -240,34 +236,23 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         if self.error_condition:
             return False
         try:
-            with self.queue_lock:
-                if self.popped_queue_head:
-                    return True
-                if not self.output_queue.empty():
-                    return True
-                if not wait or not self.running or self.failed:
-                    return False
-                try:
-                    packet = self.output_queue.get(timeout=self.QUEUE_WAIT_TIMEOUT)
-                    if packet:
-                        assert not self.popped_queue_head
-                        self.popped_queue_head = packet
-                    return not not packet
-                except queue.Empty:
-                    return False
+            if not self.output_queue.empty():
+                return True
+            if not wait or not self.running or self.failed:
+                return False
+            try:
+                self.output_queue.dont_get(timeout=self.QUEUE_WAIT_TIMEOUT)
+                return True
+            except peek_queue.Empty:
+                return False
         finally:
             time.sleep(0.0001)  # Give other threads a chance to run
                             
     def get(self) -> Optional[bytes]:
-        with self.queue_lock:
-            if self.popped_queue_head:
-                rv = self.popped_queue_head
-                self.popped_queue_head = None
-                return rv
-            if self.eof():
-                return None
-            packet = self.output_queue.get()
-            return packet
+        if self.eof():
+            return None
+        packet = self.output_queue.get()
+        return packet
 
     def count(self) -> int:
         if not self.streamCount:
