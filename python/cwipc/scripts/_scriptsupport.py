@@ -296,11 +296,11 @@ class SourceServer:
             return None
         t_before = time.time()
         if self.verbose and self.lastGrabTime:
-            print(f"grab: call get() after {t_before-self.lastGrabTime}")
+            print(f"grab: call get() after {t_before-self.lastGrabTime:.3f}")
         pc = self.grabber.get()
         self.lastGrabTime = time.time()
         if self.verbose:
-            print(f"grab: get() took {self.lastGrabTime-t_before}")
+            print(f"grab: get() took {self.lastGrabTime-t_before:.3f}")
         return cast(cwipc_wrapper, pc)
         
     def run(self) -> None:
