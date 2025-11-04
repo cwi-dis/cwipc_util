@@ -23,7 +23,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         self.input_buffers : List[Optional[cwipc_abstract]] = [None] * self.n_tile
         self.running = False
         self.verbose = verbose
-        self.output_queue = queue.Queue(maxsize=2)
+        self.output_queue = queue.Queue(maxsize=6)
         self.prefer_partial_over_unsynced = True
         #self.streamNumber = None
         self.combine_times = []
@@ -181,7 +181,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             latency = int(time.time()*1000) - current_earliest_timestamp
             earliest_timestamp = current_earliest_timestamp + 1
             self.combine_times.append(t1-t0)
-            if self.verbose: print(f'synchronizer: produced pointcloud ts={result_pc.timestamp()} with {result_pc.count()} points, latency={latency} ms', flush=True)
+            if self.verbose: print(f'synchronizer: produced pointcloud ts={result_pc.timestamp()} with {result_pc.count()} points, latency={latency} ms, qlen={self.output_queue.qsize()}', flush=True)
             self.output_queue.put(result_pc)
 
         if self.verbose: print(f"synchronizer: thread exiting", flush=True)

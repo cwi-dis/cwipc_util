@@ -290,12 +290,17 @@ class SourceServer:
             return None
         if not self.grabber.available(True):
             print('grab: no pointcloud available')
-            time.sleep(1)
+            time.sleep(0.001)
             return None
         if not self.grabber:
             return None
+        t_before = time.time()
+        if self.verbose and self.lastGrabTime:
+            print(f"grab: call get() after {t_before-self.lastGrabTime}")
         pc = self.grabber.get()
         self.lastGrabTime = time.time()
+        if self.verbose:
+            print(f"grab: get() took {self.lastGrabTime-t_before}")
         return cast(cwipc_wrapper, pc)
         
     def run(self) -> None:

@@ -30,7 +30,6 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.producer = None
         self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
-        self.verbose = True
         self.nodrop = nodrop
         self.nonblocking = nonblocking
         self.stopped = False

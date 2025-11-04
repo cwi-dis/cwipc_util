@@ -100,7 +100,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             t2 = time.time()
             self.times_decode.append(t2-t1)
             self.output_queue.put(pc)
-            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points', flush=True)
+            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points, qlen={self.output_queue.qsize()}', flush=True)
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
 
     def _decompress(self, cpc : bytes) -> Optional[cwipc_abstract]:

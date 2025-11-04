@@ -33,7 +33,6 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.nodrop = nodrop
         self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
-        self.verbose = True
         self.nodrop = nodrop
         self.stopped = False
         self.started = False

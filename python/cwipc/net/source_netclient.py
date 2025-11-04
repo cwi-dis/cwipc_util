@@ -44,7 +44,6 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.running = False
         self._conn_refused = False
         self.verbose = verbose
-        self.verbose = True
         self.output_queue = peek_queue.PeekQueue(maxsize=2)
         self.times_receive = []
         self.sizes_receive = []
@@ -197,7 +196,6 @@ class _NetClientMultiSource(cwipc_rawmultisource_abstract):
 
     def __init__(self, address : str, nTile : int, nQuality : int, verbose : bool):
         self.verbose = verbose
-        self.verbose = True
         host, port = address.split(':')
         port = int(port)
         # Create a list of lists that contains all ports
