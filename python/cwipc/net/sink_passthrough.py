@@ -72,6 +72,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
                 pc.free()
         finally:
             self.stopped = True
+            self.sink.stop()
             if self.verbose: print(f"passthrough: thread stopped")
         
     def feed(self, pc):

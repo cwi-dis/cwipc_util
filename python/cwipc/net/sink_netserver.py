@@ -30,6 +30,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.producer = None
         self.input_queue = queue.Queue(maxsize=2)
         self.verbose = verbose
+        self.verbose = True
         self.nodrop = nodrop
         self.nonblocking = nonblocking
         self.stopped = False
@@ -148,7 +149,10 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                         self.conn_sockets.remove(connSocket)
         finally:
             self.stopped = True
-            if self.verbose: print(f"netserver: thread stopping")
+            if self.verbose: print(f"netserver: thread stopped")
+            for s in self.conn_sockets:
+                s.close()
+            
     
     def _gen_header(self, data : bytes) -> bytes:
         assert self.fourcc

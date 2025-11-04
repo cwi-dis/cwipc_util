@@ -73,7 +73,10 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     def stop(self) -> None:
         if self.verbose: print(f"encoder: stopping thread")
         self.stopped = True
-        self.input_queue.put(None)
+        try:
+            self.input_queue.put(None, block=False)
+        except queue.Full:
+            pass
         self.sink.stop()
         if self.started:
             self.join()
@@ -116,7 +119,8 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
                 self.times_encode.append(t2-t1)
         finally:
             self.stopped = True
-            if self.verbose: print(f"encoder: thread stopping")
+            self.sink.stop()
+            if self.verbose: print(f"encoder: thread stopped")
         
     def feed(self, pc : cwipc.cwipc_wrapper) -> None:
         try:
