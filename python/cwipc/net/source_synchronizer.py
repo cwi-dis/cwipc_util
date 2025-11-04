@@ -74,7 +74,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         if not self.output_queue.empty():
             return True
         for s in self.sources:
-            if not s.available():
+            if not s.available(wait=wait):
                 return False
         return True
         
