@@ -43,8 +43,10 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.streamDesc : Tuple = ()
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(('', port))
+        self.socket.bind(('', self.port))
         self.socket.listen()
+        if self.verbose:
+            print(f"netserver: listen on :{self.port}")
         self.conn_sockets = []
     
     def add_streamDesc(self, *args) -> None:
@@ -99,7 +101,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                 if self.socket in readable:
                     connSocket, other = self.socket.accept()
                     if self.verbose:
-                        print(f"netserver: accepted connection from {other}")
+                        print(f"netserver: accepted connection on :{self.port} from {other}")
                     self.conn_sockets.append(connSocket)
                 #
                 # Next transmit the data over all connection sockets
@@ -129,11 +131,13 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                     
                     for connSocket in conn_socket_writeable:
                         try:
+                            peerName = 'unknown'
+                            peerName = connSocket.getpeername()
                             connSocket.sendall(packet)
-                        except socket.error:
+                        except (socket.error, ConnectionError):
                             conn_socket_error.append(connSocket)
                             if self.verbose:
-                                print(f"netserver: error on send to {connSocket.getpeername()}")
+                                print(f"netserver: error on send to {peerName}")
                     t2 = time.time()
                     if self.verbose:
                         print(f"netserver: transmitted {len(hdr+data)} bytes on {len(self.conn_sockets)} connections")
@@ -144,7 +148,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                     self.bandwidths_forward.append(datasize/(t2-t1))
                     for connSocket in conn_socket_error:
                         connSocket.close()
-                        if self.verbose: print(f"netserver: connection to {connSocket.getpeername()} closed")
+                        if self.verbose: print(f"netserver: connection closed")
                         self.conn_sockets.remove(connSocket)
         finally:
             self.stopped = True
