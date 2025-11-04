@@ -78,6 +78,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
         self.join()
         
     def eof(self):
+        if self._conn_refused:
+            return True
         return self.output_queue.empty() and self._conn_refused
     
     def available(self, wait=False):
@@ -164,7 +166,8 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
             print(f'netclient: {self.port}: disconnected')
         if s != None:
             s.close()
-
+        self.running = False
+        self._conn_refused = True # Unsure why this is needed...
         try:
             self.output_queue.put(None, block=False)
         except queue.Full:
