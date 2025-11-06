@@ -5,7 +5,9 @@ import os
 import sys
 import threading
 from typing import Optional, List, Union
-from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract, vrt_fourcc_type
+
+from cwipc.net.abstract import cwipc_rawsource_abstract
+from .abstract import *
 from cwipc.net import peek_queue
 
 LLDASH_PLAYOUT_API_VERSION = 0x20250722
@@ -99,32 +101,81 @@ def _lldplay_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _lldplay_dll_reference.lldplay_get_version.restype = ctypes.c_char_p
     
     return _lldplay_dll_reference
- 
-class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
+
+class _LLDSingleTileSource(cwipc_rawsource_abstract):
+    # How long to wait for data to be put into the queue (really only to forestall deadlocks on close)
+    QUEUE_WAIT_TIMEOUT=1
+
+    def __init__(self, multisource : '_LLDashPlayoutSource', queue : peek_queue.PeekQueue[Optional[bytes]]):
+        self.multisource = multisource
+        self.output_queue = queue
+
+    def set_fourcc(self, fourcc: int | bytes | str) -> None:
+        self.multisource.set_fourcc(fourcc)
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        try:
+            self.output_queue.put(None, block=False)
+        except peek_queue.Full:
+            pass
+        self.multisource.stop()
+
+    def eof(self) -> bool:
+        return self.output_queue.empty() and self.multisource.eof()
+    
+    def available(self, wait : bool=False) -> bool:
+        try:
+            if not self.output_queue.empty():
+                return True
+            if not wait or self.multisource.eof():
+                return False
+            try:
+                self.output_queue.dont_get(timeout=self.QUEUE_WAIT_TIMEOUT)
+                return True
+            except peek_queue.Empty:
+                return False
+        finally:
+            time.sleep(0.0001)  # Give other threads a chance to run
+                            
+    def get(self) -> Optional[bytes]:
+        if self.eof():
+            return None
+        packet = self.output_queue.get()
+        return packet
+
+    def close(self):
+        try:
+            self.output_queue.put(None, block=False)
+        except peek_queue.Full:
+            pass
+
+    def statistics(self) -> None:
+        self.multisource.statistics()
+
+
+class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
     # xxxjack need to check that these are still needed...
     # If no data is available from the sub this is how long we sleep before trying again:
     SUB_WAIT_TIME=0.01
     # If no data is available from the sub for this long we treat it as end-of-file:
     SUB_EOF_TIME=10
-    # How long to wait for data to be put into the queue (really only to forestall deadlocks on close)
-    QUEUE_WAIT_TIMEOUT=1
-    # Should we check all streams for available data, or only ones where we are expecting it?
-    EAGER_RECEIVE = True
-    # Should we forward all available streams?
-    EAGER_FORWARD = True
 
     handle : Optional[lldplay_handle_p]
     dll : ctypes.CDLL
     tile_info : Optional[List[tileInfo_pythonic]]
+    streamnum_to_tilenum : dict[int, int]
     times_receive: List[float]
     sizes_receive: List[int]
     bandwidth_receive: List[float]
     unwanted_receive: List[int]
     fourcc : Optional[vrt_fourcc_type]
 
-    output_queue : peek_queue.PeekQueue[Optional[bytes]]
+    allSources : List[_LLDSingleTileSource]
 
-    def __init__(self, url : str, streamIndex : int=0, verbose : bool=False):
+    def __init__(self, url : str, verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._LLDashPlayoutSource'
         self.verbose = verbose
@@ -132,15 +183,14 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         self.handle = None
         self.started = False
         self.running = False
-        self.failed = False
-        self.output_queue = peek_queue.PeekQueue(maxsize=2)
+        self.allSources = []
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
         self.unwanted_receive = []
-        self.streamIndex = streamIndex
         self.streamCount = 0
         self.tile_info = None
+        self.streamnum_to_tilenum = dict()
         self.fourcc = None
         self.error_condition = False
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
@@ -199,17 +249,30 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
     def start(self) -> None:
         assert self.handle
         assert self.dll
+
+        if self.started:
+            # With lldplay we may have to start early, so we can get the tile
+            # information. So we simply ignore subsequent start() calls
+            return
+        
         if self.verbose: print(f"lldash_play: lldplay_play({self.url})")
         self.lldash_log(event="lldplay_play_call", url=self.url)
         ok = self.dll.lldplay_play(self.handle, self.url.encode('utf8'))
         self.lldash_log(event="lldplay_play_return", ok=ok)
         if not ok:
-            self.failed = True
-            self.output_queue.put(None)
+            self.error_condition = True
             raise LLDashPlayoutError("lldash_play: lldplay_play returned false")
+        
+        self._init_tile_info()
+        assert self.tile_info
+        n_tiles = len(self.tile_info)
+        for i in range(n_tiles):
+            q = peek_queue.PeekQueue(maxsize=2)
+            s = _LLDSingleTileSource(self, q)
+            self.allSources.append(s)
+
         nstreams = self.dll.lldplay_get_stream_count(self.handle)
         if self.verbose: print(f"lldash_play: lldplay_get_stream_count() -> {nstreams}")
-        assert nstreams > self.streamIndex
         self.running = True
         self.started = True
         if True and self.verbose:
@@ -220,39 +283,14 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         
     def stop(self) -> None:
         self.running = False
-        try:
-            self.output_queue.put(None, block=False)
-        except peek_queue.Full:
-            pass
         if self.started:
+            self.started = False
             self.join()
         
     def eof(self) -> bool:
         if self.error_condition:
-            return False
-        return self.failed or (self.started and self.output_queue.empty() and not self.running)
-    
-    def available(self, wait : bool=False) -> bool:
-        if self.error_condition:
-            return False
-        try:
-            if not self.output_queue.empty():
-                return True
-            if not wait or not self.running or self.failed:
-                return False
-            try:
-                self.output_queue.dont_get(timeout=self.QUEUE_WAIT_TIMEOUT)
-                return True
-            except peek_queue.Empty:
-                return False
-        finally:
-            time.sleep(0.0001)  # Give other threads a chance to run
-                            
-    def get(self) -> Optional[bytes]:
-        if self.eof():
-            return None
-        packet = self.output_queue.get()
-        return packet
+            return True
+        return not self.running
 
     def count(self) -> int:
         if not self.streamCount:
@@ -265,13 +303,11 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         return self.streamCount
 
     def maxtile(self) -> int:
-        self._init_tile_info()
         assert self.tile_info != None
         return len(self.tile_info)
     
     def get_tileinfo_dict(self, tilenum : int):
         """Return tile information for tile tilenum as Python dictionary"""
-        self._init_tile_info()
         assert self.tile_info != None
         info = self.tile_info[tilenum]
         mp4_4cc, tileNumber, (x, y, z), qualityCount = info
@@ -290,10 +326,12 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
     def _init_tile_info(self) -> List[tileInfo_pythonic]:
         if self.tile_info:
             return self.tile_info
+        # Finding the tiles is difficult: we have to compare
         streamdesc_to_streamcount : dict[streamDesc_pythonic, int] = {}
         ordered_tiles = []
         for i in range(self.count()):
             streamDesc = self._srd_info_for_stream(i)
+            self.streamnum_to_tilenum[i] = streamDesc[1]
             if not streamDesc in streamdesc_to_streamcount:
                 streamdesc_to_streamcount[streamDesc] = 1
                 ordered_tiles.append(streamDesc)
@@ -306,23 +344,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
             self.tile_info.append((mp4_4cc, tileNumber, (x, y, z), qualityCount))
         return self.tile_info
 
-    def enable_stream(self, tileNum : int, qualityNum : int) -> bool:
-        assert self.handle
-        assert self.dll
-        assert self.started
-        if self.error_condition:
-            return False
-        if self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileNum}, {qualityNum})")
-        self.lldash_log(event="lldplay_enable_stream", tileNum=tileNum, qualityNum=qualityNum, url=self.url)
-        ok = self.dll.lldplay_enable_stream(self.handle, tileNum, qualityNum)
-        if not ok:
-            return False
-        if tileNum != 0:
-            raise NotImplementedError
-        self.streamIndex = qualityNum
-        return True
-        
-    def disable_stream(self, tileNum : int) -> bool:
+    def _unused_disable_stream(self, tileNum : int) -> bool:
         assert self.handle
         assert self.dll
         assert self.started
@@ -339,14 +361,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         try:
             while self.running and not self.error_condition:
                 receivedAnything = False
-                if self.EAGER_RECEIVE:
-                    streamsToCheck = range(self.count())
-                else:
-                    streamsToCheck = [self.streamIndex]
-                if self.EAGER_FORWARD:
-                    streamsToForward = set(range(self.count()))
-                else:
-                    streamsToForward = set([self.streamIndex])
+                streamsToCheck = range(self.count())
                 for streamIndex in streamsToCheck:
                     #if self.verbose: print(f"lldash_play: read: lldplay_grab_frame(handle, {streamIndex}, None, 0, None)")
                     length = self.dll.lldplay_grab_frame(self.handle, streamIndex, None, 0, None)
@@ -364,12 +379,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
                     if length2 != length:
                         raise LLDashPlayoutError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
                     
+                    tileIndex = self.streamnum_to_tilenum[streamIndex]
+
                     receivedAnything = True
-                    
-                    if not streamIndex in streamsToForward:
-                        print(f'lldash_play: drop {length2} received on stream {streamIndex}')
-                        self.unwanted_receive.append(length2)
-                        continue
                         
                     now = time.time()
                     delta = now-last_successful_read_time
@@ -381,7 +393,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
                     self.times_receive.append(delta)
                     self.sizes_receive.append(length2)
                     self.bandwidths_receive.append(len(packet)/delta)
-                    self.output_queue.put(packet)
+                    self.allSources[tileIndex].output_queue.put(packet)
 
                 if not receivedAnything:
                     if time.time() - last_successful_read_time > self.SUB_EOF_TIME:
@@ -392,10 +404,8 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
                     time.sleep(self.SUB_WAIT_TIME)
         finally:
             self.running = False
-            try:
-                self.output_queue.put(None, block=False)
-            except queue.Full:
-                pass
+            for s in self.allSources:
+                s.close()
         if self.verbose: print(f"lldash_play: thread exiting")
         
     def statistics(self):
@@ -417,9 +427,44 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawsource_abstract):
         else:
             fmtstring = 'lldash_play: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
+
+    def get_tile_count(self) -> int:
+        assert self.tile_info
+        return len(self.tile_info)
+
+    def get_description(self) -> List[List[ctypes.Any]]:
+        raise NotImplementedError
+
+    def get_tile_source(self, tileIdx: int) -> cwipc_rawsource_abstract:
+        return self.allSources[tileIdx]
+
+    def select_tile_quality(self, tileIdx: int, qualityIdx: int) -> None:
+        assert self.handle
+        assert self.dll
+        assert self.started
+        if self.error_condition:
+            return
+        if self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileNum}, {qualityNum})")
+        self.lldash_log(event="lldplay_enable_stream", tileNum=tileNum, qualityNum=qualityNum, url=self.url)
+        ok = self.dll.lldplay_enable_stream(self.handle, tileNum, qualityNum)
+        if not ok:
+            print(f"lldash_play: lldplay_enable_stream failed")
+            self.error_condition = True
+        return
+
         
 def cwipc_source_lldplay(address : str, verbose=False) -> cwipc_rawsource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from a DASH stream using MotionSpell lldash"""
     _lldplay_dll()
-    src = _LLDashPlayoutSource(address, verbose=verbose)
+    msrc = _LLDashPlayoutSource(address, verbose=verbose)
+    msrc.start()
+    assert msrc.get_tile_count() == 1
+    src = msrc.get_tile_source(0)
     return src
+
+        
+def cwipc_multisource_lldplay(address : str, verbose : bool=False) -> cwipc_rawmultisource_abstract:
+    """Return multisource that reads tiled streams using multiple netclients"""
+    msrc = _LLDashPlayoutSource(address, verbose=verbose)
+    msrc.start()
+    return msrc

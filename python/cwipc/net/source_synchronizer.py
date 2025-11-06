@@ -83,10 +83,6 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             return None
         pc = self.output_queue.get()
         return pc
-
-    def _select_stream(self, streamIndex : int) -> None:
-        if self.verbose: print(f'synchronizer: select_stream({streamIndex}', flush=True)
-        return self.source.enable_stream(self.tileNum, streamIndex)
         
     def run(self) -> None:
         if self.verbose: print(f"synchronizer: thread started", flush=True)

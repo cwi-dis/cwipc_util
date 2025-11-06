@@ -183,12 +183,17 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         n_tile = 0
         n_qual = 0
         def source_mt_lldplay(url=url, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
-            rdr = source_lldplay.cwipc_source_lldplay(
+            rdr = source_lldplay.cwipc_multisource_lldplay(
                 url,
                 verbose = (args.verbose > 1)
             )
-            dcdr = decoder_factory(rdr)
-            return dcdr
+            n_tile = rdr.get_tile_count()
+            decoders : List[cwipc_source_abstract] = []
+            for i in range(n_tile):
+                dcdr = decoder_factory(rdr.get_tile_source(i))
+                decoders.append(dcdr)
+            syncer = source_synchronizer.cwipc_source_synchronizer(rdr, decoders, verbose=(args.verbose > 1))
+            return syncer
         source = source_mt_lldplay
     else:
         # Default case: use the generic capturer.

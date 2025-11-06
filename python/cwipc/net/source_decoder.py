@@ -29,13 +29,6 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         self.times_decode = []
         self.streamNumber = None
         self.decomp = None
-        self._init_tiling()
-
-    def _init_tiling(self) -> None:
-        # Bit of a hack: export the select_stream() method if our source has multiple tiles/streams
-        if hasattr(self.source, 'enable_stream'):
-            self.select_stream = self._select_stream
-            self.tileNum = 0
         
     def free(self) -> None:
         pass
@@ -47,11 +40,6 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         threading.Thread.start(self)
         if hasattr(self.source, 'start'):
             self.source.start()
-        if hasattr(self.source, 'disable_stream'):
-            # For sources with streams per tile disable all tiles except the first one.
-            for i in range(1, self.source.maxtile()): # type: ignore
-                print(f'netdecoder: disable tile {i}')
-                self.source.disable_stream(i) # type: ignore
         
     def stop(self) -> None:
         if self.verbose: print('netdecoder: stop', flush=True)
@@ -80,10 +68,6 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             return None
         pc = self.output_queue.get()
         return pc
-
-    def _select_stream(self, streamIndex : int) -> None:
-        if self.verbose: print(f'netdecoder: select_stream({streamIndex}', flush=True)
-        return self.source.enable_stream(self.tileNum, streamIndex)
         
     def run(self) -> None:
         if self.verbose: print(f"netdecoder: thread started", flush=True)
