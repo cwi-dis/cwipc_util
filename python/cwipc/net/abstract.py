@@ -109,15 +109,6 @@ class cwipc_rawmultisource_abstract(ABC):
 #        """Return information describing a tile"""
 #        ...
 #
-#    @abstractmethod
-#    def enable_stream(self, tileNum : int, qualityNum : int) -> bool:
-#        """Enable a specific tile to be streamed at a specific quality"""
-#        ...
-#
-#    @abstractmethod
-#    def disable_stream(self, tileNum : int) -> bool:
-#        """Disable a specific tile completely."""
-#        ...
 
 #class cwipc_producer_abstract(ABC):
 #

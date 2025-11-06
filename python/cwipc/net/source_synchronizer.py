@@ -229,7 +229,7 @@ class _MQSynchronizer(_Synchronizer):
         self.current_quality = (self.current_quality + 1) % nQualities
         for tIdx in range(len(self.sources)):
             self.reader.select_tile_quality(tIdx, self.current_quality)
-        return f"quality {self.current_quality} of {nQualities - 1}"
+        return f"quality {self.current_quality} of {nQualities}"
         
 def cwipc_source_synchronizer(reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_source_abstract:
     """Return cwipc_source-like object that combines and synchronizes pointclouds from multiple sources"""

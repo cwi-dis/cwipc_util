@@ -459,7 +459,11 @@ def cwipc_source_lldplay(address : str, verbose=False) -> cwipc_rawsource_abstra
     _lldplay_dll()
     msrc = _LLDashPlayoutSource(address, verbose=verbose)
     msrc.start()
-    assert msrc.get_tile_count() == 1
+    n_tile = msrc.get_tile_count()
+    if n_tile != 1:
+        print(f"lldplay_dash: expecting single-tile stream but has {n_tile} tiles")
+        msrc.stop()
+        raise RuntimeError("Unexpected multi-tile DASH")
     src = msrc.get_tile_source(0)
     return src
 
