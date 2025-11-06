@@ -191,6 +191,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         self.streamCount = 0
         self.tile_info = None
         self.streamnum_to_tilenum = dict()
+        self.tile_quality_map : cwipc_multistream_description = []
         self.fourcc = None
         self.error_condition = False
         lldash_log_setting = os.environ.get("LLDASH_LOGGING", None)
@@ -262,6 +263,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         if not ok:
             self.error_condition = True
             raise LLDashPlayoutError("lldash_play: lldplay_play returned false")
+        self.started = True
         
         self._init_tile_info()
         assert self.tile_info
@@ -271,14 +273,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
             s = _LLDSingleTileSource(self, q)
             self.allSources.append(s)
 
-        nstreams = self.dll.lldplay_get_stream_count(self.handle)
-        if self.verbose: print(f"lldash_play: lldplay_get_stream_count() -> {nstreams}")
         self.running = True
-        self.started = True
-        if True and self.verbose:
-            for i in range(nstreams):
-                srd_info = self._srd_info_for_stream(i)
-                print(f"lldash_play: stream[{i}]: {srd_info}")
         threading.Thread.start(self)
         
     def stop(self) -> None:
@@ -328,10 +323,12 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
             return self.tile_info
         # Finding the tiles is difficult: we have to compare
         streamdesc_to_streamcount : dict[streamDesc_pythonic, int] = {}
+        self.tile_quality_map = []
         ordered_tiles = []
-        for i in range(self.count()):
-            streamDesc = self._srd_info_for_stream(i)
-            self.streamnum_to_tilenum[i] = streamDesc[1]
+        for streamIdx in range(self.count()):
+            streamDesc = self._srd_info_for_stream(streamIdx)
+            tileIdx = streamDesc[1]
+            self.streamnum_to_tilenum[streamIdx] = tileIdx
             if not streamDesc in streamdesc_to_streamcount:
                 streamdesc_to_streamcount[streamDesc] = 1
                 ordered_tiles.append(streamDesc)
@@ -432,8 +429,12 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         assert self.tile_info
         return len(self.tile_info)
 
-    def get_description(self) -> List[List[ctypes.Any]]:
-        raise NotImplementedError
+    def get_description(self) -> cwipc_multistream_description:
+        assert self.tile_info
+        rv = [
+            list(range(td[3])) for td in self.tile_info
+        ]
+        return list(rv)
 
     def get_tile_source(self, tileIdx: int) -> cwipc_rawsource_abstract:
         return self.allSources[tileIdx]
@@ -444,9 +445,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         assert self.started
         if self.error_condition:
             return
-        if self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileNum}, {qualityNum})")
-        self.lldash_log(event="lldplay_enable_stream", tileNum=tileNum, qualityNum=qualityNum, url=self.url)
-        ok = self.dll.lldplay_enable_stream(self.handle, tileNum, qualityNum)
+        if self.verbose: print(f"lldash_play: lldplay_enable_stream(handle, {tileIdx}, {qualityIdx})")
+        self.lldash_log(event="lldplay_enable_stream", tileNum=tileIdx, qualityNum=qualityIdx, url=self.url)
+        ok = self.dll.lldplay_enable_stream(self.handle, tileIdx, qualityIdx)
         if not ok:
             print(f"lldash_play: lldplay_enable_stream failed")
             self.error_condition = True
