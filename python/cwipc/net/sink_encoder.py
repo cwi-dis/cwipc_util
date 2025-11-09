@@ -18,7 +18,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     sink : cwipc_rawsink_abstract
     input_queue : queue.Queue[Optional[cwipc.cwipc_wrapper]]
     pointcounts : List[int]
-    tiledescriptions : List[cwipc.cwipc_tileinfo_pythonic]
+    tiledescriptions : List[cwipc.cwipc_tileinfo_dict]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
     encoders : List[cwipc.codec.cwipc_encoder_wrapper]
     times_encode : List[float]
@@ -45,7 +45,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.octree_bits : List[int] = [DEFAULT_OCTREE_BITS]
         self.jpeg_quality : List[int] = [DEFAULT_JPEG_QUALITY]
         
-    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_pythonic], octree_bits : int|List[int]|None = None, jpeg_quality : int|List[int]|None = None) -> None:
+    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_dict], octree_bits : int|List[int]|None = None, jpeg_quality : int|List[int]|None = None) -> None:
         if tiles == None: tiles = [{}]
         self.tiledescriptions = tiles
         if octree_bits == None:

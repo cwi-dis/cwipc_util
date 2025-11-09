@@ -22,7 +22,7 @@ import open3d
 import numpy
 import numpy.typing
 from typing import Optional, List, Type, Any, Union, Dict
-from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_pythonic
+from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_dict
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -39,7 +39,7 @@ __all__ = [
     'cwipc_point_array',
     'cwipc_point_numpy_dtype',
 
-    'cwipc_tileinfo_pythonic',
+    'cwipc_tileinfo_dict',
     
     'cwipc_point_packetheader',
     
@@ -753,7 +753,7 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract
             return None
         return info
         
-    def get_tileinfo_dict(self, tilenum : int) -> cwipc_tileinfo_pythonic:
+    def get_tileinfo_dict(self, tilenum : int) -> cwipc_tileinfo_dict:
         """Return tile information for tile tilenum as Python dictionary"""
         info = self.get_tileinfo_raw(tilenum)
         if info == None:

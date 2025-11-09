@@ -57,7 +57,7 @@ class cwipc_source_abstract(ABC):
         """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
         ...
 
-cwipc_tileinfo_pythonic = dict[str, Any]
+cwipc_tileinfo_dict = dict[str, Any]
 
 class cwipc_tiledsource_abstract(cwipc_source_abstract):
     """A source of tiled pointclouds. Usually a live capturer (with potentially multiple cameras)"""
@@ -87,6 +87,6 @@ class cwipc_tiledsource_abstract(cwipc_source_abstract):
         ...
 
     @abstractmethod
-    def get_tileinfo_dict(self, tilenum : int) -> cwipc_tileinfo_pythonic:
+    def get_tileinfo_dict(self, tilenum : int) -> cwipc_tileinfo_dict:
         """Return tile information for tile tilenum as Python dictionary"""
         ...

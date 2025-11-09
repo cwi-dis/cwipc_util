@@ -100,21 +100,6 @@ class cwipc_rawmultisource_abstract(ABC):
     def select_tile_quality(self, tileIdx : int, qualityIdx : int) -> None:
         ...
 
-#    @abstractmethod
-#    def maxtile(self) -> int:
-#        """Return number of tiles this source produces"
-#        ...
-#    @abstractmethod
-#    def get_tileinfo_dict(self, tilenum : int):
-#        """Return information describing a tile"""
-#        ...
-#
-
-#class cwipc_producer_abstract(ABC):
-#
-#    @abstractmethod
-#    def is_alive(self) -> bool;
-#        ...
 
 cwipc_producer_abstract = threading.Thread
 
