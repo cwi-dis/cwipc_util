@@ -8,7 +8,7 @@ import cwipc
 import cwipc.codec
 import struct
 from typing import Optional, List, Union, Dict, Tuple
-from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract
+from .abstract import *
 
 class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
     
@@ -40,7 +40,7 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         self.times_forward = []
         self.sizes_forward = []
         self.bandwidths_forward = []
-        self.streamDesc : Tuple = ()
+        self.stream_added : bool = False
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', self.port))
@@ -49,11 +49,6 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
             print(f"netserver: listen on :{self.port}")
         self.conn_sockets = []
     
-    def add_streamDesc(self, *args) -> None:
-        if self.streamDesc:
-            raise RuntimeError("netserver: only single stream supported")
-        self.streamDesc = args
-
     def start(self) -> None:
         threading.Thread.start(self)
         self.started = True
@@ -205,6 +200,14 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
             fmtstring = 'netserver: {}: port={}, dropped={}, count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, self.port, self.dropcount, count, avgValue, minValue, maxValue))
 
+    def add_stream(self, tilenum: Optional[int] = None, tiledesc: Optional[cwipc_tileinfo_dict] = None, qualitydesc: Optional[cwipc_quality_description] = None) -> int:
+        # We ignore the arguments: there's nothing we can do with them anyway.
+        if self.stream_added:
+            raise RuntimeError("netserver: only single stream supported")
+        self.stream_added = True
+        return 0
+
+
 class _Sink_MultiNetServer(cwipc_rawsink_abstract):
     def __init__(self, port : int, nstream : int, verbose : bool=False, nodrop : bool=False):
         if nodrop:
@@ -213,11 +216,16 @@ class _Sink_MultiNetServer(cwipc_rawsink_abstract):
             _Sink_NetServer(port+i, verbose=verbose, nonblocking=True)
             for i in range(nstream)
         ]
+        self.n_stream_added : int = 0
 
-    def add_streamDesc(self, *args) -> None:
-        pass
+    def add_stream(self, tilenum: Optional[int] = None, tiledesc: Optional[cwipc_tileinfo_dict] = None, qualitydesc: Optional[cwipc_quality_description] = None) -> int:
+        # We ignore the arguments: there's nothing we can do with them anyway.
+        rv = self.n_stream_added
+        self.n_stream_added += 1
+        return rv
 
     def start(self) -> None:
+        assert self.n_stream_added == len(self.streams)
         for s in self.streams:
             s.start()
 

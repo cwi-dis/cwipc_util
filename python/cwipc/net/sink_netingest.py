@@ -8,7 +8,7 @@ import cwipc
 import cwipc.codec
 import struct
 from typing import Optional, List, Union
-from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract
+from .abstract import *
 
 class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
     
@@ -40,6 +40,7 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
         host, port_str = address.split(":")
         port = int(port_str)
         self.address = (host, port)
+        self.stream_added = False
         self._open()
 
     def start(self) -> None:
@@ -139,6 +140,13 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
         pc.free()
         enc.free()
         return data
+
+    def add_stream(self, tilenum: Optional[int] = None, tiledesc: Optional[cwipc_tileinfo_dict] = None, qualitydesc: Optional[cwipc_quality_description] = None) -> int:
+        # We ignore the arguments: there's nothing we can do with them anyway.
+        if self.stream_added:
+            raise RuntimeError("netingest: only single stream supported")
+        self.stream_added = True
+        return 0
 
     def statistics(self) -> None:
         self.print1stat('connection_duration', self.times_forward)

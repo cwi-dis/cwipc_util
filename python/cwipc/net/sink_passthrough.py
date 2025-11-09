@@ -16,6 +16,8 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
     SELECT_TIMEOUT=0.1
     QUEUE_FULL_TIMEOUT=0.001
 
+    tiledescriptions : List[cwipc.cwipc_tileinfo_dict]
+
     def __init__(self, sink, verbose=False, nodrop=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._SinkPassthrough'
@@ -25,20 +27,29 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
         self.producer = None
         self.nodrop = nodrop
         self.input_queue = queue.Queue(maxsize=2)
+        self.tiledescriptions = [{}]
         self.verbose = verbose
         self.nodrop = nodrop
         self.stopped = False
         self.started = False
         self.pointcounts = []
          
-    def set_encoder_params(self, **kwargs):
-        """Specify the parameters for the encoder."""
-        raise RuntimeError("cwipc_sink_passthrough: no encoder parameters supported")
-        
+    def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_dict], octree_bits : int|List[int]|None = None, jpeg_quality : int|List[int]|None = None) -> None:
+        if tiles == None: tiles = [{}]
+        if len(tiles) > 1:
+            raise RuntimeError("passthrough: multiple tiles not implemented")
+        self.tiledescriptions = tiles
+        # Octree_bits and jpeg_quality are ignored, obviously.
+
     def start(self):
+        self._init_streams()
         threading.Thread.start(self)
         self.sink.start()
         self.started = True
+   
+    def _init_streams(self):
+        for tileIdx in range(len(self.tiledescriptions)):
+            streamNum = self.sink.add_stream(tileIdx, self.tiledescriptions[tileIdx])
         
     def stop(self):
         if self.verbose: print(f"passthrough: stopping thread")

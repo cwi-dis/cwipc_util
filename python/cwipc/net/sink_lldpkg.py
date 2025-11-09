@@ -5,7 +5,7 @@ import os
 import time
 import urllib.parse
 from typing import Optional, Any, List, Union, Tuple
-from .abstract import cwipc_producer_abstract, vrt_fourcc_type, VRT_4CC, cwipc_rawsink_abstract
+from .abstract import *
 
 _lldpkg_dll_reference = None
 
@@ -147,7 +147,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
                 self.fourcc = VRT_4CC("cwi1")
             else:
                 self.fourcc = VRT_4CC(self.fourcc)
-            self.add_streamDesc(0, 0, 0, 0)
+            self.add_stream(0)
         assert(self.streamDescs)
         # ctypes array constructors are a bit weird. Check the documentation.
         streamDescCount = len(self.streamDescs)
@@ -191,17 +191,24 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
     def _set_streamDescs(self, streamDescs : List[streamDesc]) -> None:
         self.streamDescs = streamDescs
         
-    def add_streamDesc(self, tilenum : int, x : Union[int, float], y : Union[int, float], z : Union[int, float]) -> int:
-        """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
+
+    def add_stream(self, tilenum: Optional[int] = None, tiledesc: Optional[cwipc_tileinfo_dict] = None, qualitydesc: Optional[cwipc_quality_description] = None) -> int:
         if not self.streamDescs:
             self.streamDescs = []
+        if tilenum == None or tiledesc == None:
+            raise RuntimeError("sink_lldpkg: add_stream: tilenum and tiledesc are required")
+        # We ignore qualitydesc, for now. Will investigate whether we can pass these in the fields we still have available in the MPD
+        normal = tiledesc.get("normal", dict(x=0,y=0,z=0))
+        x = normal['x']
+        y = normal['y']
+        z = normal['z']
         if type(x) != int: x = int(x*1000)
         if type(y) != int: y = int(y*1000)
         if type(z) != int: z = int(z*1000)
         assert self.fourcc
         self.streamDescs.append(streamDesc(self.fourcc, tilenum, x, y, z))
         return len(self.streamDescs)-1
-        
+
     def free(self) -> None:
         if self.handle:
             assert self.dll

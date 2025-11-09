@@ -5,6 +5,7 @@ from ..abstract import *
 
 # 4CC handling doesn't really belong here, but it's convenient.
 vrt_fourcc_type = Union[int, bytes, str]
+cwipc_quality_description = dict[str, Any]
 
 def VRT_4CC(code : vrt_fourcc_type) -> int:
     """Convert anything reasonable (bytes, string, int) to 4cc integer"""
@@ -135,10 +136,12 @@ class cwipc_rawsink_abstract(ABC):
         """Set the 4CC for this stream. This signals the data type to the receiver on the other end."""
         ...
     
-#    @abstractmethod
-#    def add_streamDesc(self, tilenum : int, x : int|float, y : Union[int, float], z : Union[int, float]) -> int:
-#        """Specify that stream tilenum represents a tile with the given (x,y,z) orientation."""
-#        ...
+    @abstractmethod
+    def add_stream(self, tilenum : Optional[int] = None, tiledesc : Optional[cwipc_tileinfo_dict] = None, qualitydesc : Optional[cwipc_quality_description] = None) -> int:
+        """Create a new stream. Optionally specify tile number and/or tile description and/or quality description.
+        Returns stream number.
+        """
+        ...
 
     @abstractmethod
     def feed(self, buffer : Union[bytes, bytearray], stream_index : Optional[int]=None) -> bool:

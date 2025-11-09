@@ -4,7 +4,7 @@ import queue
 import cwipc
 import cwipc.codec
 from typing import Optional, List, Any
-from .abstract import VRT_4CC, vrt_fourcc_type, cwipc_producer_abstract, cwipc_rawsink_abstract, cwipc_sink_abstract
+from .abstract import *
 
 DEFAULT_OCTREE_BITS=9
 DEFAULT_JPEG_QUALITY=85
@@ -141,21 +141,22 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
             print(f'encoder: creating {len(self.tiledescriptions)*len(self.octree_bits)*len(self.jpeg_quality)} encoders/streams')
         
         self.encoder_group = cwipc.codec.cwipc_new_encodergroup()
-        for tile in range(len(self.tiledescriptions)):
+        for tileIdx in range(len(self.tiledescriptions)):
             for octree_bits in self.octree_bits:
                 for jpeg_quality in self.jpeg_quality:
-                    srctile = tile # Was, erronuously: self.tiledescriptions[tile].get('ncamera', tile)
+                    srctile = tileIdx # Was, erronuously: self.tiledescriptions[tile].get('ncamera', tile)
                     if self.verbose:
                         print(f"encoder: {len(self.encoders)}: tile={srctile}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}")
                     encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, srctile, voxelsize)
                     encoder = self.encoder_group.addencoder(params=encparams)
                     self.encoders.append(encoder)
-                    if not 'normal' in self.tiledescriptions[tile] and srctile != 0:
-                        print(f'encoder: warning: tile {srctile} description has no normal vector: {self.tiledescriptions[tile]}')
-                    normal = self.tiledescriptions[tile].get("normal", dict(x=0, y=0, z=0))
-                    streamNum = self.sink.add_streamDesc(tile, normal['x'], normal['y'], normal['z']) # type: ignore
+                    qualityDescription : cwipc_quality_description = dict(
+                        octree_bits=octree_bits,
+                        jpeg_quality=jpeg_quality
+                    )
+                    streamNum = self.sink.add_stream(tileIdx, self.tiledescriptions[tileIdx], qualityDescription)
                     if self.verbose:
-                        print(f'encoder: streamNum={streamNum}, tile={tile}, srctile={srctile}, normal={normal}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
+                        print(f'encoder: streamNum={streamNum}, tile={tileIdx}, srctile={srctile}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}')
 
     def statistics(self):
         self.print1stat('encode_duration', self.times_encode)
