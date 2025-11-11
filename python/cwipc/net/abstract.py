@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Any
 import threading
 from ..abstract import *
+from ..util import cwipc_wrapper
 
 # 4CC handling doesn't really belong here, but it's convenient.
 vrt_fourcc_type = Union[int, bytes, str]
@@ -176,6 +177,9 @@ class cwipc_sink_abstract(ABC):
         """The rawsink will call producer.is_alive() to determine when it should stop transmitting."""
         ...
 
+    @abstractmethod
+    def feed(self, pc : cwipc_wrapper) -> None:
+        ...
     @abstractmethod
     def statistics(self) -> None:
         """Print statistics."""
