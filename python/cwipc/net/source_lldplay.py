@@ -236,9 +236,11 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         
     def free(self) -> None:
         if self.handle:
+            tmp_handle = self.handle
+            self.handle = None
             assert self.dll
             if self.verbose: print(f"lldash_play: calling lldplay_destroy()")
-            self.dll.lldplay_destroy(self.handle)
+            self.dll.lldplay_destroy(tmp_handle)
             if self.verbose: print(f"lldash_play: lldplay_destroy() returned")
             self.handle = None
     

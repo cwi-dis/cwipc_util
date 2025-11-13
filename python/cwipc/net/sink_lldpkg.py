@@ -180,7 +180,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         return baseurl, mpdbasename
         
     def stop(self) -> None:
-        pass
+        self.free()
         
     def set_producer(self, producer : cwipc_producer_abstract) -> None:
         pass
@@ -211,9 +211,11 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
 
     def free(self) -> None:
         if self.handle:
+            tmp_handle = self.handle
+            self.handle = None
             assert self.dll
             self.lldash_log(event="lldpkg_destroy_call", url=self.url)
-            self.dll.lldpkg_destroy(self.handle, True)
+            self.dll.lldpkg_destroy(tmp_handle, True)
             self.lldash_log(event="lldpkg_destroy_returned", url=self.url)
             self.handle = None
             
