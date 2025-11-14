@@ -123,6 +123,9 @@ class _LLDSingleTileSource(cwipc_rawsource_abstract):
             pass
         self.multisource.stop()
 
+    def free(self) -> None:
+        self.multisource.free()
+        
     def eof(self) -> bool:
         return self.output_queue.empty() and self.multisource.eof()
     
