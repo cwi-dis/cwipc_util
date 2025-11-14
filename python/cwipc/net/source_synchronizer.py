@@ -181,7 +181,11 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             self.output_queue.put(result_pc)
 
         if self.verbose: print(f"synchronizer: thread exiting", flush=True)
-
+        self.running = False
+        try:
+            self.output_queue.put(None, block=False)
+        except queue.Full:
+            pass
 
     def statistics(self) -> None:
         self.print1stat('combine_time', self.combine_times)
