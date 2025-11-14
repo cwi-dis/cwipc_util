@@ -76,8 +76,9 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
                 break
             cpc = self.source.get()
             if not cpc:
-                print(f'netdecoder: source.get returned no data')
-                continue
+                if not self.source.eof():
+                    print(f'netdecoder: source.get returned no data, but not eof()', flush=True)
+                break
             t1 = time.time()
             pc = self._decompress(cpc)
             assert pc
@@ -86,6 +87,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             self.output_queue.put(pc)
             if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points, qlen={self.output_queue.qsize()}', flush=True)
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
+        self.running = False
 
     def _decompress(self, cpc : bytes) -> Optional[cwipc_abstract]:
         if self.decomp == None:
