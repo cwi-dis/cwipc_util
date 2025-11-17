@@ -110,6 +110,8 @@ class _LLDSingleTileSource(cwipc_rawsource_abstract):
     # How long to wait for data to be put into the queue (really only to forestall deadlocks on close)
     QUEUE_WAIT_TIMEOUT=1
 
+    output_queue : peek_queue.PeekQueue[Optional[bytes]]
+
     def __init__(self, multisource : '_LLDashPlayoutSource', queue : peek_queue.PeekQueue[Optional[bytes]]):
         self.multisource = multisource
         self.output_queue = queue
@@ -166,6 +168,10 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
     SUB_WAIT_TIME=0.01
     # If no data is available from the sub for this long we treat it as end-of-file:
     SUB_EOF_TIME=10
+    # Output queue size. Fragments will be dropped if they overflow, which is very bad in case
+    # of multi-tile streaming (because we will have invested resources in decoding the
+    # fragment in other tiles, for nothing)
+    OUTPUT_QUEUE_SIZE = 25
 
     handle : Optional[lldplay_handle_p]
     dll : ctypes.CDLL
@@ -173,7 +179,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
     streamnum_to_tilenum : dict[int, int]
     times_receive: List[float]
     sizes_receive: List[int]
-    bandwidth_receive: List[float]
+    bandwidths_receive: List[float]
     unwanted_receive: List[int]
     fourcc : Optional[vrt_fourcc_type]
 
@@ -225,7 +231,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
             self.error_condition = True
             # raise LLDashPlayoutError(msg)
         
-    def lldash_log(self, **kwargs):
+    def lldash_log(self, **kwargs : Any):
         if not self.lldash_logging:
             return
         lts = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()) + f".{int(time.time()*1000)%1000:03d}"
@@ -274,8 +280,8 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         self._init_tile_info()
         assert self.tile_info
         n_tiles = len(self.tile_info)
-        for i in range(n_tiles):
-            q = peek_queue.PeekQueue(maxsize=2)
+        for _ in range(n_tiles):
+            q = peek_queue.PeekQueue[Optional[bytes]](maxsize=self.OUTPUT_QUEUE_SIZE)
             s = _LLDSingleTileSource(self, q)
             self.allSources.append(s)
 
@@ -322,6 +328,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         assert self.started
         c_desc = streamDesc()
         ok = self.dll.lldplay_get_stream_info(self.handle, num, c_desc)
+        assert ok
         return (c_desc.MP4_4CC, c_desc.tileNumber, c_desc.x, c_desc.y, c_desc.z, c_desc.totalWidth, c_desc.totalHeight)
 
     def _init_tile_info(self) -> List[tileInfo_pythonic]:
@@ -330,7 +337,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         # Finding the tiles is difficult: we have to compare
         streamdesc_to_streamcount : dict[streamDesc_pythonic, int] = {}
         self.tile_quality_map = []
-        ordered_tiles = []
+        ordered_tiles : List[streamDesc_pythonic] = []
         for streamIdx in range(self.count()):
             streamDesc = self._srd_info_for_stream(streamIdx)
             tileIdx = streamDesc[1]
@@ -342,7 +349,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
                 streamdesc_to_streamcount[streamDesc] += 1
         self.tile_info = []
         for tileDesc in ordered_tiles:
-            mp4_4cc, tileNumber, x, y, z, totalWidth, totalHeight = tileDesc
+            mp4_4cc, tileNumber, x, y, z, _totalWidth, _totalHeight = tileDesc
             qualityCount = streamdesc_to_streamcount[tileDesc]
             self.tile_info.append((mp4_4cc, tileNumber, (x, y, z), qualityCount))
         return self.tile_info
@@ -397,7 +404,10 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
                     self.times_receive.append(delta)
                     self.sizes_receive.append(length2)
                     self.bandwidths_receive.append(len(packet)/delta)
-                    self.allSources[tileIndex].output_queue.put(packet)
+                    try:
+                        self.allSources[tileIndex].output_queue.put(packet, block=False)
+                    except peek_queue.Full:
+                        print(f"lldash_play: output queue full for tile={tileIndex}. Dropping fragment.")
 
                 if not receivedAnything:
                     if time.time() - last_successful_read_time > self.SUB_EOF_TIME:
@@ -418,7 +428,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         self.print1stat('bandwidth', self.bandwidths_receive)
         self.print1stat('unwanted_packetsize', self.unwanted_receive, isInt=True)
         
-    def print1stat(self, name, values : Union[List[int], List[float]], isInt : bool=False) -> None:
+    def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
         if count == 0:
             print('lldash_play: {}: count=0'.format(name))
@@ -461,7 +471,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         return
 
         
-def cwipc_source_lldplay(address : str, verbose=False) -> cwipc_rawsource_abstract:
+def cwipc_source_lldplay(address : str, verbose : bool=False) -> cwipc_rawsource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from a DASH stream using MotionSpell lldash"""
     _lldplay_dll()
     msrc = _LLDashPlayoutSource(address, verbose=verbose)
