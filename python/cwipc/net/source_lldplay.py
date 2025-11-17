@@ -22,9 +22,13 @@ class lldplay_handle_p(ctypes.c_void_p):
     
 class FrameInfo(ctypes.Structure):
     timestamp : int
+    dsi : bytes
+    dsi_size : int
 
     _fields_ = [
-        ("timestamp", ctypes.c_longlong)
+        ("timestamp", ctypes.c_int64),
+        ("dsi", ctypes.c_char * 256),
+        ("dsi_size", ctypes.c_int),
     ]
     
 class streamDesc(ctypes.Structure):
@@ -94,7 +98,7 @@ def _lldplay_dll(libname : Optional[str]=None) -> ctypes.CDLL:
     _lldplay_dll_reference.lldplay_disable_stream.argtypes = [lldplay_handle_p, ctypes.c_int]
     _lldplay_dll_reference.lldplay_disable_stream.restype = ctypes.c_bool
     
-    _lldplay_dll_reference.lldplay_grab_frame.argtypes = [lldplay_handle_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+    _lldplay_dll_reference.lldplay_grab_frame.argtypes = [lldplay_handle_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(FrameInfo)]
     _lldplay_dll_reference.lldplay_grab_frame.restype = ctypes.c_size_t
 
     _lldplay_dll_reference.lldplay_get_version.argtypes = []
@@ -123,9 +127,6 @@ class _LLDSingleTileSource(cwipc_rawsource_abstract):
             pass
         self.multisource.stop()
 
-    def free(self) -> None:
-        self.multisource.free()
-        
     def eof(self) -> bool:
         return self.output_queue.empty() and self.multisource.eof()
     
@@ -375,9 +376,10 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
                     packet = bytearray(length)
                     ptr_char = (ctypes.c_char * length).from_buffer(packet)
                     ptr = ctypes.cast(ptr_char, ctypes.c_void_p)
-                    if self.verbose: print(f"lldash_play: read: lldplay_grab_frame(handle, {streamIndex}, ptr, {length}, None)")
-                    length2 = self.dll.lldplay_grab_frame(self.handle, streamIndex, ptr, length, None)
-                    self.lldash_log(event="lldplay_grab_frame_returned", streamIndex=streamIndex, length=length, url=self.url)
+                    frame_info = FrameInfo(timestamp=-1,dsi_size=0)
+                    if self.verbose: print(f"lldash_play: read: lldplay_grab_frame(handle, {streamIndex}, ptr, {length}, frame_info)")
+                    length2 = self.dll.lldplay_grab_frame(self.handle, streamIndex, ptr, length, frame_info)
+                    self.lldash_log(event="lldplay_grab_frame_returned", streamIndex=streamIndex, length=length, timestamp=frame_info.timestamp, url=self.url)
                     if length2 != length:
                         raise LLDashPlayoutError("read_cpc(stream={streamIndex}: was promised {length} bytes but got only {length2})")
                     
