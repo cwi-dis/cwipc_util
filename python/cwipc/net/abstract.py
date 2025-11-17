@@ -50,7 +50,7 @@ class cwipc_rawsource_abstract(ABC):
         ...
 
     @abstractmethod
-    def get(self) -> bytes:
+    def get(self) -> Optional[bytes]:
         """Return the next data block"""
         ...
 

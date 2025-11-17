@@ -1,7 +1,5 @@
-import os
 import threading
 import socket
-import select
 import time
 import queue
 import cwipc

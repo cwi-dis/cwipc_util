@@ -4,12 +4,12 @@ import time
 Empty = queue.Empty
 Full = queue.Full
 
-class PeekQueue[T](queue.Queue):
+class PeekQueue[T](queue.Queue[T]):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def dont_get(self, block=True, timeout=None):
+    def dont_get(self, block : bool=True, timeout : float=None):
         '''Does everything Queue.get does except removing and returning the item.
 
         If optional args 'block' is true and 'timeout' is None (the default),

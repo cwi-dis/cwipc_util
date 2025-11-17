@@ -1,4 +1,3 @@
-import os
 import threading
 import socket
 import select
@@ -7,7 +6,7 @@ import queue
 import cwipc
 import cwipc.codec
 import struct
-from typing import Optional, List, Union, Dict, Tuple
+from typing import Optional, List, Union
 from .abstract import *
 
 class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
@@ -125,8 +124,8 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                         continue
                     
                     for connSocket in conn_socket_writeable:
+                        peerName = 'unknown'
                         try:
-                            peerName = 'unknown'
                             peerName = connSocket.getpeername()
                             connSocket.sendall(packet)
                         except (socket.error, ConnectionError):
