@@ -410,7 +410,7 @@ class Registrator:
                 camera=camera
             )
         elif is_kinect:
-            camtype = "kinect_offline"
+            camtype = "kinect_playback"
             # Create the camera definitions
             camera = [
                 dict(filename=fn, type=camtype)

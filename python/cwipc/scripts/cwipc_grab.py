@@ -254,7 +254,7 @@ def main():
         if args.count:
             kwargs['queuesize'] = args.count
         else:
-            kwargs['queuesize'] = 2000 # xxxnacho. up to 2000 frames, but need to find a solution for k4aoffline case
+            kwargs['queuesize'] = 2000
     if args.nodrop:
         kwargs['nodrop'] = True
     if args.binary:

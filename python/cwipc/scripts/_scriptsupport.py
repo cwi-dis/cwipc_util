@@ -87,15 +87,15 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         else:
             source = cast(cwipc_source_factory_abstract, kinect.cwipc_kinect)
         name = 'kinect'
-    elif args.k4aoffline:
-        if kinect == None or not hasattr(kinect, 'cwipc_k4aoffline'):
-            print(f"{sys.argv[0]}: No support for Kinect offline grabber on this platform")
+    elif args.k4aplayback:
+        if kinect == None or not hasattr(kinect, 'cwipc_k4aplayback'):
+            print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         if args.cameraconfig:
-            source = lambda config=args.cameraconfig: kinect.cwipc_k4aoffline(config)  # type: ignore
+            source = lambda config=args.cameraconfig: kinect.cwipc_k4aplayback(config)  # type: ignore
         else:
-            source = cast(cwipc_source_factory_abstract, kinect.cwipc_k4aoffline)
-        name = 'k4aoffline' # xxxjack unsure about this: do we treat kinect live and offline the same?
+            source = cast(cwipc_source_factory_abstract, kinect.cwipc_k4aplayback)
+        name = 'k4aplayback'
     elif args.realsense:
         if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
@@ -395,7 +395,7 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser.add_argument("--cameraconfig", action="store", help="Specify camera configuration file (default: ./cameraconfig.json). auto for any attached camera without configuration.")
     input_selection_args.add_argument("--realsense", action="store_true", help="Use Intel Realsense capturer (default: from camera configuration)")
     input_selection_args.add_argument("--kinect", action="store_true", help="Use Azure Kinect capturer (default: from camera configuration)")
-    input_selection_args.add_argument("--k4aoffline", action="store_true", help="Use Azure Kinect pre-recorded file capturer")
+    input_selection_args.add_argument("--k4aplayback", action="store_true", help="Use Azure Kinect pre-recorded file capturer")
     input_selection_args.add_argument("--synthetic", action="store_true", help="Use synthetic pointcloud source")
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Use proxyserver pointcloud source server, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST")

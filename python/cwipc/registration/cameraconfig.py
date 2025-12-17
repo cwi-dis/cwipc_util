@@ -113,7 +113,6 @@ class CameraConfig:
         self.init_transforms()
         self._dirty = False
         # Workaround for bug (only in realsense_playback?) 2023-12-30
-        # Actually bug also exists, but differently, for kinect_offline.
         self.cameraconfig["type"] = self.cameraconfig["camera"][0]["type"]
 
     def load_from_file(self) -> None:

@@ -16,14 +16,6 @@ def main():
     SetupStackDumper()
     assert __doc__ is not None
     parser = BaseArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
-#    parser.add_argument("--nodisplay", action="store_true", help="Don't display pointclouds, only prints statistics at the end")
-#    parser.add_argument("--paused", action="store_true", help="Start paused")
-#    parser.add_argument("--skeleton", action="store_true", help="Get and render skeleton from the capture (in stead of point cloud). Only for source --kinect or --k4aoffline")
-#    parser.add_argument("--rgb", action="store_true", help="Show RGB captures in addition to point clouds")
-#    parser.add_argument("--rgb_cw", action="store_true", help="When showing RGB captures first rotate the 90 degrees clockwise")
-#    parser.add_argument("--rgb_ccw", action="store_true", help="When showing RGB captures first rotate the 90 degrees counterclockwise")
-#    parser.add_argument("--rgb_full", action="store_true", help="When showing RGB captures don't scale and combine but show every image in its own window")
-#    parser.add_argument("--timestamps", action="store_true", help="Print detailed timestamp information about every point cloud displayed")
     parser.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
     parser.add_argument("--help_filters", action="store_true", help="List available filters and exit")
     parser.add_argument("--help_commands", action="store_true", help="List interactive commands and exit")
@@ -45,7 +37,7 @@ def main():
     args.loop = False
     args.nodecode = False
     args.kinect = None
-    args.k4aoffline = None
+    args.k4aplayback = None
     args.realsense = None
     args.synthetic = None
     args.proxy = None

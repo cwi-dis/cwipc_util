@@ -270,7 +270,7 @@ def main():
     args.loop = False
     args.nodecode = False
     args.kinect = None
-    args.k4aoffline = None
+    args.k4aplayback = None
     args.realsense = None
     args.synthetic = None
     args.proxy = None
