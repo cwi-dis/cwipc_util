@@ -14,6 +14,7 @@
 #endif
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal.h"
 
 #define stringify(x) _stringify(x)
 #define _stringify(x) #x
@@ -790,4 +791,19 @@ bool cwipc_sink_caption(cwipc_sink *sink, const char *caption) {
 
 char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *responses, int32_t millis) {
     return sink->interact(prompt, responses, millis);
+}
+
+inline std::string _level_to_string(cwipc_log_level level) {
+    switch (level) {
+        case LOG_ERROR: return "Error";
+        case LOG_WARNING: return "Warning";
+        case LOG_TRACE: return "Trace";
+        case LOG_DEBUG: return "Debug";
+    }
+    return "Unknown-level";
+}
+
+void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
+    // No filtering on level yet, no callbacks. All that is future work.
+    std::cerr << module << ": " << _level_to_string(level) << ": " << message << std::endl;
 }

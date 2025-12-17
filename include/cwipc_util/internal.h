@@ -8,6 +8,10 @@
 // but that are provided by cwipc_util for use by other modules.
 //
 
+extern "C" {
+    enum cwipc_log_level { LOG_ERROR, LOG_WARNING, LOG_TRACE, LOG_DEBUG };
+    void cwipc_log(cwipc_log_level level, std::string module, std::string message);
+};
 struct CwipcBaseCameraConfig {
     std::string type;
 };
