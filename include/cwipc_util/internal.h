@@ -3,10 +3,23 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include <thread>
 //
 // This file contains definitions of types and functions that are not user-visible,
 // but that are provided by cwipc_util for use by other modules.
 //
+
+#ifdef _WIN32
+#include <Windows.h>
+
+inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
+    HANDLE threadHandle = static_cast<HANDLE>(thr->native_handle());
+    SetThreadDescription(threadHandle, name);
+}
+
+#else
+inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {}
+#endif
 
 extern "C" {
     enum cwipc_log_level { LOG_ERROR, LOG_WARNING, LOG_TRACE, LOG_DEBUG };
