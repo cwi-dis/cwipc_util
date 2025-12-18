@@ -50,8 +50,12 @@ struct CwipcBaseCameraConfig {
 
     virtual void _from_json(const json& json_data) {
         json_data.at("type").get_to(type);
-        json_data.at("serial").get_to(serial);
-        json_data.at("disabled").get_to(disabled);
+        if (json_data.contains("serial")) {
+            json_data.at("serial").get_to(serial);
+        }
+        if (json_data.contains("disabled")) {
+            json_data.at("disabled").get_to(disabled);
+        }
         if (json_data.contains("filename")) {
             json_data.at("filename").get_to(filename);
         } else if (json_data.contains("playback_filename")) {
@@ -59,12 +63,16 @@ struct CwipcBaseCameraConfig {
             json_data.at("playback_filename").get_to(filename);
         }
         // cameraposition is not serialized, it will be re-computed from the trafo.
+        trafo = pcl::shared_ptr<Eigen::Affine3d>(new Eigen::Affine3d());
         if (json_data.contains("trafo")) {
+            json trafo_json = json_data.at("trafo");
             for (int x = 0; x < 4; x++) {
                 for (int y = 0; y < 4; y++) {
-                    (*trafo)(x, y) = json_data["trafo"][x][y];
+                    (*trafo)(x, y) = trafo_json[x][y];
                 }
             }
+        } else {
+            trafo->setIdentity();
         }
     };
 
