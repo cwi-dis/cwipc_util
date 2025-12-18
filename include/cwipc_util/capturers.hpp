@@ -35,6 +35,10 @@ using json = nlohmann::json;
 #define _CWIPC_CONFIG_JSON_GET(jsonobj, name, config, attr) if (jsonobj.contains(#name)) jsonobj.at(#name).get_to(config.attr)
 #define _CWIPC_CONFIG_JSON_PUT(jsonobj, name, config, attr) jsonobj[#name] = config.attr
 
+/** Base class for per-camera configuration
+ * 
+ * Stores attributes common to all camera types, plus methods to serialize and deserialize.
+ */
 struct CwipcBaseCameraConfig {
     std::string type;
     bool disabled = false;      // to easily disable cameras without altering too much the cameraconfig
@@ -87,6 +91,10 @@ struct CwipcBaseCameraConfig {
     };
 };
 
+/** Base class for capture configuration
+ * 
+ * Stores attributes common to all capturer types, plus methods to serialize and deserialize.
+ */
 struct CwipcBaseCaptureConfig {
     std::string type;
 
@@ -102,16 +110,155 @@ struct CwipcBaseCaptureConfig {
     }
 };
 
+/** Base class for camera 
+ * 
+*/
 class CwipcBaseCamera {
 protected:
     std::string type;
 };
 
+/** Base class for capturer 
+ * 
+*/
 class CwipcBaseCapture {
 protected:
     std::string type;
 };
 
+/** Template base class for capturer implementations
+ * 
+ * Two template parameters:
+ * - GrabberClass: The class that actually implements the capturing
+ * - CameraConfigClass: The class that implements per-camera configuration storage
+ * Most implementations will have an extra layer of inheritance, to implement
+ * common functionality provided by the API that is implemented both for live
+ * cameras and for playback.
+ */
+
+template<class GrabberClass, class CameraConfigClass>
+class cwipc_capturer_impl_base : public cwipc_tiledsource {
+protected:
+    GrabberClass *m_grabber; 
+public:
+    cwipc_capturer_impl_base(const char* configFilename) 
+    : m_grabber(GrabberClass::factory())
+    {
+        m_grabber->config_reload(configFilename);
+    }
+
+    virtual ~cwipc_capturer_impl_base() {
+        delete m_grabber;
+        m_grabber = NULL;
+    }
+
+    bool is_valid() {
+        return m_grabber->camera_count > 0;
+    }
+
+    void free() {
+        delete m_grabber;
+        m_grabber = NULL;
+    }
+
+    virtual size_t get_config(char* buffer, size_t size) override
+    {
+        auto config = m_grabber->config_get();
+
+        if (buffer == nullptr) {
+            return config.length();
+        }
+
+        if (size < config.length()) {
+            return 0;
+        }
+
+        memcpy(buffer, config.c_str(), config.length());
+        return config.length();
+    }
+
+    virtual bool reload_config(const char* configFile) override {
+        return m_grabber->config_reload(configFile);
+    }
+
+    bool eof() {
+        return m_grabber->eof;
+    }
+
+    bool available(bool wait) {
+        if (m_grabber == NULL) {
+            return false;
+        }
+
+        return m_grabber->pointcloud_available(wait);
+    }
+
+    cwipc* get() {
+        if (m_grabber == NULL) {
+            return NULL;
+        }
+
+        cwipc* rv = m_grabber->get_pointcloud();
+        return rv;
+    }
+
+    int maxtile() {
+        if (m_grabber == NULL) {
+            return 0;
+        }
+
+        int nCamera = m_grabber->configuration.all_camera_configs.size();
+        if (nCamera <= 1) {
+            // Using a single camera or no camera.
+            return nCamera;
+        }
+
+        return nCamera + 1;
+    }
+
+    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
+        if (m_grabber == NULL) {
+            return false;
+        }
+
+        int nCamera = m_grabber->configuration.all_camera_configs.size();
+
+        if (nCamera == 0) { // No camera
+            return false;
+        }
+
+        if (tilenum < 0 || tilenum >= nCamera+1) {
+            return false;
+        }
+        if (tilenum == 0) {
+            // Special case: the whole pointcloud
+            if (tileinfo) {
+                tileinfo->normal = { 0, 0, 0 };
+                tileinfo->cameraName = NULL;
+                tileinfo->ncamera = nCamera;
+                tileinfo->cameraMask = 0; // All cameras contributes to this
+            }
+            return true;
+        }
+        CameraConfigClass &cameraConfig = m_grabber->configuration.all_camera_configs[tilenum-1];
+        if (tileinfo) {
+            tileinfo->normal = cameraConfig.cameraposition; // Use the camera position as the normal
+            tileinfo->cameraName = (char *)cameraConfig.serial.c_str();
+            tileinfo->ncamera = 1; // Only one camera contributes to this
+            tileinfo->cameraMask = (uint8_t)1 << (tilenum-1); // Only this camera contributes
+        }
+        return true;
+    }
+    
+    virtual void request_auxiliary_data(const std::string &name) = 0;
+    virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) = 0;
+    virtual bool seek(uint64_t timestamp) = 0;
+};
+
+/** Capturer registration.
+ * Capturer implementations should register themselves by calling
+ * _cwipc_register_capturer() during their initialization.
+ */
 class cwipc_tiledsource;
 
 typedef int _cwipc_functype_count_devices();
