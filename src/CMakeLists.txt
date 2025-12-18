@@ -14,7 +14,7 @@ target_sources(cwipc_util
 	PRIVATE
 	"../include/cwipc_util/api.h"
 	"../include/cwipc_util/api_pcl.h"
-	"../include/cwipc_util/internal.h"
+	"../include/cwipc_util/capturers.hpp"
 	"../include/cwipc_util/vectors.h"
 )
 

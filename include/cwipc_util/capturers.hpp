@@ -1,5 +1,5 @@
-#ifndef _cwipc_util_internal_h_
-#define _cwipc_util_internal_h_
+#ifndef _cwipc_util_capturers_hpp_
+#define _cwipc_util_capturers_hpp_
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
@@ -120,4 +120,4 @@ typedef cwipc_tiledsource* _cwipc_func_capturer_factory(const char *configFilena
 extern "C" {
     _CWIPC_UTIL_EXPORT int _cwipc_register_capturer(const char* name, _cwipc_functype_count_devices* countFunc, _cwipc_func_capturer_factory* factoryFunc);
 }
-#endif // _cwipc_util_internal_h_
+#endif // _cwipc_util_capturers_hpp_

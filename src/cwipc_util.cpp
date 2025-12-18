@@ -14,8 +14,7 @@
 #endif
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
-#include "cwipc_util/internal.h"
-
+#include "cwipc_util/capturers.hpp"
 #define stringify(x) _stringify(x)
 #define _stringify(x) #x
 

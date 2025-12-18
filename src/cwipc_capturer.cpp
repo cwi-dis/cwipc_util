@@ -18,7 +18,7 @@ using json = nlohmann::json;
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
-#include "cwipc_util/internal.h"
+#include "cwipc_util/capturers.hpp"
 
 struct capturer {
     std::string name;
