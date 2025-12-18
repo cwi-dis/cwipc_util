@@ -37,13 +37,54 @@ using json = nlohmann::json;
 
 struct CwipcBaseCameraConfig {
     std::string type;
+    bool disabled = false;      // to easily disable cameras without altering too much the cameraconfig
+    bool connected = false;     // set to true when the camera is opened.
+    std::string serial;         // Serial number of this camera
+    std::string filename = "";     // filename, for playback
+    pcl::shared_ptr<Eigen::Affine3d> trafo; //!< Transformation matrix from camera coorindates to world coordinates
+    cwipc_vector cameraposition = { 0,0,0 };//!< Position of this camera in real world coordinates
 
     virtual void _from_json(const json& json_data) {
         json_data.at("type").get_to(type);
-    }
+        json_data.at("serial").get_to(serial);
+        json_data.at("disabled").get_to(disabled);
+        if (json_data.contains("filename")) {
+            json_data.at("filename").get_to(filename);
+        } else if (json_data.contains("playback_filename")) {
+            // backwards compatibility
+            json_data.at("playback_filename").get_to(filename);
+        }
+        // cameraposition is not serialized, it will be re-computed from the trafo.
+        if (json_data.contains("trafo")) {
+            for (int x = 0; x < 4; x++) {
+                for (int y = 0; y < 4; y++) {
+                    (*trafo)(x, y) = json_data["trafo"][x][y];
+                }
+            }
+        }
+    };
+
     virtual void _to_json(json& json_data) {
         json_data["type"] = type;
-    }
+        json_data["serial"] = serial;
+        json_data["disabled"] = disabled;
+        if (filename != "") {
+            json_data["filename"] = filename;
+        }
+        if (cameraposition.x != 0.0 || cameraposition.y != 0.0 || cameraposition.z != 0.0) {
+            json_data["_cameraposition"] = {
+                cameraposition.x,
+                cameraposition.y,
+                cameraposition.z
+            };
+        }
+        json_data["trafo"] = {
+            {(*trafo)(0, 0), (*trafo)(0, 1), (*trafo)(0, 2), (*trafo)(0, 3)},
+            {(*trafo)(1, 0), (*trafo)(1, 1), (*trafo)(1, 2), (*trafo)(1, 3)},
+            {(*trafo)(2, 0), (*trafo)(2, 1), (*trafo)(2, 2), (*trafo)(2, 3)},
+            {(*trafo)(3, 0), (*trafo)(3, 1), (*trafo)(3, 2), (*trafo)(3, 3)}
+        };
+    };
 };
 
 struct CwipcBaseCaptureConfig {
