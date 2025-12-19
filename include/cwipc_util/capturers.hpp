@@ -164,7 +164,7 @@ public:
         return m_grabber->camera_count > 0;
     }
 
-    void free() {
+    void free() override {
         delete m_grabber;
         m_grabber = NULL;
     }
@@ -189,11 +189,11 @@ public:
         return m_grabber->config_reload(configFile);
     }
 
-    bool eof() {
+    bool eof() override {
         return m_grabber->eof;
     }
 
-    bool available(bool wait) {
+    bool available(bool wait) override {
         if (m_grabber == NULL) {
             return false;
         }
@@ -201,7 +201,7 @@ public:
         return m_grabber->pointcloud_available(wait);
     }
 
-    cwipc* get() {
+    cwipc* get() override {
         if (m_grabber == NULL) {
             return NULL;
         }
@@ -210,7 +210,7 @@ public:
         return rv;
     }
 
-    int maxtile() {
+    int maxtile() override {
         if (m_grabber == NULL) {
             return 0;
         }
@@ -224,7 +224,7 @@ public:
         return nCamera + 1;
     }
 
-    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
+    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) override {
         if (m_grabber == NULL) {
             return false;
         }
@@ -258,9 +258,9 @@ public:
         return true;
     }
     
-    virtual void request_auxiliary_data(const std::string &name) = 0;
-    virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) = 0;
-    virtual bool seek(uint64_t timestamp) = 0;
+    virtual void request_auxiliary_data(const std::string &name) override = 0;
+    virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) override = 0;
+    virtual bool seek(uint64_t timestamp) override = 0;
 };
 
 /** Capturer registration.
