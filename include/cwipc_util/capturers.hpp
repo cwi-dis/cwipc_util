@@ -132,6 +132,13 @@ protected:
 class CwipcBaseCapture {
 protected:
     std::string type;
+public:
+    virtual ~CwipcBaseCapture() { };
+    virtual int get_camera_count() = 0;
+    virtual bool is_valid() = 0;
+    virtual bool config_reload(const char* configFilename) = 0;
+    virtual std::string config_get() = 0;
+    virtual bool eof() = 0;
 };
 
 /** Template base class for capturer implementations
@@ -161,7 +168,7 @@ public:
     }
 
     bool is_valid() {
-        return m_grabber->camera_count > 0;
+        return m_grabber->is_valid();
     }
 
     void free() override {
@@ -190,7 +197,7 @@ public:
     }
 
     bool eof() override {
-        return m_grabber->eof;
+        return m_grabber->eof();
     }
 
     bool available(bool wait) override {
