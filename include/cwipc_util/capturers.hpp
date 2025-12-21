@@ -131,13 +131,30 @@ protected:
 */
 class CwipcBaseCapture {
 protected:
-    std::string type;
+    std::string CLASSNAME;  //!< For error, warning and debug messages only
+    std::string type;   //!< cwipc type string, such as "kinect" or "realsense_playback"
 public:
+    /// Subclasses need to implement static factory(). 
+    ///  It creates a new capturer instance.
+
+    /// Subclasses need to implement static count_devices(). 
+    ///  It counts the number of hardware devices acccessible to this machine.
+
+    CwipcBaseCapture(std::string _CLASSNAME, std::string _type)
+    : CLASSNAME(_CLASSNAME), 
+      type(_type)
+    {}
     virtual ~CwipcBaseCapture() { };
+
+    /// Return the number of cameras connected to this capturer. Return 0 if something went wrong during initialization.
     virtual int get_camera_count() = 0;
+    /// Return a boolean stating whether the capturer is working (which implies it has cameras attached)
     virtual bool is_valid() = 0;
+    /// Reload configuration, possibly restarting capturer and cameras.
     virtual bool config_reload(const char* configFilename) = 0;
+    /// Get complete current configuration as JSON string.
     virtual std::string config_get() = 0;
+    /// Return true if end-of-file has been reached (only for playback capturers).
     virtual bool eof() = 0;
 };
 
