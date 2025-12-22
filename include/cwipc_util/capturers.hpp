@@ -25,7 +25,7 @@ inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {}
 #endif
 
 extern "C" {
-    enum cwipc_log_level { LOG_ERROR, LOG_WARNING, LOG_TRACE, LOG_DEBUG };
+    enum cwipc_log_level { CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG };
     _CWIPC_UTIL_EXPORT void cwipc_log(cwipc_log_level level, std::string module, std::string message);
 };
 
@@ -118,20 +118,59 @@ struct CwipcBaseCaptureConfig {
     }
 };
 
+/** Base class for both capturer and camera.
+ * 
+ * Only handles logging.
+ */
+class CwipcLoggingBase {
+protected:
+    std::string CLASSNAME;  //!< For error, warning and debug messages only
+    CwipcLoggingBase(std::string _CLASSNAME)
+    : CLASSNAME(_CLASSNAME)
+    {}
+    inline void _log(cwipc_log_level level, std::string message) {
+        cwipc_log(level, CLASSNAME, message);
+    }
+    inline void _log_error(std::string message) {
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, CLASSNAME, message);
+    }
+    inline void _log_warning(std::string message) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, CLASSNAME, message);
+    }
+    inline void _log_trace(std::string message) {
+        cwipc_log(CWIPC_LOG_LEVEL_TRACE, CLASSNAME, message);
+    }
+    inline void _log_debug(std::string message) {
+#ifdef CWIPC_DEBUG
+        cwipc_log(CWIPC_LOG_LEVEL_DEBUG, CLASSNAME, message);
+#endif
+    }
+    inline void _log_debug_thread(std::string message) {
+#ifdef CWIPC_DEBUG_THREAD
+        cwipc_log(CWIPC_LOG_LEVEL_DEBUG, CLASSNAME + " (thread)", message);
+#endif
+    }
+};
 /** Base class for camera 
  * 
 */
-class CwipcBaseCamera {
+class CwipcBaseCamera : public CwipcLoggingBase {
 protected:
     std::string type;
+
+public:
+    CwipcBaseCamera(std::string _CLASSNAME, std::string _type)
+    : CwipcLoggingBase(_CLASSNAME),
+      type(_type)
+    {}
+    virtual ~CwipcBaseCamera() {}
 };
 
 /** Base class for capturer 
  * 
 */
-class CwipcBaseCapture {
+class CwipcBaseCapture : public CwipcLoggingBase {
 protected:
-    std::string CLASSNAME;  //!< For error, warning and debug messages only
     std::string type;   //!< cwipc type string, such as "kinect" or "realsense_playback"
 public:
     /// Subclasses need to implement static factory(). 
@@ -141,7 +180,7 @@ public:
     ///  It counts the number of hardware devices acccessible to this machine.
 
     CwipcBaseCapture(std::string _CLASSNAME, std::string _type)
-    : CLASSNAME(_CLASSNAME), 
+    : CwipcLoggingBase(_CLASSNAME),
       type(_type)
     {}
     virtual ~CwipcBaseCapture() { };

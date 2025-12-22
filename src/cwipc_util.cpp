@@ -794,10 +794,10 @@ char cwipc_sink_interact(cwipc_sink *sink, const char *prompt, const char *respo
 
 inline std::string _level_to_string(cwipc_log_level level) {
     switch (level) {
-        case LOG_ERROR: return "Error";
-        case LOG_WARNING: return "Warning";
-        case LOG_TRACE: return "Trace";
-        case LOG_DEBUG: return "Debug";
+        case CWIPC_LOG_LEVEL_ERROR: return "Error";
+        case CWIPC_LOG_LEVEL_WARNING: return "Warning";
+        case CWIPC_LOG_LEVEL_TRACE: return "Trace";
+        case CWIPC_LOG_LEVEL_DEBUG: return "Debug";
     }
     return "Unknown-level";
 }
