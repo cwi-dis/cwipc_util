@@ -154,8 +154,26 @@ public:
     virtual bool config_reload(const char* configFilename) = 0;
     /// Get complete current configuration as JSON string.
     virtual std::string config_get() = 0;
+
+    //
+    // This section has the public capturer-independent API used during normal runtime.
+    //
+
+    /// Returns true when a new point cloud is available.
+    virtual bool pointcloud_available(bool wait) = 0;
+    /// Returns the new point cloud. The caller is now the owner of this point cloud.
+    virtual cwipc* get_pointcloud() = 0;
+    /// Returns a reasonable point size for the current capturer.
+    virtual float get_pointSize() = 0;
+    /// Return 3D point for a given camera, given RGB image 2D coordinates.
+    virtual bool map2d3d(int tile, int x_2d, int y_2d, int d_2d, float* out3d) = 0;
+    /// Return 2D point in depth image coordinates given 2D point in color image coordinates.
+    virtual bool mapcolordepth(int tile, int u, int v, int* out2d) = 0;
     /// Return true if end-of-file has been reached (only for playback capturers).
     virtual bool eof() = 0;
+    /// Seek to given timestamp (only implemented for playback capturers).
+    virtual bool seek(uint64_t timestamp) = 0;
+
 };
 
 /** Template base class for capturer implementations
