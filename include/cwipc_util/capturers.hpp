@@ -164,6 +164,22 @@ public:
       type(_type)
     {}
     virtual ~CwipcBaseCamera() {}
+public:
+    /// Step 1 in starting: tell the camera we are going to start. Called for all cameras.
+    virtual bool pre_start_all_cameras() = 0;
+    /// Step 2 in starting: starts the camera. Called for all cameras. 
+    virtual bool start_camera() = 0;
+    /// Step 3 in starting: starts the capturer. Called after all cameras have been started.
+    virtual void start_camera_streaming() = 0;
+    /// Step 4, called after all capturers have been started.
+    virtual void post_start_all_cameras() = 0;
+    
+    /// Prepare for stopping the cameras. May do something like stopping the recording.
+    virtual void pre_stop_camera() = 0;
+    /// Completely stops camera and capturer, releases all resources. Can be re-started with start_camera, etc.
+    virtual void stop_camera() = 0;
+    // xxxjack do we want is_sync_master()?
+
 protected:
     /// Helper function to check whether a point is within a given radius from the Y=0 axis.
     inline bool isPointInRadius(cwipc_pcl_point& pt, float radius_filter) {
@@ -259,7 +275,7 @@ public:
     /// Return a boolean stating whether the capturer is working (which implies it has cameras attached)
     virtual bool is_valid() = 0;
     /// Reload configuration, possibly restarting capturer and cameras.
-    virtual bool config_reload(const char* configFilename) = 0;
+    virtual bool config_reload_and_start_capturing(const char* configFilename) = 0;
     /// Get complete current configuration as JSON string.
     virtual std::string config_get() = 0;
 
@@ -302,7 +318,7 @@ public:
     cwipc_capturer_impl_base(const char* configFilename) 
     : m_grabber(GrabberClass::factory())
     {
-        m_grabber->config_reload(configFilename);
+        m_grabber->config_reload_and_start_capturing(configFilename);
     }
 
     virtual ~cwipc_capturer_impl_base() {
@@ -336,7 +352,7 @@ public:
     }
 
     virtual bool reload_config(const char* configFile) override {
-        return m_grabber->config_reload(configFile);
+        return m_grabber->config_reload_and_start_capturing(configFile);
     }
 
     bool eof() override {
