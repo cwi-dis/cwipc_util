@@ -164,6 +164,75 @@ public:
       type(_type)
     {}
     virtual ~CwipcBaseCamera() {}
+protected:
+    /// Helper function to check whether a point is within a given radius from the Y=0 axis.
+    inline bool isPointInRadius(cwipc_pcl_point& pt, float radius_filter) {
+        float distance_2 = pow(pt.x, 2) + pow(pt.z, 2);
+        return distance_2 < radius_filter * radius_filter; // radius^2 to avoid sqrt
+    }
+
+    /// Helper type: HSV color.
+    typedef struct HsvColor {
+        unsigned char h;
+        unsigned char s;
+        unsigned char v;
+    } HsvColor;
+
+    /// Helper function to convert RGB from a PCL point to HSV.
+    inline HsvColor rgbToHsv(cwipc_pcl_point* pnt) {
+        HsvColor hsv;
+        unsigned char rgbMin, rgbMax;
+
+        rgbMin = pnt->r < pnt->g ? (pnt->r < pnt->b ? pnt->r : pnt->b) : (pnt->g < pnt->b ? pnt->g : pnt->b);
+        rgbMax = pnt->r > pnt->g ? (pnt->r > pnt->b ? pnt->r : pnt->b) : (pnt->g > pnt->b ? pnt->g : pnt->b);
+
+        hsv.v = rgbMax;
+        if (hsv.v == 0) {
+            hsv.h = 0;
+            hsv.s = 0;
+
+            return hsv;
+        }
+
+        hsv.s = 255 * ((long)(rgbMax - rgbMin)) / hsv.v;
+        if (hsv.s == 0) {
+            hsv.h = 0;
+            return hsv;
+        }
+
+        if (rgbMax == pnt->r) {
+            hsv.h = 0 + 43 * (pnt->g - pnt->b) / (rgbMax - rgbMin);
+        } else if (rgbMax == pnt->g) {
+            hsv.h = 85 + 43 * (pnt->b - pnt->r) / (rgbMax - rgbMin);
+        } else {
+            hsv.h = 171 + 43 * (pnt->r - pnt->g) / (rgbMax - rgbMin);
+        }
+
+        return hsv;
+    }
+
+    /// Helper function to determine whether a point is not green (for greenscreen removal).
+    inline bool isNotGreen(cwipc_pcl_point* p) {
+        HsvColor hsv = rgbToHsv(p);
+
+        if (hsv.h >= 60 && hsv.h <= 130) {
+            if (hsv.s >= 0.15 && hsv.v >= 0.15) {
+                // reducegreen
+                if ((p->r * p->b) != 0 && (p->g * p->g) / (p->r * p->b) > 1.5) {
+                    p->r *= 1.4;
+                    p->b *= 1.4;
+                } else {
+                    p->r *= 1.2;
+                    p->b *= 1.2;
+                }
+            }
+
+            return !(hsv.s >= 0.4 && hsv.v >= 0.3);
+        }
+
+        return true;
+    }
+
 };
 
 /** Base class for capturer 
