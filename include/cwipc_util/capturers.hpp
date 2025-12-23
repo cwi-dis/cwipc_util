@@ -179,7 +179,19 @@ public:
     /// Completely stops camera and capturer, releases all resources. Can be re-started with start_camera, etc.
     virtual void stop_camera() = 0;
     // xxxjack do we want is_sync_master()?
-
+protected:
+    // internal API that is "shared" with other implementations (realsense, kinect)
+    /// Initialize any hardware settings for this camera.
+    /// Also see xxxjack
+    virtual bool _init_hardware_for_this_camera() = 0;
+    /// Initialize any filters that will be applied to all RGB/D images.
+    virtual bool _init_filters() = 0;
+    /// Apply filter to a frameset.
+    /// virtual void _apply_filters(...) = 0;
+    /// Initialize the body tracker
+    virtual bool _init_tracker() = 0;
+    /// Create per-API configuration for starting the camera 
+    /// virtual void _prepare_config_for_starting_camera(...) = 0;
 protected:
     /// Helper function to check whether a point is within a given radius from the Y=0 axis.
     inline bool isPointInRadius(cwipc_pcl_point& pt, float radius_filter) {
