@@ -178,7 +178,8 @@ public:
     virtual void pre_stop_camera() = 0;
     /// Completely stops camera and capturer, releases all resources. Can be re-started with start_camera, etc.
     virtual void stop_camera() = 0;
-    // xxxjack do we want is_sync_master()?
+    /// Return true if this camera is the sync master.
+    virtual bool is_sync_master() = 0;
 protected:
     // internal API that is "shared" with other implementations (realsense, kinect)
     /// Initialize any hardware settings for this camera.
