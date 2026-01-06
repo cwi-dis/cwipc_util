@@ -74,6 +74,9 @@ struct CwipcBaseCameraConfig {
         } else {
             trafo->setIdentity();
         }
+        cameraposition.x = -(*trafo)(0, 3);
+        cameraposition.y = -(*trafo)(1, 3);
+        cameraposition.z = -(*trafo)(2, 3);
     };
 
     virtual void _to_json(json& json_data) {
