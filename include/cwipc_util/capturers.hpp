@@ -315,7 +315,33 @@ public:
     virtual bool eof() = 0;
     /// Seek to given timestamp (only implemented for playback capturers).
     virtual bool seek(uint64_t timestamp) = 0;
+protected:
+    /// Load configuration from file or string.
+    virtual bool _apply_config(const char* configFilename) = 0;
+    /// Load default configuration based on hardware cameras connected.
+    virtual bool _apply_auto_config() = 0;
+    /// Get configuration for a single camera, by serial number.
+    /// Cannot do: Type_our_camera_config* get_camera_config(std::string serial)
+    
+    /// Setup camera synchronization (if needed).
+    virtual bool _setup_inter_camera_sync() = 0;
+    /// xxxjack another one?
+    virtual void _initial_camera_synchronization() = 0;
 
+    /// Create the per-camera capturers.
+    virtual bool _create_cameras() = 0;
+    /// Setup camera hardware parameters (white balance, etc).
+    virtual bool _init_hardware_for_all_cameras() = 0;
+    /// Check that all cameras are connected.
+    virtual bool _check_cameras_connected() = 0;
+    /// Start all cameras.
+    virtual void _start_cameras() = 0;
+    
+    /// Stop and unload all cameras and release all resources.
+    virtual void _unload_cameras() = 0;
+    /// Stop all cameras.
+    virtual void _stop_cameras() = 0;
+    
 };
 
 /** Template base class for capturer implementations
