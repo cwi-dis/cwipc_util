@@ -31,7 +31,18 @@ struct EIGEN_ALIGN16 PointXYZRGBMask : public _PointXYZRGBMask
         r = g = b = 0;
         a = 0;
     }
-    
+    inline PointXYZRGBMask (float _x, float _y, float _z, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)
+    {
+        x = _x; y = _y; z = _z; data[3] = 1.0f;
+        r = _r; g = _g; b = _b; a = _a;
+    }
+
+    inline PointXYZRGBMask(float _x, float _y, float _z) {
+        x = _x;
+        y = _y;
+        z = _z;
+        r = g = b = a = 0;
+    }
     friend std::ostream& operator << (std::ostream& os, const PointXYZRGBMask& p);
 };
 

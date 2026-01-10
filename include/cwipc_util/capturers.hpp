@@ -117,7 +117,7 @@ struct CwipcBaseCaptureConfig {
     }
     virtual void _to_json(json& json_data) {
         json_data["type"] = type;
-        json_data["version"] = 4;
+        json_data["version"] = 5;
     }
 };
 
@@ -193,7 +193,7 @@ protected:
     /// Apply filter to a frameset.
     /// virtual void _apply_filters(...) = 0;
     /// Initialize the body tracker
-    virtual bool _init_tracker() = 0;
+    virtual bool _init_skeleton_tracker() = 0;
     /// Create per-API configuration for starting the camera 
     /// virtual void _prepare_config_for_starting_camera(...) = 0;
 protected:
