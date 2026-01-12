@@ -79,7 +79,7 @@ struct CwipcBaseCameraConfig {
         cameraposition.z = -(*trafo)(2, 3);
     };
 
-    virtual void _to_json(json& json_data) {
+    virtual void _to_json(json& json_data, bool for_recording=false) {
         json_data["type"] = type;
         json_data["serial"] = serial;
         json_data["disabled"] = disabled;
@@ -109,13 +109,13 @@ struct CwipcBaseCameraConfig {
 struct CwipcBaseCaptureConfig {
     std::string type;
 
-    virtual std::string to_string() = 0;
+    virtual std::string to_string(bool for_recording=false) = 0;
     virtual bool from_string(const char* buffer, std::string typeWanted) = 0;
     virtual bool from_file(const char* filename, std::string typeWanted) = 0;
     virtual void _from_json(const json& json_data) {
         json_data.at("type").get_to(type);
     }
-    virtual void _to_json(json& json_data) {
+    virtual void _to_json(json& json_data, bool for_recording=false) {
         json_data["type"] = type;
         json_data["version"] = 5;
     }
@@ -341,6 +341,8 @@ protected:
     virtual void _unload_cameras() = 0;
     /// Stop all cameras.
     virtual void _stop_cameras() = 0;
+    /// When recording, create the cameraconfig.json file for the recording.
+    virtual void _post_stop_all_cameras() = 0;
     
 };
 
