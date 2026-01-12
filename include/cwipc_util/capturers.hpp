@@ -183,6 +183,12 @@ public:
     virtual void stop_camera() = 0;
     /// Return true if this camera is the sync master.
     virtual bool is_sync_master() = 0;
+
+
+    /// Map 2D color image coordinates to 2D depth image coordinates.
+    virtual bool mapcolordepth(int x_c, int y_c, int *out2d) = 0;
+    /// Map 2D color image coordinates to 3D coordinates.
+    virtual bool map2d3d(int x_2d, int y_2d, int d_2d, float* out3d) = 0;
 protected:
     // internal API that is "shared" with other implementations (realsense, kinect)
     /// Initialize any hardware settings for this camera.
@@ -195,7 +201,7 @@ protected:
     /// Initialize the body tracker
     virtual bool _init_skeleton_tracker() = 0;
     /// Create per-API configuration for starting the camera 
-    /// virtual void _prepare_config_for_starting_camera(...) = 0;
+    /// virtual void _init_config_for_this_camera(...) = 0;
 protected:
     /// Helper function to check whether a point is within a given radius from the Y=0 axis.
     inline bool isPointInRadius(cwipc_pcl_point& pt, float radius_filter) {
