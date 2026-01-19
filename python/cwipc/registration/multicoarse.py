@@ -520,7 +520,11 @@ class MultiCameraCoarseAruco(MultiCameraCoarse):
         rv_ids : List[int] = []
         if not ids is None:
             for i in range(len(ids)):
-                rv_ids.append(int(ids[i]))
+                cur_id = ids[i]
+                if cur_id.shape != ():
+                    # Jack is unsure... Change in return value signature of the ArucoDetector?
+                    cur_id = cur_id[0]
+                rv_ids.append(int(cur_id))
                 area = corners[i]
                 if area.shape == (1, 4, 2):
                     area = area[0]
@@ -640,7 +644,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         
         serial = self.serial_for_tilenum.get(tilenum)
         if not serial:
-            print(f"cwipc_register: camera {camindex}: getrgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
+            print(f"cwipc_register: camera {camindex}: get_rgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
             return None, None
         assert self.original_pointcloud
         auxdata = self.original_pointcloud.access_auxiliary_data()
