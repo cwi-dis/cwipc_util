@@ -37,6 +37,7 @@ def main():
     args.loop = False
     args.nodecode = False
     args.kinect = None
+    args.orbbec = None
     args.k4aplayback = None
     args.realsense = None
     args.synthetic = None
