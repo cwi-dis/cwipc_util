@@ -20,14 +20,26 @@ try:
     from .. import realsense2
 except ModuleNotFoundError:
     realsense2 = None
+except ImportError:
+    realsense2 = None
 try:
     from .. import certh
 except ModuleNotFoundError:
+    certh = None
+except ImportError:
     certh = None
 try:
     from .. import kinect
 except ModuleNotFoundError:
     kinect = None
+except ImportError:
+    kinect = None
+try:
+    from .. import orbbec
+except ModuleNotFoundError:
+    orbbec = None
+except ImportError:
+    orbbec = None
 
 if False:
     # Convoluted code warning: adding ../python directory to path so we can import subsource
@@ -68,6 +80,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     """
     global realsense2
     global kinect
+    global orbbec
     name : Optional[str] = None
     source : cwipc_source_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
@@ -107,6 +120,17 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         else:
             source = cast(cwipc_source_factory_abstract, realsense2.cwipc_realsense2)
         name = 'realsense'
+    elif args.orbbec:
+        if orbbec == None:
+            print(f"{sys.argv[0]}: No support for orbbec grabber on this platform")
+            sys.exit(-1)
+        if autoConfig:
+            source = lambda config="auto": orbbec.cwipc_orbbec(config) # type: ignore
+        elif args.cameraconfig:
+            source = lambda config=args.cameraconfig: orbbec.cwipc_orbbec(config) # type: ignore
+        else:
+            source = cast(cwipc_source_factory_abstract, orbbec.cwipc_orbbec)
+        name = 'orbbec'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
         name = None
@@ -215,6 +239,13 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 # Kinect support could not be loaded.
                 warnings.warn("kinect support disabled: could not load")
                 kinect = None
+        if orbbec:
+            try:
+                orbbec.cwipc_orbbec_dll_load()
+            except RuntimeError:
+                # Orbbec support could not be loaded.
+                warnings.warn("orbbec support disabled: could not load")
+                orbbec = None
         if autoConfig:
             source = lambda : cwipc_capturer("auto")
         elif args.cameraconfig:
@@ -396,6 +427,7 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_selection_args.add_argument("--realsense", action="store_true", help="Use Intel Realsense capturer (default: from camera configuration)")
     input_selection_args.add_argument("--kinect", action="store_true", help="Use Azure Kinect capturer (default: from camera configuration)")
     input_selection_args.add_argument("--k4aplayback", action="store_true", help="Use Azure Kinect pre-recorded file capturer")
+    input_selection_args.add_argument("--orbbec", action="store_true", help="Use Orbbec capturer (default: from camera configuration)")
     input_selection_args.add_argument("--synthetic", action="store_true", help="Use synthetic pointcloud source")
     input_selection_args.add_argument("--proxy", type=int, action="store", metavar="PORT", help="Use proxyserver pointcloud source server, proxyserver listens on PORT")
     input_selection_args.add_argument("--netclient", action="store", metavar="HOST:PORT", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST")
@@ -460,9 +492,12 @@ def beginOfRun(args : argparse.Namespace) -> None:
         elif name == 'cwipc_kinect':
             from _cwipc_kinect import cwipc_kinect_dll_load
             cwipc_kinect_dll_load(path)
+        elif name == 'cwipc_orbbec':
+            from _cwipc_orbbec import cwipc_orbbec_dll_load
+            cwipc_orbbec_dll_load(path)
         else:
             print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
-            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect")
+            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, cwipc_orbbec")
             sys.exit(1)
 
 def endOfRun(args : argparse.Namespace) -> None:
