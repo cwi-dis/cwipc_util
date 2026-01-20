@@ -804,15 +804,30 @@ inline std::string _level_to_string(cwipc_log_level level) {
     return "Unknown-level";
 }
 
+static char **currentErrorBuf = nullptr;
+
 void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
     // No filtering on level yet, no callbacks. All that is future work.
+    std::stringstream msgstream;
+    msgstream << module << ": " << _level_to_string(level) << ": " << message << std::endl;
+    // Output to stdout.
 #if 1
     static time_t starttime = 0;
     if (starttime == 0) {
         starttime = time(0);
     }
     time_t timestamp = time(0) - starttime;
-    std::cerr << std::to_string(timestamp) << ": ";
+    std::cout << std::to_string(timestamp) << ": ";
 #endif
-    std::cerr << module << ": " << _level_to_string(level) << ": " << message << std::endl;
+    std::cout << msgstream.str();
+    // xxxjack to be done: use in the callback.
+    // And put in the errorbuf, if this is an error, and if there is an error buffer.
+    if (currentErrorBuf && level == CWIPC_LOG_LEVEL_ERROR ) {
+        // This leaks, but it shouldn't happen often...
+        *currentErrorBuf = strdup(msgstream.str().c_str());
+    }
+}
+
+void cwipc_log_set_errorbuf(char **errorBuf) {
+    currentErrorBuf = errorBuf;
 }
