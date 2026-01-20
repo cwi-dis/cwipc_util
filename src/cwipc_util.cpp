@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include <chrono>
+
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/common/geometry.h>
@@ -804,5 +806,13 @@ inline std::string _level_to_string(cwipc_log_level level) {
 
 void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
     // No filtering on level yet, no callbacks. All that is future work.
+#if 1
+    static time_t starttime = 0;
+    if (starttime == 0) {
+        starttime = time(0);
+    }
+    time_t timestamp = time(0) - starttime;
+    std::cerr << std::to_string(timestamp) << ": ";
+#endif
     std::cerr << module << ": " << _level_to_string(level) << ": " << message << std::endl;
 }
