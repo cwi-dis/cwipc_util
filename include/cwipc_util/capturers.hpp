@@ -196,6 +196,10 @@ public:
     /// Return true if this camera is the sync master.
     virtual bool is_sync_master() = 0;
 
+    /// Seek. Fails for cameras, overriden for playback cameras.
+    virtual bool seek(uint64_t timestamp) = 0;
+    /// Are we at end-of-file? Always false for cameras.
+    virtual bool eof() = 0;
 
     /// Map 2D color image coordinates to 2D depth image coordinates.
     virtual bool mapcolordepth(int x_c, int y_c, int *out2d) = 0;
