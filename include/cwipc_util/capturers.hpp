@@ -5,6 +5,9 @@
 #include "cwipc_util/api.h"
 #include <thread>
 
+#define CWIPC_DEBUG
+#define CWIPC_DEBUG_THREAD
+
 #include <nlohmann/json.hpp>
 
 //
