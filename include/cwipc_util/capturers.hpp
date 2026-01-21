@@ -210,7 +210,7 @@ protected:
     /// Initialize the body tracker
     virtual bool _init_skeleton_tracker() = 0;
     /// Create per-API configuration for starting the camera 
-    /// virtual void _init_config_for_this_camera(...) = 0;
+    /// virtual void _init_pipeline_for_this_camera(...) = 0;
 protected:
     /// Helper function to check whether a point is within a given radius from the Y=0 axis.
     inline bool isPointInRadius(cwipc_pcl_point& pt, float radius_filter) {
