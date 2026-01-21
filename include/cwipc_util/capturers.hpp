@@ -353,7 +353,7 @@ protected:
     /// Check that all cameras are connected.
     virtual bool _check_cameras_connected() = 0;
     /// Start all cameras.
-    virtual void _start_cameras() = 0;
+    virtual bool _start_cameras() = 0;
     
     /// Stop and unload all cameras and release all resources.
     virtual void _unload_cameras() = 0;
