@@ -822,7 +822,8 @@ void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
     std::cout << msgstream.str();
     // xxxjack to be done: use in the callback.
     // And put in the errorbuf, if this is an error, and if there is an error buffer.
-    if (currentErrorBuf && level == CWIPC_LOG_LEVEL_ERROR ) {
+    // But don't overwrite an earlier error in the error buffer.
+    if (currentErrorBuf && level == CWIPC_LOG_LEVEL_ERROR && *currentErrorBuf == nullptr) {
         // This leaks, but it shouldn't happen often...
         *currentErrorBuf = strdup(msgstream.str().c_str());
     }
