@@ -12,6 +12,9 @@ import struct
 _thisdir=os.path.dirname(__file__)
 _topdir=os.path.dirname(_thisdir)
 TEST_FIXTURES_DIR=os.path.join(_topdir, "tests", "fixtures")
+TEST_OUTPUT_DIR=os.path.join(TEST_FIXTURES_DIR, "output")
+if not os.access(TEST_OUTPUT_DIR, os.W_OK):
+    TEST_OUTPUT_DIR=tempfile.mkdtemp('cwipc_util_test') # type: ignore
 PLY_DIRNAME=os.path.join(TEST_FIXTURES_DIR, "input")
 PLY_FILENAME=os.path.join(PLY_DIRNAME, "pcl_frame1.ply")
 
