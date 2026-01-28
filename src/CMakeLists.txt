@@ -12,10 +12,11 @@ add_library(cwipc_util SHARED
 
 target_sources(cwipc_util
 	PRIVATE
+	logging.cpp
 	"../include/cwipc_util/api.h"
 	"../include/cwipc_util/api_pcl.h"
-	"../include/cwipc_util/capturers.hpp"
-	"../include/cwipc_util/vectors.h"
+	"../include/cwipc_util/internal/logging.hpp"
+	"../include/cwipc_util/internal/capturers.hpp"
 )
 
 if(CWIPC_WITH_GUI)

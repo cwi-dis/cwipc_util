@@ -3,6 +3,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal/logging.hpp"
 #include <thread>
 
 #define CWIPC_DEBUG
@@ -26,21 +27,6 @@ inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
 #else
 inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {}
 #endif
-
-extern "C" {
-    enum cwipc_log_level { CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG };
-    /** Call to emit a log message.
-     * Mainly meant for internal use within cwipc, so messages get forwarded to the correct recipient.
-     */
-    _CWIPC_UTIL_EXPORT void cwipc_log(cwipc_log_level level, std::string module, std::string message);
-    /** Set error capture buffer.
-     * Called internally by methods that have a char **errorMessage argument, and
-     * cleared at the end of the method.
-     * This will capture the most recent error here.
-     */
-    _CWIPC_UTIL_EXPORT void cwipc_log_set_errorbuf(char **errorbuf);
-};
-
 
 using json = nlohmann::json;
 
