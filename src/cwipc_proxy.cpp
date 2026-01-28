@@ -24,6 +24,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal/logging.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -90,7 +91,7 @@ public:
             // accept on the socket, if not connected yet
             //
             if (m_socket < 0) {
-                std::cerr << "cwipc_proxy: wait for connection" << std::endl;
+                cwipc_log(CWIPC_LOG_LEVEL_INFO, "cwipc_proxy", "waiting for connection...");
                 m_socket = accept(m_listen_socket, NULL, 0);
 
                 if (m_socket < 0) {
@@ -100,7 +101,7 @@ public:
                     break;
                 }
 
-                std::cerr << "cwipc_proxy: connection accepted" << std::endl;
+                cwipc_log(CWIPC_LOG_LEVEL_INFO, "cwipc_proxy", "connection accepted");
             }
             //
             // Get the header and check it
@@ -114,7 +115,7 @@ public:
             }
 
             if (header.magic != CWIPC_POINT_PACKETHEADER_MAGIC) {
-                std::cerr << "cwpic_proxy: bad magic number: " << header.magic << std::endl;
+                cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", "invalid magic number in packet header");
                 break;
             }
 
@@ -123,7 +124,7 @@ public:
             //
             cwipc_point* points = (cwipc_point *)malloc(header.dataCount);
             if (points == NULL) {
-                std::cerr << "cwpic_proxy: malloc failed" << std::endl;
+                cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", "malloc failed");
                 break;
             }
 
@@ -138,7 +139,7 @@ public:
             ::free(points);
 
             if (pc == NULL) {
-                std::cerr << "cwipc_proxy: cwipc_from_points: " << errorMessage << std::endl;
+                cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_proxy", std::string("cwipc_from_points: ") + errorMessage);
                 break;
             }
 

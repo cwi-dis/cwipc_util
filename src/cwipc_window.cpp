@@ -11,6 +11,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal/logging.hpp"
 #ifdef CWIPC_WITH_GUI
 #include "window_util.hpp"
 
@@ -288,7 +289,7 @@ public:
 
         if (rv == 'r') { // Toggle skeleton rendering
             m_render_skeleton = !m_render_skeleton;
-            std::cout << (m_render_skeleton?"Enabled":"Disabled") << " skeleton rendering" << std::endl;
+            cwipc_log("cwipc_sink_window_impl: Skeleton rendering " + std::string(m_render_skeleton ? "enabled" : "disabled"));
         }
 
         return rv;

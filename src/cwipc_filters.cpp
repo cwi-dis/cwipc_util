@@ -14,6 +14,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal/logging.hpp"
 
 #include <pcl/point_cloud.h>
 #include <pcl/exceptions.h>
@@ -55,7 +56,7 @@ cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
 
         if (dst->empty()) {
             // No points, algorithm apparently failed.
-            std::cerr << "cwipc_downsample: pcl::VoxelGrid returned empty cloud" << std::endl;
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_downsample", "VoxelGrid filter produced empty pointcloud");
             return NULL;
         }
 
@@ -71,10 +72,10 @@ cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
             dstpt.a |= srcpt.a;
         }
     } catch (pcl::PCLException& e) {
-        std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_downsample", std::string("VoxelGrid PCL exception: ") + e.detailedMessage());
         return NULL;
     } catch (std::exception& e) {
-        std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_downsample", std::string("VoxelGrid std exception: ") + e.what());
         return NULL;
     }
 
@@ -159,10 +160,10 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
             *dst += *grid_output;
         }
     } catch (pcl::PCLException& e) {
-        std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_downsample", std::string("PCL exception: ") + e.detailedMessage());
         return NULL;
     } catch (std::exception& e) {
-        std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_downsample", std::string("std exception: ") + e.what());
         return NULL;
     }
     // Now create the cwipc point cloud from the pcl point cloud
@@ -205,10 +206,10 @@ cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stdd
         sor.setStddevMulThresh(stddevMulThresh);
         sor.filter(*dst);
     } catch (pcl::PCLException& e) {
-        std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_remove_outliers", std::string("PCL exception: ") + e.detailedMessage());
         return NULL;
     } catch (std::exception& e) {
-        std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_remove_outliers", std::string("std exception: ") + e.what());
         return NULL;
     }
 
@@ -240,27 +241,23 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
     // Apply statistical outlier removal
     try {
         if (perTile) {
-            // std::cout << "cwipc_util: cwipc_remove_outliers: Removing outliers per tile" << std::endl;
             std::vector< int > tiles;
 
             for (auto pt : src->points) {
                 int tile = pt.a;
 
                 if (std::find(tiles.begin(), tiles.end(), tile) != tiles.end()) {
-                    //std::cout << "Element found";
                     continue;
                 } else {
                     tiles.push_back(tile);
                 }
             }
 
-            //std::cout << "Found " << tiles.size() << " tiles " << std::endl;
             for (int tile : tiles) {
                 cwipc* aux_pc = cwipc_tilefilter(pc, tile);
                 cwipc_pcl_pointcloud aux_dst = cwipc_remove_outliers(aux_pc, kNeighbors, stddevMulThresh);
                 *dst += *aux_dst;
                 aux_pc->free();
-                //std::cout << "Cleaned tile " << tile << std::endl;
             }
 
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
@@ -273,7 +270,6 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 
             return rv;
         } else {
-            // std::cout << "Removing outliers on the full pointcloud" << std::endl;
             dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
@@ -286,10 +282,10 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             return rv;
         }
     } catch (pcl::PCLException& e) {
-        std::cerr << "cwipc_downsample: PCL exception: " << e.detailedMessage() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_remove_outliers", std::string("PCL exception: ") + e.detailedMessage());
         return NULL;
     } catch (std::exception& e) {
-        std::cerr << "cwipc_downsample: std exception: " << e.what() << std::endl;
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_remove_outliers", std::string("std exception: ") + e.what());
         return NULL;
     }
 
