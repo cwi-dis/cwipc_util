@@ -14,6 +14,7 @@
 
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
+#include "cwipc_util/internal/logging.hpp"
 
 class cwipc_source_synthetic_impl : public cwipc_tiledsource {
 private:
@@ -195,6 +196,11 @@ cwipc_tiledsource* cwipc_synthetic(int fps, int npoints, char **errorMessage, ui
 
         return NULL;
     }
-
-    return new cwipc_source_synthetic_impl(fps, npoints);
+    cwipc_log_set_errorbuf(errorMessage);
+    cwipc_tiledsource *rv = new cwipc_source_synthetic_impl(fps, npoints);
+    if (rv == nullptr && errorMessage && *errorMessage == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_synthetic", "unspecified error");
+    }
+    cwipc_log_set_errorbuf(nullptr);
+    return rv;
 }

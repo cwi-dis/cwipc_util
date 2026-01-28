@@ -345,12 +345,17 @@ cwipc_sink* cwipc_window(const char *title, char **errorMessage, uint64_t apiVer
 
         return NULL;
     }
-
-    return new cwipc_sink_window_impl(title);
+    cwipc_log_set_errorbuf(errorMessage);
+    cwipc_sink* rv = new cwipc_sink_window_impl(title);
+    if (rv == nullptr && errorMessage && *errorMessage == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_window", "unspecified error creating window sink");
+    }
+    cwipc_log_set_errorbuf(nullptr);
+    return rv;
 #else
-	if (errorMessage) {
-		*errorMessage = (char *)"cwipc_window: not implemented, cwipc_util built without GUI support";
-	}
+	cwipc_log_set_errorbuf(errorMessage);
+    cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_window", "cwipc was built without GUI support");
+    cwipc_log_set_errorbuf(nullptr);
 
 	return NULL;
 #endif // CWIPC_WITH_GUI

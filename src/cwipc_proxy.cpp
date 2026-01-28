@@ -248,7 +248,7 @@ cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, 
 
         return NULL;
     }
-
+    cwipc_log_set_errorbuf(errorMessage);
     struct addrinfo hints;
     struct addrinfo *result = NULL;
 
@@ -269,19 +269,16 @@ cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, 
     int status = getaddrinfo(host, portbuf, &hints, &result);
 
     if (status != 0) {
-        if (errorMessage) {
-            *errorMessage = (char *)gai_strerror(status);
-        }
-
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", std::string("getaddrinfo: ") + gai_strerror(status));
+        cwipc_log_set_errorbuf(nullptr);
         return NULL;
     }
 
     int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
     if (sock < 0) {
-        if (errorMessage) {
-            *errorMessage = strerror(errno);
-        }
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", std::string("socket: ") + strerror(errno));
+        cwipc_log_set_errorbuf(nullptr);
 
         return NULL;
     }
@@ -289,9 +286,8 @@ cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, 
     status = bind(sock, result->ai_addr, result->ai_addrlen);
 
     if (status < 0) {
-        if (errorMessage) {
-            *errorMessage = strerror(errno);
-        }
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", std::string("bind: ") + strerror(errno));
+        cwipc_log_set_errorbuf(nullptr);
 
         closesocket(sock);
         return NULL;
@@ -300,13 +296,17 @@ cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, 
     status = listen(sock, 1);
 
     if (status < 0) {
-        if (errorMessage) {
-            *errorMessage = strerror(errno);
-        }
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", std::string("listen: ") + strerror(errno));
+        cwipc_log_set_errorbuf(nullptr);
 
         closesocket(sock);
         return NULL;
     }
 
-    return new cwipc_source_proxy_impl(sock);
+    cwipc_tiledsource *rv = new cwipc_source_proxy_impl(sock);
+    if (rv == nullptr && errorMessage && *errorMessage == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", "proxy allocation failed without error message");
+    }
+    cwipc_log_set_errorbuf(nullptr);
+    return rv;
 }

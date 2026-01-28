@@ -38,7 +38,8 @@ cwipc_tiledsource *cwipc_capturer(const char *configFilename, char **errorMessag
 
         return NULL;
     }
-
+    cwipc_log_set_errorbuf(errorMessage);
+    
     if (configFilename == nullptr || *configFilename == '\0') {
         configFilename = "cameraconfig.json";
     }
@@ -54,12 +55,8 @@ cwipc_tiledsource *cwipc_capturer(const char *configFilename, char **errorMessag
                     if (candidate == nullptr) {
                         candidate = &c;
                     } else {
-                        if (errorMessage) {
-                            char* msgbuf = (char*)malloc(1024);
-                            snprintf(msgbuf, 1024, "cwipc_capturer: auto: cameras of multiple types found");
-                            *errorMessage = msgbuf;
-                        }
-
+                        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_capturer", "auto: multiple supported cameras found");
+                        cwipc_log_set_errorbuf(nullptr);
                         return nullptr;
                     }
                 }
@@ -67,11 +64,8 @@ cwipc_tiledsource *cwipc_capturer(const char *configFilename, char **errorMessag
         }
 
         if (candidate == nullptr) {
-            if (errorMessage) {
-                char* msgbuf = (char*)malloc(1024);
-                snprintf(msgbuf, 1024, "cwipc_capturer: auto: no supported cameras found");
-                *errorMessage = msgbuf;
-            }
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_capturer", "auto: no supported cameras found");
+            cwipc_log_set_errorbuf(nullptr);
 
             return nullptr;
         }
