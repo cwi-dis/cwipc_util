@@ -42,24 +42,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 
-#
-# Testing.
-#
-
-# setup test environment (installs module into venv)
-
-add_test(NAME _python_setup_cwipc_util
-	COMMAND ${Python3_EXECUTABLE} -m pip install --no-cache-dir --upgrade --find-links=${CMAKE_PYWHEELS_OUTPUT_DIRECTORY} cwipc_util
-	)
-set_tests_properties(_python_setup_cwipc_util PROPERTIES FIXTURES_SETUP venv RUN_SERIAL TRUE)
-
 # Run the unittests
 
 add_test(NAME cwipc_util_python_tests
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY}/test_cwipc_util.py
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 	)
-cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv_with_cwipc)
 
 # Test the various scripts
 
@@ -67,26 +56,26 @@ cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv)
 add_test(NAME cwipc_view
 	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2
 	)
-cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv_with_cwipc)
 
 add_test(NAME cwipc_register
 	COMMAND ${Python3_BINDIR}/cwipc_register --help
 	)
-cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv_with_cwipc)
 set_tests_properties(cwipc_register PROPERTIES RUN_SERIAL TRUE)
 
 add_test(NAME cwipc_forward
 	COMMAND ${Python3_BINDIR}/cwipc_forward --help
 	)
-cwipc_python_test(TEST cwipc_forward FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_forward FIXTURES_REQUIRED venv_with_cwipc)
 
 add_test(NAME cwipc_toproxy
 	COMMAND ${Python3_BINDIR}/cwipc_toproxy --help
 	)
-cwipc_python_test(TEST cwipc_toproxy FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_toproxy FIXTURES_REQUIRED venv_with_cwipc)
 
 add_test(NAME cwipc_grab
 	COMMAND ${Python3_BINDIR}/cwipc_grab --synthetic --count 2 .
 	)
-cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv)
+cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv_with_cwipc)
 
