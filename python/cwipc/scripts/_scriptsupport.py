@@ -408,7 +408,6 @@ def BaseArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
     parser.add_argument("--debugpy", action="store_true", help="Pause at begin of run to wait for debugpy attaching")
-    parser.add_argument("--debuglibrary", action="append", default=[], metavar="NAME=PATH", help="Load a cwipc dynamic library from a specific path, for debugging")
     return parser
 
 def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
@@ -463,32 +462,7 @@ def beginOfRun(args : argparse.Namespace) -> None:
         debugpy.listen(5678)
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
-        print(f"{sys.argv[0]}: debugger attached")        
-    for debuglibrary in args.debuglibrary:
-        try:
-            name, path = debuglibrary.split('=')
-        except ValueError:
-            name = path = None
-        print(f"{sys.argv[0]}: load {name} from {path}", file=sys.stderr)
-        if name == 'cwipc_util':
-            from ..util import cwipc_util_dll_load
-            cwipc_util_dll_load(path)
-        elif name == 'cwipc_codec':
-            from _cwipc_codec import cwipc_codec_dll_load
-            cwipc_codec_dll_load(path)
-        elif name == 'cwipc_realsense2':
-            from _cwipc_realsense2 import cwipc_realsense2_dll_load
-            cwipc_realsense2_dll_load(path)
-        elif name == 'cwipc_kinect':
-            from _cwipc_kinect import cwipc_kinect_dll_load
-            cwipc_kinect_dll_load(path)
-        elif name == 'cwipc_orbbec':
-            from _cwipc_orbbec import cwipc_orbbec_dll_load
-            cwipc_orbbec_dll_load(path)
-        else:
-            print(f"{sys.argv[0]}: incorrect --debuglibrary argument: {args.debuglibrary}")
-            print(f"{sys.argv[0]}: allowed values: cwipc_util, cwipc_codec, cwipc_realsense2, cwipc_kinect, cwipc_orbbec")
-            sys.exit(1)
+        print(f"{sys.argv[0]}: debugger attached")
 
 def endOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
