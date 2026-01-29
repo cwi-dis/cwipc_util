@@ -23,13 +23,13 @@
 * Version of the current API of cwipc. Pass to constructors to ensure library
 * compatibility.
 */
-#define CWIPC_API_VERSION ((uint64_t)0x20240128)
+#define CWIPC_API_VERSION ((uint64_t)0x20260129)
 
 /** \brief Version of oldest compatible cwipc API.
 *
 * Version of the oldest API of cwipc to which this set of libraries is compatible.
 */
-#define CWIPC_API_VERSION_OLD ((uint64_t)0x20211230)
+#define CWIPC_API_VERSION_OLD ((uint64_t)0x20260129)
 
 /** \brief 4 characters that are magic number of cwipcdump file format
 */
@@ -146,6 +146,13 @@ struct cwipc_tileinfo {
     uint8_t ncamera; 			/**< Number of physical cameras that contribute to this tile */
     uint8_t cameraMask;         /**< Bit mask for this tile */
 };
+
+
+/** \brief Log levels */
+enum cwipc_log_level { CWIPC_LOG_LEVEL_NONE=0, CWIPC_LOG_LEVEL_ERROR=1, CWIPC_LOG_LEVEL_WARNING=2, CWIPC_LOG_LEVEL_TRACE=3, CWIPC_LOG_LEVEL_DEBUG=4 };
+
+/** \brief Callback function signature for capturing log output */
+typedef void (*cwipc_log_callback_t)(int level, const char* message);
 
 #ifdef __cplusplus
 
@@ -554,9 +561,27 @@ typedef struct _cwipc_auxiliary_data {
 extern "C" {
 #endif
 
-/** \brief Return version string.
- */
-_CWIPC_UTIL_EXPORT const char *cwipc_get_version();
+    /** \brief Return version string.
+     */
+    _CWIPC_UTIL_EXPORT const char *cwipc_get_version();
+
+    /** \brief configure logging.
+     * The environment variable CWIPC_LOG_LEVEL can also be used to set the log level.
+     * Subsequent calls to this function will override previous settings.
+     * Ensure to clear callback before cleanup when calling from other languages.
+     * \param level The maximum log level in which we are interested. CWIPC_LOG_LEVEL_NONE keeps log-level as-is.
+     * \param callback A callback function to receive log messages. If NULL, logging to callback is disabled and logging goes to stderr.
+     */
+    _CWIPC_UTIL_EXPORT void cwipc_log_configure(int level, cwipc_log_callback_t callback);
+
+    /** \brief Emit a log message.
+     *  Note that this function is primarily intended for use by cwipc extensions or wrappers.
+     * \param level The log level of this message.
+     * \param module The module emitting the log message.
+     * \param message The log message.
+     */
+    _CWIPC_UTIL_EXPORT void _cwipc_log_emit(int level, const char* module, const char* message);
+
     /** \brief Read pointcloud from .ply file.
      * \param filename The ply file to read.
      * \param timestamp The timestamp to record in the cwipc object.

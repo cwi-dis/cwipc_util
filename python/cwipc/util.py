@@ -4,6 +4,7 @@ import ctypes.util
 import warnings
 import os
 import sys
+import logging
 if sys.platform == "darwin":
     # Workaround for open3d 0.19 including a faulty libomp.dylib (too old version for some other packages such as libpcl)
     # We load it from the system library path first.
@@ -21,7 +22,7 @@ if sys.platform == "darwin":
 import open3d
 import numpy
 import numpy.typing
-from typing import Optional, List, Type, Any, Union, Dict
+from typing import Optional, List, Type, Any, Union, Dict, Callable
 from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_dict
 
 __all__ = [
@@ -30,7 +31,13 @@ __all__ = [
     'CWIPC_FLAGS_BINARY',
     'CwipcError',
     '_cwipc_dll_search_path_collection',
-    
+
+    'CWIPC_LOG_LEVEL_NONE',
+    'CWIPC_LOG_LEVEL_ERROR',
+    'CWIPC_LOG_LEVEL_WARNING',
+    'CWIPC_LOG_LEVEL_TRACE',
+    'CWIPC_LOG_LEVEL_DEBUG',
+
     'cwipc_wrapper',
     'cwipc_source_wrapper',
     'cwipc_tiledsource_wrapper',
@@ -44,6 +51,9 @@ __all__ = [
     'cwipc_point_packetheader',
     
     'cwipc_get_version',
+    'cwipc_log_configure',
+    'cwipc_log_default_callback',
+    '_cwipc_log_emit',
     'cwipc_read',
     'cwipc_read_debugdump',
     'cwipc_write',
@@ -69,7 +79,7 @@ __all__ = [
     'cwipc_crop',
 ]
 
-CWIPC_API_VERSION = 0x20240128
+CWIPC_API_VERSION = 0x20260129
 
 #
 # This is a workaround for the change in DLL loading semantics on Windows since Python 3.8
@@ -332,6 +342,22 @@ class cwipc_point_packetheader(ctypes.Structure):
 CWIPC_POINT_PACKETHEADER_MAGIC = 0x20210208
 
 CWIPC_FLAGS_BINARY = 1
+
+# Logging.
+#
+# Callback type for Python:
+cwipc_log_callback_type = Callable[[int, bytes], None]
+# Callback type for native code:
+_cwipc_log_callback_t = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p)
+# Log levels:
+CWIPC_LOG_LEVEL_NONE=0
+CWIPC_LOG_LEVEL_ERROR=1
+CWIPC_LOG_LEVEL_WARNING=2
+CWIPC_LOG_LEVEL_TRACE=3
+CWIPC_LOG_LEVEL_DEBUG=4
+# Variable to hold the reference to the callback to prevent garbage collection
+_cwipc_log_callback_ref = None
+
 #
 # NOTE: the signatures here must match those in cwipc_util/api.h or all hell will break loose
 #
@@ -356,7 +382,13 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     
     _cwipc_util_dll_reference.cwipc_get_version.argtypes = []
     _cwipc_util_dll_reference.cwipc_get_version.restype = ctypes.c_char_p
-    
+
+    _cwipc_util_dll_reference.cwipc_log_configure.argtypes = [ctypes.c_int, _cwipc_log_callback_t]
+    _cwipc_util_dll_reference.cwipc_log_configure.restype = None
+
+    _cwipc_util_dll_reference._cwipc_log_emit.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference._cwipc_log_emit.restype = None
+
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
     
@@ -960,7 +992,24 @@ def cwipc_get_version() -> str:
     except ImportError:
         pass
     return version
-                 
+
+def cwipc_log_configure(level : int, callback: Optional[cwipc_log_callback_type]=None) -> None:
+    """Configure logging level and optional callback function"""
+    global _cwipc_log_callback_ref
+    _cwipc_log_callback_ref = _cwipc_log_callback_t(callback) if callback else _cwipc_log_callback_t(0)
+    cwipc_util_dll_load().cwipc_log_configure(level, _cwipc_log_callback_ref)
+    # xxxjack if not None we should ensure we unlink it at exit.
+
+def cwipc_log_default_callback(level : int, message : bytes) -> None:
+    """Default logging callback function"""
+    _message = message.decode('utf8')
+    level_name = {1: "ERROR", 2: "WARNING", 3: "INFO", 4: "DEBUG"}.get(level, f"LEVEL{level}")
+    print(f"{level_name}: cwipc: {_message}", file=sys.stderr)
+
+def _cwipc_log_emit(level : int, module : str, message : str) -> None:
+    """Emit a log message through the cwipc logging system"""
+    cwipc_util_dll_load()._cwipc_log_emit(level, module.encode('utf8'), message.encode('utf8'))
+
 def cwipc_read(filename : str, timestamp : int) -> cwipc_wrapper:
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()

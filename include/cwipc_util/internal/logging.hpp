@@ -5,7 +5,6 @@
 
 
 extern "C" {
-    enum cwipc_log_level { CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG };
     /** Call to emit a log message.
      * Mainly meant for internal use within cwipc, so messages get forwarded to the correct recipient.
      */

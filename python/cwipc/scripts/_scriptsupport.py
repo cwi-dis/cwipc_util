@@ -7,7 +7,7 @@ import traceback
 import warnings
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer
+from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -406,6 +406,7 @@ def BaseArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(*args, **kwargs)
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Print information about each pointcloud while it is processed. Double for even more verbosity.")
+    parser.add_argument("--logging", type=str, action="store", metavar="LEVEL", help="Set cwipc logging level (error, warning, info, debug) and capture log messages.")
     parser.add_argument("--pausefordebug", action="store_true", help="Pause at begin and end of run (to allow attaching debugger or profiler)")
     parser.add_argument("--debugpy", action="store_true", help="Pause at begin of run to wait for debugpy attaching")
     return parser
@@ -463,6 +464,15 @@ def beginOfRun(args : argparse.Namespace) -> None:
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
+    if args.logging:
+        levelmap = {
+            'error': CWIPC_LOG_LEVEL_ERROR,
+            'warning': CWIPC_LOG_LEVEL_WARNING,
+            'trace': CWIPC_LOG_LEVEL_TRACE,
+            'debug': CWIPC_LOG_LEVEL_DEBUG
+        }
+        level = levelmap.get(args.logging.lower(), CWIPC_LOG_LEVEL_NONE)
+        cwipc_log_configure(level, cwipc_log_default_callback)
 
 def endOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""

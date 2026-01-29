@@ -13,6 +13,8 @@ static char **currentErrorBuf = nullptr; //<! Pointer to pointer to error buffer
 static cwipc_log_level currentLogLevel = CWIPC_LOG_LEVEL_WARNING;
 static bool initialized = false;    //<! Whether logging has been initialized.
 static std::ostream* logStream(nullptr); //<! if logger has been set from the CWIPC_LOGGING env var, this is the stream to log to.
+cwipc_log_callback_t logCallback = nullptr; //<! The callback function to log to, if any.
+
 static bool log_to_callback = false; //<! Whether to log to the callback function.
 static bool log_to_stderr = true; //<! Whether to log to stderr.
 static bool log_to_file = false; //<! Whether to log to file.
@@ -63,11 +65,33 @@ static void initialize() {
     initialized = true;
 }
 
+void cwipc_log_configure(int _level, cwipc_log_callback_t callback) {
+    initialize();
+    cwipc_log_level level = static_cast<cwipc_log_level>(_level);
+    if (level != CWIPC_LOG_LEVEL_NONE) {
+        currentLogLevel = level;
+    }
+    if (callback) {
+        logCallback = callback;
+        log_to_callback = true;
+        log_to_stderr = false;
+    } else {
+        logCallback = nullptr;
+        log_to_callback = false;
+        log_to_stderr = !log_to_file;
+    }
+    if (currentLogLevel >= CWIPC_LOG_LEVEL_DEBUG) {
+        cwipc_log(CWIPC_LOG_LEVEL_DEBUG, "logging", "Logging configured, (int)callback=" + std::to_string((intptr_t)callback));
+    }
+}
+
 void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
     initialize();
-    // No filtering on level yet, no callbacks. All that is future work.
+    if (level > currentLogLevel) {
+        return;
+    }
     std::stringstream msgstream;
-    msgstream << module << ": " << _level_to_string(level) << ": " << message << std::endl;
+    msgstream << module << ": " << _level_to_string(level) << ": " << message;
     // Output to stdout.
 
     static time_t starttime = 0;
@@ -84,9 +108,6 @@ void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
         // This leaks, but it shouldn't happen often...
         *currentErrorBuf = strdup(full_message.c_str());
     }
-    if (level > currentLogLevel) {
-        return;
-    }
     if (log_to_stderr)
     {
         std::cerr << timestamp_s << full_message << std::endl;
@@ -96,7 +117,13 @@ void cwipc_log(cwipc_log_level level, std::string module, std::string message) {
         (*logStream) << timestamp_s << full_message << std::endl;
         logStream->flush();
     }
-    // xxxjack send to callback.
+    if (log_to_callback && logCallback) {
+        logCallback(level, full_message.c_str());
+    }
+}
+
+void _cwipc_log_emit(int level, const char* module, const char* message) {
+    cwipc_log(static_cast<cwipc_log_level>(level), std::string(module), std::string(message));
 }
 
 void cwipc_log_set_errorbuf(char **errorBuf) {

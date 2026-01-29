@@ -274,6 +274,24 @@ class TestApi(unittest.TestCase):
         packet2 = pc2.get_packet()
         self.assertEqual(packet, packet2)
 
+    def test_cwipc_logger(self):
+        """Can we configure the cwipc logger and receive log messages?"""
+        self.log_messages = []
+        def log_callback(level: int, message: bytes) -> None:
+            self.log_messages.append( (level, message.decode('utf8')) )
+        cwipc.cwipc_log_configure(cwipc.CWIPC_LOG_LEVEL_DEBUG, log_callback)
+        # Emit a test log message
+        cwipc._cwipc_log_emit(cwipc.CWIPC_LOG_LEVEL_DEBUG, "test_module", "This is a test log message")
+        self.assertGreaterEqual(len(self.log_messages), 1)
+        found = False
+        for level, message in self.log_messages:
+            if  "This is a test log message" in message:
+                found = True
+                self.assertEqual(level, cwipc.CWIPC_LOG_LEVEL_DEBUG)
+        self.assertTrue(found)
+        # Reset logging to default
+        cwipc.cwipc_log_configure(cwipc.CWIPC_LOG_LEVEL_WARNING, None)
+
     def test_cwipc_synthetic(self):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()
