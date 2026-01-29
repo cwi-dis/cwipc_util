@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 #include <chrono>
 #include <iostream>
 #include <sstream>
