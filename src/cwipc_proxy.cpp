@@ -91,7 +91,7 @@ public:
             // accept on the socket, if not connected yet
             //
             if (m_socket < 0) {
-                cwipc_log(CWIPC_LOG_LEVEL_INFO, "cwipc_proxy", "waiting for connection...");
+                cwipc_log(CWIPC_LOG_LEVEL_TRACE, "cwipc_proxy", "waiting for connection...");
                 m_socket = accept(m_listen_socket, NULL, 0);
 
                 if (m_socket < 0) {
@@ -101,7 +101,7 @@ public:
                     break;
                 }
 
-                cwipc_log(CWIPC_LOG_LEVEL_INFO, "cwipc_proxy", "connection accepted");
+                cwipc_log(CWIPC_LOG_LEVEL_TRACE, "cwipc_proxy", "connection accepted");
             }
             //
             // Get the header and check it

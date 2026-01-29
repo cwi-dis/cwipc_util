@@ -289,7 +289,7 @@ public:
 
         if (rv == 'r') { // Toggle skeleton rendering
             m_render_skeleton = !m_render_skeleton;
-            cwipc_log("cwipc_sink_window_impl: Skeleton rendering " + std::string(m_render_skeleton ? "enabled" : "disabled"));
+            cwipc_log(CWIPC_LOG_LEVEL_TRACE, "cwipc_sink_window", "Skeleton rendering " + std::string(m_render_skeleton ? "enabled" : "disabled"));
         }
 
         return rv;
