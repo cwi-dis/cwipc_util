@@ -31,6 +31,16 @@ class cwipc_source_abstract(ABC):
     def free(self) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
         ...
+    
+    @abstractmethod
+    def start(self) -> bool:
+        """Start the source. Returns True on success."""
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
+        """Stop the source."""
+        ...
         
     @abstractmethod
     def eof(self) -> bool:

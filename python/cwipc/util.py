@@ -440,6 +440,12 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_access_auxiliary_data.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_access_auxiliary_data.restype = cwipc_auxiliary_data_p
     
+    _cwipc_util_dll_reference.cwipc_source_start.argtypes = [cwipc_source_p]
+    _cwipc_util_dll_reference.cwipc_source_start.restype = ctypes.c_bool
+    
+    _cwipc_util_dll_reference.cwipc_source_stop.argtypes = [cwipc_source_p]
+    _cwipc_util_dll_reference.cwipc_source_stop.restype = None
+    
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
     
@@ -715,6 +721,14 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         if self._cwipc_source:
             cwipc_util_dll_load().cwipc_source_free(self.as_cwipc_source_p())
         self._cwipc_source = None
+        
+    def start(self) -> bool:
+        """Start the pointcloud source. Returns True on success."""
+        return cwipc_util_dll_load().cwipc_source_start(self.as_cwipc_source_p())
+    
+    def stop(self) -> None:
+        """Stop the pointcloud source."""
+        cwipc_util_dll_load().cwipc_source_stop(self.as_cwipc_source_p())
         
     def eof(self) -> bool:
         """Return True if no more pointclouds will be forthcoming"""
