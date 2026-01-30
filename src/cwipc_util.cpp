@@ -713,6 +713,14 @@ size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx) {
     return collection->size(idx);
 }
 
+bool cwipc_source_start(cwipc_source *src) {
+    return src->start();
+}
+
+void cwipc_source_stop(cwipc_source *src) {
+    src->stop();
+}
+
 cwipc* cwipc_source_get(cwipc_source *src) {
     return src->get();
 }

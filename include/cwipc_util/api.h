@@ -786,6 +786,19 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT cwipc_auxiliary_data* cwipc_access_auxiliary_data(cwipc* pc);
 
+    /** \brief Start a pointcloud source
+     * 
+     * \param src The cwipc_source object.
+     * \return True if the source started successfully.
+    */
+    _CWIPC_UTIL_EXPORT bool cwipc_source_start(cwipc_source* src);
+
+    /** \brief Stop a pointcloud source
+     * 
+     * \param src The cwipc_source object.
+    */
+    _CWIPC_UTIL_EXPORT void cwipc_source_stop(cwipc_source* src);
+    
     /** \brief Get a new pointcloud (C interface).
      * \param src The cwipc_source object.
      * \return The new pointcloud.
