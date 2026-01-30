@@ -94,7 +94,7 @@ public:
 
     virtual bool available(bool wait) override final {
         if (!m_started) {
-            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "available() called before start()");
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_synthetic", "available() called before start()");
             return false;
         }
         if (
@@ -109,7 +109,7 @@ public:
 
     virtual cwipc* get() override final {
         if (!m_started) {
-            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "get() called before start()");
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_synthetic", "get() called before start()");
             return NULL;
         }
         if (m_fps != 0 && m_earliest_next_pointcloud.time_since_epoch() != std::chrono::milliseconds(0)) {
