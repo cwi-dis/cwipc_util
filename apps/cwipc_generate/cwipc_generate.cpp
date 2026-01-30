@@ -22,10 +22,14 @@ int main(int argc, char** argv) {
         std::cerr << "Error: " << error << std::endl;
         return 1;
     }
-
+    generator->start();
     int ok = 0;
     while (count-- > 0 && ok == 0) {
         cwipc *pc = generator->get();
+        if (pc == NULL) {
+            std::cerr << "Error: generator returned NULL pointcloud" << std::endl;
+            return 1;
+        }
         snprintf(filename, sizeof(filename), "%s/pointcloud-%" PRIu64 ".ply", argv[2], pc->timestamp());
         ok = cwipc_write(filename, pc, &error);
         pc->free();
