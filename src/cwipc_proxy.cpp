@@ -54,16 +54,27 @@ public:
         m_running(false),
         m_pc(NULL)
     {
-        m_running = true;
-        m_server_thread = new std::thread(&cwipc_source_proxy_impl::_server_main, this);
-        _cwipc_setThreadName(m_server_thread, L"cwipc_proxy::server_thread");
     }
 
     ~cwipc_source_proxy_impl() {
         free();
     }
 
-    void free() {
+    virtual void free() override final {
+        if (m_running) {
+            stop();
+        }
+
+    }
+
+    virtual bool start() override final {
+        m_running = true;
+        m_server_thread = new std::thread(&cwipc_source_proxy_impl::_server_main, this);
+        _cwipc_setThreadName(m_server_thread, L"cwipc_proxy::server_thread");
+        return true;
+    }
+
+    virtual void stop() override final {
         m_running = false;
 
         if (m_listen_socket >= 0) {
@@ -82,9 +93,67 @@ public:
             m_server_thread->join();
         }
 
-        m_server_thread = nullptr;
+        m_server_thread = nullptr;    
     }
 
+    virtual bool reload_config(const char* configFile) override final {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_proxy", "reload_config() not implemented");
+        return false;
+    }
+
+    virtual size_t get_config(char* buffer, size_t size) override final {
+        return 0;
+    }
+    
+    virtual bool seek(uint64_t timestamp) override final {
+        return false;
+    }
+
+    virtual bool eof() override final {
+        return m_listen_socket < 0 && m_socket < 0;
+    }
+
+    virtual bool available(bool wait) override final {
+        std::unique_lock<std::mutex> mylock(m_pc_mutex);
+
+        if (wait) {
+            m_pc_fresh.wait(mylock, [this]{return m_pc != NULL || !m_running; });
+        }
+
+        return m_pc != NULL;
+    }
+
+    virtual cwipc* get() override final {
+        std::unique_lock<std::mutex> mylock(m_pc_mutex);
+
+        m_pc_fresh.wait(mylock, [this]{
+            return m_pc != NULL || !m_running;
+        });
+
+        cwipc *rv = m_pc;
+        m_pc = NULL;
+
+        return rv;
+    }
+
+    virtual int maxtile() override final {
+        return 1;
+    }
+
+    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) override final {
+        static cwipc_tileinfo proxyInfo = {{0, 0, 0}, (char *)"proxy", 1, 0};
+
+        switch(tilenum) {
+        case 0:
+            if (tileinfo) {
+                *tileinfo = proxyInfo;
+            }
+            return true;
+        }
+
+        return false;
+    }
+private:
     void _server_main() {
         while(m_running) {
             //
@@ -190,52 +259,6 @@ public:
         }
         return status == size;
     }
-
-    bool eof() {
-        return m_listen_socket < 0 && m_socket < 0;
-    }
-
-    bool available(bool wait) {
-        std::unique_lock<std::mutex> mylock(m_pc_mutex);
-
-        if (wait) {
-            m_pc_fresh.wait(mylock, [this]{return m_pc != NULL || !m_running; });
-        }
-
-        return m_pc != NULL;
-    }
-
-    cwipc* get() {
-        std::unique_lock<std::mutex> mylock(m_pc_mutex);
-
-        m_pc_fresh.wait(mylock, [this]{
-            return m_pc != NULL || !m_running;
-        });
-
-        cwipc *rv = m_pc;
-        m_pc = NULL;
-
-        return rv;
-    }
-
-    int maxtile() {
-        return 1;
-    }
-
-    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
-        static cwipc_tileinfo proxyInfo = {{0, 0, 0}, (char *)"proxy", 1, 0};
-
-        switch(tilenum) {
-        case 0:
-            if (tileinfo) {
-                *tileinfo = proxyInfo;
-            }
-            return true;
-        }
-
-        return false;
-    }
-
 };
 
 cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion) {

@@ -292,6 +292,25 @@ public:
      */
     virtual void free() = 0;
 
+    /** \brief Start the source.
+     * 
+     * \return True if the source started successfully.
+     */
+    virtual bool start() = 0;
+
+    /** \brief Stop the source.
+     * 
+     */
+
+    virtual void stop() = 0;
+
+    /** \brief Position the source to a specific timestamp.
+     * 
+     * \param timestamp The timestamp to seek to.
+     * \return True if the seek was successful.
+     */
+    virtual bool seek(uint64_t timestamp) = 0;
+
     /** \brief Return true if no more pointclouds are forthcoming.
      */
     virtual bool eof() = 0;
@@ -375,7 +394,7 @@ public:
     * \param configFile The pathname to the new camera configuration or an inline json configuration string.
     * \return A boolean that is true if the reload was successful.
     */
-    virtual bool reload_config(const char* configFile) { return false; }
+    virtual bool reload_config(const char* configFile) = 0;
 
     /** \brief Return current configuration as a JSON string
     * 
@@ -384,14 +403,14 @@ public:
     * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
     * \param size Size of the buffer.
     */
-    virtual size_t get_config(char* buffer, size_t size) { return 0; }
+    virtual size_t get_config(char* buffer, size_t size) = 0;
 
     /** \brief Performs a seek on the playback.
      * \param timestamp The timestamp wanted
      * \return A boolean that is true if the seek was successful.
      *
      */
-    virtual bool seek(uint64_t timestamp) { return false; };
+    virtual bool seek(uint64_t timestamp) = 0;
 
     /** \brief Return maximum number of possible tiles.
      *

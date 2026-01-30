@@ -26,12 +26,12 @@ private:
     int m_fps;
     cwipc_point *m_points;
     size_t m_points_size;
+    bool m_started;
 
 public:
     cwipc_source_synthetic_impl(int fps=0, int npoints=0)
     : m_angle(0),
-      m_start(std::chrono::system_clock::now()),
-      m_earliest_next_pointcloud(),
+      m_started(false),
       m_hsteps(0),
       m_asteps(0),
       m_fps(fps),
@@ -52,7 +52,7 @@ public:
         free();
     }
 
-    void free() {
+    virtual void free() override final {
         if (m_points) {
             ::free(m_points);
         }
@@ -60,11 +60,43 @@ public:
         m_points = NULL;
     }
 
-    bool eof() {
+    virtual bool reload_config(const char* configFile) override final {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "reload_config() not implemented (nor needed)");
         return false;
     }
 
-    bool available(bool wait) {
+    virtual size_t get_config(char* buffer, size_t size) override final {
+        return 0;
+    }
+    
+    virtual bool start() override final {
+        if (m_started) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "start() called when already started");
+            return true;
+        }
+        m_start = std::chrono::system_clock::now();
+        m_earliest_next_pointcloud = m_start;
+        m_started = true;
+        return true;
+    }
+
+    virtual void stop() override final {
+        m_started = false;
+    }
+
+    virtual bool eof() override final {
+        return false;
+    }
+
+    virtual bool seek(uint64_t timestamp) override final {
+        return false;
+    }   
+
+    virtual bool available(bool wait) override final {
+        if (!m_started) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "available() called before start()");
+            return false;
+        }
         if (
             !wait && m_fps != 0 && 
             m_earliest_next_pointcloud.time_since_epoch() != std::chrono::milliseconds(0) &&
@@ -75,7 +107,11 @@ public:
         return true;
     }
 
-    cwipc* get() {
+    virtual cwipc* get() override final {
+        if (!m_started) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_synthetic", "get() called before start()");
+            return NULL;
+        }
         if (m_fps != 0 && m_earliest_next_pointcloud.time_since_epoch() != std::chrono::milliseconds(0)) {
             std::this_thread::sleep_until(m_earliest_next_pointcloud);
         }
@@ -106,11 +142,11 @@ public:
         return rv;
     }
 
-    int maxtile() {
+    virtual int maxtile() override final {
         return 3;
     }
 
-    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) {
+    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) override final{
         static cwipc_tileinfo syntheticInfo[3] = {
             {{0, 0, 0}, (char *)"synthetic", 2, 0},
             {{0, 0, 1}, (char *)"synthetic-right", 1, 1},
@@ -130,7 +166,7 @@ public:
         return false;
     }
 
-    bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+    virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) override final{
         // For test purposes, really...
         if (op != "test-setangle") return false;
         if (inbuf == nullptr || insize != sizeof(float)) return false;

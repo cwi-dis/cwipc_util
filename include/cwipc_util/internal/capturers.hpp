@@ -384,7 +384,7 @@ public:
         return m_grabber->is_valid();
     }
 
-    void free() override {
+    virtual void free() override {
         delete m_grabber;
         m_grabber = NULL;
     }
