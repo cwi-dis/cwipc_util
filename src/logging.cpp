@@ -7,6 +7,12 @@
 #include <sstream>
 #include <fstream>
 
+#ifdef WIN32
+#define _CWIPC_UTIL_EXPORT __declspec(dllexport)
+#else
+#define _CWIPC_UTIL_EXPORT
+#endif
+
 #include <cwipc_util/internal/logging.hpp>
 
 static char **currentErrorBuf = nullptr; //<! Pointer to pointer to error buffer string, used during calls that have an error return string.
