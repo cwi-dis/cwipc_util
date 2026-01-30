@@ -300,6 +300,10 @@ public:
     virtual bool is_valid() = 0;
     /// Reload configuration, possibly restarting capturer and cameras.
     virtual bool config_reload_and_start_capturing(const char* configFilename) = 0;
+    /// Start the capturer.
+    virtual bool start() = 0;
+    /// Stop capturing.
+    virtual void stop() = 0;
     /// Get complete current configuration as JSON string.
     virtual std::string config_get() = 0;
     /// Request specific auxiliary data to be added to pointclouds.
@@ -380,16 +384,24 @@ public:
         m_grabber = NULL;
     }
 
-    bool is_valid() {
+    virtual bool start() override final {
+        return this->m_grabber->start();
+    }
+
+    virtual void stop() override final {
+        this->m_grabber->stop();
+    }
+
+    virtual bool is_valid() final {
         return m_grabber->is_valid();
     }
 
-    virtual void free() override {
+    virtual void free() override final {
         delete m_grabber;
         m_grabber = NULL;
     }
 
-    virtual size_t get_config(char* buffer, size_t size) override
+    virtual size_t get_config(char* buffer, size_t size) override final
     {
         auto config = m_grabber->config_get();
 
@@ -405,15 +417,15 @@ public:
         return config.length();
     }
 
-    virtual bool reload_config(const char* configFile) override {
+    virtual bool reload_config(const char* configFile) override final {
         return m_grabber->config_reload_and_start_capturing(configFile);
     }
 
-    bool eof() override {
+    bool eof() override final {
         return m_grabber->eof();
     }
 
-    bool available(bool wait) override {
+    bool available(bool wait) override final {
         if (m_grabber == NULL) {
             return false;
         }
@@ -421,7 +433,7 @@ public:
         return m_grabber->pointcloud_available(wait);
     }
 
-    cwipc* get() override {
+    cwipc* get() override final {
         if (m_grabber == NULL) {
             return NULL;
         }
@@ -430,7 +442,7 @@ public:
         return rv;
     }
 
-    int maxtile() override {
+    int maxtile() override final {
         if (m_grabber == NULL) {
             return 0;
         }
@@ -444,7 +456,7 @@ public:
         return nCamera + 1;
     }
 
-    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) override {
+    bool get_tileinfo(int tilenum, struct cwipc_tileinfo *tileinfo) override final {
         if (m_grabber == NULL) {
             return false;
         }
