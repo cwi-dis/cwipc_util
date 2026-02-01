@@ -298,8 +298,8 @@ public:
     virtual int get_camera_count() = 0;
     /// Return a boolean stating whether the capturer is working (which implies it has cameras attached)
     virtual bool is_valid() = 0;
-    /// Reload configuration, possibly restarting capturer and cameras.
-    virtual bool config_reload_and_start_capturing(const char* configFilename) = 0;
+    /// Reload configuration.
+    virtual bool config_reload(const char* configFilename) = 0;
     /// Start the capturer.
     virtual bool start() = 0;
     /// Stop capturing.
@@ -376,7 +376,7 @@ public:
     cwipc_capturer_impl_base(const char* configFilename) 
     : m_grabber(GrabberClass::factory())
     {
-        m_grabber->config_reload_and_start_capturing(configFilename);
+        m_grabber->config_reload(configFilename);
     }
 
     virtual ~cwipc_capturer_impl_base() {
@@ -418,7 +418,7 @@ public:
     }
 
     virtual bool reload_config(const char* configFile) override final {
-        return m_grabber->config_reload_and_start_capturing(configFile);
+        return m_grabber->config_reload(configFile);
     }
 
     bool eof() override final {
