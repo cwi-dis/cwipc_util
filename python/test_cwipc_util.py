@@ -345,7 +345,8 @@ class TestApi(unittest.TestCase):
         self.assertEqual(ap.size(0), 4) # sizeof m_angle
         data = ap.data(0)
         self.assertEqual(len(data), 4)
-        self.assertNotEqual(data, b'\0\0\0\0')
+        # We can no longer assume the angle is nonzero (since adding the start() call to cwipc_source).
+        # self.assertNotEqual(data, b'\0\0\0\0')
         pc.free()
         pcs.free()
 
