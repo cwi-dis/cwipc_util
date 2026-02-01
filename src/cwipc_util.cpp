@@ -190,6 +190,7 @@ public:
 
     int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
         if (size < m_pc->size() * sizeof(struct cwipc_point)) {
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "copy_uncompressed: buffer too small");
             return -1;
         }
 
@@ -275,6 +276,7 @@ public:
 
     int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp) {
         if (npoint * sizeof(struct cwipc_point) != size) {
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "from_points: size and npoint inconsistent");
             return -1;
         }
 
@@ -282,6 +284,7 @@ public:
         m_points = (struct cwipc_point *)malloc(size);
 
         if (m_points == NULL) {
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "from_points: could not allocate memory for points, size=" + std::to_string(size));
             return -1;
         }
 
@@ -330,6 +333,7 @@ public:
 
     int copy_uncompressed(struct cwipc_point *pointData, size_t size) override {
         if (size != m_points_size) {
+            cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "copy_uncompressed: buffer too small");
             return -1;
         }
 
@@ -358,7 +362,7 @@ cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage,
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char *msgbuf = (char *)malloc(1024);
-            snprintf(msgbuf, 1024, "cwipc_read_debugdump: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
+            snprintf(msgbuf, 1024, "cwipc_read: incorrect apiVersion 0x%08" PRIx64 " expected 0x%08" PRIx64 "..0x%08" PRIx64 "", apiVersion, CWIPC_API_VERSION_OLD, CWIPC_API_VERSION);
             *errorMessage = msgbuf;
         }
 
@@ -369,7 +373,7 @@ cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage,
     pcl::PLYReader ply_reader;
 
     if (ply_reader.read(filename, *pc) < 0) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Loading of PLY file failed");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read", std::string("Loading of PLY file failed: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
 
         return NULL;
@@ -387,7 +391,7 @@ int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage) {
     cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
     cwipc_log_set_errorbuf(errorMessage);
     if (pc == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Saving NULL pointcloud implemented");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write", "Saving NULL pointcloud not implemented");
         cwipc_log_set_errorbuf(nullptr);
         return -1;
     }
@@ -396,7 +400,7 @@ int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage) {
     int status = writer.write(filename, *pc);
 
     if (status < 0) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Saving of PLY file failed");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write", std::string("Saving of PLY file failed: ") + filename);
     }
     cwipc_log_set_errorbuf(nullptr);
     return status;
@@ -406,7 +410,7 @@ int cwipc_write_ext(const char* filename, cwipc* pointcloud, int flag, char** er
     cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
     cwipc_log_set_errorbuf(errorMessage);
     if (pc == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Saving NULL pointcloud implemented");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_ext", "Saving NULL pointcloud not implemented");
         cwipc_log_set_errorbuf(nullptr);
         return -1;
     }
@@ -415,7 +419,7 @@ int cwipc_write_ext(const char* filename, cwipc* pointcloud, int flag, char** er
     int status = writer.write(filename, *pc, flag&CWIPC_FLAG_BINARY);
 
     if (status < 0) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Saving of PLY file failed");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_ext", std::string("Saving of PLY file failed: ") + filename);
     }
     cwipc_log_set_errorbuf(nullptr);
     return status;
@@ -435,7 +439,7 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     FILE *fp = fopen(filename, "rb");
 
     if (fp == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot open pointcloud dumpfile");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", std::string("Cannot open file: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
 
         return NULL;
@@ -444,14 +448,14 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     struct cwipc_cwipcdump_header hdr;
 
     if (fread(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot read pointcloud dumpfile header");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", std::string("Cannot read pointcloud dumpfile header: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
         fclose(fp);
         return NULL;
     }
 
     if (hdr.hdr[0] != CWIPC_CWIPCDUMP_HEADER[0] || hdr.hdr[1] != CWIPC_CWIPCDUMP_HEADER[1] || hdr.hdr[2] != CWIPC_CWIPCDUMP_HEADER[2] || hdr.hdr[3] != CWIPC_CWIPCDUMP_HEADER[3]) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Pointcloud dumpfile header incorrect");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", std::string("Pointcloud dumpfile header incorrect: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
 
         fclose(fp);
@@ -459,7 +463,7 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     }
 
     if (hdr.magic != CWIPC_CWIPCDUMP_VERSION) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Pointcloud dumpfile version incorrect");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", std::string("Pointcloud dumpfile version incorrect: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
 
         fclose(fp);
@@ -472,7 +476,7 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     int npoint = dataSize / sizeof(cwipc_point);
 
     if (npoint*sizeof(cwipc_point) != dataSize) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Pointcloud dumpfile datasize inconsistent");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", "Pointcloud dumpfile datasize inconsistent");
         cwipc_log_set_errorbuf(nullptr);
         fclose(fp);
         return NULL;
@@ -481,14 +485,14 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     cwipc_point* pointData = (cwipc_point *)malloc(dataSize);
 
     if (pointData == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Could not allocate memory for point data");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", "Could not allocate memory for point data");
         cwipc_log_set_errorbuf(nullptr);
         fclose(fp);
         return NULL;
     }
 
     if (fread(pointData, 1, dataSize, fp) != dataSize) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Could not read point data of correct size");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read_debugdump", "Could not read point data of correct size");
         cwipc_log_set_errorbuf(nullptr);
         fclose(fp);
         return NULL;
@@ -509,14 +513,14 @@ int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorM
     struct cwipc_point *dataBuf = (struct cwipc_point *)malloc(dataSize);
     cwipc_log_set_errorbuf(errorMessage);
     if (dataBuf == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot allocate memory for pointcloud dump");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_debugdump", "Cannot allocate memory, size="+ std::to_string(dataSize));
         cwipc_log_set_errorbuf(nullptr);
         return -1;
     }
 
     int nPoint = pointcloud->copy_uncompressed(dataBuf, dataSize);
     if (nPoint < 0) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot copy points from pointcloud");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_debugdump", "Cannot copy points, size="+ std::to_string(dataSize));
         cwipc_log_set_errorbuf(nullptr);
         free(dataBuf);
 
@@ -526,7 +530,7 @@ int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorM
     FILE *fp = fopen(filename, "wb");
 
     if (fp == NULL) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot open output file for pointcloud dump");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_debugdump", std::string("Cannot open output file: ") + filename);
         cwipc_log_set_errorbuf(nullptr);
         free(dataBuf);
 
@@ -550,7 +554,7 @@ int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorM
     fwrite(&hdr, sizeof(hdr), 1, fp);
 
     if (fwrite(dataBuf, sizeof(struct cwipc_point), nPoint, fp) != nPoint) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "Cannot write point data to dump file");
+        cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_write_debugdump", "Cannot write point data, nPoint="+ std::to_string(nPoint));
         cwipc_log_set_errorbuf(nullptr);
 
         fclose(fp);
