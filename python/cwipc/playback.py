@@ -25,6 +25,12 @@ class _Filesource(cwipc_source_abstract):
             self.delta_t = 1/fps
         
     def free(self) -> None:
+        self.stop()
+        
+    def start(self) -> bool:
+        return True
+    
+    def stop(self) -> None:
         self.filenames = []
         if self.single_file_mode_pc:
             self.single_file_mode_pc.free()
