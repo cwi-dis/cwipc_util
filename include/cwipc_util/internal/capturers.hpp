@@ -296,8 +296,10 @@ public:
 
     /// Return the number of cameras connected to this capturer. Return 0 if something went wrong during initialization.
     virtual int get_camera_count() = 0;
+    /// Return true if the cameras can be started, i.e. if initialization was successful.
+    virtual bool can_start() = 0;
     /// Return a boolean stating whether the capturer is working (which implies it has cameras attached)
-    virtual bool is_valid() = 0;
+    virtual bool is_playing() = 0;
     /// Reload configuration.
     virtual bool config_reload(const char* configFilename) = 0;
     /// Start the capturer.
@@ -392,8 +394,12 @@ public:
         this->m_grabber->stop();
     }
 
-    virtual bool is_valid() final {
-        return m_grabber->is_valid();
+    virtual bool can_start() final {
+        return m_grabber->can_start();
+    }
+    
+    virtual bool is_playing() final {
+        return m_grabber->is_playing();
     }
 
     virtual void free() override final {
