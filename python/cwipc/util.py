@@ -755,6 +755,8 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         cname = name.encode('utf8')
         return cwipc_util_dll_load().cwipc_source_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
         
+    def statistics(self) -> None:
+        pass
         
 class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract):
     """Tiled pointcloud sources as opaque object"""

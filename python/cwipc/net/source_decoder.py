@@ -38,14 +38,12 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         if self.verbose: print('netdecoder: start', flush=True)
         self.running = True
         threading.Thread.start(self)
-        if hasattr(self.source, 'start'):
-            self.source.start()
+        self.source.start()
         
     def stop(self) -> None:
         if self.verbose: print('netdecoder: stop', flush=True)
         self.running = False
-        if hasattr(self.source, 'stop'):
-            self.source.stop()
+        self.source.stop()
         try:
             self.output_queue.put(None, block=False)
         except queue.Full:

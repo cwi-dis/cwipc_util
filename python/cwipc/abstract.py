@@ -43,6 +43,11 @@ class cwipc_source_abstract(ABC):
         ...
         
     @abstractmethod
+    def seek(self, timestamp : int) -> bool:
+        """Seek to the specified timestamp (microseconds). Returns True on success."""
+        ...
+        
+    @abstractmethod
     def eof(self) -> bool:
         """Return True if no more pointclouds will be forthcoming"""
         ...
@@ -67,6 +72,11 @@ class cwipc_source_abstract(ABC):
         """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
         ...
 
+    @abstractmethod
+    def statistics(self) -> None:
+        """Print statistics about this source to stdout"""
+        ...
+        
 cwipc_tileinfo_dict = dict[str, Any]
 
 class cwipc_tiledsource_abstract(cwipc_source_abstract):

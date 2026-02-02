@@ -73,7 +73,7 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_tiledsource_factory_abstract, Optional[str]]:
+def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, certh, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
@@ -287,8 +287,7 @@ class SourceServer:
         self.lastGrabTime = None
         self.fps = None
         self.source_name = source_name
-        if hasattr(self.grabber, 'start'):
-            self.grabber.start() # type: ignore
+        self.grabber.start()
         self.stopped = False
         self.pc_filters = []
         if args.filter:
@@ -304,8 +303,7 @@ class SourceServer:
     def stop(self) -> None:
         if self.stopped: return
         if self.verbose: print("grab: stopping", flush=True)
-        if hasattr(self.grabber, 'stop'):
-            self.grabber.stop() # type: ignore
+        self.grabber.stop()
         self.stopped = True
         
     def grab_pc(self) -> Optional[cwipc_wrapper]:
@@ -332,15 +330,11 @@ class SourceServer:
         
     def run(self) -> None:
         if self.inpoint:
-            if hasattr(self.grabber, 'seek'):
-                result = self.grabber.seek(self.inpoint) # type: ignore
-                if result:
-                    print(f'grab: seek to timestamp {self.inpoint} successful', flush=True)
-                else:
-                    print(f'grab: Error: seek to timestamp {self.inpoint} failed', flush=True)
-                    sys.exit(-1)
+            result = self.grabber.seek(self.inpoint)
+            if result:
+                print(f'grab: seek to timestamp {self.inpoint} successful', flush=True)
             else:
-                print(f"grab: grabber does not support seek")
+                print(f'grab: Error: seek to timestamp {self.inpoint} failed', flush=True)
                 sys.exit(-1)
                 
         if self.verbose: print('grab: started', flush=True)
@@ -379,11 +373,9 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
-        if hasattr(self.grabber, 'statistics'):
-            self.grabber.statistics() # type: ignore
+        self.grabber.statistics()
         for filter in self.pc_filters:
-            if hasattr(filter, 'statistics'):
-                filter.statistics() # type: ignore
+            filter.statistics()
         
     def print1stat(self, name : str, values : Union[List[int], List[float]], isInt : bool=False) -> None:
         count = len(values)
@@ -444,7 +436,7 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     return parser
     
 def waitForDebugpy() -> None:
-    import debugpy
+    import debugpy  # type: ignore
     debugpy.listen(5678)
     print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
     debugpy.wait_for_client()
