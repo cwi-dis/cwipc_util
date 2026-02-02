@@ -20,7 +20,7 @@ def VRT_4CC(code : vrt_fourcc_type) -> int:
     return rv
 
 cwipc_source_factory_abstract = Callable[[], cwipc_source_abstract]
-cwipc_tiledsource_factory_abstract = Callable[[], cwipc_tiledsource_abstract]
+cwipc_activesource_factory_abstract = Callable[[], cwipc_activesource_abstract]
 
 class cwipc_rawsource_abstract(ABC):
     """A source that produces a stream of raw data blocks (as bytes).

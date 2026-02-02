@@ -292,18 +292,6 @@ public:
      */
     virtual void free() = 0;
 
-    /** \brief Start the source.
-     * 
-     * \return True if the source started successfully.
-     */
-    virtual bool start() = 0;
-
-    /** \brief Stop the source.
-     * 
-     */
-
-    virtual void stop() = 0;
-
     /** \brief Position the source to a specific timestamp.
      * 
      * \param timestamp The timestamp to seek to.
@@ -329,6 +317,76 @@ public:
      * \return The new pointcloud.
      */
     virtual cwipc* get() = 0;
+
+};
+
+/** \brief A generator of pointclouds based on some capturer, abstract C++ interface.
+ *
+ * This interface is provided by capturers and such that can
+ * return pointclouds. It is a subclass of
+ * cwipc_source with extra methods to obtain information on available
+ * tiles in the produced pointclouds, plus extensions for reloading the capturer,
+ * or positioning it, starting it, stopping it, etc.
+ */
+class cwipc_activesource : public cwipc_source {
+public:
+    virtual ~cwipc_activesource() {};
+
+    /** \brief Reload capturer based on a new configuration
+    * 
+    * Only implemented for actual cameras (realsense, kinect). Closes the cameras and reopens them with a new
+    * configuration.
+    * 
+    * \param configFile The pathname to the new camera configuration or an inline json configuration string.
+    * \return A boolean that is true if the reload was successful.
+    */
+    virtual bool reload_config(const char* configFile) = 0;
+
+    /** \brief Return current configuration as a JSON string
+    * 
+    * For actual camera capturers this returns the current configuration in a buffer supplied by the caller.
+    * 
+    * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
+    * \param size Size of the buffer.
+    */
+    virtual size_t get_config(char* buffer, size_t size) = 0;
+    /** \brief Start the source.
+     * 
+     * \return True if the source started successfully.
+     */
+    virtual bool start() = 0;
+
+    /** \brief Stop the source.
+     * 
+     */
+
+    virtual void stop() = 0;
+
+    /** \brief Performs a seek on the playback.
+     * \param timestamp The timestamp wanted
+     * \return A boolean that is true if the seek was successful.
+     *
+     */
+    virtual bool seek(uint64_t timestamp) = 0;
+
+    /** \brief Return maximum number of possible tiles.
+     *
+     * Pointclouds produced by this source will (even after tile-processing)
+     * never contain more tiles than this.
+     * Note that this number used to contain potential fused cameras but no longer:
+     * It is either 0 or 1 or nCamera+1.
+     */
+    virtual int maxtile() = 0;
+
+    /** \brief Return information on a tile number.
+     * \param tilenum The tile on which to obtain information.
+     * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
+     * \return A boolean that is true if the tile exists.
+     *
+     * Tile number 0 is a special case, representing the whole pointcloud.
+     */
+    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo* tileinfo) = 0;
+
 
     /** \brief Request specific auxiliary data to be added to pointclouds.
      * \param name Name of the auxiliary data.
@@ -366,69 +424,9 @@ public:
     virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
         return false;
     }
+
 private:
     std::set<std::string> auxiliary_data_wanted;
-};
-
-/** \brief A generator of tiled pointclouds, abstract C++ interface.
- *
- * This interface is provided by capturers and decoders and such that can
- * return pointclouds with tiling information. It is a subclass of
- * cwipc_source with extra methods to obtain information on available
- * tiles in the produced pointclouds.
- */
-class cwipc_tiledsource : public cwipc_source {
-public:
-    virtual ~cwipc_tiledsource() {};
-
-    virtual void free() = 0;
-    virtual bool eof() = 0;
-    virtual bool available(bool wait) = 0;
-    virtual cwipc* get() = 0;
-
-    /** \brief Reload capturer based on a new configuration
-    * 
-    * Only implemented for actual cameras (realsense, kinect). Closes the cameras and reopens them with a new
-    * configuration.
-    * 
-    * \param configFile The pathname to the new camera configuration or an inline json configuration string.
-    * \return A boolean that is true if the reload was successful.
-    */
-    virtual bool reload_config(const char* configFile) = 0;
-
-    /** \brief Return current configuration as a JSON string
-    * 
-    * For actual camera capturers this returns the current configuration in a buffer supplied by the caller.
-    * 
-    * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
-    * \param size Size of the buffer.
-    */
-    virtual size_t get_config(char* buffer, size_t size) = 0;
-
-    /** \brief Performs a seek on the playback.
-     * \param timestamp The timestamp wanted
-     * \return A boolean that is true if the seek was successful.
-     *
-     */
-    virtual bool seek(uint64_t timestamp) = 0;
-
-    /** \brief Return maximum number of possible tiles.
-     *
-     * Pointclouds produced by this source will (even after tile-processing)
-     * never contain more tiles than this.
-     * Note that this number used to contain potential fused cameras but no longer:
-     * It is either 0 or 1 or nCamera+1.
-     */
-    virtual int maxtile() = 0;
-
-    /** \brief Return information on a tile number.
-     * \param tilenum The tile on which to obtain information.
-     * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
-     * \return A boolean that is true if the tile exists.
-     *
-     * Tile number 0 is a special case, representing the whole pointcloud.
-     */
-    virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo* tileinfo) = 0;
 };
 
 /** \brief A consumer of pointclouds, abstract C++ interface.
@@ -562,9 +560,9 @@ typedef struct _cwipc_source {
     int _dummy;
 } cwipc_source;
 
-typedef struct _cwipc_tiledsource {
+typedef struct cwipc_activesource {
     struct _cwipc_source source;
-} cwipc_tiledsource;
+} cwipc_activesource;
 
 typedef struct _cwipc_sink {
     int _dummy;
@@ -661,20 +659,6 @@ extern "C" {
      * a string with the message.
      */
     _CWIPC_UTIL_EXPORT cwipc* cwipc_from_packet(uint8_t* packet, size_t size, char** errorMessage, uint64_t apiVersion);
-
-    /** \brief Create cwipc pointcloud from CERTH pointcloud representation.
-     * \param points Pointer to CERTH PointCloud structure.
-     * \param origin Optional point to coordinates of point (3 floats x, y, z) that needs to be moved to (0, 0, 0)
-     * \param bbox Optional pointer to bounding box (6 floats: minx, maxx, miny, maxy, minz, maxz)
-     * \param timestamp The timestamp to record in the cwipc object.
-     * \param errorMessage Address of a char* where any error message is saved (or NULL).
-     * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
-     * \return the abstract point cloud, or NULL in case of errors.
-     *
-     * If an error occurs and errorMessage is non-NULL it will receive a pointer to
-     * a string with the message.
-     */
-    _CWIPC_UTIL_EXPORT cwipc* cwipc_from_certh(void* certhPC, float* origin, float* bbox, uint64_t timestamp, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Read pointcloud from pointclouddump file.
      * \param filename The dump file to read.
@@ -791,13 +775,13 @@ extern "C" {
      * \param src The cwipc_source object.
      * \return True if the source started successfully.
     */
-    _CWIPC_UTIL_EXPORT bool cwipc_source_start(cwipc_source* src);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_start(cwipc_activesource* src);
 
     /** \brief Stop a pointcloud source
      * 
      * \param src The cwipc_source object.
     */
-    _CWIPC_UTIL_EXPORT void cwipc_source_stop(cwipc_source* src);
+    _CWIPC_UTIL_EXPORT void cwipc_activesource_stop(cwipc_activesource* src);
     
     /** \brief Get a new pointcloud (C interface).
      * \param src The cwipc_source object.
@@ -834,47 +818,46 @@ extern "C" {
      * \param src The cwipc_source object.
      * \param name Name of the auxiliary data
      */
-    _CWIPC_UTIL_EXPORT void cwipc_source_request_auxiliary_data(cwipc_source* src, const char* name);
+    _CWIPC_UTIL_EXPORT void cwipc_activesource_request_auxiliary_data(cwipc_activesource* src, const char* name);
 
     /** \brief Returns true is specific auxiliary data has been requested (C interface).
      * \param src The cwipc_source object.
      * \param name Name of the auxiliary data
      * \returns True or false
      */
-    _CWIPC_UTIL_EXPORT bool cwipc_source_auxiliary_data_requested(cwipc_source* src, const char* name);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_auxiliary_data_requested(cwipc_activesource* src, const char* name);
 
     /** \brief Reload capturer based on a new configuration
     *
     * Only implemented for actual cameras (realsense, kinect). Closes the cameras and reopens them with a new
     * configuration.
     *
-    * \param src The cwipc_tiledsource object.
+    * \param src The cwipc_activesource object.
      * \param configFile The pathname to the new camera configuration or an inline json configuration string.
     * \return A boolean that is true if the reload was successful.
     */
-    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_reload_config(cwipc_tiledsource* src, const char* configFile);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_reload_config(cwipc_activesource* src, const char* configFile);
 
     /** \brief Return current configuration as a JSON string
     *
     * For actual camera capturers this returns the current configuration in a buffer supplied by the caller.
     *
-    * \param src The cwipc_tiledsource object.
+    * \param src The cwipc_activesource object.
     * \param buffer Where the JSON will be stored. Pass NULL to get the size of the buffer needed.
     * \param size Size of the buffer.
     */
-    _CWIPC_UTIL_EXPORT size_t cwipc_tiledsource_get_config(cwipc_tiledsource* src, char* buffer, size_t size);
+    _CWIPC_UTIL_EXPORT size_t cwipc_activesource_get_config(cwipc_activesource* src, char* buffer, size_t size);
 
     /** \brief Attempt to seek a a specific timestamp in a point cloud stream (C interface).
-     * \param src The cwipc_tiledsource object.
-     * \param src The cwipc_tiledsource object.
+     * \param src The cwipc_activesource object.
      * \param timestamp The timestamp wanted.
      * \return True if successful.
      *
      */
-    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_seek(cwipc_tiledsource* src, uint64_t timestamp);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_seek(cwipc_activesource* src, uint64_t timestamp);
 
     /** \brief Return maximum number of possible tiles returned (C interface).
-     * \param src The cwipc_tiledsource object.
+     * \param src The cwipc_activesource object.
      *
      * Pointclouds produced by this source will (even after tile-processing)
      * never contain more tiles than this.
@@ -882,7 +865,7 @@ extern "C" {
      * tiles ever occurring in a pointcloud: a next tiling step may combine
      * points into new tiles.
      */
-    _CWIPC_UTIL_EXPORT int cwipc_tiledsource_maxtile(cwipc_tiledsource* src);
+    _CWIPC_UTIL_EXPORT int cwipc_activesource_maxtile(cwipc_activesource* src);
 
     /** \brief Return information on a tile number (C interface).
      * \param src The cwipc_source object.
@@ -892,7 +875,7 @@ extern "C" {
      *
      * Tile number 0 is a special case, representing the whole pointcloud.
      */
-    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource* src, int tilenum, struct cwipc_tileinfo* tileinfo);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_get_tileinfo(cwipc_activesource* src, int tilenum, struct cwipc_tileinfo* tileinfo);
 
     /** \brief Do an auxiliary operation (C interface).
      * \param op The operation to perform
@@ -905,7 +888,7 @@ extern "C" {
      * Operations could be things like mapping 2D coordinates to 3D coordinates, or
      * getting camera metadata.
      */
-    _CWIPC_UTIL_EXPORT bool cwipc_tiledsource_auxiliary_operation(cwipc_tiledsource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_auxiliary_operation(cwipc_activesource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize);
 
 
     /** \brief Deallocate the pointcloud sink (C interface).
@@ -992,7 +975,7 @@ extern "C" {
      * of the object colloquially known as the colourful dildo. It is intended for testing
      * purposes.
      */
-    _CWIPC_UTIL_EXPORT cwipc_tiledsource* cwipc_synthetic(int fps, int npoints, char** errorMessage, uint64_t apiVersion);
+    _CWIPC_UTIL_EXPORT cwipc_activesource* cwipc_synthetic(int fps, int npoints, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Capture pointclouds from a RGBD camera.
      * \param configFilename A string with the filename of the camera configuration file.
@@ -1007,7 +990,7 @@ extern "C" {
      * This function will use the camera type specified in the cameraconfig to create a capturer implementation for the
      * correct camera type.
      */
-    _CWIPC_UTIL_EXPORT cwipc_tiledsource* cwipc_capturer(const char *configFilename, char** errorMessage, uint64_t apiVersion);
+    _CWIPC_UTIL_EXPORT cwipc_activesource* cwipc_capturer(const char *configFilename, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Display a window to show pointclouds.
      * \param Title The title string, to be shown in the title bar of the window.
@@ -1115,7 +1098,7 @@ extern "C" {
      * for an incoming pointcloud stream. Those pointclouds are then returned similar as to
      * synthetic or normal grabbed pointclouds.
      */
-    _CWIPC_UTIL_EXPORT cwipc_tiledsource* cwipc_proxy(const char* host, int port, char** errorMessage, uint64_t apiVersion);
+    _CWIPC_UTIL_EXPORT cwipc_activesource* cwipc_proxy(const char* host, int port, char** errorMessage, uint64_t apiVersion);
 
 #ifdef __cplusplus
 }

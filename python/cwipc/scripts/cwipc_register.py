@@ -112,7 +112,7 @@ def main():
 class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.progname = sys.argv[0]
-        self.capturerFactory : Optional[cwipc_tiledsource_factory_abstract] = None
+        self.capturerFactory : Optional[cwipc_activesource_factory_abstract] = None
         self.capturerName = None
         self.capturer = None
         self.args = args
@@ -664,7 +664,7 @@ class Registrator:
             correspondences.append(result.minCorrespondence)
         return max(correspondences)      
 
-    def _capture_some_frames(self, capturer : cwipc_tiledsource_abstract) -> None:
+    def _capture_some_frames(self, capturer : cwipc_activesource_abstract) -> None:
         # Capture some frames (so we know get_config() will have obtained all parameters).
         # Get initial cameraconfig and save it
         gotframes = 0

@@ -23,7 +23,7 @@ import open3d
 import numpy
 import numpy.typing
 from typing import Optional, List, Type, Any, Union, Dict, Callable
-from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_tiledsource_abstract, cwipc_tileinfo_dict
+from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_activesource_abstract, cwipc_tileinfo_dict
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -40,7 +40,7 @@ __all__ = [
 
     'cwipc_wrapper',
     'cwipc_source_wrapper',
-    'cwipc_tiledsource_wrapper',
+    'cwipc_activesource_wrapper',
     
     'cwipc_point',
     'cwipc_point_array',
@@ -60,7 +60,6 @@ __all__ = [
     'cwipc_write_debugdump',
     'cwipc_from_points',
     'cwipc_from_packet',
-    'cwipc_from_certh',
     'cwipc_from_numpy_array',
     'cwipc_from_numpy_matrix',
     'cwipc_from_o3d_pointcloud',
@@ -238,8 +237,8 @@ class cwipc_source_p(ctypes.c_void_p):
     """ctypes-compatible native pointer to a cwipc_source object"""
     pass
 
-class cwipc_tiledsource_p(cwipc_source_p):
-    """ctypes-compatible native pointer to a cwipc_tiledsource object"""
+class cwipc_activesource_p(cwipc_source_p):
+    """ctypes-compatible native pointer to a cwipc_activesource object"""
     pass
 
 class cwipc_sink_p(ctypes.c_void_p):
@@ -401,9 +400,6 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_p
     
-    _cwipc_util_dll_reference.cwipc_from_certh.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_from_certh.restype = cwipc_p
-    
     _cwipc_util_dll_reference.cwipc_read_debugdump.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_read_debugdump.restype = cwipc_p
     
@@ -440,11 +436,11 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_access_auxiliary_data.argtypes = [cwipc_p]
     _cwipc_util_dll_reference.cwipc_access_auxiliary_data.restype = cwipc_auxiliary_data_p
     
-    _cwipc_util_dll_reference.cwipc_source_start.argtypes = [cwipc_source_p]
-    _cwipc_util_dll_reference.cwipc_source_start.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_start.argtypes = [cwipc_source_p]
+    _cwipc_util_dll_reference.cwipc_activesource_start.restype = ctypes.c_bool
     
-    _cwipc_util_dll_reference.cwipc_source_stop.argtypes = [cwipc_source_p]
-    _cwipc_util_dll_reference.cwipc_source_stop.restype = None
+    _cwipc_util_dll_reference.cwipc_activesource_stop.argtypes = [cwipc_source_p]
+    _cwipc_util_dll_reference.cwipc_activesource_stop.restype = None
     
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
@@ -458,29 +454,29 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
-    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.argtypes = [cwipc_source_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_source_request_auxiliary_data.restype = None
+    _cwipc_util_dll_reference.cwipc_activesource_request_auxiliary_data.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_activesource_request_auxiliary_data.restype = None
     
-    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_source_auxiliary_data_requested.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_data_requested.restype = ctypes.c_bool
     
-    _cwipc_util_dll_reference.cwipc_tiledsource_reload_config.argtypes = [cwipc_tiledsource_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_tiledsource_reload_config.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_reload_config.argtypes = [cwipc_activesource_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_activesource_reload_config.restype = ctypes.c_bool
     
-    _cwipc_util_dll_reference.cwipc_tiledsource_get_config.argtypes = [cwipc_tiledsource_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
-    _cwipc_util_dll_reference.cwipc_tiledsource_get_config.restype = ctypes.c_size_t
+    _cwipc_util_dll_reference.cwipc_activesource_get_config.argtypes = [cwipc_activesource_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_activesource_get_config.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_tiledsource_seek.argtypes = [cwipc_tiledsource_p, ctypes.c_uint64]
-    _cwipc_util_dll_reference.cwipc_tiledsource_seek.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_seek.argtypes = [cwipc_activesource_p, ctypes.c_uint64]
+    _cwipc_util_dll_reference.cwipc_activesource_seek.restype = ctypes.c_bool
     
-    _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.argtypes = [cwipc_tiledsource_p]
-    _cwipc_util_dll_reference.cwipc_tiledsource_maxtile.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_activesource_maxtile.argtypes = [cwipc_activesource_p]
+    _cwipc_util_dll_reference.cwipc_activesource_maxtile.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.argtypes = [cwipc_tiledsource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
-    _cwipc_util_dll_reference.cwipc_tiledsource_get_tileinfo.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_activesource_get_tileinfo.argtypes = [cwipc_activesource_p, ctypes.c_int, ctypes.POINTER(cwipc_tileinfo)]
+    _cwipc_util_dll_reference.cwipc_activesource_get_tileinfo.restype = ctypes.c_int
 
-    _cwipc_util_dll_reference.cwipc_tiledsource_auxiliary_operation.argtypes = [cwipc_source_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
-    _cwipc_util_dll_reference.cwipc_tiledsource_auxiliary_operation.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_operation.argtypes = [cwipc_source_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_operation.restype = ctypes.c_bool
     
     _cwipc_util_dll_reference.cwipc_sink_free.argtypes = [cwipc_sink_p]
     _cwipc_util_dll_reference.cwipc_sink_free.restype = None
@@ -495,10 +491,10 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_sink_interact.restype = ctypes.c_char
     
     _cwipc_util_dll_reference.cwipc_synthetic.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_tiledsource_p
+    _cwipc_util_dll_reference.cwipc_synthetic.restype = cwipc_activesource_p
 
     _cwipc_util_dll_reference.cwipc_capturer.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_capturer.restype = cwipc_tiledsource_p
+    _cwipc_util_dll_reference.cwipc_capturer.restype = cwipc_activesource_p
 
     _cwipc_util_dll_reference.cwipc_window.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_window.restype = cwipc_sink_p
@@ -525,7 +521,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_join.restype = cwipc_p
 
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_tiledsource_p
+    _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_activesource_p
 
     _cwipc_util_dll_reference.cwipc_auxiliary_data_count.argtypes = [cwipc_auxiliary_data_p]
     _cwipc_util_dll_reference.cwipc_auxiliary_data_count.restype = ctypes.c_int
@@ -722,18 +718,10 @@ class cwipc_source_wrapper(cwipc_source_abstract):
             cwipc_util_dll_load().cwipc_source_free(self.as_cwipc_source_p())
         self._cwipc_source = None
         
-    def start(self) -> bool:
-        """Start the pointcloud source. Returns True on success."""
-        return cwipc_util_dll_load().cwipc_source_start(self.as_cwipc_source_p())
-    
-    def stop(self) -> None:
-        """Stop the pointcloud source."""
-        cwipc_util_dll_load().cwipc_source_stop(self.as_cwipc_source_p())
-        
     def eof(self) -> bool:
         """Return True if no more pointclouds will be forthcoming"""
         return cwipc_util_dll_load().cwipc_source_eof(self.as_cwipc_source_p())
-        
+
     def available(self, wait : bool) -> bool:
         """Return True if a pointcloud is currently available. The wait parameter signals the source may wait a while."""
         return cwipc_util_dll_load().cwipc_source_available(self.as_cwipc_source_p(), wait)
@@ -745,58 +733,56 @@ class cwipc_source_wrapper(cwipc_source_abstract):
             return cwipc_wrapper(rv)
         return None
 
-    def request_auxiliary_data(self, name : str) -> None:
-        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
-        cname = name.encode('utf8')
-        return cwipc_util_dll_load().cwipc_source_request_auxiliary_data(self.as_cwipc_source_p(), cname)
-
-    def auxiliary_data_requested(self, name : str) -> bool:
-        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
-        cname = name.encode('utf8')
-        return cwipc_util_dll_load().cwipc_source_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
-        
     def statistics(self) -> None:
         pass
         
-class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract):
+class cwipc_activesource_wrapper(cwipc_source_wrapper, cwipc_activesource_abstract):
     """Tiled pointcloud sources as opaque object"""
-    _cwipc_source : Optional[cwipc_tiledsource_p]
+    _cwipc_source : Optional[cwipc_activesource_p]
 
-    def __init__(self, _cwipc_tiledsource : Optional[cwipc_tiledsource_p]=None):
-        if _cwipc_tiledsource != None:
-            assert isinstance(_cwipc_tiledsource, cwipc_tiledsource_p)
-        self._cwipc_source = _cwipc_tiledsource
+    def __init__(self, _cwipc_activesource : Optional[cwipc_activesource_p]=None):
+        if _cwipc_activesource != None:
+            assert isinstance(_cwipc_activesource, cwipc_activesource_p)
+        self._cwipc_source = _cwipc_activesource
         
     def reload_config(self, config : Union[str, bytes, None]) -> None:
         """Load a config from file or JSON string"""
         if type(config) == str:
             config = config.encode('utf8')
-        return cwipc_util_dll_load().cwipc_tiledsource_reload_config(self.as_cwipc_source_p(), config)
+        return cwipc_util_dll_load().cwipc_activesource_reload_config(self.as_cwipc_source_p(), config)
         
     def get_config(self) -> bytes:
         """Return current capturer cameraconfig as JSON"""
-        nBytes = cwipc_util_dll_load().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), None, 0)
+        nBytes = cwipc_util_dll_load().cwipc_activesource_get_config(self.as_cwipc_source_p(), None, 0)
         if nBytes <= 0:
-            raise CwipcError("this cwipc_tiledsource has no camera configuration")
+            raise CwipcError("this cwipc_activesource has no camera configuration")
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        rvNBytes = cwipc_util_dll_load().cwipc_tiledsource_get_config(self.as_cwipc_source_p(), bufferArg, nBytes)
+        rvNBytes = cwipc_util_dll_load().cwipc_activesource_get_config(self.as_cwipc_source_p(), bufferArg, nBytes)
         assert rvNBytes == nBytes
         return buffer
-        
+                
+    def start(self) -> bool:
+        """Start the pointcloud source. Returns True on success."""
+        return cwipc_util_dll_load().cwipc_activesource_start(self.as_cwipc_source_p())
+    
+    def stop(self) -> None:
+        """Stop the pointcloud source."""
+        cwipc_util_dll_load().cwipc_activesource_stop(self.as_cwipc_source_p())
+
     def seek(self, timestamp : int) -> bool:
         """Return true if seek was successfull"""
-        return cwipc_util_dll_load().cwipc_tiledsource_seek(self.as_cwipc_source_p(),timestamp)
+        return cwipc_util_dll_load().cwipc_activesource_seek(self.as_cwipc_source_p(),timestamp)
     
     def maxtile(self) -> int:
         """Return maximum number of tiles creatable from cwipc objects generated by this source"""
-        return cwipc_util_dll_load().cwipc_tiledsource_maxtile(self.as_cwipc_source_p())
+        return cwipc_util_dll_load().cwipc_activesource_maxtile(self.as_cwipc_source_p())
 
     def get_tileinfo_raw(self, tilenum : int) -> Optional[cwipc_tileinfo]:
         """Return cwipc_tileinfo for tile tilenum, or None"""
         info = cwipc_tileinfo()
-        rv = cwipc_util_dll_load().cwipc_tiledsource_get_tileinfo(self.as_cwipc_source_p(), tilenum, ctypes.byref(info))
+        rv = cwipc_util_dll_load().cwipc_activesource_get_tileinfo(self.as_cwipc_source_p(), tilenum, ctypes.byref(info))
         if not rv:
             return None
         return info
@@ -808,7 +794,17 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract
             raise CwipcError(f"get_tileinfo_raw({tilenum}) returned None")
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
         return dict(normal=normal, cameraName=info.cameraName, ncamera=info.ncamera, cameraMask=info.cameraMask)
-        
+
+    def request_auxiliary_data(self, name : str) -> None:
+        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+        cname = name.encode('utf8')
+        return cwipc_util_dll_load().cwipc_activesource_request_auxiliary_data(self.as_cwipc_source_p(), cname)
+
+    def auxiliary_data_requested(self, name : str) -> bool:
+        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+        cname = name.encode('utf8')
+        return cwipc_util_dll_load().cwipc_activesource_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
+                
     def auxiliary_operation(self, op : str, inbuf : bytes, outbuf : bytearray) -> bool:
         """Perform operation in the capturer."""
         c_op = op.encode('utf8')
@@ -818,7 +814,7 @@ class cwipc_tiledsource_wrapper(cwipc_source_wrapper, cwipc_tiledsource_abstract
         c_outbuf_size = len(outbuf)
         c_outbuf_type = ctypes.c_byte * c_outbuf_size
         c_outbuf = c_outbuf_type.from_buffer(outbuf)
-        return cwipc_util_dll_load().cwipc_tiledsource_auxiliary_operation(self.as_cwipc_source_p(), c_op, c_inbuf, c_inbuf_size, c_outbuf, c_outbuf_size)
+        return cwipc_util_dll_load().cwipc_activesource_auxiliary_operation(self.as_cwipc_source_p(), c_op, c_inbuf, c_inbuf_size, c_outbuf, c_outbuf_size)
    
 class cwipc_sink_wrapper:
     """Pointcloud sink as an opaque object"""
@@ -1115,24 +1111,7 @@ def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
         return cwipc_wrapper(rv)
     raise CwipcError("cwipc_from_packet: no pointcloud read, but no specific error returned from C library")
 
-def cwipc_from_certh(certhPC : ctypes.c_void_p, timestamp : int, origin : Optional[tuple[float, float, float]]=None, bbox : Optional[tuple[float, float, float, float, float, float]]=None) -> cwipc_wrapper:
-    """Create a cwipc from a CERTH PointCloud structure (address passed as ctypes.c_void_p)"""
-    corigin = None
-    if origin:
-        corigin = (ctypes.c_float*3)(*origin)
-        corigin = ctypes.cast(corigin, ctypes.c_void_p)
-    cbbox = None
-    if bbox:
-        cbbox = (ctypes.c_float*6)(*bbox)
-        cbbox = ctypes.cast(cbbox, ctypes.c_void_p)
-    errorString = ctypes.c_char_p()
-    rv = cwipc_util_dll_load().cwipc_from_certh(certhPC, corigin, cbbox, timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
-    if errorString and errorString.value:
-        raise CwipcError(errorString.value.decode('utf8'))
-    if rv:
-        return cwipc_wrapper(rv)
-    raise CwipcError("cwipc_from_certh: no pointcloud returned, but no specific error returned from C library")
-    
+
 def cwipc_read_debugdump(filename : str) -> cwipc_wrapper:
     """Return a cwipc object read from a .cwipcdump file."""
     errorString = ctypes.c_char_p()
@@ -1152,17 +1131,17 @@ def cwipc_write_debugdump(filename : str, pointcloud : cwipc_wrapper) -> int:
         raise CwipcError(errorString.value.decode('utf8'))
     return rv
     
-def cwipc_synthetic(fps : int=0, npoints : int=0) -> cwipc_tiledsource_wrapper:
+def cwipc_synthetic(fps : int=0, npoints : int=0) -> cwipc_activesource_wrapper:
     """Returns a cwipc_source object that returns synthetically generated cwipc objects on every get() call."""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_synthetic(fps, npoints, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_tiledsource_wrapper(rv)
+        return cwipc_activesource_wrapper(rv)
     raise CwipcError("cwipc_synthetic: cannot create synthetic source, but no specific error returned from C library")
     
-def cwipc_capturer(conffile : Optional[str]=None) -> cwipc_tiledsource_wrapper:
+def cwipc_capturer(conffile : Optional[str]=None) -> cwipc_activesource_wrapper:
     """Returns a cwipc_source object that grabs from a camera and returns cwipc object on every get() call."""
     errorString = ctypes.c_char_p()
     cconffile = None
@@ -1174,7 +1153,7 @@ def cwipc_capturer(conffile : Optional[str]=None) -> cwipc_tiledsource_wrapper:
     if errorString and errorString.value:
         warnings.warn(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_tiledsource_wrapper(rv)
+        return cwipc_activesource_wrapper(rv)
     raise CwipcError("cwipc_capturer: cannot create capturer, but no specific error returned from C library")
 
     
@@ -1229,12 +1208,12 @@ def cwipc_join(pc1 : cwipc_wrapper, pc2 : cwipc_wrapper) -> cwipc_wrapper:
     rv = cwipc_util_dll_load().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
     return cwipc_wrapper(rv)
   
-def cwipc_proxy(host : str, port : int) -> cwipc_tiledsource_wrapper:
+def cwipc_proxy(host : str, port : int) -> cwipc_activesource_wrapper:
     """Returns a cwipc_source object that starts a server and receives pointclouds over a socket connection"""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_proxy(host.encode('utf8'), port, ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_tiledsource_wrapper(rv)
+        return cwipc_activesource_wrapper(rv)
     raise CwipcError("cwipc_proxy: cannot create capturer, but no specific error returned from C library")

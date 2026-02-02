@@ -6,7 +6,6 @@ add_library(cwipc_util SHARED
 	cwipc_capturer.cpp 
 	cwipc_filters.cpp 
 	cwipc_window.cpp 
-	cwipc_certh.cpp 
 	cwipc_proxy.cpp 
 )
 

@@ -31,21 +31,6 @@ class cwipc_source_abstract(ABC):
     def free(self) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
         ...
-    
-    @abstractmethod
-    def start(self) -> bool:
-        """Start the source. Returns True on success."""
-        ...
-
-    @abstractmethod
-    def stop(self) -> None:
-        """Stop the source."""
-        ...
-        
-    @abstractmethod
-    def seek(self, timestamp : int) -> bool:
-        """Seek to the specified timestamp (microseconds). Returns True on success."""
-        ...
         
     @abstractmethod
     def eof(self) -> bool:
@@ -63,24 +48,14 @@ class cwipc_source_abstract(ABC):
         ...
 
     @abstractmethod
-    def request_auxiliary_data(self, name : str) -> None:
-        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
-        ...
-
-    @abstractmethod
-    def auxiliary_data_requested(self, name : str) -> bool:
-        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
-        ...
-
-    @abstractmethod
     def statistics(self) -> None:
         """Print statistics about this source to stdout"""
         ...
         
 cwipc_tileinfo_dict = dict[str, Any]
 
-class cwipc_tiledsource_abstract(cwipc_source_abstract):
-    """A source of tiled pointclouds. Usually a live capturer (with potentially multiple cameras)"""
+class cwipc_activesource_abstract(cwipc_source_abstract):
+    """An active source of pointclouds. Usually a live capturer (with potentially multiple cameras)"""
 
     @abstractmethod
     def reload_config(self, config : Union[str, bytes, None]) -> None:
@@ -91,12 +66,33 @@ class cwipc_tiledsource_abstract(cwipc_source_abstract):
     def get_config(self) -> bytes:
         """Return current capturer cameraconfig as JSON"""
         ...
-
+    
     @abstractmethod
-    def seek(self, timestamp : int) -> bool:
-        """Return true if seek was successful"""
+    def start(self) -> bool:
+        """Start the source. Returns True on success."""
         ...
 
+    @abstractmethod
+    def stop(self) -> None:
+        """Stop the source."""
+        ...
+        
+    @abstractmethod
+    def seek(self, timestamp : int) -> bool:
+        """Seek to the specified timestamp (microseconds). Returns True on success."""
+        ...
+
+    @abstractmethod
+    def request_auxiliary_data(self, name : str) -> None:
+        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+        ...
+
+    @abstractmethod
+    def auxiliary_data_requested(self, name : str) -> bool:
+        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+        ...
+
+    @abstractmethod
     def auxiliary_operation(self, op : str, inbuf : bytes, outbuf : bytearray) -> bool:
         """Perform operation in the capturer."""
         ...

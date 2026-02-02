@@ -3,9 +3,9 @@ import time
 import os
 import json
 from typing import List, Optional, Any, Iterable, Union
-from .abstract import cwipc_source_abstract
+from .abstract import cwipc_activesource_abstract
 
-class _Filesource(cwipc_source_abstract):
+class _Filesource(cwipc_activesource_abstract):
     def __init__(self, filenames : Union[str, List[str]], tileInfo : Optional[List[dict[Any,Any]]]=None, loop : bool=False, fps : Optional[int]=None, retimestamp : bool=False):
         if not tileInfo:
             tileInfo = [{
@@ -27,6 +27,12 @@ class _Filesource(cwipc_source_abstract):
     def free(self) -> None:
         self.stop()
         
+    def reload_config(self, config: str | bytes | None) -> None:
+        return
+    
+    def get_config(self) -> Optional[str]:
+        return None
+    
     def start(self) -> bool:
         return True
     
@@ -35,7 +41,10 @@ class _Filesource(cwipc_source_abstract):
         if self.single_file_mode_pc:
             self.single_file_mode_pc.free()
             self.single_file_mode_pc = None
-        
+            
+    def seek(self, timestamp : int) -> bool:
+        return False
+    
     def eof(self) -> bool:
         if self.single_file_mode_pc != None:
             return False
@@ -84,6 +93,12 @@ class _Filesource(cwipc_source_abstract):
     
     def auxiliary_data_requested(self, name: str) -> bool:
         return False
+    
+    def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
+        return False   
+    
+    def statistics(self) -> None:
+        pass
         
 class _DumpFilesource(_Filesource):
     def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
@@ -102,7 +117,7 @@ class _CompressedFilesource(_Filesource):
         self.decoder.feed(data)
         return self.decoder.get()
     
-def cwipc_playback(dir_or_files : Union[str, List[str]], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> cwipc_source_abstract:
+def cwipc_playback(dir_or_files : Union[str, List[str]], ext : str='.ply', loop : bool=False, fps : Optional[int]=None, inpoint : Optional[int]=None, outpoint : Optional[int]=None, retimestamp : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that reads .ply or .cwipcdump files from a directory or list of filenames"""
     tileInfo = None
     filenames : Iterable[str]

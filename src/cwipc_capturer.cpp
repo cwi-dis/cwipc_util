@@ -28,7 +28,7 @@ struct capturer {
 
 std::vector<struct capturer> all_capturers;
 
-cwipc_tiledsource *cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVersion) {
+cwipc_activesource *cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);

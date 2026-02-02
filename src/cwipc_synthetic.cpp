@@ -16,7 +16,7 @@
 #include "cwipc_util/api.h"
 #include "cwipc_util/internal/logging.hpp"
 
-class cwipc_source_synthetic_impl : public cwipc_tiledsource {
+class cwipc_source_synthetic_impl : public cwipc_activesource {
 private:
     float m_angle;
     std::chrono::system_clock::time_point m_start;
@@ -222,7 +222,7 @@ private:
     }
 };
 
-cwipc_tiledsource* cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion) {
+cwipc_activesource* cwipc_synthetic(int fps, int npoints, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -233,7 +233,7 @@ cwipc_tiledsource* cwipc_synthetic(int fps, int npoints, char **errorMessage, ui
         return NULL;
     }
     cwipc_log_set_errorbuf(errorMessage);
-    cwipc_tiledsource *rv = new cwipc_source_synthetic_impl(fps, npoints);
+    cwipc_activesource *rv = new cwipc_source_synthetic_impl(fps, npoints);
     if (rv == nullptr && errorMessage && *errorMessage == NULL) {
         cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_synthetic", "unspecified error");
     }

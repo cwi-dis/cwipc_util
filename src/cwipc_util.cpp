@@ -717,11 +717,11 @@ size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx) {
     return collection->size(idx);
 }
 
-bool cwipc_source_start(cwipc_source *src) {
+bool cwipc_activesource_start(cwipc_activesource *src) {
     return src->start();
 }
 
-void cwipc_source_stop(cwipc_source *src) {
+void cwipc_activesource_stop(cwipc_activesource *src) {
     src->stop();
 }
 
@@ -741,36 +741,36 @@ bool cwipc_source_available(cwipc_source *src, bool wait) {
   return src->available(wait);
 }
 
-void cwipc_source_request_auxiliary_data(cwipc_source *src, const char *name) {
+void cwipc_activesource_request_auxiliary_data(cwipc_activesource *src, const char *name) {
     src->request_auxiliary_data(name);
 }
 
-bool cwipc_source_auxiliary_data_requested(cwipc_source *src, const char *name) {
+bool cwipc_activesource_auxiliary_data_requested(cwipc_activesource *src, const char *name) {
     return src->auxiliary_data_requested(name);
 }
 
-bool cwipc_tiledsource_reload_config(cwipc_tiledsource* src, const char* configFile) {
+bool cwipc_activesource_reload_config(cwipc_activesource* src, const char* configFile) {
     return src->reload_config(configFile);
 }
 
-size_t cwipc_tiledsource_get_config(cwipc_tiledsource* src, char* buffer, size_t size) {
+size_t cwipc_activesource_get_config(cwipc_activesource* src, char* buffer, size_t size) {
     return src->get_config(buffer, size);
 }
 
-bool cwipc_tiledsource_seek(cwipc_tiledsource* src, uint64_t timestamp)
+bool cwipc_activesource_seek(cwipc_activesource* src, uint64_t timestamp)
 {
     return src->seek(timestamp);
 }
 
-int cwipc_tiledsource_maxtile(cwipc_tiledsource *src) {
+int cwipc_activesource_maxtile(cwipc_activesource *src) {
   return src->maxtile();
 }
 
-bool cwipc_tiledsource_get_tileinfo(cwipc_tiledsource *src, int tilenum, struct cwipc_tileinfo *tileinfo) {
+bool cwipc_activesource_get_tileinfo(cwipc_activesource *src, int tilenum, struct cwipc_tileinfo *tileinfo) {
   return src->get_tileinfo(tilenum, tileinfo);
 }
 
-bool cwipc_tiledsource_auxiliary_operation(cwipc_tiledsource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
+bool cwipc_activesource_auxiliary_operation(cwipc_activesource *src, const char* op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) {
     return src->auxiliary_operation(std::string(op), inbuf, insize, outbuf, outsize);
 }
 

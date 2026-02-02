@@ -37,7 +37,7 @@ inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {
 inline void _cwipc_setThreadName(std::thread* thr, const wchar_t* name) {}
 #endif
 
-class cwipc_source_proxy_impl : public cwipc_tiledsource {
+class cwipc_source_proxy_impl : public cwipc_activesource {
 private:
     int m_listen_socket;
     int m_socket;
@@ -261,7 +261,7 @@ private:
     }
 };
 
-cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion) {
+cwipc_activesource* cwipc_proxy(const char *host, int port, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -326,7 +326,7 @@ cwipc_tiledsource* cwipc_proxy(const char *host, int port, char **errorMessage, 
         return NULL;
     }
 
-    cwipc_tiledsource *rv = new cwipc_source_proxy_impl(sock);
+    cwipc_activesource *rv = new cwipc_source_proxy_impl(sock);
     if (rv == nullptr && errorMessage && *errorMessage == NULL) {
         cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_proxy", "proxy allocation failed without error message");
     }

@@ -14,7 +14,7 @@ import open3d.visualization
 import cv2.typing
 import cv2.aruco
 from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
-from ..abstract import cwipc_tiledsource_abstract
+from ..abstract import cwipc_activesource_abstract
 from .abstract import *
 from .util import get_tiles_used, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
 from .fine import RegistrationTransformation, RegistrationComputer, RegistrationComputer_ICP_Point2Point
@@ -32,7 +32,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
         self.serial_for_tilenum : Dict[int, str] = {}
-        self.grabber : Optional[cwipc_tiledsource_abstract] = None
+        self.grabber : Optional[cwipc_activesource_abstract] = None
         self.transformations : List[RegistrationTransformation] = []
         
         self.known_marker_positions : MarkerPositions = dict()
@@ -66,7 +66,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
     def set_serial_dict(self, sd : Dict[int, str]) -> None:
         self.serial_for_tilenum = sd
 
-    def set_grabber(self, grabber : cwipc_tiledsource_abstract) -> None:
+    def set_grabber(self, grabber : cwipc_activesource_abstract) -> None:
         assert self.grabber is None
         self.grabber = grabber
 

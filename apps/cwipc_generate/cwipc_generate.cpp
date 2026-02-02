@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     char filename[500];
     char *error;
 
-    cwipc_source *generator = cwipc_synthetic(0, 0, &error, CWIPC_API_VERSION);
+    cwipc_activesource *generator = cwipc_synthetic(0, 0, &error, CWIPC_API_VERSION);
     if (generator == NULL) {
         std::cerr << "Error: " << error << std::endl;
         return 1;

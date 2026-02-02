@@ -371,7 +371,7 @@ protected:
  */
 
 template<class GrabberClass, class CameraConfigClass>
-class cwipc_capturer_impl_base : public cwipc_tiledsource {
+class cwipc_capturer_impl_base : public cwipc_activesource {
 protected:
     GrabberClass *m_grabber; 
 public:
@@ -505,10 +505,10 @@ public:
  * Capturer implementations should register themselves by calling
  * _cwipc_register_capturer() during their initialization.
  */
-class cwipc_tiledsource;
+class cwipc_activesource;
 
 typedef int _cwipc_functype_count_devices();
-typedef cwipc_tiledsource* _cwipc_func_capturer_factory(const char *configFilename, char **errorMessage, uint64_t apiVersion);
+typedef cwipc_activesource* _cwipc_func_capturer_factory(const char *configFilename, char **errorMessage, uint64_t apiVersion);
 
 extern "C" {
     _CWIPC_UTIL_EXPORT int _cwipc_register_capturer(const char* name, _cwipc_functype_count_devices* countFunc, _cwipc_func_capturer_factory* factoryFunc);
