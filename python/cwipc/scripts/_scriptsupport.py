@@ -442,7 +442,14 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_args.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
     input_args.add_argument("--help_filters", action="store_true", help="List available filters and exit")
     return parser
-            
+    
+def waitForDebugpy() -> None:
+    import debugpy
+    debugpy.listen(5678)
+    print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
+    debugpy.wait_for_client()
+    print(f"{sys.argv[0]}: debugger attached")
+
 def beginOfRun(args : argparse.Namespace) -> None:
     """Optionally pause execution"""
     if args.version:
@@ -459,11 +466,7 @@ def beginOfRun(args : argparse.Namespace) -> None:
             answer = answer.strip()
         print(f"{sys.argv[0]}: started.")
     if args.debugpy:
-        import debugpy
-        debugpy.listen(5678)
-        print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
-        debugpy.wait_for_client()
-        print(f"{sys.argv[0]}: debugger attached")
+        waitForDebugpy()
     if args.logging:
         levelmap = {
             'error': CWIPC_LOG_LEVEL_ERROR,
