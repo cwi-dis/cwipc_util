@@ -639,7 +639,7 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
         return depth_sum // depth_count
     
     def _get_rgb_depth_images(self, camindex : int) -> Tuple[Optional[cv2.typing.MatLike], Optional[cv2.typing.MatLike]]:
-        """Return the RGB and Depth images for a given camera, from the point cloud auxiliary data."""
+        """Return the RGB and Depth images for a given camera, from the point cloud metadata."""
         tilenum = self.per_camera_tilenum[camindex]
         
         serial = self.serial_for_tilenum.get(tilenum)
@@ -647,12 +647,12 @@ class MultiCameraCoarseArucoRgb(MultiCameraCoarseAruco):
             print(f"cwipc_register: camera {camindex}: get_rgb_depth_images: Unknown tilenum {tilenum}, no serial number known")
             return None, None
         assert self.original_pointcloud
-        auxdata = self.original_pointcloud.access_auxiliary_data()
-        if not auxdata or auxdata.count() == 0:
-            print(f"cwipc_register: camera {camindex}: get_rgb_depth_images: tilenum {tilenum}: no auxdata")
+        metadata = self.original_pointcloud.access_metadata()
+        if not metadata or metadata.count() == 0:
+            print(f"cwipc_register: camera {camindex}: get_rgb_depth_images: tilenum {tilenum}: no metadata")
             assert 0
             return None, None
-        image_dict = auxdata.get_all_images(serial)
+        image_dict = metadata.get_all_images(serial)
         depth_image : Optional[cv2.typing.MatLike] = image_dict.get("depth.")
         rgb_image : Optional[cv2.typing.MatLike] = image_dict.get("rgb.")
         assert not depth_image is None

@@ -316,27 +316,27 @@ class TestApi(unittest.TestCase):
         pc.free()
         pcs.free()
         
-    def test_cwipc_synthetic_nonexistent_auxdata(self):
-        """If we request nonexistent auxiliary data on a cwipc_source do we get an error?"""
+    def test_cwipc_synthetic_nonexistent_metadata(self):
+        """If we request nonexistent metadata on a cwipc_source do we get an error?"""
         pcs = cwipc.cwipc_synthetic()
-        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        wantUnknown = pcs.is_metadata_requested("nonexistent-metadata")
         self.assertFalse(wantUnknown)
-        pcs.request_auxiliary_data("nonexistent-auxdata")
-        wantUnknown = pcs.auxiliary_data_requested("nonexistent-auxdata")
+        pcs.request_metadata("nonexistent-metadata")
+        wantUnknown = pcs.is_metadata_requested("nonexistent-metadata")
         self.assertTrue(wantUnknown)
         pcs.free()
     
-    def test_cwipc_synthetic_auxdata(self):
-        """Can we request auxiliary data on a cwipc_source"""
+    def test_cwipc_synthetic_metadata(self):
+        """Can we request metadata on a cwipc_source"""
         pcs = cwipc.cwipc_synthetic()
-        pcs.request_auxiliary_data("test-angle")
-        wantTestAngle = pcs.auxiliary_data_requested("test-angle")
+        pcs.request_metadata("test-angle")
+        wantTestAngle = pcs.is_metadata_requested("test-angle")
         self.assertTrue(wantTestAngle)
         pcs.start()
         pc = pcs.get()
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
-        ap = pc.access_auxiliary_data()
+        ap = pc.access_metadata()
         self.assertIsNotNone(ap)
         assert ap # Only to keep linters happy
         self.assertEqual(ap.count(), 1)
@@ -625,12 +625,12 @@ class TestApi(unittest.TestCase):
             src = cwipc.cwipc_proxy('unknown.host.name', 8887)
             src.free()
         
-    def test_auxiliary_data_empty(self):
+    def test_metadata_empty(self):
         pc = self._build_pointcloud()
-        aux = pc.access_auxiliary_data()
-        self.assertNotEqual(aux, None)
-        assert aux # Keep linters happy
-        nItems = aux.count()
+        metadata = pc.access_metadata()
+        self.assertNotEqual(metadata, None)
+        assert metadata # Keep linters happy
+        nItems = metadata.count()
         self.assertEqual(nItems, 0)
         pc.free()
         

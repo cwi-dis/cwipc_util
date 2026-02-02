@@ -131,10 +131,10 @@ public:
             rv->_set_cellsize(2.0 / m_hsteps);
 
             // For testing purposes: save angle if wanted
-            if (auxiliary_data_requested("test-angle")) {
+            if (is_metadata_requested("test-angle")) {
                 void *memptr = malloc(sizeof(m_angle));
                 memcpy(memptr, &m_angle, sizeof(m_angle));
-                cwipc_auxiliary_data *ap = rv->access_auxiliary_data();
+                cwipc_metadata *ap = rv->access_metadata();
                 ap->_add("test-angle", "", memptr, sizeof(m_angle), ::free);
             }
         }

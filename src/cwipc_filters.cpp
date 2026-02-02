@@ -82,9 +82,9 @@ cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(cellsize);
 
-    // copy src auxdata to dst pointcloud
-    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    // copy src metadata to dst pointcloud
+    cwipc_metadata* src_ad = pc->access_metadata();
+    cwipc_metadata* dst_ad = rv->access_metadata();
     src_ad->_move(dst_ad);
 
     return rv;
@@ -170,9 +170,9 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     // And copy the metadata
     rv->_set_cellsize(cellsize);
-    // And copy src auxdata to dst pointcloud
-    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    // And copy src metadata to dst pointcloud
+    cwipc_metadata* src_ad = pc->access_metadata();
+    cwipc_metadata* dst_ad = rv->access_metadata();
     src_ad->_move(dst_ad);
 
     return rv;
@@ -263,9 +263,9 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
 
-            // copy src auxdata to dst pointcloud
-            cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-            cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+            // copy src metadata to dst pointcloud
+            cwipc_metadata* src_ad = pc->access_metadata();
+            cwipc_metadata* dst_ad = rv->access_metadata();
             src_ad->_move(dst_ad);
 
             return rv;
@@ -274,9 +274,9 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
 
-            // copy src auxdata to dst pointcloud
-            cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-            cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+            // copy src metadata to dst pointcloud
+            cwipc_metadata* src_ad = pc->access_metadata();
+            cwipc_metadata* dst_ad = rv->access_metadata();
             src_ad->_move(dst_ad);
 
             return rv;
@@ -315,16 +315,16 @@ cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
-#ifdef cwipc_old_move_auxdata
+#ifdef cwipc_old_move_metadata
     // For some reason, at some point we thought it would be a good idea to
-    // move the auxiliary data to the new point cloud. It isn't at least not
+    // move the metadata to the new point cloud. It isn't at least not
     // for tilefilter.
     // Maybe this was just because the code was copied from some other method, where
     // it probably is a good idea?
     //
-    // copy src auxdata to dst pointcloud
-    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    // copy src metadata to dst pointcloud
+    cwipc_metadata* src_ad = pc->access_metadata();
+    cwipc_metadata* dst_ad = rv->access_metadata();
     src_ad->_move(dst_ad);
 #endif
 
@@ -352,9 +352,9 @@ cwipc* cwipc_tilemap(cwipc *pc, uint8_t map[256]) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
-    // copy src auxdata to dst pointcloud
-    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    // copy src metadata to dst pointcloud
+    cwipc_metadata* src_ad = pc->access_metadata();
+    cwipc_metadata* dst_ad = rv->access_metadata();
     src_ad->_move(dst_ad);
 
     return rv;
@@ -410,9 +410,9 @@ cwipc* cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits) {
     cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
-    // copy src auxdata to dst pointcloud
-    cwipc_auxiliary_data* src_ad = pc->access_auxiliary_data();
-    cwipc_auxiliary_data* dst_ad = rv->access_auxiliary_data();
+    // copy src metadata to dst pointcloud
+    cwipc_metadata* src_ad = pc->access_metadata();
+    cwipc_metadata* dst_ad = rv->access_metadata();
     src_ad->_move(dst_ad);
 
     return rv;

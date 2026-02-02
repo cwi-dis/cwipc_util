@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List, Iterable
 
 from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
 from .. import codec
-from ..util import cwipc_auxiliary_data
+from ..util import cwipc_metadata
 from ._scriptsupport import *
 from ..net.abstract import *
 
@@ -64,15 +64,15 @@ class DropWriter(cwipc_sink_abstract):
                 if self.previous_timestamp != None:
                     r["frame_duration"] = pc_timestamp - self.previous_timestamp
                 self.previous_timestamp = pc_timestamp
-                auxdata = pc.access_auxiliary_data()
-                assert auxdata
-                r["aux"] = auxdata.count()
-                if auxdata != None and auxdata.count() > 0:
-                    for i in range(auxdata.count()):
-                        auxname = auxdata.name(i)
+                metadata = pc.access_metadata()
+                assert metadata
+                r["aux"] = metadata.count()
+                if metadata != None and metadata.count() > 0:
+                    for i in range(metadata.count()):
+                        auxname = metadata.name(i)
                         if not "timestamps" in auxname:
                             continue
-                        descr_dict = auxdata._parse_aux_description(auxdata.description(i))
+                        descr_dict = metadata._parse_aux_description(metadata.description(i))
                         for k, v in descr_dict.items():
                             r[f"{auxname}.{k}"] = v
                         delta_time_depth = pc_timestamp - descr_dict["depth_timestamp"]
@@ -84,7 +84,7 @@ class DropWriter(cwipc_sink_abstract):
                     if self.savergb:
                         self.savergb_counter -= 1
                         if self.savergb_counter <= 0:
-                            self.save_rgb(pc, auxdata)
+                            self.save_rgb(pc, metadata)
                             self.savergb_counter = self.savergb
                 pc.free()
                 
@@ -93,10 +93,10 @@ class DropWriter(cwipc_sink_abstract):
         
         return True              
         
-    def save_rgb(self, pc : cwipc_wrapper, auxdata : cwipc_auxiliary_data) -> None:
+    def save_rgb(self, pc : cwipc_wrapper, metadata : cwipc_metadata) -> None:
         import cv2
         timestamp = pc.timestamp()
-        image_dict = auxdata.get_all_images("rgb.")
+        image_dict = metadata.get_all_images("rgb.")
         for serial, image in image_dict.items():
             name = "rgb." + serial
             filename = f"{timestamp}.{serial}.png"
@@ -169,9 +169,9 @@ def main():
     #
     sourceFactory, source_name = cwipc_genericsource_factory(args)
     source = sourceFactory()
-    source.request_auxiliary_data("timestamps")
+    source.request_metadata("timestamps")
     if args.savergb:
-        source.request_auxiliary_data("rgb")
+        source.request_metadata("rgb")
 
     kwargs = {}
     writer = DropWriter(args=args)

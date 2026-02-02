@@ -156,7 +156,7 @@ typedef void (*cwipc_log_callback_t)(int level, const char* message);
 
 #ifdef __cplusplus
 
-class cwipc_auxiliary_data;
+class cwipc_metadata;
 
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
 typedef void* cwipc_pcl_pointcloud;
@@ -260,13 +260,13 @@ public:
      */
     virtual cwipc_pcl_pointcloud access_pcl_pointcloud() = 0;
 
-    /** \brief Access auxiliary data collection.
-     * \return A reference to the auxiliary data collection.
+    /** \brief Access metadata collection.
+     * \return A reference to the metadata collection.
      *
      * Note that this function returns a borrowed reference (and that the collection consists of more
      * borrowed references). These references become invalid when free() is called.
      */
-    virtual cwipc_auxiliary_data* access_auxiliary_data() = 0;
+    virtual cwipc_metadata* access_metadata() = 0;
 };
 
 /** \brief A generator of pointclouds, abstract C++ interface.
@@ -388,26 +388,26 @@ public:
     virtual bool get_tileinfo(int tilenum, struct cwipc_tileinfo* tileinfo) = 0;
 
 
-    /** \brief Request specific auxiliary data to be added to pointclouds.
-     * \param name Name of the auxiliary data.
+    /** \brief Request specific metadata to be added to pointclouds.
+     * \param name Name of the metadata wanted.
      * 
-     * Capturing auxiliary data (such as skeletons, or RGBD images) may be expensive, therefore
-     * you need to request the specific auxiliary data you need.
+     * Capturing metadata data (such as skeletons, or RGBD images) may be expensive, therefore
+     * you need to request the specific metadata you need.
      *
-     * If a subclass needs special handing for dynamic requests of auxiliary data
-     * it should override this method, call the base and then use auxiliary_data_requested()
+     * If a subclass needs special handing for dynamic requests of metadata items
+     * it should override this method, call the base and then use is_metadata_requested()
      * to see which data is currently wanted.
      */
-    virtual void request_auxiliary_data(const std::string& name) {
-        auxiliary_data_wanted.insert(name);
+    virtual void request_metadata(const std::string& name) {
+        metadata_wanted.insert(name);
     }
 
-    /** \brief Returns true is specific auxiliary data has been requested
-     * \param name Name of the auxiliary data
+    /** \brief Returns true is specific metadata has been requested
+     * \param name Name of the metadata
      * \returns True or false
      */
-    bool auxiliary_data_requested(const std::string& name) {
-        return auxiliary_data_wanted.find(name) != auxiliary_data_wanted.end();
+    bool is_metadata_requested(const std::string& name) {
+        return metadata_wanted.find(name) != metadata_wanted.end();
     }
 
     /** \brief Do an auxiliary operation.
@@ -426,7 +426,7 @@ public:
     }
 
 private:
-    std::set<std::string> auxiliary_data_wanted;
+    std::set<std::string> metadata_wanted;
 };
 
 /** \brief A consumer of pointclouds, abstract C++ interface.
@@ -484,20 +484,20 @@ public:
     virtual char interact(const char* prompt, const char* responses, int32_t millis) = 0;
 };
 
-/** \brief A single auxiliary data item.
+/** \brief A collection of metadata.
  * 
- * This item (which is freed along with the cwipc point cloud it belongs to) contains
- * all the information needed to access and parse the auxiliary data item. It is the
- * return value of cwipc->access_auxiliary_data().
+ * This collection (which is freed along with the cwipc point cloud it belongs to) contains
+ * all the information needed to access and parse the metadata items. It is the
+ * return value of cwipc->access_metadata().
  */
-class cwipc_auxiliary_data {
+class cwipc_metadata {
 public:
     typedef void (*deallocfunc)(void*);
 
-    virtual ~cwipc_auxiliary_data() {}
+    virtual ~cwipc_metadata() {}
 
-    /** \brief Returns number of auxiliary data items
-     * \returns Number of auxiliary data items.
+    /** \brief Returns number of metadata items
+     * \returns Number of metadata items.
      */
     virtual int count() = 0;
 
@@ -528,7 +528,7 @@ public:
      */
     virtual size_t size(int idx) = 0;
 
-    /** \brief Add an auxiliary data item (internal use only)
+    /** \brief Add an metadata item (internal use only)
      * \param name The item name
      * \param description String describing the item format
      * \param pointer The item pointer
@@ -537,13 +537,13 @@ public:
      */
     virtual void _add(const std::string& name, const std::string& description, void* pointer, size_t size, deallocfunc dealloc) = 0;
 
-    /** \brief Move all auxiliary data items to another collection (internal use only)
+    /** \brief Move all metadata items to another collection (internal use only)
      * \param other The collection to move the items to.
      *
-     * All auxiliary data is moved to another collection, and this collection is cleared, so ownership of the items is passed to
+     * All metadata items moved to another collection, and the current collection is cleared, so ownership of the items is passed to
      * the other collection.
      */
-    virtual void _move(cwipc_auxiliary_data* other) = 0;
+    virtual void _move(cwipc_metadata* other) = 0;
 };
 
 #else
@@ -568,9 +568,9 @@ typedef struct _cwipc_sink {
     int _dummy;
 } cwipc_sink;
 
-typedef struct _cwipc_auxiliary_data {
+typedef struct _cwipc_metadata {
     int _dummy;
-} cwipc_auxiliary_data;
+} cwipc_metadata;
 
 #endif
 
@@ -761,14 +761,14 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT size_t cwipc_copy_packet(cwipc* pc, uint8_t* packet, size_t size);
 
-    /** \brief Access auxiliary data collection (C interface).
+    /** \brief Access metadata collection (C interface).
      * \param pc The cwipc object.
-     * \return A reference to the auxiliary data collection
+     * \return A reference to the metadata collection
      *
      * Note that this function returns a borrowed reference (and that the collection consists of more
      * borrowed references). AThese references become invalid when free() is called.
      */
-    _CWIPC_UTIL_EXPORT cwipc_auxiliary_data* cwipc_access_auxiliary_data(cwipc* pc);
+    _CWIPC_UTIL_EXPORT cwipc_metadata* cwipc_access_metadata(cwipc* pc);
 
     /** \brief Start a pointcloud source
      * 
@@ -814,18 +814,18 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source* src, bool wait);
 
-    /** \brief Request specific auxiliary data to be added to pointclouds (C interface).
+    /** \brief Request specific metadata to be added to pointclouds (C interface).
      * \param src The cwipc_source object.
-     * \param name Name of the auxiliary data
+     * \param name Name of the metadata items wanted
      */
-    _CWIPC_UTIL_EXPORT void cwipc_activesource_request_auxiliary_data(cwipc_activesource* src, const char* name);
+    _CWIPC_UTIL_EXPORT void cwipc_activesource_request_metadata(cwipc_activesource* src, const char* name);
 
-    /** \brief Returns true is specific auxiliary data has been requested (C interface).
+    /** \brief Returns true is specific metadata has been requested (C interface).
      * \param src The cwipc_source object.
-     * \param name Name of the auxiliary data
+     * \param name Name of the metadata items
      * \returns True or false
      */
-    _CWIPC_UTIL_EXPORT bool cwipc_activesource_auxiliary_data_requested(cwipc_activesource* src, const char* name);
+    _CWIPC_UTIL_EXPORT bool cwipc_activesource_is_metadata_requested(cwipc_activesource* src, const char* name);
 
     /** \brief Reload capturer based on a new configuration
     *
@@ -930,40 +930,43 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink* sink, const char* prompt, const char* responses, int32_t millis);
 
-    /** \brief Returns number of auxiliary data items in the collection (C interface).
-     * \param collection the auxiliary data
-     * \returns Number of auxiliary data items.
+    /** \brief Returns number of items in the metadata collection (C interface).
+     * \param collection the metadata collection
+     * \returns Number of metadata items.
      */
-    _CWIPC_UTIL_EXPORT int cwipc_auxiliary_data_count(cwipc_auxiliary_data* collection);
+    _CWIPC_UTIL_EXPORT int cwipc_metadata_count(cwipc_metadata* collection);
 
     /** \brief Returns name of an item in the collection (C interface).
-     * \param collection the auxiliary data
+     * \param collection the metadata collection
+     * \param idx The item index
      * \returns Name (borrowed reference)
      */
-    _CWIPC_UTIL_EXPORT const char* cwipc_auxiliary_data_name(cwipc_auxiliary_data* collection, int idx);
+    _CWIPC_UTIL_EXPORT const char* cwipc_metadata_name(cwipc_metadata* collection, int idx);
 
     /** \brief Return description of an item (C interface).
-     * \param collection the auxiliary data
+     * \param collection the metadata collection
      * \param idx The item index
-     * \return the description
+     * \return the description (borrowed reference)
      *
      * The description is intended to be machine-readable for code that understands it.
      * For example, it will contain image widht and height and such.
      */
-    _CWIPC_UTIL_EXPORT const char* cwipc_auxiliary_data_description(cwipc_auxiliary_data* collection, int idx);
+    _CWIPC_UTIL_EXPORT const char* cwipc_metadata_description(cwipc_metadata* collection, int idx);
 
 
     /** \brief Returns data pointer of an item in the collection (C interface).
-     * \param collection the auxiliary data
+     * \param collection the metadata collection
+     * \param idx The item index
      * \returns Data pointer (borrowed reference)
      */
-    _CWIPC_UTIL_EXPORT void* cwipc_auxiliary_data_pointer(cwipc_auxiliary_data* collection, int idx);
+    _CWIPC_UTIL_EXPORT void* cwipc_metadata_pointer(cwipc_metadata* collection, int idx);
 
     /** \brief Returns size of a data item in the collection (C interface).
-     * \param collection the auxiliary data
+     * \param collection the metadata collection
+     * \param idx The item index
      * \returns size
      */
-    _CWIPC_UTIL_EXPORT size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data* collection, int idx);
+    _CWIPC_UTIL_EXPORT size_t cwipc_metadata_size(cwipc_metadata* collection, int idx);
 
     /** \brief Generate synthetic pointclouds.
      * \param fps Maximum frames-per-second produced (0 for unlimited)

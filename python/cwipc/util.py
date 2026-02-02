@@ -245,8 +245,8 @@ class cwipc_sink_p(ctypes.c_void_p):
     """ctypes-compatible native pointer to a cwipc_sink object"""
     pass
 
-class cwipc_auxiliary_data_p(ctypes.c_void_p):
-    """ctypes-compatible native pointer to a cwipc_auxiliary_data object"""
+class cwipc_metadata_p(ctypes.c_void_p):
+    """ctypes-compatible native pointer to a cwipc_metadata object"""
     pass
 
 #
@@ -433,8 +433,8 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_copy_packet.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_access_auxiliary_data.restype = cwipc_auxiliary_data_p
+    _cwipc_util_dll_reference.cwipc_access_metadata.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_access_metadata.restype = cwipc_metadata_p
     
     _cwipc_util_dll_reference.cwipc_activesource_start.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_activesource_start.restype = ctypes.c_bool
@@ -454,11 +454,11 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_source_free.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_source_free.restype = None
     
-    _cwipc_util_dll_reference.cwipc_activesource_request_auxiliary_data.argtypes = [cwipc_source_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_activesource_request_auxiliary_data.restype = None
+    _cwipc_util_dll_reference.cwipc_activesource_request_metadata.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_activesource_request_metadata.restype = None
     
-    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_data_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_activesource_auxiliary_data_requested.restype = ctypes.c_bool
+    _cwipc_util_dll_reference.cwipc_activesource_is_metadata_requested.argtypes = [cwipc_source_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_activesource_is_metadata_requested.restype = ctypes.c_bool
     
     _cwipc_util_dll_reference.cwipc_activesource_reload_config.argtypes = [cwipc_activesource_p, ctypes.c_char_p]
     _cwipc_util_dll_reference.cwipc_activesource_reload_config.restype = ctypes.c_bool
@@ -523,20 +523,20 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_activesource_p
 
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.argtypes = [cwipc_auxiliary_data_p]
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_count.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_metadata_count.argtypes = [cwipc_metadata_p]
+    _cwipc_util_dll_reference.cwipc_metadata_count.restype = ctypes.c_int
 
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_name.restype = ctypes.c_char_p
+    _cwipc_util_dll_reference.cwipc_metadata_name.argtypes = [cwipc_metadata_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_metadata_name.restype = ctypes.c_char_p
 
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_description.restype = ctypes.c_char_p
+    _cwipc_util_dll_reference.cwipc_metadata_description.argtypes = [cwipc_metadata_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_metadata_description.restype = ctypes.c_char_p
 
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_pointer.restype = ctypes.c_void_p
+    _cwipc_util_dll_reference.cwipc_metadata_pointer.argtypes = [cwipc_metadata_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_metadata_pointer.restype = ctypes.c_void_p
 
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.argtypes = [cwipc_auxiliary_data_p, ctypes.c_int]
-    _cwipc_util_dll_reference.cwipc_auxiliary_data_size.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_metadata_size.argtypes = [cwipc_metadata_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_metadata_size.restype = ctypes.c_int
 
 
     return _cwipc_util_dll_reference
@@ -671,10 +671,10 @@ class cwipc_wrapper(cwipc_abstract):
         assert self._bytes
         return self._bytes
         
-    def access_auxiliary_data(self):
-        rv_p = cwipc_util_dll_load().cwipc_access_auxiliary_data(self.as_cwipc_p())
+    def access_metadata(self):
+        rv_p = cwipc_util_dll_load().cwipc_access_metadata(self.as_cwipc_p())
         if rv_p:
-            return cwipc_auxiliary_data(rv_p)
+            return cwipc_metadata(rv_p)
         return None
         
     def _initialize_points_and_bytes(self) -> None:
@@ -795,15 +795,15 @@ class cwipc_activesource_wrapper(cwipc_source_wrapper, cwipc_activesource_abstra
         normal = dict(x=info.normal.x, y=info.normal.y, z=info.normal.z)
         return dict(normal=normal, cameraName=info.cameraName, ncamera=info.ncamera, cameraMask=info.cameraMask)
 
-    def request_auxiliary_data(self, name : str) -> None:
-        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+    def request_metadata(self, name : str) -> None:
+        """Ask this grabber to also provide metadata `name` with each pointcloud"""
         cname = name.encode('utf8')
-        return cwipc_util_dll_load().cwipc_activesource_request_auxiliary_data(self.as_cwipc_source_p(), cname)
+        return cwipc_util_dll_load().cwipc_activesource_request_metadata(self.as_cwipc_source_p(), cname)
 
-    def auxiliary_data_requested(self, name : str) -> bool:
-        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+    def is_metadata_requested(self, name : str) -> bool:
+        """Return True if this grabber provides metadata `name` with each pointcloud"""
         cname = name.encode('utf8')
-        return cwipc_util_dll_load().cwipc_activesource_auxiliary_data_requested(self.as_cwipc_source_p(), cname)
+        return cwipc_util_dll_load().cwipc_activesource_is_metadata_requested(self.as_cwipc_source_p(), cname)
                 
     def auxiliary_operation(self, op : str, inbuf : bytes, outbuf : bytearray) -> bool:
         """Perform operation in the capturer."""
@@ -854,42 +854,42 @@ class cwipc_sink_wrapper:
         rv = cwipc_util_dll_load().cwipc_sink_interact(self.as_cwipc_sink_p(), cprompt, cresponses, millis)
         return rv.decode('utf8')
         
-class cwipc_auxiliary_data:
+class cwipc_metadata:
     """Additional data attached to a cwipc object"""
 
-    _cwipc_auxiliary_data : Optional[cwipc_auxiliary_data_p]
+    _cwipc_metadata : Optional[cwipc_metadata_p]
 
-    def __init__(self, _cwipc_auxiliary_data : Optional[cwipc_auxiliary_data_p]=None):
-        if _cwipc_auxiliary_data != None:
-            assert isinstance(_cwipc_auxiliary_data, cwipc_auxiliary_data_p)
-        self._cwipc_auxiliary_data = _cwipc_auxiliary_data
+    def __init__(self, _cwipc_metadata : Optional[cwipc_metadata_p]=None):
+        if _cwipc_metadata != None:
+            assert isinstance(_cwipc_metadata, cwipc_metadata_p)
+        self._cwipc_metadata = _cwipc_metadata
 
-    def as_cwipc_auxiliary_data_p(self) -> cwipc_auxiliary_data_p:
+    def as_cwipc_metadata_p(self) -> cwipc_metadata_p:
         """Return ctypes-compatible pointer for this object"""
-        assert self._cwipc_auxiliary_data
-        return self._cwipc_auxiliary_data
+        assert self._cwipc_metadata
+        return self._cwipc_metadata
         
     def count(self) -> int:
-        """Return number of items in auxiliary_data collection"""
-        return cwipc_util_dll_load().cwipc_auxiliary_data_count(self.as_cwipc_auxiliary_data_p())
+        """Return number of items in metadata collection"""
+        return cwipc_util_dll_load().cwipc_metadata_count(self.as_cwipc_metadata_p())
         
     def name(self, idx : int) -> str:
         """Return name of item idx"""
-        rv = cwipc_util_dll_load().cwipc_auxiliary_data_name(self.as_cwipc_auxiliary_data_p(), idx)
+        rv = cwipc_util_dll_load().cwipc_metadata_name(self.as_cwipc_metadata_p(), idx)
         return rv.decode('utf8')
         
     def description(self, idx : int) -> str:
         """Return description string of item idx"""
-        rv = cwipc_util_dll_load().cwipc_auxiliary_data_description(self.as_cwipc_auxiliary_data_p(), idx)
+        rv = cwipc_util_dll_load().cwipc_metadata_description(self.as_cwipc_metadata_p(), idx)
         return rv.decode('utf8')
         
     def pointer(self, idx : int) -> ctypes.c_void_p:
         """Access native point to item idx"""
-        return cwipc_util_dll_load().cwipc_auxiliary_data_pointer(self.as_cwipc_auxiliary_data_p(), idx)
+        return cwipc_util_dll_load().cwipc_metadata_pointer(self.as_cwipc_metadata_p(), idx)
         
     def size(self, idx : int) -> int:
         """Return size if bytes of item idx"""
-        return cwipc_util_dll_load().cwipc_auxiliary_data_size(self.as_cwipc_auxiliary_data_p(), idx)
+        return cwipc_util_dll_load().cwipc_metadata_size(self.as_cwipc_metadata_p(), idx)
         
     def data(self, idx : int) -> bytes:
         """Return data of item idx as bytes"""

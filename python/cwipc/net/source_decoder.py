@@ -116,10 +116,10 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             fmtstring = 'netdecoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
-    def request_auxiliary_data(self, name: str) -> None:
+    def request_metadata(self, name: str) -> None:
         assert False
 
-    def auxiliary_data_requested(self, name: str) -> bool:
+    def is_metadata_requested(self, name: str) -> bool:
         return False
     
 def cwipc_source_decoder(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:

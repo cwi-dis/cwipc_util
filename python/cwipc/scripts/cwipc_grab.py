@@ -127,20 +127,20 @@ class FileWriter(cwipc_sink_abstract):
             if ok:
                 saved_any = True
             if not saved_any:
-                print(f"writer: did not find any auxiliary data in pointcloud {pc.timestamp()}")
+                print(f"writer: did not find any requested metadata in pointcloud {pc.timestamp()}")
                 #return False
         return True
     
     def save_images(self, pc : cwipc_wrapper) -> bool:
         if not self.rgbpattern and not self.depthpattern:
             return False
-        auxdata = pc.access_auxiliary_data()
-        if auxdata == None or auxdata.count() == 0:
+        metadata = pc.access_metadata()
+        if metadata == None or metadata.count() == 0:
             return False
         import cv2
         anydone = False
         if self.rgbpattern:
-            image_dict = auxdata.get_all_images("rgb.")
+            image_dict = metadata.get_all_images("rgb.")
             for serial, image in image_dict.items():
                 name = "rgb." + serial
                 filename = self.rgbpattern.format(timestamp=pc.timestamp(), count=self.count, type="rgb", name=name)
@@ -148,7 +148,7 @@ class FileWriter(cwipc_sink_abstract):
                 if ok:
                     anydone = True
         if self.depthpattern:
-            image_dict = auxdata.get_all_images("depth.")
+            image_dict = metadata.get_all_images("depth.")
             for serial, image in image_dict.items():
                 name = "depth." + serial
                 filename = self.depthpattern.format(timestamp=pc.timestamp(), count=self.count, type="depth", name=name)
@@ -161,21 +161,19 @@ class FileWriter(cwipc_sink_abstract):
     def save_skeletons(self, pc : cwipc_wrapper) -> bool:
         if not self.skeletonpattern:
             return False
-        auxdata = pc.access_auxiliary_data()
-        if auxdata == None:
+        metadata = pc.access_metadata()
+        if metadata == None:
             return False
         anydone = False
-        for i in range(auxdata.count()):
-            name = auxdata.name(i)
+        for i in range(metadata.count()):
+            name = metadata.name(i)
             if not name.startswith('skeleton'):
                 continue
-            data = auxdata.data(i)
-            #    saved_any = self.save_auxdata_skeleton('skeleton', aux_name, pc, pc_auxdata.description(i), pc_auxdata.data(i), self.skeletonpattern)
+            data = metadata.data(i)
             data_bytes = bytes(data)
             n_skeletons, n_joints = struct.unpack('II', data_bytes[:8])
-            #print(f'n_skeletons= {n_skeletons} | n_joints= {n_joints}')
             if n_skeletons > 0:
-                filename = self.skeletonpattern.format(timestamp=pc.timestamp(), count=self.count, type=type, name=name)
+                filename = self.skeletonpattern.format(timestamp=pc.timestamp(), count=self.count, type="skeleton", name=name)
                 ext = os.path.splitext(filename)[1].lower()
                 if ext != '.txt':
                     print(f"Couldn't save skeleton to {filename}. {ext} format not supported. Try txt")
@@ -210,9 +208,9 @@ def main():
     parser.add_argument("--compress", action="store_true", help="Save pointclouds as compressed .cwicpc (default: .ply)")
     parser.add_argument("--compress_param", action="append", metavar="NAME=VALUE", help="Add compressor parameter (help=1 for help)")
     parser.add_argument("--binary", action="store_true", help="Save pointclouds as binary .ply (default: ASCII .ply)")
-    parser.add_argument("--rgb", action="store", metavar="EXT", help="Save RGB auxiliary data as images of type EXT")
-    parser.add_argument("--depth", action="store", metavar="EXT", help="Save depth auxiliary data as images of type EXT")
-    parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton auxiliary data as files of type EXT")
+    parser.add_argument("--rgb", action="store", metavar="EXT", help="Save captured RGB as images of type EXT")
+    parser.add_argument("--depth", action="store", metavar="EXT", help="Save captured depth as images of type EXT")
+    parser.add_argument("--skeleton", action="store", metavar="EXT", help="Save skeleton metadata as files of type EXT")
     parser.add_argument("--fpattern", action="store", metavar="VAR", default="count:04d", help="Construct filenames using VAR, which can be count or timestamp (default)")
     parser.add_argument("--incore", action="store_true", help="Attempt to store all captures, at the expense of horrendous memory usage. Requires --count")
     parser.add_argument("outputdir", action="store", help="Save output files in this directory")
@@ -239,15 +237,15 @@ def main():
     rgbpattern = None
     if args.rgb:
         rgbpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.rgb}"
-        source.request_auxiliary_data("rgb")
+        source.request_metadata("rgb")
     depthpattern = None
     if args.depth:
         depthpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.depth}"
-        source.request_auxiliary_data("depth")
+        source.request_metadata("depth")
     skeletonpattern = None
     if args.skeleton:
         skeletonpattern = f"{args.outputdir}/{{name}}-{{{args.fpattern}}}.{args.skeleton}"
-        source.request_auxiliary_data("skeleton")
+        source.request_metadata("skeleton")
         
     kwargs = {}
     if args.incore: # Attempt realtime capturing by storing all frames incore

@@ -88,10 +88,10 @@ class _Filesource(cwipc_activesource_abstract):
     def get_tileinfo_dict(self, i : int) -> dict[Any,Any]:
         return self.tileInfo[i]
     
-    def request_auxiliary_data(self, name: str) -> None:
+    def request_metadata(self, name: str) -> None:
         raise cwipc.CwipcError("Not supported for _Filesource")
     
-    def auxiliary_data_requested(self, name: str) -> bool:
+    def is_metadata_requested(self, name: str) -> bool:
         return False
     
     def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:

@@ -231,14 +231,14 @@ q,ESC         Quit
 
     def _show_timestamps(self, pc: cwipc_wrapper, label : str) -> None:
         print(f'{label}: ts={pc.timestamp()}')
-        auxdata = pc.access_auxiliary_data()
-        if auxdata != None and auxdata.count() > 0:
-            for i in range(auxdata.count()):
-                auxname = auxdata.name(i)
-                if not "timestamps" in auxname:
+        metadata = pc.access_metadata()
+        if metadata != None and metadata.count() > 0:
+            for i in range(metadata.count()):
+                metadataname = metadata.name(i)
+                if not "timestamps" in metadataname:
                     continue
-                descr = auxdata.description(i)
-                print(f'{label}:    {auxname}: {descr}')
+                descr = metadata.description(i)
+                print(f'{label}:    {metadataname}: {descr}')
 
     def _draw_pc(self) -> None:
         """Draw pointcloud and interact with the visualizer.
@@ -373,10 +373,10 @@ q,ESC         Quit
     def draw_rgb(self, pc : cwipc_wrapper) -> None:
         """Draw a window with the RGB data of all cameras."""
         import cv2
-        auxdata = pc.access_auxiliary_data()
-        if not auxdata:
+        metadata = pc.access_metadata()
+        if not metadata:
             return
-        per_camera_images = auxdata.get_all_images("rgb.")
+        per_camera_images = metadata.get_all_images("rgb.")
         if self.args.rgb_full:
             
             for name, image in per_camera_images.items():

@@ -308,8 +308,8 @@ public:
     virtual void stop() = 0;
     /// Get complete current configuration as JSON string.
     virtual std::string config_get() = 0;
-    /// Request specific auxiliary data to be added to pointclouds.
-    virtual void request_auxiliary_data(bool rgb, bool depth, bool timestamps, bool skeleton) = 0;
+    /// Request specific metadata to be added to pointclouds.
+    virtual void request_metadata(bool rgb, bool depth, bool timestamps, bool skeleton) = 0;
 
     //
     // This section has the public capturer-independent API used during normal runtime.
@@ -496,7 +496,7 @@ public:
         return true;
     }
     
-    virtual void request_auxiliary_data(const std::string &name) override = 0;
+    virtual void request_metadata(const std::string &name) override = 0;
     virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) override = 0;
     virtual bool seek(uint64_t timestamp) override = 0;
 };

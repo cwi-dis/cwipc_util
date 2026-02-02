@@ -20,7 +20,7 @@
 #define stringify(x) _stringify(x)
 #define _stringify(x) #x
 
-class cwipc_auxiliary_data_impl : public cwipc_auxiliary_data {
+class cwipc_metadata_impl : public cwipc_metadata {
 protected:
     struct item {
         std::string name;
@@ -32,9 +32,9 @@ protected:
     std::vector<struct item> m_items;
 
 public:
-    cwipc_auxiliary_data_impl() {}
+    cwipc_metadata_impl() {}
 
-    ~cwipc_auxiliary_data_impl() {
+    ~cwipc_metadata_impl() {
         for(auto item: m_items) {
             item.dealloc(item.pointer);
         }
@@ -74,8 +74,8 @@ public:
         m_items.push_back(new_item);
     }
 
-    void _move(cwipc_auxiliary_data *other) override {
-        auto other_impl = (cwipc_auxiliary_data_impl*)other;
+    void _move(cwipc_metadata *other) override {
+        auto other_impl = (cwipc_metadata_impl*)other;
 
         for(auto item: m_items) {
             other_impl->m_items.push_back(item);
@@ -90,11 +90,11 @@ protected:
     uint64_t m_timestamp;
     float m_cellsize;
     cwipc_pcl_pointcloud m_pc;
-    cwipc_auxiliary_data* m_aux;
+    cwipc_metadata* m_metadata;
 
 public:
-    cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL), m_aux(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc), m_aux(NULL) {}
+    cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL), m_metadata(NULL) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc), m_metadata(NULL) {}
 
     ~cwipc_impl() {}
 
@@ -128,11 +128,11 @@ public:
     void free() {
         m_pc = NULL;
 
-        if (m_aux) {
-            delete m_aux;
+        if (m_metadata) {
+            delete m_metadata;
         }
 
-        m_aux = NULL;
+        m_metadata = NULL;
     }
 
     uint64_t timestamp() {
@@ -247,12 +247,12 @@ public:
         return m_pc;
     }
 
-    cwipc_auxiliary_data *access_auxiliary_data() {
-        if (m_aux == NULL) {
-            m_aux = new cwipc_auxiliary_data_impl();
+    cwipc_metadata *access_metadata() {
+        if (m_metadata == NULL) {
+            m_metadata = new cwipc_metadata_impl();
         }
 
-        return m_aux;
+        return m_metadata;
     }
 };
 
@@ -693,27 +693,27 @@ size_t cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size) {
     return pc->copy_packet(packet, size);
 }
 
-cwipc_auxiliary_data* cwipc_access_auxiliary_data(cwipc *pc) {
-    return pc->access_auxiliary_data();
+cwipc_metadata* cwipc_access_metadata(cwipc *pc) {
+    return pc->access_metadata();
 }
 
-int cwipc_auxiliary_data_count(cwipc_auxiliary_data *collection) {
+int cwipc_metadata_count(cwipc_metadata *collection) {
     return collection->count();
 }
 
-const char* cwipc_auxiliary_data_name(cwipc_auxiliary_data *collection, int idx) {
+const char* cwipc_metadata_name(cwipc_metadata *collection, int idx) {
     return collection->name(idx).c_str();
 }
 
-const char* cwipc_auxiliary_data_description(cwipc_auxiliary_data *collection, int idx) {
+const char* cwipc_metadata_description(cwipc_metadata *collection, int idx) {
     return collection->description(idx).c_str();
 }
 
-void * cwipc_auxiliary_data_pointer(cwipc_auxiliary_data *collection, int idx) {
+void * cwipc_metadata_pointer(cwipc_metadata *collection, int idx) {
     return collection->pointer(idx);
 }
 
-size_t cwipc_auxiliary_data_size(cwipc_auxiliary_data *collection, int idx) {
+size_t cwipc_metadata_size(cwipc_metadata *collection, int idx) {
     return collection->size(idx);
 }
 
@@ -741,12 +741,12 @@ bool cwipc_source_available(cwipc_source *src, bool wait) {
   return src->available(wait);
 }
 
-void cwipc_activesource_request_auxiliary_data(cwipc_activesource *src, const char *name) {
-    src->request_auxiliary_data(name);
+void cwipc_activesource_request_metadata(cwipc_activesource *src, const char *name) {
+    src->request_metadata(name);
 }
 
-bool cwipc_activesource_auxiliary_data_requested(cwipc_activesource *src, const char *name) {
-    return src->auxiliary_data_requested(name);
+bool cwipc_activesource_is_metadata_requested(cwipc_activesource *src, const char *name) {
+    return src->is_metadata_requested(name);
 }
 
 bool cwipc_activesource_reload_config(cwipc_activesource* src, const char* configFile) {

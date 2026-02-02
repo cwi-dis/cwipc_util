@@ -97,10 +97,10 @@ public:
             m_pointsize = pc->cellsize();
 
             if (m_render_skeleton) {
-                cwipc_auxiliary_data* auxdata = pc->access_auxiliary_data();
+                cwipc_metadata* metadata = pc->access_metadata();
 
-                if (auxdata->count() > 0) {
-                    get_skeleton(auxdata);
+                if (metadata->count() > 0) {
+                    get_skeleton(metadata);
                 }
             }
         }
@@ -129,15 +129,15 @@ public:
         return true;
     }
 
-    void get_skeleton(cwipc_auxiliary_data* auxdata) {
+    void get_skeleton(cwipc_metadata* metadata) {
         bool found_skeleton = false;
 
-        for (int i = 0; i < auxdata->count(); i++) {
-            void* ptr = auxdata->pointer(i);
+        for (int i = 0; i < metadata->count(); i++) {
+            void* ptr = metadata->pointer(i);
 
-            if (auxdata->name(i).find("skeleton") != std::string::npos) {
+            if (metadata->name(i).find("skeleton") != std::string::npos) {
                 if (!found_skeleton) {
-                    cwipc_skeleton_collection* skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
+                    cwipc_skeleton_collection* skl = (cwipc_skeleton_collection*)metadata->pointer(i);
                     int n_skeletons = skl->n_skeletons;
 
                     if (n_skeletons > 0 && skl->n_joints > 0) {
@@ -150,7 +150,7 @@ public:
                         }
                     }
                 } else { // multiple cameras = multiple skeletons, so we need to fuse them
-                    cwipc_skeleton_collection* new_skl = (cwipc_skeleton_collection*)auxdata->pointer(i);
+                    cwipc_skeleton_collection* new_skl = (cwipc_skeleton_collection*)metadata->pointer(i);
                     int n_joints = std::min((uint32_t)joints.size(), new_skl->n_joints);
 
                     for (int j = 0; j < n_joints; j++) {

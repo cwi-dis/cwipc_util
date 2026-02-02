@@ -42,11 +42,11 @@ def main():
         visualizer = None
 
     if args.timestamps:
-        source.request_auxiliary_data("timestamps")
+        source.request_metadata("timestamps")
     if args.skeleton:
-        source.request_auxiliary_data("skeleton")
+        source.request_metadata("skeleton")
     if args.rgb:
-        source.request_auxiliary_data("rgb")
+        source.request_metadata("rgb")
 
     sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")

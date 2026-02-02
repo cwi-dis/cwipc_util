@@ -451,9 +451,9 @@ class Registrator:
             self.capturer = self.capturerFactory()
         except cwipc.CwipcError:
             return False
-        self.capturer.request_auxiliary_data("rgb")
-        self.capturer.request_auxiliary_data("depth")
-        self.capturer.request_auxiliary_data("timestamps")
+        self.capturer.request_metadata("rgb")
+        self.capturer.request_metadata("depth")
+        self.capturer.request_metadata("timestamps")
         return True
     
     def create_cameraconfig(self) -> None:

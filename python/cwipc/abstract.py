@@ -83,13 +83,13 @@ class cwipc_activesource_abstract(cwipc_source_abstract):
         ...
 
     @abstractmethod
-    def request_auxiliary_data(self, name : str) -> None:
-        """Ask this grabber to also provide auxiliary data `name` with each pointcloud"""
+    def request_metadata(self, name : str) -> None:
+        """Ask this grabber to also provide metadata `name` with each pointcloud"""
         ...
 
     @abstractmethod
-    def auxiliary_data_requested(self, name : str) -> bool:
-        """Return True if this grabber provides auxiliary data `name` with each pointcloud"""
+    def is_metadata_requested(self, name : str) -> bool:
+        """Return True if this grabber provides metadata `name` with each pointcloud"""
         ...
 
     @abstractmethod
