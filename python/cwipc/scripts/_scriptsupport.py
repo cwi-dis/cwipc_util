@@ -23,12 +23,6 @@ except ModuleNotFoundError:
 except ImportError:
     realsense2 = None
 try:
-    from .. import certh
-except ModuleNotFoundError:
-    certh = None
-except ImportError:
-    certh = None
-try:
     from .. import kinect
 except ModuleNotFoundError:
     kinect = None
@@ -75,7 +69,7 @@ def SetupStackDumper() -> None:
 
 def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
-    Could be synthetic, realsense, kinect, proxy, certh, ...
+    Could be synthetic, realsense, kinect, proxy, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
     global realsense2
@@ -127,12 +121,6 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         name = None
     elif args.proxy:
         source = lambda : cwipc_proxy('', args.proxy)
-        name = None
-    elif args.certh:
-        if certh == None:
-            print(f"{sys.argv[0]}: No support for CERTH grabber on this platform")
-            sys.exit(-1)
-        source = lambda : certh.cwipc_certh(args.certh, args.certh_data, args.certh_metadata) # type: ignore
         name = None
     elif args.playback:
         if not os.path.isdir(args.playback):
@@ -417,12 +405,9 @@ def ArgumentParser(*args, **kwargs) -> argparse.ArgumentParser:
     input_selection_args.add_argument("--mt-netclient", action="store", metavar="HOST:PORT:NT:NQ", help="Use (compressed) pointclouds from netclient, server runs on port PORT on HOST. Multi-tile multi-quality with given number of tiles and qualities per tile.")
     input_selection_args.add_argument("--mt-lldplay", action="store", metavar="URL", help="Use DASH (compressed) pointcloud stream from URL. Multi-tile, multi-quality.")
     input_selection_args.add_argument("--playback", action="store", metavar="PATH", help="Use pointcloud(s) from ply or cwipcdump file or directory (in alphabetical order)")
-    input_selection_args.add_argument("--certh", action="store", metavar="URL", help="Use Certh pointcloud stream from Rabbitmq server URL")
 
     input_args = parser.add_argument_group("input arguments")
     input_args.add_argument("--nodecode", action="store_true", help="Receive uncompressed pointclouds with --netclient and --lldplay (default: compressed with cwipc_codec)")
-    input_args.add_argument("--certh_data", action="store", metavar="NAME", help="Use NAME for certh data exchange (default: VolumetricData)", default="VolumetricData")
-    input_args.add_argument("--certh_metadata", action="store", metavar="NAME", help="Use NAME for certh metadata exchange (default: VolumetricMetaData)", default="VolumetricMetaData")
     input_args.add_argument("--loop", action="store_true", help="With --playback loop the contents in stead of terminating after the last file")
     input_args.add_argument("--npoints", action="store", metavar="N", type=int, help="Limit number of points (approximately) in synthetic pointcoud", default=0)
     input_args.add_argument("--fps", action="store", type=int, help="Limit playback rate to FPS (for some capturers)", default=0)

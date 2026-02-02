@@ -41,7 +41,6 @@ def main():
     args.realsense = None
     args.synthetic = None
     args.proxy = None
-    args.certh = None
     args.fps = None
     args.inpoint = None
     args.outpoint = None
