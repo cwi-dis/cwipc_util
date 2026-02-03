@@ -85,7 +85,7 @@ public:
     }
 };
 
-class cwipc_impl : public cwipc {
+class cwipc_impl : public cwipc_pointcloud {
 protected:
     uint64_t m_timestamp;
     float m_cellsize;
@@ -358,7 +358,7 @@ const char *cwipc_get_version() {
 #endif
 }
 
-cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
+cwipc_pointcloud *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char *msgbuf = (char *)malloc(1024);
@@ -379,7 +379,7 @@ cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage,
         return NULL;
     }
 
-    cwipc *rv = new cwipc_impl(pc, timestamp);
+    cwipc_pointcloud *rv = new cwipc_impl(pc, timestamp);
     if (rv == nullptr && errorMessage && *errorMessage == NULL) {
         cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_read", "unspecified error creating point cloud");
     }
@@ -387,7 +387,7 @@ cwipc *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage,
     return rv;
 }
 
-int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage) {
+int cwipc_write(const char *filename, cwipc_pointcloud *pointcloud, char **errorMessage) {
     cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
     cwipc_log_set_errorbuf(errorMessage);
     if (pc == NULL) {
@@ -406,7 +406,7 @@ int cwipc_write(const char *filename, cwipc *pointcloud, char **errorMessage) {
     return status;
 }
 
-int cwipc_write_ext(const char* filename, cwipc* pointcloud, int flag, char** errorMessage) {
+int cwipc_write_ext(const char* filename, cwipc_pointcloud* pointcloud, int flag, char** errorMessage) {
     cwipc_pcl_pointcloud pc = pointcloud->access_pcl_pointcloud();
     cwipc_log_set_errorbuf(errorMessage);
     if (pc == NULL) {
@@ -425,7 +425,7 @@ int cwipc_write_ext(const char* filename, cwipc* pointcloud, int flag, char** er
     return status;
 }
 
-cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion) {
+cwipc_pointcloud* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -508,7 +508,7 @@ cwipc* cwipc_read_debugdump(const char *filename, char **errorMessage, uint64_t 
     return pc;
 }
 
-int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorMessage) {
+int cwipc_write_debugdump(const char *filename, cwipc_pointcloud *pointcloud, char **errorMessage) {
     size_t dataSize = pointcloud->get_uncompressed_size();
     struct cwipc_point *dataBuf = (struct cwipc_point *)malloc(dataSize);
     cwipc_log_set_errorbuf(errorMessage);
@@ -569,7 +569,7 @@ int cwipc_write_debugdump(const char *filename, cwipc *pointcloud, char **errorM
     return 0;
 }
 
-cwipc* cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
+cwipc_pointcloud* cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -580,7 +580,7 @@ cwipc* cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorM
         return NULL;
     }
     cwipc_log_set_errorbuf(errorMessage);
-    cwipc *rv = new cwipc_impl(pc, timestamp);
+    cwipc_pointcloud *rv = new cwipc_impl(pc, timestamp);
     if (rv == nullptr && errorMessage && *errorMessage == NULL) {
         cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_from_pcl", "unspecified error creating point cloud");
     }
@@ -588,7 +588,7 @@ cwipc* cwipc_from_pcl(cwipc_pcl_pointcloud pc, uint64_t timestamp, char **errorM
     return rv;
 }
 
-cwipc* cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
+cwipc_pointcloud* cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -611,7 +611,7 @@ cwipc* cwipc_from_points(cwipc_point* points, size_t size, int npoint, uint64_t 
     return rv;
 }
 
-cwipc* cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t apiVersion) {
+cwipc_pointcloud* cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
         if (errorMessage) {
             char* msgbuf = (char*)malloc(1024);
@@ -657,43 +657,43 @@ cwipc* cwipc_from_packet(uint8_t *packet, size_t size, char **errorMessage, uint
     return rv;
 }
 
-void cwipc_free(cwipc *pc) {
+void cwipc_free(cwipc_pointcloud *pc) {
     pc->free();
 }
 
-uint64_t cwipc_timestamp(cwipc *pc) {
+uint64_t cwipc_timestamp(cwipc_pointcloud *pc) {
     return pc->timestamp();
 }
 
-float cwipc_cellsize(cwipc *pc) {
+float cwipc_cellsize(cwipc_pointcloud *pc) {
     return pc->cellsize();
 }
 
-void cwipc__set_cellsize(cwipc *pc, float cellsize) {
+void cwipc__set_cellsize(cwipc_pointcloud *pc, float cellsize) {
     pc->_set_cellsize(cellsize);
 }
 
-void cwipc__set_timestamp(cwipc *pc, uint64_t timestamp) {
+void cwipc__set_timestamp(cwipc_pointcloud *pc, uint64_t timestamp) {
     pc->_set_timestamp(timestamp);
 }
 
-int cwipc_count(cwipc *pc) {
+int cwipc_count(cwipc_pointcloud *pc) {
     return pc->count();
 }
 
-size_t cwipc_get_uncompressed_size(cwipc *pc) {
+size_t cwipc_get_uncompressed_size(cwipc_pointcloud *pc) {
     return pc->get_uncompressed_size();
 }
 
-int cwipc_copy_uncompressed(cwipc *pc, struct cwipc_point *points, size_t size) {
+int cwipc_copy_uncompressed(cwipc_pointcloud *pc, struct cwipc_point *points, size_t size) {
     return pc->copy_uncompressed(points, size);
 }
 
-size_t cwipc_copy_packet(cwipc *pc, uint8_t *packet, size_t size) {
+size_t cwipc_copy_packet(cwipc_pointcloud *pc, uint8_t *packet, size_t size) {
     return pc->copy_packet(packet, size);
 }
 
-cwipc_metadata* cwipc_access_metadata(cwipc *pc) {
+cwipc_metadata* cwipc_access_metadata(cwipc_pointcloud *pc) {
     return pc->access_metadata();
 }
 
@@ -725,7 +725,7 @@ void cwipc_activesource_stop(cwipc_activesource *src) {
     src->stop();
 }
 
-cwipc* cwipc_source_get(cwipc_source *src) {
+cwipc_pointcloud* cwipc_source_get(cwipc_source *src) {
     return src->get();
 }
 
@@ -778,7 +778,7 @@ void cwipc_sink_free(cwipc_sink *sink) {
     sink->free();
 }
 
-bool cwipc_sink_feed(cwipc_sink *sink, cwipc *pc, bool clear) {
+bool cwipc_sink_feed(cwipc_sink *sink, cwipc_pointcloud *pc, bool clear) {
     return sink->feed(pc, clear);
 }
 

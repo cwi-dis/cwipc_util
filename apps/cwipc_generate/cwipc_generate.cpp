@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     generator->start();
     int ok = 0;
     while (count-- > 0 && ok == 0) {
-        cwipc *pc = generator->get();
+        cwipc_pointcloud *pc = generator->get();
         if (pc == NULL) {
             std::cerr << "Error: generator returned NULL pointcloud" << std::endl;
             return 1;

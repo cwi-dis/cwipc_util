@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     }
 
     while (true) {
-        cwipc *pc = generator->get();
+        cwipc_pointcloud *pc = generator->get();
 
         if (pc == NULL) {
             std::cerr << "Error: generator->get() returned NULL" << std::endl;

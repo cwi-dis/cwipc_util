@@ -71,7 +71,7 @@ public:
         m_npoints = 0;
     }
 
-    bool feed(cwipc *pc, bool clear) {
+    bool feed(cwipc_pointcloud *pc, bool clear) {
         if (m_window == nullptr) {
             return false;
         }

@@ -45,7 +45,7 @@ private:
     bool m_running;
     std::mutex m_pc_mutex;
     std::condition_variable m_pc_fresh;
-    cwipc *m_pc;
+    cwipc_pointcloud *m_pc;
 
 public:
     cwipc_source_proxy_impl(int _socket)
@@ -123,14 +123,14 @@ public:
         return m_pc != NULL;
     }
 
-    virtual cwipc* get() override final {
+    virtual cwipc_pointcloud* get() override final {
         std::unique_lock<std::mutex> mylock(m_pc_mutex);
 
         m_pc_fresh.wait(mylock, [this]{
             return m_pc != NULL || !m_running;
         });
 
-        cwipc *rv = m_pc;
+        cwipc_pointcloud *rv = m_pc;
         m_pc = NULL;
 
         return rv;
@@ -204,7 +204,7 @@ private:
             }
 
             char* errorMessage = NULL;
-            cwipc* pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
+            cwipc_pointcloud* pc = cwipc_from_points(points, header.dataCount, header.dataCount/sizeof(cwipc_point), header.timestamp, &errorMessage, CWIPC_API_VERSION);
             ::free(points);
 
             if (pc == NULL) {

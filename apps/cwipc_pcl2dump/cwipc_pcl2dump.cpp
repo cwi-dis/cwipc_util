@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     //
     // Turn into cwipc object
     //
-    cwipc *obj = cwipc_from_pcl(pc, 0, &message, CWIPC_API_VERSION);
+    cwipc_pointcloud *obj = cwipc_from_pcl(pc, 0, &message, CWIPC_API_VERSION);
     if (obj == NULL) {
         std::cerr << argv[0] << ": Cannot convert pointcloud to cwipc: " << message << std::endl;
         return 1;

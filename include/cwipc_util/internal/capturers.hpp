@@ -318,7 +318,7 @@ public:
     /// Returns true when a new point cloud is available.
     virtual bool pointcloud_available(bool wait) = 0;
     /// Returns the new point cloud. The caller is now the owner of this point cloud.
-    virtual cwipc* get_pointcloud() = 0;
+    virtual cwipc_pointcloud* get_pointcloud() = 0;
     /// Returns a reasonable point size for the current capturer.
     virtual float get_pointSize() = 0;
     /// Return 3D point for a given camera, given RGB image 2D coordinates.
@@ -439,12 +439,12 @@ public:
         return m_grabber->pointcloud_available(wait);
     }
 
-    cwipc* get() override final {
+    cwipc_pointcloud* get() override final {
         if (m_grabber == NULL) {
             return NULL;
         }
 
-        cwipc* rv = m_grabber->get_pointcloud();
+        cwipc_pointcloud* rv = m_grabber->get_pointcloud();
         return rv;
     }
 

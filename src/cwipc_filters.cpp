@@ -27,7 +27,7 @@ namespace pcl {
     template class VoxelGrid<cwipc_pcl_point>;
 }
 
-cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
+cwipc_pointcloud* cwipc_downsample_voxelgrid(cwipc_pointcloud *pc, float cellsize) {
     if (pc == NULL) {
         return NULL;
     }
@@ -79,7 +79,7 @@ cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
         return NULL;
     }
 
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(cellsize);
 
     // copy src metadata to dst pointcloud
@@ -90,7 +90,7 @@ cwipc* cwipc_downsample_voxelgrid(cwipc *pc, float cellsize) {
     return rv;
 }
 
-cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
+cwipc_pointcloud* cwipc_downsample(cwipc_pointcloud *pc, float cellsize) {
     if (cellsize < 0) {
         return cwipc_downsample_voxelgrid(pc, -cellsize);
     }
@@ -167,7 +167,7 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
         return NULL;
     }
     // Now create the cwipc point cloud from the pcl point cloud
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     // And copy the metadata
     rv->_set_cellsize(cellsize);
     // And copy src metadata to dst pointcloud
@@ -185,7 +185,7 @@ cwipc* cwipc_downsample(cwipc *pc, float cellsize) {
 /// <param name="kNeighbors">number of neighbors to analyze for each point</param>
 /// <param name="stddevMulThresh">standard deviation multiplier</param>
 /// <returns>Cleaned point cloud</returns>
-cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh) {
+cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc_pointcloud* pc, int kNeighbors, float stddevMulThresh) {
     if (pc == NULL) {
         return NULL;
     }
@@ -225,7 +225,7 @@ cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stdd
 /// <param name="stddevMulThresh">standard deviation multiplier</param>
 /// <param name="perTile">decides if apply the filter per tile or to the full pointcloud</param>
 /// <returns>Cleaned point cloud</returns>
-cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, bool perTile) {
+cwipc_pointcloud* cwipc_remove_outliers(cwipc_pointcloud* pc, int kNeighbors, float stddevMulThresh, bool perTile) {
     if (pc == NULL) {
         return NULL;
     }
@@ -254,13 +254,13 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             }
 
             for (int tile : tiles) {
-                cwipc* aux_pc = cwipc_tilefilter(pc, tile);
+                cwipc_pointcloud* aux_pc = cwipc_tilefilter(pc, tile);
                 cwipc_pcl_pointcloud aux_dst = cwipc_remove_outliers(aux_pc, kNeighbors, stddevMulThresh);
                 *dst += *aux_dst;
                 aux_pc->free();
             }
 
-            cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+            cwipc_pointcloud* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
 
             // copy src metadata to dst pointcloud
@@ -271,7 +271,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
             return rv;
         } else {
             dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
-            cwipc* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+            cwipc_pointcloud* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
 
             // copy src metadata to dst pointcloud
@@ -293,7 +293,7 @@ cwipc* cwipc_remove_outliers(cwipc* pc, int kNeighbors, float stddevMulThresh, b
 }
 
 
-cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
+cwipc_pointcloud* cwipc_tilefilter(cwipc_pointcloud *pc, int tile) {
     if (pc == NULL) {
         return NULL;
     }
@@ -312,7 +312,7 @@ cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
         }
     }
 
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
 #ifdef cwipc_old_move_metadata
@@ -331,7 +331,7 @@ cwipc* cwipc_tilefilter(cwipc *pc, int tile) {
     return rv;
 }
 
-cwipc* cwipc_tilemap(cwipc *pc, uint8_t map[256]) {
+cwipc_pointcloud* cwipc_tilemap(cwipc_pointcloud *pc, uint8_t map[256]) {
     if (pc == NULL) {
         return NULL;
     }
@@ -349,7 +349,7 @@ cwipc* cwipc_tilemap(cwipc *pc, uint8_t map[256]) {
         dst->points.push_back(pt);
     }
 
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
     // copy src metadata to dst pointcloud
@@ -360,7 +360,7 @@ cwipc* cwipc_tilemap(cwipc *pc, uint8_t map[256]) {
     return rv;
 }
 
-cwipc* cwipc_crop(cwipc *pc, float bbox[6]) {
+cwipc_pointcloud* cwipc_crop(cwipc_pointcloud *pc, float bbox[6]) {
     if (pc == NULL) {
         return NULL;
     }
@@ -382,13 +382,13 @@ cwipc* cwipc_crop(cwipc *pc, float bbox[6]) {
         }
     }
 
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
     return rv;
 }
 
-cwipc* cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits) {
+cwipc_pointcloud* cwipc_colormap(cwipc_pointcloud *pc, uint32_t clearBits, uint32_t setBits) {
     if (pc == NULL) {
         return NULL;
     }
@@ -407,7 +407,7 @@ cwipc* cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits) {
         dst->points.push_back(pt);
     }
 
-    cwipc *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
     // copy src metadata to dst pointcloud
@@ -418,7 +418,7 @@ cwipc* cwipc_colormap(cwipc *pc, uint32_t clearBits, uint32_t setBits) {
     return rv;
 }
 
-cwipc* cwipc_join(cwipc *pc1, cwipc *pc2) {
+cwipc_pointcloud* cwipc_join(cwipc_pointcloud *pc1, cwipc_pointcloud *pc2) {
     if (pc1 == NULL || pc2 == NULL) {
         return NULL;
     }
@@ -441,7 +441,7 @@ cwipc* cwipc_join(cwipc *pc1, cwipc *pc2) {
     }
 
     uint64_t timestamp = std::min(pc1->timestamp(), pc2->timestamp());
-    cwipc *rv = cwipc_from_pcl(dst, timestamp, NULL, CWIPC_API_VERSION);
+    cwipc_pointcloud *rv = cwipc_from_pcl(dst, timestamp, NULL, CWIPC_API_VERSION);
     float cellsize = std::min(pc1->cellsize(), pc2->cellsize());
     rv->_set_cellsize(cellsize);
 

@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     // Read pointcloud file
     //
     char *errorMessage = NULL;
-    cwipc *pc = cwipc_read(argv[2], 0LL, &errorMessage, CWIPC_API_VERSION);
+    cwipc_pointcloud *pc = cwipc_read(argv[2], 0LL, &errorMessage, CWIPC_API_VERSION);
 
     if (pc == NULL || errorMessage) {
         std::cerr << argv[0] << ": Error reading pointcloud from " << argv[2] << ": " << errorMessage << std::endl;
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
     //
     // Voxelize
     //
-    cwipc *new_pc = cwipc_tilefilter(pc, tile);
+    cwipc_pointcloud *new_pc = cwipc_tilefilter(pc, tile);
 
     //
     // Save pointcloud file

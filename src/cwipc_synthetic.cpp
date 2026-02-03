@@ -107,7 +107,7 @@ public:
         return true;
     }
 
-    virtual cwipc* get() override final {
+    virtual cwipc_pointcloud* get() override final {
         if (!m_started) {
             cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_synthetic", "get() called before start()");
             return NULL;
@@ -125,7 +125,7 @@ public:
 
         m_angle = runtime.count();
         generate_points();
-        cwipc *rv = cwipc_from_points(m_points, m_points_size, m_hsteps*m_asteps, timestamp, NULL, CWIPC_API_VERSION);
+        cwipc_pointcloud *rv = cwipc_from_points(m_points, m_points_size, m_hsteps*m_asteps, timestamp, NULL, CWIPC_API_VERSION);
 
         if (rv) {
             rv->_set_cellsize(2.0 / m_hsteps);
