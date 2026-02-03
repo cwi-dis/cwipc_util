@@ -594,7 +594,7 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
         self._cwipc = None
         self._must_be_freed = False
         
-    def detach(self) -> cwipc_pointcloud_wrapper:
+    def detach(self) -> 'cwipc_pointcloud_wrapper':
         """Detach the underlying cwipc_pointcloud_p pointer from this wrapper.
         
         After the call, this pointcloud is invalidated. The return value has the pointer
