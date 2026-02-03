@@ -229,7 +229,7 @@ class CwipcError(RuntimeError):
     
 _cwipc_util_dll_reference = None
 
-class cwipc_p(ctypes.c_void_p):
+class cwipc_pointcloud_p(ctypes.c_void_p):
     """ctypes-compatible native pointer to a cwipc object"""
     pass
     
@@ -389,51 +389,51 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference._cwipc_log_emit.restype = None
 
     _cwipc_util_dll_reference.cwipc_read.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_read.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_read.restype = cwipc_pointcloud_p
     
-    _cwipc_util_dll_reference.cwipc_write_ext.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_write_ext.argtypes = [ctypes.c_char_p, cwipc_pointcloud_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_util_dll_reference.cwipc_write_ext.restype = int
     
     _cwipc_util_dll_reference.cwipc_from_points.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_ulonglong, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_from_points.restype = cwipc_pointcloud_p
     
     _cwipc_util_dll_reference.cwipc_from_packet.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_from_packet.restype = cwipc_pointcloud_p
     
     _cwipc_util_dll_reference.cwipc_read_debugdump.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_read_debugdump.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_read_debugdump.restype = cwipc_pointcloud_p
     
-    _cwipc_util_dll_reference.cwipc_write_debugdump.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.POINTER(ctypes.c_char_p)]
+    _cwipc_util_dll_reference.cwipc_write_debugdump.argtypes = [ctypes.c_char_p, cwipc_pointcloud_p, ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_util_dll_reference.cwipc_write_debugdump.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_free.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_free.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_free.restype = None
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.restype = ctypes.c_ulonglong
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_cellsize.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_cellsize.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_cellsize.restype = ctypes.c_float
     
-    _cwipc_util_dll_reference.cwipc_pointcloud__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_cellsize.argtypes = [cwipc_pointcloud_p, ctypes.c_float]
     _cwipc_util_dll_reference.cwipc_pointcloud__set_cellsize.restype = None
     
-    _cwipc_util_dll_reference.cwipc_pointcloud__set_timestamp.argtypes = [cwipc_p, ctypes.c_ulonglong]
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_timestamp.argtypes = [cwipc_pointcloud_p, ctypes.c_ulonglong]
     _cwipc_util_dll_reference.cwipc_pointcloud__set_timestamp.restype = None
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_count.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_count.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_count.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_get_uncompressed_size.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_get_uncompressed_size.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_get_uncompressed_size.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_uncompressed.argtypes = [cwipc_pointcloud_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_pointcloud_copy_uncompressed.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_packet.argtypes = [cwipc_pointcloud_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
     _cwipc_util_dll_reference.cwipc_pointcloud_copy_packet.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_pointcloud_access_metadata.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_access_metadata.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_access_metadata.restype = cwipc_metadata_p
     
     _cwipc_util_dll_reference.cwipc_activesource_start.argtypes = [cwipc_source_p]
@@ -443,7 +443,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_activesource_stop.restype = None
     
     _cwipc_util_dll_reference.cwipc_source_get.argtypes = [cwipc_source_p]
-    _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_source_get.restype = cwipc_pointcloud_p
     
     _cwipc_util_dll_reference.cwipc_source_available.argtypes = [cwipc_source_p, ctypes.c_bool]
     _cwipc_util_dll_reference.cwipc_source_available.restype = ctypes.c_bool
@@ -481,7 +481,7 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_sink_free.argtypes = [cwipc_sink_p]
     _cwipc_util_dll_reference.cwipc_sink_free.restype = None
     
-    _cwipc_util_dll_reference.cwipc_sink_feed.argtypes = [cwipc_sink_p, cwipc_p, ctypes.c_bool]
+    _cwipc_util_dll_reference.cwipc_sink_feed.argtypes = [cwipc_sink_p, cwipc_pointcloud_p, ctypes.c_bool]
     _cwipc_util_dll_reference.cwipc_sink_feed.restype = ctypes.c_bool
     
     _cwipc_util_dll_reference.cwipc_sink_caption.argtypes = [cwipc_sink_p, ctypes.c_char_p]
@@ -499,26 +499,26 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_window.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_window.restype = cwipc_sink_p
 
-    _cwipc_util_dll_reference.cwipc_downsample.argtypes = [cwipc_p, ctypes.c_float]
-    _cwipc_util_dll_reference.cwipc_downsample.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_downsample.argtypes = [cwipc_pointcloud_p, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc_downsample.restype = cwipc_pointcloud_p
 
-    _cwipc_util_dll_reference.cwipc_remove_outliers.argtypes = [cwipc_p, ctypes.c_int, ctypes.c_float, ctypes.c_bool]
-    _cwipc_util_dll_reference.cwipc_remove_outliers.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_remove_outliers.argtypes = [cwipc_pointcloud_p, ctypes.c_int, ctypes.c_float, ctypes.c_bool]
+    _cwipc_util_dll_reference.cwipc_remove_outliers.restype = cwipc_pointcloud_p
     
-    _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_p, ctypes.c_int]
-    _cwipc_util_dll_reference.cwipc_tilefilter.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_tilefilter.argtypes = [cwipc_pointcloud_p, ctypes.c_int]
+    _cwipc_util_dll_reference.cwipc_tilefilter.restype = cwipc_pointcloud_p
 
-    _cwipc_util_dll_reference.cwipc_tilemap.argtypes = [cwipc_p, ctypes.c_char_p]
-    _cwipc_util_dll_reference.cwipc_tilemap.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_tilemap.argtypes = [cwipc_pointcloud_p, ctypes.c_char_p]
+    _cwipc_util_dll_reference.cwipc_tilemap.restype = cwipc_pointcloud_p
 
-    _cwipc_util_dll_reference.cwipc_colormap.argtypes = [cwipc_p, ctypes.c_ulong, ctypes.c_ulong]
-    _cwipc_util_dll_reference.cwipc_colormap.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_colormap.argtypes = [cwipc_pointcloud_p, ctypes.c_ulong, ctypes.c_ulong]
+    _cwipc_util_dll_reference.cwipc_colormap.restype = cwipc_pointcloud_p
 
-    _cwipc_util_dll_reference.cwipc_crop.argtypes = [cwipc_p, ctypes.c_float*6]
-    _cwipc_util_dll_reference.cwipc_crop.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_crop.argtypes = [cwipc_pointcloud_p, ctypes.c_float*6]
+    _cwipc_util_dll_reference.cwipc_crop.restype = cwipc_pointcloud_p
 
-    _cwipc_util_dll_reference.cwipc_join.argtypes = [cwipc_p, cwipc_p]
-    _cwipc_util_dll_reference.cwipc_join.restype = cwipc_p
+    _cwipc_util_dll_reference.cwipc_join.argtypes = [cwipc_pointcloud_p, cwipc_pointcloud_p]
+    _cwipc_util_dll_reference.cwipc_join.restype = cwipc_pointcloud_p
 
     _cwipc_util_dll_reference.cwipc_proxy.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.c_ulong]
     _cwipc_util_dll_reference.cwipc_proxy.restype = cwipc_activesource_p
@@ -562,20 +562,20 @@ cwipc_point_numpy_matrix_value_type = numpy.typing.NDArray[numpy.floating]
 class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
     """Pointcloud as an opaque object."""
     
-    _cwipc : Optional[cwipc_p]
+    _cwipc : Optional[cwipc_pointcloud_p]
     _bytes : Optional[bytearray]
     _points : Optional[ctypes.Array[cwipc_point]]
 
-    def __init__(self, _cwipc : Optional[cwipc_p]=None):
+    def __init__(self, _cwipc : Optional[cwipc_pointcloud_p]=None):
         if _cwipc != None:
-            assert isinstance(_cwipc, cwipc_p)
+            assert isinstance(_cwipc, cwipc_pointcloud_p)
             if _cwipc.value == None:
                 raise CwipcError("NULL pointer returned from cwipc native method")
         self._cwipc = _cwipc
         self._points = None
         self._bytes = None
         
-    def as_cwipc_p(self) -> cwipc_p:
+    def as_cwipc_p(self) -> cwipc_pointcloud_p:
         """Return ctypes-compatible pointer for this object"""
         assert self._cwipc
         return self._cwipc
