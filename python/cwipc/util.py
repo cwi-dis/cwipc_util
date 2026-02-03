@@ -585,7 +585,7 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
         assert self._cwipc
         return self._cwipc
             
-    def free(self, force : bool=False) -> None:
+    def free(self, *, force : bool=False) -> None:
         """Delete the opaque pointcloud object (by asking the original creator to do so)"""
         if self._cwipc and self._must_be_freed:
             if not force:
@@ -743,7 +743,7 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         assert self._cwipc_source
         return self._cwipc_source
             
-    def free(self, force : bool = False) -> None:
+    def free(self, *, force : bool = False) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
         if self._cwipc_source and self._must_be_freed:
             if not force:
@@ -884,7 +884,7 @@ class cwipc_sink_wrapper:
         assert self._cwipc_sink
         return self._cwipc_sink
             
-    def free(self, force : bool = False) -> None:
+    def free(self, *, force : bool = False) -> None:
         """Delete the opaque pointcloud sink object (by asking the original creator to do so)"""
         if self._cwipc_sink and self._must_be_freed:
             if not force:
@@ -906,7 +906,7 @@ class cwipc_sink_wrapper:
         self._must_be_freed = False
         return rv
         
-    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool, force : bool=False) -> bool:
+    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool, *, force : bool=False) -> bool:
         """Feed the point cloud to the sink.
         
         The point cloud must be detached. If you know what you are doing you can pass
