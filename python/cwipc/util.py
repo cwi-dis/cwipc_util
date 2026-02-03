@@ -571,10 +571,10 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
         if _cwipc != None:
             if not isinstance(_cwipc, cwipc_pointcloud_p):
                 raise CwipcError("Invalid cwipc_pointcloud_p pointer passed to cwipc_pointcloud_wrapper")
-            self._must_be_freed = True
         self._cwipc = _cwipc
         self._points = None
         self._bytes = None
+        self._must_be_freed = True
         
     def __del__(self):
         if self._must_be_freed:
@@ -790,7 +790,7 @@ class cwipc_activesource_wrapper(cwipc_source_wrapper, cwipc_activesource_abstra
         if _cwipc_activesource != None:
             if not isinstance(_cwipc_activesource, cwipc_activesource_p):
                 raise CwipcError("Invalid cwipc_activesource_p passed to cwipc_activesource_wrapper")
-        cwipc_source_wrapper(_cwipc_activesource)
+        cwipc_source_wrapper.__init__(self, _cwipc_activesource)
         
     def reload_config(self, config : Union[str, bytes, None]) -> None:
         """Load a config from file or JSON string"""

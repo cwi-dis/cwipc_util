@@ -70,12 +70,12 @@ class TestApi(unittest.TestCase):
     def test_cwipc(self):
         """Can we create and free a cwipc object"""
         pc = cwipc.cwipc_pointcloud_wrapper()
-        pc.free()
+        del pc
         
     def test_cwipc_source(self):
         """Can we create and free a cwipc_source object"""
         pcs = cwipc.cwipc_source_wrapper()
-        pcs.free()
+        del pcs
     
     def test_cwipc_from_points_empty(self):
         """Can we create a cwipc object from a empty list of values"""
@@ -84,8 +84,7 @@ class TestApi(unittest.TestCase):
         newpoints = pc.get_points()
         self.assertEqual(len(points), 0)
         self.assertEqual(len(newpoints), 0)
-        pc.free()
-    
+        
     def test_cwipc_from_points(self):
         """Can we create a cwipc object from a list of values"""
         points = cwipc.cwipc_point_array(values=[(1, 2, 3, 0x10, 0x20, 0x30, 1), (4, 5, 6, 0x40, 0x50, 0x60, 2)])
@@ -103,9 +102,7 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
             self.assertEqual(op.tile, np.tile)
-        pc.free()
-
-
+        
     def test_cwipc_numpy_array(self):
         """Can we round-trip between a cwipc and a numpy record array"""
         # Create cwipc from Python list of points.
@@ -130,8 +127,6 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
             self.assertEqual(op.tile, np.tile)
-        pc.free()
-        new_pc.free()
 
     def test_cwipc_numpy_matrix(self):
         """Can we round-trip between a cwipc and a numpy matrix of floats representing the points"""
@@ -158,8 +153,6 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
             self.assertEqual(op.tile, np.tile)
-        pc.free()
-        new_pc.free()
 
     def test_cwipc_o3d_pointcloud(self):
         """Can we round-trip between a cwipc and an open3d point cloud"""
@@ -185,8 +178,6 @@ class TestApi(unittest.TestCase):
             self.assertEqual(op.g, np.g)
             self.assertEqual(op.b, np.b)
             # Not round tripped: self.assertEqual(op.tile, np.tile)
-        pc.free()
-        new_pc.free()
 
     def test_cwipc_timestamp_cellsize(self):
         """Can we set and retrieve the timestamp and cellsize in a cwipc"""
@@ -200,14 +191,12 @@ class TestApi(unittest.TestCase):
         self.assertAlmostEqual(pc.cellsize(), 0.1)
         pc._set_cellsize(-1) # type: ignore
         self.assertAlmostEqual(pc.cellsize(), 1.0)
-        pc.free()
 
     def test_cwipc_read(self):
         """Can we read a cwipc from a ply file?"""
         pc = cwipc.cwipc_read(PLY_FILENAME, 1234)
         self.assertEqual(pc.timestamp(), 1234)
         self._verify_pointcloud(pc)
-        pc.free()
 
     def test_cwipc_read_nonexistent(self):
         """When we read a cwipc from a nonexistent ply file do we get an exception?"""
@@ -302,8 +291,7 @@ class TestApi(unittest.TestCase):
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
-        pc.free()
-        pcs.free()
+        pcs.stop()
         
     def test_cwipc_synthetic_available_false(self):
         """Does the synthetic reader implement available(False) correctly?"""
@@ -313,8 +301,7 @@ class TestApi(unittest.TestCase):
         pc = pcs.get()
         self.assertFalse(pcs.available(False))
         assert pc # Only to keep linters happy
-        pc.free()
-        pcs.free()
+        pcs.stop()
         
     def test_cwipc_synthetic_nonexistent_metadata(self):
         """If we request nonexistent metadata on a cwipc_source do we get an error?"""
@@ -324,7 +311,7 @@ class TestApi(unittest.TestCase):
         pcs.request_metadata("nonexistent-metadata")
         wantUnknown = pcs.is_metadata_requested("nonexistent-metadata")
         self.assertTrue(wantUnknown)
-        pcs.free()
+        pcs.stop()
     
     def test_cwipc_synthetic_metadata(self):
         """Can we request metadata on a cwipc_source"""
@@ -347,8 +334,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(data), 4)
         # We can no longer assume the angle is nonzero (since adding the start() call to cwipc_source).
         # self.assertNotEqual(data, b'\0\0\0\0')
-        pc.free()
-        pcs.free()
+        pcs.stop()
 
     def test_cwipc_synthetic_nonexistent_auxiliary_operation(self):
         """If we request a nonexistent auxiliary operation on a cwipc_source do we get an error?"""
@@ -358,7 +344,7 @@ class TestApi(unittest.TestCase):
         outbuf = bytearray(4)
         wantUnknown = pcs.auxiliary_operation("nonexistent-auxop", inbuf, outbuf)
         self.assertFalse(wantUnknown)
-        pcs.free()
+        pcs.stop()
     
     def test_cwipc_synthetic_auxiliary_operation(self):
         """Can we request an auxiliary operation on a cwipc_source"""
@@ -371,7 +357,7 @@ class TestApi(unittest.TestCase):
         self.assertTrue(ok)
         newAngle, = struct.unpack("f", outbuf)
         self.assertEqual(angle, newAngle)
-        pcs.free()
+        pcs.stop()
 
     def test_cwipc_synthetic_args(self):
         """Can we create a synthetic pointcloud with fps and npoints arguments?"""
@@ -384,8 +370,7 @@ class TestApi(unittest.TestCase):
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
-        pc.free()
-        pcs.free()
+        pcs.stop()
         
     def test_cwipc_synthetic_tiled(self):
         """Is a synthetic pointcloud generator providing the correct tiling interface?"""
@@ -394,7 +379,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(pcs.get_tileinfo_dict(0), {'normal':{'x':0, 'y':0, 'z':0},'cameraName':b'synthetic', 'ncamera':2, 'cameraMask':0})
         self.assertEqual(pcs.get_tileinfo_dict(1), {'normal':{'x':0, 'y':0, 'z':1},'cameraName':b'synthetic-right', 'ncamera':1, 'cameraMask':1})
         self.assertEqual(pcs.get_tileinfo_dict(2), {'normal':{'x':0, 'y':0, 'z':-1},'cameraName':b'synthetic-left', 'ncamera':1, 'cameraMask':2})
-        pcs.free()
+        pcs.stop()
 
     def test_cwipc_synthetic_config(self):
         """Is a synthetic pointcloud generator providing the correct config interface?"""
@@ -403,7 +388,7 @@ class TestApi(unittest.TestCase):
         self.assertFalse(pcs.reload_config("{\"dummy\":0}"))
         with self.assertRaises(cwipc.CwipcError):
             _ = pcs.get_config()
-        pcs.free()
+        pcs.stop()
 
     def test_cwipc_capturer_nonexistent(self):
         """Check that creating a capturer for a nonexistent camera type fails"""
@@ -424,11 +409,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(pc_orig.get_points()), len(pc_filtered_1.get_points()) + len(pc_filtered_2.get_points()))
         self.assertEqual(pc_orig.timestamp(), pc_filtered_1.timestamp())
         self.assertEqual(pc_orig.timestamp(), pc_filtered_2.timestamp())
-        gen.free()
-        pc_orig.free()
-        pc_filtered.free()
-        pc_filtered_1.free()
-        pc_filtered_2.free()
+        gen.stop()
         
     def test_tilefilter_empty(self):
         """Check that the tilefilter returns an empty pointcloud when passed an empty pointcloud"""
@@ -436,8 +417,6 @@ class TestApi(unittest.TestCase):
         pc_filtered = cwipc.cwipc_tilefilter(pc_orig, 0)
         self.assertEqual(len(pc_orig.get_points()), 0)
         self.assertEqual(len(pc_filtered.get_points()), 0)
-        pc_orig.free()
-        pc_filtered.free()
         
     def test_join(self):
         """Check that joining two pointclouds results in a pointcloud with the correct number of points"""
@@ -472,6 +451,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(pc_filtered_2.get_points()), len(pc_mapped_6.get_points()))
         self.assertEqual(len(pc_filtered_5.get_points()), len(pc_mapped_1.get_points()))
         self.assertEqual(len(pc_filtered_6.get_points()), len(pc_mapped_2.get_points()))
+        gen.stop()
         
     def test_colormap(self):
         """Check that colormap keeps all points but gives them the new color"""
@@ -489,6 +469,7 @@ class TestApi(unittest.TestCase):
             np = points2[i]
             self.assertEqual((op.x, op.y, op.z), (np.x, np.y, np.z))
             self.assertEqual((np.r, np.g, np.b, np.tile), (0x01, 0x02, 0x03, 0x00))
+        gen.stop()
         
     def test_crop(self):
         """Check that splitting a pointcloud into two using cropping gives the right number of points"""
@@ -507,10 +488,7 @@ class TestApi(unittest.TestCase):
             self.assertLess(pt.x, 0)
         for pt in right_points:
             self.assertGreaterEqual(pt.x, 0)
-        gen.free()
-        pc.free()
-        left_pc.free()
-        right_pc.free()
+        gen.stop()
                 
     def test_remove_outliers(self):
         """Chech that remove_outliers returns less points than the original pc, but still > 0 points."""
@@ -524,9 +502,7 @@ class TestApi(unittest.TestCase):
         count_filtered = len(pc_filtered.get_points())
         self.assertLess(count_filtered, count_orig)
         self.assertGreater(count_filtered, 0)
-        pc_filtered.free()
-        gen.free()
-        pc_orig.free()
+        gen.stop()
         
     def test_downsample(self):
         """Check that the downsampler returns at most the same number of points and eventually returns less than 8"""
@@ -544,13 +520,11 @@ class TestApi(unittest.TestCase):
             self.assertGreaterEqual(count_filtered, 1)
             self.assertLessEqual(count_filtered, count_orig)
             self.assertEqual(pc_orig.timestamp(), pc_filtered.timestamp())
-            pc_filtered.free()
             if count_filtered < 2:
                 break
             cellsize = cellsize * 2
         self.assertLessEqual(count_filtered, 8)
-        gen.free()
-        pc_orig.free()
+        gen.stop()
         
     def test_downsample_voxelgrid(self):
         """Check that the voxelgrid downsampler returns at most the same number of points and eventually returns less than 8"""
@@ -568,13 +542,11 @@ class TestApi(unittest.TestCase):
             self.assertGreaterEqual(count_filtered, 1)
             self.assertLessEqual(count_filtered, count_orig)
             self.assertEqual(pc_orig.timestamp(), pc_filtered.timestamp())
-            pc_filtered.free()
             if count_filtered < 2:
                 break
             cellsize = cellsize * 2
         self.assertLessEqual(count_filtered, 8)
-        gen.free()
-        pc_orig.free()
+        gen.stop()
                 
     def test_downsample_empty(self):
         """Check that the downsample returns an empty pointcloud when passed an empty pointcloud"""
@@ -582,8 +554,6 @@ class TestApi(unittest.TestCase):
         pc_filtered = cwipc.cwipc_downsample(pc_orig, 1)
         self.assertEqual(len(pc_orig.get_points()), 0)
         self.assertEqual(len(pc_filtered.get_points()), 0)
-        pc_orig.free()
-        pc_filtered.free()
         
     def test_playback_file(self):
         src = cwipc.playback.cwipc_playback([PLY_FILENAME], loop=False)
@@ -593,9 +563,8 @@ class TestApi(unittest.TestCase):
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
-        pc.free()
         self.assertTrue(src.eof())
-        src.free()
+        src.stop()
 
     def test_playback_dir(self):
         src = cwipc.playback.cwipc_playback(PLY_DIRNAME, loop=False)
@@ -604,26 +573,25 @@ class TestApi(unittest.TestCase):
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
         self._verify_pointcloud(pc)
-        pc.free()
-        src.free()
+        src.stop()
 
     @unittest.skip("Fails for reasons unknown")  
     def test_proxy(self):
         src = cwipc.cwipc_proxy('', 8887)
         self.assertFalse(src.available(False))
-        src.free()
+        src.stop()
         
     @unittest.skip("Fails for reasons unknown")  
     def test_proxy_badhost(self):
         with self.assertRaises(cwipc.CwipcError):
             src = cwipc.cwipc_proxy('8.8.8.8', 8887)
-            src.free()
+            src.stop()
     
     @unittest.skip("Fails for reasons unknown")  
     def test_proxy_unknownhost(self):
         with self.assertRaises(cwipc.CwipcError):
             src = cwipc.cwipc_proxy('unknown.host.name', 8887)
-            src.free()
+            src.stop()
         
     def test_metadata_empty(self):
         pc = self._build_pointcloud()
@@ -632,7 +600,6 @@ class TestApi(unittest.TestCase):
         assert metadata # Keep linters happy
         nItems = metadata.count()
         self.assertEqual(nItems, 0)
-        pc.free()
         
     def _verify_pointcloud(self, pc : cwipc.cwipc_pointcloud_wrapper, tiled : bool=False):
         points = pc.get_points()
