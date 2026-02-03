@@ -563,29 +563,53 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
     """Pointcloud as an opaque object."""
     
     _cwipc : Optional[cwipc_pointcloud_p]
+    _must_be_freed : bool
     _bytes : Optional[bytearray]
     _points : Optional[ctypes.Array[cwipc_point]]
 
     def __init__(self, _cwipc : Optional[cwipc_pointcloud_p]=None):
         if _cwipc != None:
-            assert isinstance(_cwipc, cwipc_pointcloud_p)
-            if _cwipc.value == None:
-                raise CwipcError("NULL pointer returned from cwipc native method")
+            if not isinstance(_cwipc, cwipc_pointcloud_p):
+                raise CwipcError("Invalid cwipc_pointcloud_p pointer passed to cwipc_pointcloud_wrapper")
+            self._must_be_freed = True
         self._cwipc = _cwipc
         self._points = None
         self._bytes = None
         
+    def __del__(self):
+        if self._must_be_freed:
+            self.free(force=True)
+
     def as_cwipc_p(self) -> cwipc_pointcloud_p:
         """Return ctypes-compatible pointer for this object"""
         assert self._cwipc
         return self._cwipc
             
-    def free(self) -> None:
+    def free(self, force : bool=False) -> None:
         """Delete the opaque pointcloud object (by asking the original creator to do so)"""
-        if self._cwipc:
+        if self._cwipc and self._must_be_freed:
+            if not force:
+                cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"cwipc_pointcloud_wrapper.free() called explicitly.")
             cwipc_util_dll_load().cwipc_pointcloud_free(self.as_cwipc_p())
         self._cwipc = None
+        self._must_be_freed = False
         
+    def detach(self) -> cwipc_pointcloud_wrapper:
+        """Detach the underlying cwipc_pointcloud_p pointer from this wrapper.
+        
+        After the call, this pointcloud is invalidated. The return value has the pointer
+        to the underlying data that used to be on this object, but it will _not_ be freed
+        when the Python object is deleted. The intention is that the returned object is
+        passed to another language that will take ownership of it.
+        """
+        if self._cwipc == None:
+            cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"detach() called on NULL pointer")
+        rv = type(self)(self._cwipc)
+        rv._must_be_freed = False
+        self._cwipc = None
+        self._must_be_freed = False
+        return rv
+    
     def timestamp(self) -> int:
         """Returns timestamp (microseconds) when this pointcloud was captured (relative to some unspecified origin)"""
         rv = cwipc_util_dll_load().cwipc_pointcloud_timestamp(self.as_cwipc_p())
@@ -701,22 +725,45 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
 class cwipc_source_wrapper(cwipc_source_abstract):
     """Pointcloud source as an opaque object"""
     _cwipc_source : Optional[cwipc_source_p]
+    _must_be_freed : bool
 
     def __init__(self, _cwipc_source : Optional[cwipc_source_p]=None):
         if _cwipc_source != None:
-            assert isinstance(_cwipc_source, cwipc_source_p)
+            if not isinstance(_cwipc_source, cwipc_source_p):
+                raise CwipcError("Invalid cwipc_source_p pointer passed to cwipc_source_wrapper")
         self._cwipc_source = _cwipc_source
+        self._must_be_freed = True
+
+    def __del__(self):
+        if self._must_be_freed:
+            self.free(force=True)
 
     def as_cwipc_source_p(self) -> cwipc_source_p:
         """Return ctypes-compatible pointer for this object"""
         assert self._cwipc_source
         return self._cwipc_source
             
-    def free(self) -> None:
+    def free(self, force : bool = False) -> None:
         """Delete the opaque pointcloud source object (by asking the original creator to do so)"""
-        if self._cwipc_source:
+        if self._cwipc_source and self._must_be_freed:
+            if not force:
+                cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"cwipc_source_wrapper.free() called explicitly.")
             cwipc_util_dll_load().cwipc_source_free(self.as_cwipc_source_p())
         self._cwipc_source = None
+        self._must_be_freed = False
+
+    def detach(self) -> cwipc_source_wrapper:
+        """Detach the underlying cwipc_sink_p from this wrapper.
+        
+        The return value can be passed to another language, it will not be freed when
+        the Python object is garbage collected. This object will be invalidated."""
+        if self._cwipc_source == None:
+            cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"detach() called on NULL pointer")
+        rv = type(self)(self._cwipc_source)
+        rv._must_be_freed = False
+        self._cwipc_source = None
+        self._must_be_freed = False
+        return rv
         
     def eof(self) -> bool:
         """Return True if no more pointclouds will be forthcoming"""
@@ -738,12 +785,12 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         
 class cwipc_activesource_wrapper(cwipc_source_wrapper, cwipc_activesource_abstract):
     """Tiled pointcloud sources as opaque object"""
-    _cwipc_source : Optional[cwipc_activesource_p]
 
     def __init__(self, _cwipc_activesource : Optional[cwipc_activesource_p]=None):
         if _cwipc_activesource != None:
-            assert isinstance(_cwipc_activesource, cwipc_activesource_p)
-        self._cwipc_source = _cwipc_activesource
+            if not isinstance(_cwipc_activesource, cwipc_activesource_p):
+                raise CwipcError("Invalid cwipc_activesource_p passed to cwipc_activesource_wrapper")
+        cwipc_source_wrapper(_cwipc_activesource)
         
     def reload_config(self, config : Union[str, bytes, None]) -> None:
         """Load a config from file or JSON string"""
@@ -819,22 +866,45 @@ class cwipc_activesource_wrapper(cwipc_source_wrapper, cwipc_activesource_abstra
 class cwipc_sink_wrapper:
     """Pointcloud sink as an opaque object"""
     _cwipc_sink : Optional[cwipc_sink_p]
+    _must_be_freed : bool
 
     def __init__(self, _cwipc_sink : Optional[cwipc_sink_p]=None):
         if _cwipc_sink != None:
-            assert isinstance(_cwipc_sink, cwipc_sink_p)
+            if not isinstance(_cwipc_sink, cwipc_sink_p):
+                raise CwipcError("Invalid cwipc_sink_p passed to cwipc_sink_wrapper")
         self._cwipc_sink = _cwipc_sink
+        self._must_be_freed = True
+
+    def __del__(self):
+        if self._must_be_freed:
+            self.free(force=True)
 
     def as_cwipc_sink_p(self) -> cwipc_sink_p:
         """Return ctypes-compatible pointer for this object"""
         assert self._cwipc_sink
         return self._cwipc_sink
             
-    def free(self) -> None:
+    def free(self, force : bool = False) -> None:
         """Delete the opaque pointcloud sink object (by asking the original creator to do so)"""
-        if self._cwipc_sink:
+        if self._cwipc_sink and self._must_be_freed:
+            if not force:
+                cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"cwipc_sink_wrapper.free() called explicitly.")
             cwipc_util_dll_load().cwipc_sink_free(self.as_cwipc_sink_p())
         self._cwipc_source = None
+        self._must_be_freed = False
+
+    def detach(self) -> cwipc_sink_wrapper:
+        """Detach the underlying cwipc_sink_p from this wrapper.
+        
+        The return value can be passed to another language, it will not be freed when
+        the Python object is garbage collected. This object will be invalidated."""
+        if self._cwipc_sink == None:
+            cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"detach() called on NULL pointer")
+        rv = type(self)(self._cwipc_sink)
+        rv._must_be_freed = False
+        self._cwipc_sink = None
+        self._must_be_freed = False
+        return rv
         
     def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool) -> bool:
         if pc == None:
@@ -1193,7 +1263,12 @@ def cwipc_tilemap(pc : cwipc_pointcloud_wrapper, mapping : Union[List[int], dict
     return cwipc_pointcloud_wrapper(rv)
   
 def cwipc_colormap(pc : cwipc_pointcloud_wrapper, clearBits : int, setBits : int) -> cwipc_pointcloud_wrapper:
-    """Return pointcloud with every point color changed. clearBits and setBits are bitmasks."""
+    """Return pointcloud with every point color changed. 
+    
+    clearBits and setBits are bitmasks.
+
+    Metadata is moved to the resultant point cloud.
+    """
     rv = cwipc_util_dll_load().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
     return cwipc_pointcloud_wrapper(rv)
   
