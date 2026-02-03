@@ -16,7 +16,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     QUEUE_FULL_TIMEOUT=0.001
 
     sink : cwipc_rawsink_abstract
-    input_queue : queue.Queue[Optional[cwipc.cwipc_wrapper]]
+    input_queue : queue.Queue[Optional[cwipc.cwipc_pointcloud_wrapper]]
     pointcounts : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_dict]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
@@ -121,7 +121,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
             self.sink.stop()
             if self.verbose: print(f"encoder: thread stopped")
         
-    def feed(self, pc : cwipc.cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc.cwipc_pointcloud_wrapper) -> None:
         try:
             if self.nodrop:
                 self.input_queue.put(pc)

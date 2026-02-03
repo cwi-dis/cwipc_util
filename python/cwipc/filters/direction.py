@@ -1,7 +1,7 @@
 import time
 from typing import Union, List, Tuple
 from .abstract import cwipc_abstract_filter
-from ..util import cwipc_wrapper, cwipc_from_points
+from ..util import cwipc_pointcloud_wrapper, cwipc_from_points
 from ..registration.util import cwipc_direction_filter
 
 class DirectionFilter(cwipc_abstract_filter):
@@ -31,7 +31,7 @@ class DirectionFilter(cwipc_abstract_filter):
         If the filter returns the same point cloud as it received as an argument it will never be freed."""
         self.keep_source = True        
         
-    def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+    def filter(self, pc : cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
         self.count += 1
         t1_d = time.time()
         self.original_pointcounts.append(pc.count())

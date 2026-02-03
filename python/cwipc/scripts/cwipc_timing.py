@@ -9,7 +9,7 @@ import queue
 import csv
 from typing import Optional, Dict, Any, List, Iterable
 
-from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
+from .. import cwipc_pointcloud_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
 from .. import codec
 from ..util import cwipc_metadata
 from ._scriptsupport import *
@@ -18,7 +18,7 @@ from ..net.abstract import *
 
 class DropWriter(cwipc_sink_abstract):
     results : List[Dict[str, Any]]
-    output_queue : queue.Queue[Optional[cwipc_wrapper]]
+    output_queue : queue.Queue[Optional[cwipc_pointcloud_wrapper]]
     csvwriter : Optional[csv.DictWriter]
     csvkeys : List[str]
     details : bool
@@ -93,7 +93,7 @@ class DropWriter(cwipc_sink_abstract):
         
         return True              
         
-    def save_rgb(self, pc : cwipc_wrapper, metadata : cwipc_metadata) -> None:
+    def save_rgb(self, pc : cwipc_pointcloud_wrapper, metadata : cwipc_metadata) -> None:
         import cv2
         timestamp = pc.timestamp()
         image_dict = metadata.get_all_images("rgb.")
@@ -113,7 +113,7 @@ class DropWriter(cwipc_sink_abstract):
             else:
                 print(f"Error: failed to write {filename}", file=sys.stderr)
     
-    def feed(self, pc : cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
         self.output_queue.put(pc)
         
     def writerecord(self, record : Dict[str, Any]) -> None:

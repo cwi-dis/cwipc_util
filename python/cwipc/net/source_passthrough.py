@@ -5,7 +5,7 @@ import threading
 import queue
 import cwipc
 from typing import Optional, Union, List
-from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_pointcloud_abstract
 
 try:
     import cwipc.codec
@@ -18,7 +18,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
     QUEUE_WAIT_TIMEOUT=1
     
     source : cwipc_rawsource_abstract
-    output_queue : queue.Queue[Optional[cwipc_abstract]]
+    output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
     def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -60,7 +60,7 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
             return True
         return self.source.available(wait)
         
-    def get(self) -> Optional[cwipc_abstract]:
+    def get(self) -> Optional[cwipc_pointcloud_abstract]:
         if self.eof():
             return None
         pc = self.output_queue.get()

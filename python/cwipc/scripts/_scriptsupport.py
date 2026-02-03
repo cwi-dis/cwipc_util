@@ -7,7 +7,7 @@ import traceback
 import warnings
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
+from .. import cwipc_pointcloud_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -294,7 +294,7 @@ class SourceServer:
         self.grabber.stop()
         self.stopped = True
         
-    def grab_pc(self) -> Optional[cwipc_wrapper]:
+    def grab_pc(self) -> Optional[cwipc_pointcloud_wrapper]:
         if self.lastGrabTime and self.fps:
             nextGrabTime = self.lastGrabTime + 1/self.fps
             if time.time() < nextGrabTime:
@@ -314,7 +314,7 @@ class SourceServer:
         self.lastGrabTime = time.time()
         if self.verbose:
             print(f"grab: get() took {self.lastGrabTime-t_before:.3f}")
-        return cast(cwipc_wrapper, pc)
+        return cast(cwipc_pointcloud_wrapper, pc)
         
     def run(self) -> None:
         if self.inpoint:

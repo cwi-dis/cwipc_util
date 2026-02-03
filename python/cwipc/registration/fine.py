@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.spatial
 import open3d
-from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
+from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
 from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
@@ -66,14 +66,14 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
         return transformation_identity()
     
     @override
-    def get_result_pointcloud(self) -> cwipc_wrapper:
+    def get_result_pointcloud(self) -> cwipc_pointcloud_wrapper:
         pc = self.get_source_pointcloud()
         transform = self.get_result_transformation(nonverbose=True)
         new_pc = cwipc_transform(pc, transform)
         return new_pc
     
     @override
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+    def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
         part_pc = self.get_result_pointcloud()
         new_part_pc = cwipc_join(part_pc, self.get_reference_pointcloud())
         part_pc.free()

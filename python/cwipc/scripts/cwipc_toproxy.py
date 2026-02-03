@@ -9,12 +9,12 @@ import traceback
 import queue
 import socket
 import struct
-from .. import CWIPC_POINT_PACKETHEADER_MAGIC, cwipc_wrapper
+from .. import CWIPC_POINT_PACKETHEADER_MAGIC, cwipc_pointcloud_wrapper
 from ..net.abstract import cwipc_producer_abstract, cwipc_sink_abstract
 from ._scriptsupport import *
 
 class Sender(cwipc_sink_abstract):
-    output_queue : queue.Queue[cwipc_wrapper]
+    output_queue : queue.Queue[cwipc_pointcloud_wrapper]
 
     def __init__(self, host, port, verbose=False):
         self.producer = None
@@ -42,13 +42,13 @@ class Sender(cwipc_sink_abstract):
             except queue.Empty:
                 pass
         
-    def feed(self, pc : cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
         try:
             self.output_queue.put(pc, timeout=0.5)
         except queue.Full:
             pc.free()
             
-    def send_pc(self, pc : cwipc_wrapper) -> None:
+    def send_pc(self, pc : cwipc_pointcloud_wrapper) -> None:
         data = pc.get_bytes()
         cellsize = pc.cellsize()
         timestamp = pc.timestamp()

@@ -4,7 +4,7 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union
-from .abstract import cwipc_source_abstract, cwipc_abstract, cwipc_rawsource_abstract
+from .abstract import cwipc_source_abstract, cwipc_pointcloud_abstract, cwipc_rawsource_abstract
 
 try:
     from .. import codec
@@ -16,7 +16,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
     """A source that decodes pointclouds gotten from a rawsource."""
     
     QUEUE_WAIT_TIMEOUT=1
-    output_queue : queue.Queue[Optional[cwipc_abstract]]
+    output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
     def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
@@ -61,7 +61,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
             return True
         return self.source.available(wait)
         
-    def get(self) -> Optional[cwipc_abstract]:
+    def get(self) -> Optional[cwipc_pointcloud_abstract]:
         if self.eof():
             return None
         pc = self.output_queue.get()
@@ -87,7 +87,7 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
         self.running = False
 
-    def _decompress(self, cpc : bytes) -> Optional[cwipc_abstract]:
+    def _decompress(self, cpc : bytes) -> Optional[cwipc_pointcloud_abstract]:
         if self.decomp == None:
             assert codec
             self.decomp = codec.cwipc_new_decoder()

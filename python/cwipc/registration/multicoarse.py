@@ -13,7 +13,7 @@ import open3d
 import open3d.visualization
 import cv2.typing
 import cv2.aruco
-from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
+from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
 from ..abstract import cwipc_activesource_abstract
 from .abstract import *
 from .util import get_tiles_used, o3d_pick_points, o3d_show_points, transformation_identity, transformation_invert, cwipc_transform, BaseAlgorithm
@@ -28,7 +28,7 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
 
     def __init__(self):
         self.debug = False
-        self.original_pointcloud : Optional[cwipc_wrapper] = None
+        self.original_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
         self.per_camera_o3d_pointclouds : List[open3d.geometry.PointCloud] = []
         self.per_camera_tilenum : List[int] = []
         self.serial_for_tilenum : Dict[int, str] = {}
@@ -45,13 +45,13 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         self.verbose = True
         
     @override
-    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_pointcloud_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         assert self.original_pointcloud is None
         self.original_pointcloud = pc
     
     @override
-    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
+    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_pointcloud_wrapper:
         """Returns the point cloud for this tilenumber"""
         assert self.original_pointcloud
         rv = cwipc_tilefilter(self.original_pointcloud, tilenum)
@@ -257,9 +257,9 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         return self.transformations
     
     @override
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+    def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
         """Return the resulting point cloud (with each camera mapped by its matrix)"""
-        rv : Optional[cwipc_wrapper] = None
+        rv : Optional[cwipc_pointcloud_wrapper] = None
         assert len(self.transformations) == len(self.per_camera_tilenum)
         assert self.original_pointcloud
         indices_to_join = range(len(self.per_camera_tilenum))

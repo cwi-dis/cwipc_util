@@ -17,7 +17,7 @@ class _Filesource(cwipc_activesource_abstract):
         self.filenames = list(filenames)
         self.loop = loop
         self.single_file_mode = self.loop and len(self.filenames) == 1
-        self.single_file_mode_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.single_file_mode_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.delta_t = 0
         self.retimestamp = retimestamp
         self.earliest_return = time.time()
@@ -55,7 +55,7 @@ class _Filesource(cwipc_activesource_abstract):
             return True
         return not not self.filenames
         
-    def get(self) -> Optional[cwipc.cwipc_wrapper]:
+    def get(self) -> Optional[cwipc.cwipc_pointcloud_wrapper]:
         if not self.filenames:
             if self.single_file_mode_pc:
                 return cwipc.cwipc_from_packet(self.single_file_mode_pc.get_packet())
@@ -64,7 +64,7 @@ class _Filesource(cwipc_activesource_abstract):
         if self.loop: self.filenames.append(fn)
         rv = self._get(fn)
         if self.single_file_mode and rv:
-            # xxxjack we miss a clone operation on cwipc_wrapper.
+            # xxxjack we miss a clone operation on cwipc_pointcloud_wrapper.
             self.single_file_mode_pc = cwipc.cwipc_from_packet(rv.get_packet())
         if time.time() < self.earliest_return:
             time.sleep(self.earliest_return - time.time())
@@ -74,7 +74,7 @@ class _Filesource(cwipc_activesource_abstract):
             rv._set_timestamp(timestamp) # type: ignore
         return rv
         
-    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_pointcloud_wrapper]:
         numbers = ''.join(x for x in fn if x.isdigit())
         if numbers == '':
             numbers = 0
@@ -101,7 +101,7 @@ class _Filesource(cwipc_activesource_abstract):
         pass
         
 class _DumpFilesource(_Filesource):
-    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_pointcloud_wrapper]:
         rv = cwipc.cwipc_read_debugdump(fn)
         return rv
         
@@ -111,7 +111,7 @@ class _CompressedFilesource(_Filesource):
         from .codec import cwipc_new_decoder
         self.decoder = cwipc_new_decoder()
         
-    def _get(self, fn : str) -> Optional[cwipc.cwipc_wrapper]:
+    def _get(self, fn : str) -> Optional[cwipc.cwipc_pointcloud_wrapper]:
         with open(fn, 'rb') as fp:
             data : bytes = fp.read()
         self.decoder.feed(data)

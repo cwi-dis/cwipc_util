@@ -25,7 +25,7 @@ def main():
         print(f"{sys.argv[0]}: waiting for debugpy attach on 5678", flush=True)
         debugpy.wait_for_client()
         print(f"{sys.argv[0]}: debugger attached")
-    result : Optional[cwipc.cwipc_wrapper] = None
+    result : Optional[cwipc.cwipc_pointcloud_wrapper] = None
     for input_file in args.input:
         if input_file.endswith('.ply'):
             pc = cwipc.cwipc_read(input_file, 0)

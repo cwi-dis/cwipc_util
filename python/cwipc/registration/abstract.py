@@ -4,7 +4,7 @@ import math
 import numpy as np
 import numpy.typing
 from ..abstract import *
-from .. import cwipc_wrapper
+from .. import cwipc_pointcloud_wrapper
 
 __all__ = [
     "RegistrationTransformation",
@@ -31,7 +31,7 @@ __all__ = [
 
 RegistrationTransformation = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
 Vector3 = np.ndarray[tuple[Literal[3]], np.dtype[np.float64]]
-PointCloudFilter = Callable[[cwipc_wrapper], cwipc_wrapper]
+PointCloudFilter = Callable[[cwipc_pointcloud_wrapper], cwipc_pointcloud_wrapper]
 
 class Algorithm(ABC):
     """Abstract base class for any algorithm that operates on two point clouds.
@@ -41,12 +41,12 @@ class Algorithm(ABC):
     debug : bool
 
     @abstractmethod
-    def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+    def set_source_pointcloud(self, pc : cwipc_pointcloud_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the source point cloud to be used during the algorithm run"""
         ...
     
     @abstractmethod
-    def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+    def set_reference_pointcloud(self, pc : cwipc_pointcloud_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud to be used during the algorithm run.
         """
         ...
@@ -67,22 +67,22 @@ class Algorithm(ABC):
         ...
 
     @abstractmethod
-    def get_source_pointcloud(self) -> cwipc_wrapper:
+    def get_source_pointcloud(self) -> cwipc_pointcloud_wrapper:
         """Get original source point cloud"""
         ...
 
     @abstractmethod
-    def get_filtered_source_pointcloud(self) -> cwipc_wrapper:
+    def get_filtered_source_pointcloud(self) -> cwipc_pointcloud_wrapper:
         """Get filtered source point cloud used during algorithm run"""
         ...
     
     @abstractmethod
-    def get_reference_pointcloud(self) -> cwipc_wrapper:
+    def get_reference_pointcloud(self) -> cwipc_pointcloud_wrapper:
         """Get original reference point cloud"""
         ...
     
     @abstractmethod
-    def get_filtered_reference_pointcloud(self) -> cwipc_wrapper:
+    def get_filtered_reference_pointcloud(self) -> cwipc_pointcloud_wrapper:
         """Get filtered point cloud used during algorithm run"""
         ...
 class AnalysisResults:
@@ -238,11 +238,11 @@ class AlignmentAlgorithm(Algorithm):
         ...
     
     @abstractmethod
-    def get_result_pointcloud(self) -> cwipc_wrapper:
+    def get_result_pointcloud(self) -> cwipc_pointcloud_wrapper:
         """After a successful run(), returns the point cloud for the tile-under-test after the transformation has been applied"""
         ...
     @abstractmethod
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+    def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
          """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
          ...
 
@@ -257,7 +257,7 @@ class MulticamAlgorithm(ABC):
     debug : bool
 
     @abstractmethod
-    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_pointcloud_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         ...
    
@@ -277,7 +277,7 @@ class MulticamAlgorithm(ABC):
         ...
         
 #    @abstractmethod
-#    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_wrapper:
+#    def get_pointcloud_for_tilemask(self, tilenum : int) -> cwipc_pointcloud_wrapper:
 #        """Returns the point cloud for this tilenumber"""
 #        ...
 
@@ -321,7 +321,7 @@ class MulticamAlignmentAlgorithm(MulticamAlgorithm):
         ...
     
     @abstractmethod
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+    def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
          """After a successful run(), returns the point cloud for all tiles combined, after applying transformations"""
          ...
 

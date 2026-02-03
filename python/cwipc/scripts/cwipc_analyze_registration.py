@@ -16,9 +16,9 @@ class AnalyzePointCloud:
     def __init__(self, args : argparse.Namespace):
         self.args = args
         self.verbose = args.verbose
-        self.source_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.target_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.result_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.source_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
+        self.target_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
+        self.result_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         if self.args.algorithm_analyzer:
             self.analyzer_class = getattr(cwipc.registration.analyze, args.algorithm_analyzer)
         else:
@@ -82,7 +82,7 @@ class AnalyzePointCloud:
             for tilenum, count in tiles_and_counts:
                 print(f"Occupancy: tilenum={tilenum}, count={count}, ncamera={tilenum.bit_count()}")
  
-    def analyze_pointclouds(self, source: cwipc.cwipc_wrapper, sourcetile : int, target : cwipc.cwipc_wrapper, targettile : int) -> AnalysisResults:
+    def analyze_pointclouds(self, source: cwipc.cwipc_pointcloud_wrapper, sourcetile : int, target : cwipc.cwipc_pointcloud_wrapper, targettile : int) -> AnalysisResults:
         analyzer = self.analyzer_class()
         if self.args.toself:
             analyzer.set_ignore_nearest(self.args.nth)

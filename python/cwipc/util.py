@@ -23,7 +23,7 @@ import open3d
 import numpy
 import numpy.typing
 from typing import Optional, List, Type, Any, Union, Dict, Callable
-from .abstract import cwipc_abstract, cwipc_source_abstract, cwipc_activesource_abstract, cwipc_tileinfo_dict
+from .abstract import cwipc_pointcloud_abstract, cwipc_source_abstract, cwipc_activesource_abstract, cwipc_tileinfo_dict
 
 __all__ = [
     'CWIPC_API_VERSION',
@@ -38,7 +38,7 @@ __all__ = [
     'CWIPC_LOG_LEVEL_TRACE',
     'CWIPC_LOG_LEVEL_DEBUG',
 
-    'cwipc_wrapper',
+    'cwipc_pointcloud_wrapper',
     'cwipc_source_wrapper',
     'cwipc_activesource_wrapper',
     
@@ -559,7 +559,7 @@ def cwipc_point_array(*, count : Optional[int]=None, values : Any=()) -> ctypes.
 cwipc_point_numpy_array_value_type = numpy.typing.NDArray[Any]
 cwipc_point_numpy_matrix_value_type = numpy.typing.NDArray[numpy.floating]
 
-class cwipc_wrapper(cwipc_abstract):
+class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
     """Pointcloud as an opaque object."""
     
     _cwipc : Optional[cwipc_p]
@@ -726,11 +726,11 @@ class cwipc_source_wrapper(cwipc_source_abstract):
         """Return True if a pointcloud is currently available. The wait parameter signals the source may wait a while."""
         return cwipc_util_dll_load().cwipc_source_available(self.as_cwipc_source_p(), wait)
         
-    def get(self) -> Optional[cwipc_wrapper]:
+    def get(self) -> Optional[cwipc_pointcloud_wrapper]:
         """Get a cwipc (opaque pointcloud) from this source. Returns None if no more pointcloudes are forthcoming"""
         rv = cwipc_util_dll_load().cwipc_source_get(self.as_cwipc_source_p())
         if rv:
-            return cwipc_wrapper(rv)
+            return cwipc_pointcloud_wrapper(rv)
         return None
 
     def statistics(self) -> None:
@@ -836,7 +836,7 @@ class cwipc_sink_wrapper:
             cwipc_util_dll_load().cwipc_sink_free(self.as_cwipc_sink_p())
         self._cwipc_source = None
         
-    def feed(self, pc : Optional[cwipc_wrapper], clear : bool) -> bool:
+    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool) -> bool:
         if pc == None:
             cpc = None
         else:
@@ -1022,7 +1022,7 @@ def _cwipc_log_emit(level : int, module : str, message : str) -> None:
     """Emit a log message through the cwipc logging system"""
     cwipc_util_dll_load()._cwipc_log_emit(level, module.encode('utf8'), message.encode('utf8'))
 
-def cwipc_read(filename : str, timestamp : int) -> cwipc_wrapper:
+def cwipc_read(filename : str, timestamp : int) -> cwipc_pointcloud_wrapper:
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_read(filename.encode('utf8'), timestamp, ctypes.byref(errorString), CWIPC_API_VERSION)
@@ -1031,10 +1031,10 @@ def cwipc_read(filename : str, timestamp : int) -> cwipc_wrapper:
     if errorString and errorString.value:
         warnings.warn(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_wrapper(rv)
+        return cwipc_pointcloud_wrapper(rv)
     raise CwipcError("cwipc_read: no pointcloud read, but no specific error returned from C library")
     
-def cwipc_write(filename : str, pointcloud : cwipc_wrapper, flags : int=0) -> int:
+def cwipc_write(filename : str, pointcloud : cwipc_pointcloud_wrapper, flags : int=0) -> int:
     """Write a cwipc object to a .ply file."""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_write_ext(filename.encode('utf8'), pointcloud.as_cwipc_p(), flags, ctypes.byref(errorString))
@@ -1042,7 +1042,7 @@ def cwipc_write(filename : str, pointcloud : cwipc_wrapper, flags : int=0) -> in
         raise CwipcError(errorString.value.decode('utf8'))
     return rv
 
-def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) -> cwipc_wrapper:
+def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) -> cwipc_pointcloud_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
     if not isinstance(points, ctypes.Array):
         points = cwipc_point_array(values=points)
@@ -1054,10 +1054,10 @@ def cwipc_from_points(points : cwipc_point_array_value_type, timestamp : int) ->
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_wrapper(rv)
+        return cwipc_pointcloud_wrapper(rv)
     raise CwipcError("cwipc_from_points: cannot create cwipc from given argument")
 
-def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, timestamp : int) -> cwipc_wrapper:
+def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, timestamp : int) -> cwipc_pointcloud_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
     nPoint = np_points.shape[0]
     addr = np_points.ctypes.data_as(ctypes.POINTER(cwipc_point))
@@ -1067,11 +1067,11 @@ def cwipc_from_numpy_array(np_points : cwipc_point_numpy_array_value_type, times
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_wrapper(rv)
+        return cwipc_pointcloud_wrapper(rv)
     raise CwipcError("cwipc_from_numpy_array: cannot create cwipc from given argument")
 
 
-def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_wrapper:
+def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_type, timestamp : int) -> cwipc_pointcloud_wrapper:
     """Create a cwipc from either `cwipc_point_array` or a list or tuple of xyzrgb values"""
     count = np_points_matrix.shape[0]
     assert np_points_matrix.shape == (count, 7)
@@ -1086,7 +1086,7 @@ def cwipc_from_numpy_matrix(np_points_matrix : cwipc_point_numpy_matrix_value_ty
     np_points['tile'] = np_points_matrix[:,6].astype(numpy.uint8)
     return cwipc_from_numpy_array(np_points, timestamp)
 
-def cwipc_from_o3d_pointcloud(o3d_pc : open3d.geometry.PointCloud, timestamp : int) -> cwipc_wrapper:
+def cwipc_from_o3d_pointcloud(o3d_pc : open3d.geometry.PointCloud, timestamp : int) -> cwipc_pointcloud_wrapper:
     points = numpy.asarray(o3d_pc.points)
     colors = numpy.asarray(o3d_pc.colors)
     nPoints = points.shape[0]
@@ -1096,7 +1096,7 @@ def cwipc_from_o3d_pointcloud(o3d_pc : open3d.geometry.PointCloud, timestamp : i
     # We have no way to construct tilenum
     return cwipc_from_numpy_matrix(np_matrix, timestamp)
 
-def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
+def cwipc_from_packet(packet : bytes) -> cwipc_pointcloud_wrapper:
     nBytes = len(packet)
     byte_array_type = ctypes.c_char * nBytes
     try:
@@ -1108,22 +1108,22 @@ def cwipc_from_packet(packet : bytes) -> cwipc_wrapper:
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_wrapper(rv)
+        return cwipc_pointcloud_wrapper(rv)
     raise CwipcError("cwipc_from_packet: no pointcloud read, but no specific error returned from C library")
 
 
-def cwipc_read_debugdump(filename : str) -> cwipc_wrapper:
+def cwipc_read_debugdump(filename : str) -> cwipc_pointcloud_wrapper:
     """Return a cwipc object read from a .cwipcdump file."""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_read_debugdump(filename.encode('utf8'), ctypes.byref(errorString), CWIPC_API_VERSION)
     if errorString and errorString.value:
         raise CwipcError(errorString.value.decode('utf8'))
     if rv:
-        return cwipc_wrapper(rv)
+        return cwipc_pointcloud_wrapper(rv)
     raise CwipcError("cwipc_read_debugdump: no pointcloud read, but no specific error returned from C library")
 
     
-def cwipc_write_debugdump(filename : str, pointcloud : cwipc_wrapper) -> int:
+def cwipc_write_debugdump(filename : str, pointcloud : cwipc_pointcloud_wrapper) -> int:
     """Write a cwipc object to a .cwipcdump file."""
     errorString = ctypes.c_char_p()
     rv = cwipc_util_dll_load().cwipc_write_debugdump(filename.encode('utf8'), pointcloud.as_cwipc_p(), ctypes.byref(errorString))
@@ -1167,22 +1167,22 @@ def cwipc_window(title : str) -> cwipc_sink_wrapper:
         return cwipc_sink_wrapper(rv)
     raise CwipcError("cwipc_window: cannot create window, but no specific error returned from C library")
     
-def cwipc_downsample(pc : cwipc_wrapper, voxelsize : float) -> cwipc_wrapper:
+def cwipc_downsample(pc : cwipc_pointcloud_wrapper, voxelsize : float) -> cwipc_pointcloud_wrapper:
     """Return a pointcloud voxelized to cubes with the given voxelsize"""
     rv = cwipc_util_dll_load().cwipc_downsample(pc.as_cwipc_p(), voxelsize)
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
     
-def cwipc_remove_outliers(pc : cwipc_wrapper, kNeighbors : int, stdDesvMultThresh : float, perTile : bool) -> cwipc_wrapper:
+def cwipc_remove_outliers(pc : cwipc_pointcloud_wrapper, kNeighbors : int, stdDesvMultThresh : float, perTile : bool) -> cwipc_pointcloud_wrapper:
     """Return a pointcloud with outlier points removed."""
     rv = cwipc_util_dll_load().cwipc_remove_outliers(pc.as_cwipc_p(), kNeighbors, stdDesvMultThresh, perTile)
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
     
-def cwipc_tilefilter(pc : cwipc_wrapper, tile : int) -> cwipc_wrapper:
+def cwipc_tilefilter(pc : cwipc_pointcloud_wrapper, tile : int) -> cwipc_pointcloud_wrapper:
     """Return pointcloud with only points that have the given tilenumber"""
     rv = cwipc_util_dll_load().cwipc_tilefilter(pc.as_cwipc_p(), tile)
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
   
-def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_wrapper:
+def cwipc_tilemap(pc : cwipc_pointcloud_wrapper, mapping : Union[List[int], dict[int,int], bytes]) -> cwipc_pointcloud_wrapper:
     """Retur pointcloud with every point tilenumber changed. Mapping can be a list or bytes with 256 entries or a dictionary."""
     if type(mapping) != bytes and type(mapping) != bytearray and type(mapping) != list:
         m = [0]*256
@@ -1190,23 +1190,23 @@ def cwipc_tilemap(pc : cwipc_wrapper, mapping : Union[List[int], dict[int,int], 
             m[k] = mapping[k]
         mapping = m
     rv = cwipc_util_dll_load().cwipc_tilemap(pc.as_cwipc_p(), bytes(mapping))
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
   
-def cwipc_colormap(pc : cwipc_wrapper, clearBits : int, setBits : int) -> cwipc_wrapper:
+def cwipc_colormap(pc : cwipc_pointcloud_wrapper, clearBits : int, setBits : int) -> cwipc_pointcloud_wrapper:
     """Return pointcloud with every point color changed. clearBits and setBits are bitmasks."""
     rv = cwipc_util_dll_load().cwipc_colormap(pc.as_cwipc_p(), clearBits, setBits)
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
   
-def cwipc_crop(pc : cwipc_wrapper, bbox : Union[tuple[float, float, float, float, float, float], List[float]]) -> cwipc_wrapper:
+def cwipc_crop(pc : cwipc_pointcloud_wrapper, bbox : Union[tuple[float, float, float, float, float, float], List[float]]) -> cwipc_pointcloud_wrapper:
     """Return pointcloud cropped to a bounding box specified as minx, maxx, miny, maxy, minz, maxz"""
     bbox_arg = (ctypes.c_float*6)(*bbox)
     rv = cwipc_util_dll_load().cwipc_crop(pc.as_cwipc_p(), bbox_arg)
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
   
-def cwipc_join(pc1 : cwipc_wrapper, pc2 : cwipc_wrapper) -> cwipc_wrapper:
+def cwipc_join(pc1 : cwipc_pointcloud_wrapper, pc2 : cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
     """Return a pointcloud that is the union of the two arguments"""
     rv = cwipc_util_dll_load().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
-    return cwipc_wrapper(rv)
+    return cwipc_pointcloud_wrapper(rv)
   
 def cwipc_proxy(host : str, port : int) -> cwipc_activesource_wrapper:
     """Returns a cwipc_source object that starts a server and receives pointclouds over a socket connection"""

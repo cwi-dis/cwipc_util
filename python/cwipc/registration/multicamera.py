@@ -11,10 +11,10 @@ import numpy as np
 import numpy.linalg
 import scipy.spatial
 from matplotlib import pyplot as plt
-from cwipc import cwipc_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join, CwipcError
+from cwipc import cwipc_pointcloud_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join, CwipcError
 
 from cwipc.registration.abstract import RegistrationTransformation
-from .. import cwipc_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
+from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap
 from .abstract import *
 from .util import *
 from .fine import RegistrationComputer_ICP_Point2Plane, DEFAULT_FINE_ALIGNMENT_ALGORITHM
@@ -26,7 +26,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     """\
     Base class for multi-camera alignment algorithms.
     """
-    original_pointcloud : Optional[cwipc_wrapper]
+    original_pointcloud : Optional[cwipc_pointcloud_wrapper]
     transformations : List[RegistrationTransformation]
     original_transformations : List[RegistrationTransformation]
     camera_positions : List[Vector3]
@@ -74,7 +74,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         self.correspondence = max_correspondence
 
     @override
-    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_pointcloud_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         if self.randomize_floor:
             new_pc = cwipc_randomize_floor(pc)
@@ -121,7 +121,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
             campos = translation
             self.camera_positions.append(campos)
 
-    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_wrapper] = None, onlyFloor : bool = False, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
+    def _pre_analyse(self, toSelf=False, toReference : Optional[cwipc_pointcloud_wrapper] = None, onlyFloor : bool = False, ignoreFloor : bool = False, sortBy : str='corr', target_dirfilter : Optional[float] = None) -> None:
         """
         Pre-analyze the pointclouds and returns a list of camera indices in order of best to worst correspondence.
         If toSelf is true the internal nearest-point distances are computed (a measure of the quality of the capture of this camera).
@@ -207,7 +207,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         """Run the algorithm"""
         assert False
     
-    def _post_analyse(self, toReference : Optional[cwipc_wrapper] = None, onlyFloor=False) -> bool:
+    def _post_analyse(self, toReference : Optional[cwipc_pointcloud_wrapper] = None, onlyFloor=False) -> bool:
         assert self.original_pointcloud
         assert self.original_pointcloud.count() > 0
         assert self.camera_count() > 0
@@ -286,7 +286,7 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
         return self.transformations
     
     @override
-    def get_result_pointcloud_full(self) -> cwipc_wrapper:
+    def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
         assert self.original_pointcloud
         if not self.original_pointcloud_is_new:
             # Do a deep-copy, so our caller can free the pointcloud it passed to us
@@ -366,7 +366,7 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
     def __init__(self):
         super().__init__()
         # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
-        self.floor_pointcloud : Optional[cwipc_wrapper] = None
+        self.floor_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
 
     @override
     def run(self) -> bool:
@@ -378,7 +378,7 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
         assert self.floor_pointcloud
         self._pre_analyse(toSelf=False, toReference=self.floor_pointcloud, onlyFloor=True, sortBy='none')
         todo = self._todo_from_pre_analysis_results()
-        aligned : List[cwipc_wrapper] = []
+        aligned : List[cwipc_pointcloud_wrapper] = []
         # xxxjack remember resultant point clouds, to combine later.
         for camnum, tilemask, corr, fraction in todo:
             aligner = self._prepare_aligner()
@@ -428,9 +428,9 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
     def __init__(self):
         super().__init__()
         # self.precision_threshold = 0.001 # Don't attempt to re-align better than 1mm
-        self.groundtruth_pointcloud : Optional[cwipc_wrapper] = None
+        self.groundtruth_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
 
-    def set_groundtruth(self, pc : cwipc_wrapper):
+    def set_groundtruth(self, pc : cwipc_pointcloud_wrapper):
         self.groundtruth_pointcloud = pc
 
     @override
@@ -442,7 +442,7 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
         self._init_transformations()
         self._pre_analyse(toSelf=False, toReference=self.groundtruth_pointcloud, ignoreFloor=True, sortBy='none')
         todo = self._todo_from_pre_analysis_results()
-        aligned : List[cwipc_wrapper] = []
+        aligned : List[cwipc_pointcloud_wrapper] = []
         # xxxjack remember resultant point clouds, to combine later.
         for camnum, tilemask, corr, fraction in todo:
             aligner = self._prepare_aligner()
@@ -483,9 +483,9 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
     Next we pick a camera with the best overlap with the destination set and align it to the destination set.
     We repeat this until all cameras are aligned.
     """
-    current_step_target_pointcloud : Optional[cwipc_wrapper]
-    current_step_in_pointcloud : Optional[cwipc_wrapper]
-    current_step_out_pointcloud : Optional[cwipc_wrapper]
+    current_step_target_pointcloud : Optional[cwipc_pointcloud_wrapper]
+    current_step_in_pointcloud : Optional[cwipc_pointcloud_wrapper]
+    current_step_out_pointcloud : Optional[cwipc_pointcloud_wrapper]
     current_step_results : List[AnalysisResults]
 
     def __init__(self):

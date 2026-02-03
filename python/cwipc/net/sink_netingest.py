@@ -128,7 +128,7 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
         except queue.Full:
             if self.verbose: print(f"netingest: queue full, drop packet")            
     
-    def _encode_pc(self, pc : cwipc.cwipc_wrapper) -> bytes:
+    def _encode_pc(self, pc : cwipc.cwipc_pointcloud_wrapper) -> bytes:
         encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
         enc = cwipc.codec.cwipc_new_encoder(params=encparams)
         enc.feed(pc)

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Callable, List, Any
 import threading
 from ..abstract import *
-from ..util import cwipc_wrapper
+from ..util import cwipc_pointcloud_wrapper
 
 # 4CC handling doesn't really belong here, but it's convenient.
 vrt_fourcc_type = Union[int, bytes, str]
@@ -178,7 +178,7 @@ class cwipc_sink_abstract(ABC):
         ...
 
     @abstractmethod
-    def feed(self, pc : cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
         ...
     @abstractmethod
     def statistics(self) -> None:

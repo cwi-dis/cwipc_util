@@ -9,7 +9,7 @@ import queue
 import struct
 from typing import Optional, Dict, Any
 
-from .. import cwipc_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
+from .. import cwipc_pointcloud_wrapper, cwipc_write, cwipc_write_debugdump, CwipcError, CWIPC_FLAGS_BINARY
 from .. import codec
 from ._scriptsupport import *
 from ..net.abstract import *
@@ -17,7 +17,7 @@ from ..net.abstract import *
 class FileWriter(cwipc_sink_abstract):
     encoder : Optional[codec.cwipc_encoder_wrapper]
     producer : Optional[cwipc_producer_abstract]
-    output_queue : queue.Queue[Optional[cwipc_wrapper]]
+    output_queue : queue.Queue[Optional[cwipc_pointcloud_wrapper]]
 
     def __init__(self, pcpattern : Optional[str]=None, rgbpattern : Optional[str]=None, depthpattern : Optional[str]=None, skeletonpattern : Optional[str]=None, verbose : bool=False, queuesize : int=2, nodrop : bool=False, flags : int=0):
         self.producer = None
@@ -77,7 +77,7 @@ class FileWriter(cwipc_sink_abstract):
             print(f"writer: stopped")
         return not self.error_encountered              
         
-    def feed(self, pc : cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
         try:
             if self.nodrop:
                 self.output_queue.put(pc)
@@ -90,7 +90,7 @@ class FileWriter(cwipc_sink_abstract):
                 print(f"writer: dropped pointcloud {pc.timestamp()}")
             pc.free()
 
-    def save_pc(self, pc : cwipc_wrapper) -> bool:
+    def save_pc(self, pc : cwipc_pointcloud_wrapper) -> bool:
         """Save pointcloud"""
         if self.pcpattern:
             # Save pointcloud
@@ -131,7 +131,7 @@ class FileWriter(cwipc_sink_abstract):
                 #return False
         return True
     
-    def save_images(self, pc : cwipc_wrapper) -> bool:
+    def save_images(self, pc : cwipc_pointcloud_wrapper) -> bool:
         if not self.rgbpattern and not self.depthpattern:
             return False
         metadata = pc.access_metadata()
@@ -158,7 +158,7 @@ class FileWriter(cwipc_sink_abstract):
 
         return anydone
     
-    def save_skeletons(self, pc : cwipc_wrapper) -> bool:
+    def save_skeletons(self, pc : cwipc_pointcloud_wrapper) -> bool:
         if not self.skeletonpattern:
             return False
         metadata = pc.access_metadata()

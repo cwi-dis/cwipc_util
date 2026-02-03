@@ -43,7 +43,7 @@ class RegistrationVisualizer(Visualizer):
 
     def __init__(self, *args, **kwargs):
         Visualizer.__init__(self, *args, **kwargs)
-        self.captured_pc : Optional[cwipc_wrapper] = None
+        self.captured_pc : Optional[cwipc_pointcloud_wrapper] = None
         self.reload_cameraconfig_callback = None
 
     def write_current_pointcloud(self):
@@ -474,7 +474,7 @@ class Registrator:
     def create_nograb_cameraconfig(self) -> None:
         self.cameraconfig.load(open("cameraconfig.json", "rb").read())
 
-    def capture(self) -> cwipc.cwipc_wrapper:
+    def capture(self) -> cwipc.cwipc_pointcloud_wrapper:
         if self.args.nograb:
             pc = cwipc.cwipc_read(self.args.nograb, 0)
             return pc
@@ -495,9 +495,9 @@ class Registrator:
         pc = self.capturer.get()
         assert pc
         assert pc.count() > 0
-        return cast(cwipc.cwipc_wrapper, pc)
+        return cast(cwipc.cwipc_pointcloud_wrapper, pc)
     
-    def interactive_capture(self) -> cwipc.cwipc_wrapper:
+    def interactive_capture(self) -> cwipc.cwipc_pointcloud_wrapper:
         visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args, title="cwipc_register")
         visualizer.reload_cameraconfig_callback = self._reload_cameraconfig_from_file
         sourceServer = SourceServer(cast(cwipc_source_abstract, self.capturer), visualizer, self.args)
@@ -518,7 +518,7 @@ class Registrator:
             sys.exit(1)
         return captured_pc
 
-    def coarse_registration(self, pc : cwipc_wrapper) -> Optional[cwipc_wrapper]:
+    def coarse_registration(self, pc : cwipc_pointcloud_wrapper) -> Optional[cwipc_pointcloud_wrapper]:
         if True or self.verbose:
             print(f"cwipc_register: Use coarse alignment class {self.coarse_aligner_class.__name__}")
         assert self.capturer
@@ -559,7 +559,7 @@ class Registrator:
         klass = getattr(cwipc.registration.multicamera, klassName)
         return klass
 
-    def fine_registration(self, pc : cwipc_wrapper, multicam_aligner_class=None, aligner_class=None, analyzer_class=None) -> Optional[cwipc_wrapper]:
+    def fine_registration(self, pc : cwipc_pointcloud_wrapper, multicam_aligner_class=None, aligner_class=None, analyzer_class=None) -> Optional[cwipc_pointcloud_wrapper]:
         if analyzer_class is None:
             analyzer_class = self.analyzer_class
         fixed_multicam_aligner = multicam_aligner_class != None
@@ -634,7 +634,7 @@ class Registrator:
         self.cameraconfig["correspondence"] = correspondence
         return new_pc
 
-    def check_alignment(self, pc : cwipc_wrapper, label : str, analyzer_class = None) -> float:
+    def check_alignment(self, pc : cwipc_pointcloud_wrapper, label : str, analyzer_class = None) -> float:
         if analyzer_class is None:
             assert self.analyzer_class
             analyzer_class = self.analyzer_class

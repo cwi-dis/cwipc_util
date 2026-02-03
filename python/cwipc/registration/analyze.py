@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 import scipy.spatial
 import scipy.stats
 import open3d
-from .. import cwipc_wrapper, cwipc_tilefilter
+from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter
 from .abstract import *
 from .util import get_tiles_used, BaseAlgorithm, algdoc
 

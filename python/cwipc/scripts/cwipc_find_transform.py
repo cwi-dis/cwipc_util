@@ -18,11 +18,11 @@ class TransformFinder:
         self.dump = args.dump
         self.verbose = args.verbose
         self.correspondence = args.correspondence
-        self.source_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.source_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.source_tile = args.sourcetile
-        self.target_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.target_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.target_tile = args.targettile
-        self.result_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.result_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.aligner = RegistrationComputer_ICP_Point2Plane()
         self.aligner.verbose = self.verbose
             
@@ -74,7 +74,7 @@ class TransformFinder:
         p_transform = transformation_topython(transform)
         print(f"Transform filter needed: --filter 'transform44({p_transform})'")
 
-    def dump_pointclouds(self, filename: str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper):
+    def dump_pointclouds(self, filename: str, source: cwipc.cwipc_pointcloud_wrapper, target: cwipc.cwipc_pointcloud_wrapper):
         if self.verbose:
             print(f"Dumping point clouds to {filename}")
         colored_source = cwipc.cwipc_colormap(source, 0xFFFFFFFF, 0xAAFF0000)
@@ -85,7 +85,7 @@ class TransformFinder:
         colored_target.free()
         combined.free()
         
-    def analyze_pointclouds(self, label : str, source: cwipc.cwipc_wrapper, target: cwipc.cwipc_wrapper) -> AnalysisResults:
+    def analyze_pointclouds(self, label : str, source: cwipc.cwipc_pointcloud_wrapper, target: cwipc.cwipc_pointcloud_wrapper) -> AnalysisResults:
         analyzer = RegistrationAnalyzer()
         analyzer.verbose = self.verbose
         analyzer.set_reference_pointcloud(target)

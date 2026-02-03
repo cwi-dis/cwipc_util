@@ -1,7 +1,7 @@
 import time
 from typing import Union, List
 from .abstract import cwipc_abstract_filter
-from ..util import cwipc_remove_outliers, cwipc_wrapper
+from ..util import cwipc_remove_outliers, cwipc_pointcloud_wrapper
 
 class RemoveOutliersFilter(cwipc_abstract_filter):
     """
@@ -30,7 +30,7 @@ class RemoveOutliersFilter(cwipc_abstract_filter):
         If the filter returns the same point cloud as it received as an argument it will never be freed."""
         self.keep_source = True
         
-    def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+    def filter(self, pc : cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
         self.count += 1
         t1_d = time.time()
         self.original_pointcounts.append(pc.count())

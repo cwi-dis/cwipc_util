@@ -5,7 +5,7 @@ import time
 import subprocess
 import argparse
 import queue
-from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_wrapper
+from .. import cwipc_window, cwipc_tilefilter, cwipc_write, cwipc_pointcloud_wrapper
 from ..util import cwipc_sink_wrapper
 from ..net.abstract import *
 from ..filters.abstract import cwipc_abstract_filter
@@ -78,9 +78,9 @@ q,ESC         Quit
             # Should only be the ones that can also be in args, but hey...
             setattr(self.args, k, kwargs[k])
         queue_size = 1 if self.args.timestamps else 2
-        self.input_queue : queue.Queue[Optional[cwipc_wrapper]] = queue.Queue(maxsize=queue_size)
-        self.current_pc : Optional[cwipc_wrapper] = None
-        self.display_pc : Optional[cwipc_wrapper] = None
+        self.input_queue : queue.Queue[Optional[cwipc_pointcloud_wrapper]] = queue.Queue(maxsize=queue_size)
+        self.current_pc : Optional[cwipc_pointcloud_wrapper] = None
+        self.display_pc : Optional[cwipc_pointcloud_wrapper] = None
         self.tilefilter : Optional[int] = None
         self.filter_mode : str = 'mask'
         self.alive : bool = True
@@ -213,7 +213,7 @@ q,ESC         Quit
             self.visualiser.free()
         self.visualiser = None
                 
-    def feed(self, pc : cwipc_wrapper) -> None:
+    def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
         try:
             if self.args.nodrop and not self.forcedrop:
                 self.input_queue.put(pc)
@@ -229,7 +229,7 @@ q,ESC         Quit
         if self.args.verbose: print('display: started', flush=True)
         self.visualiser.feed(None, True)
 
-    def _show_timestamps(self, pc: cwipc_wrapper, label : str) -> None:
+    def _show_timestamps(self, pc: cwipc_pointcloud_wrapper, label : str) -> None:
         print(f'{label}: ts={pc.timestamp()}')
         metadata = pc.access_metadata()
         if metadata != None and metadata.count() > 0:
@@ -370,7 +370,7 @@ q,ESC         Quit
         cwipc_write(filename, self.current_pc, True) #writing in binary
         print(f'Saved as {filename} in {os.getcwd()}')
 
-    def draw_rgb(self, pc : cwipc_wrapper) -> None:
+    def draw_rgb(self, pc : cwipc_pointcloud_wrapper) -> None:
         """Draw a window with the RGB data of all cameras."""
         import cv2
         metadata = pc.access_metadata()

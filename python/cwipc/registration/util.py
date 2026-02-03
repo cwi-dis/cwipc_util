@@ -6,7 +6,7 @@ except ImportError:
     from typing_extensions import override
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample, cwipc_join
+from .. import cwipc_pointcloud_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample, cwipc_join
 import open3d
 import open3d.visualization
 import numpy as np
@@ -81,21 +81,21 @@ def transformation_compare(old : Optional[RegistrationTransformation], new : Opt
     rotation : Vector3 = trafo.rotation.as_rotvec(degrees=True)
     return translation, rotation
 
-def cwipc_center(pc : cwipc_wrapper) -> Tuple[float, float, float]:
+def cwipc_center(pc : cwipc_pointcloud_wrapper) -> Tuple[float, float, float]:
     """Compute the center of a point cloud"""
     point_matrix = pc.get_numpy_matrix()
     points = point_matrix[:, :3]
     centroid = np.mean(points, axis=0)
     return tuple(centroid)
 
-def cwipc_colorized_copy(pc : cwipc_wrapper) -> cwipc_wrapper:
+def cwipc_colorized_copy(pc : cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
     from ..filters import colorize
     cf = colorize.ColorizeFilter(0.8, "camera")
     cf.set_keep_source()
     new_pc = cf.filter(pc)
     return new_pc
 
-def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
+def cwipc_tilefilter_masked(pc : cwipc_pointcloud_wrapper, mask : int) -> cwipc_pointcloud_wrapper:
     """Filter a point cloud for specific tiles. Each point tile number is ANDed to the mask, so only points with a tile number that matches the mask are returned.
     The mask is a bitmask."""
     pointarray = pc.get_numpy_array()
@@ -111,7 +111,7 @@ def cwipc_tilefilter_masked(pc : cwipc_wrapper, mask : int) -> cwipc_wrapper:
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 
-def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, float, float], threshold : float) -> cwipc_wrapper:
+def cwipc_direction_filter(pc : cwipc_pointcloud_wrapper, direction : Vector3|Tuple[float, float, float], threshold : float) -> cwipc_pointcloud_wrapper:
     """Filter a point cloud to keep only points that are somewhat facing a direction."""
     if type(direction) == tuple:
         direction = np.array(list(direction)) # type: ignore
@@ -143,7 +143,7 @@ def cwipc_direction_filter(pc : cwipc_wrapper, direction : Vector3|Tuple[float, 
     new_pc._set_cellsize(pc.cellsize())
     return new_pc
 
-def cwipc_floor_filter(pc : cwipc_wrapper, level : float = 0.1, keep : bool = False) -> cwipc_wrapper:
+def cwipc_floor_filter(pc : cwipc_pointcloud_wrapper, level : float = 0.1, keep : bool = False) -> cwipc_pointcloud_wrapper:
     """Remove all points that are probably on the floor (Y ~= 0). If keep=True in stead only keep those points."""
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level
@@ -154,7 +154,7 @@ def cwipc_floor_filter(pc : cwipc_wrapper, level : float = 0.1, keep : bool = Fa
     new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc    
 
-def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrapper:
+def cwipc_randomize_floor(pc : cwipc_pointcloud_wrapper, level : float = 0.1) -> cwipc_pointcloud_wrapper:
     """Randomly assign all floor points (Y ~= 0) to different tiles."""
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level
@@ -167,7 +167,7 @@ def cwipc_randomize_floor(pc : cwipc_wrapper, level : float = 0.1) -> cwipc_wrap
     new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc
 
-def cwipc_downsample_pertile(pc : cwipc_wrapper, cellsize : float) -> cwipc_wrapper:
+def cwipc_downsample_pertile(pc : cwipc_pointcloud_wrapper, cellsize : float) -> cwipc_pointcloud_wrapper:
     """Per-tile downsample, so points in different tiles are not combined."""
     tiles_used = get_tiles_used(pc)
     result_pc = None
@@ -185,7 +185,7 @@ def cwipc_downsample_pertile(pc : cwipc_wrapper, cellsize : float) -> cwipc_wrap
     assert result_pc
     return result_pc
 
-def cwipc_compute_tile_occupancy(pc : cwipc_wrapper, cellsize : float = 0, filterfloor : bool=False) -> List[Tuple[int, int]]:
+def cwipc_compute_tile_occupancy(pc : cwipc_pointcloud_wrapper, cellsize : float = 0, filterfloor : bool=False) -> List[Tuple[int, int]]:
     """
     Returns list of (tilenum, pointcount) of a point cloud, optionally after downsampling with cellsize and/or removing the floor.
     The list is sorted by point count, and empty tiles are omitted.
@@ -212,7 +212,7 @@ def cwipc_compute_tile_occupancy(pc : cwipc_wrapper, cellsize : float = 0, filte
         pc.free()
     return rv
 
-def cwipc_compute_radius(pc : cwipc_wrapper, level : float = 0.1) -> Tuple[float, float, float]:
+def cwipc_compute_radius(pc : cwipc_pointcloud_wrapper, level : float = 0.1) -> Tuple[float, float, float]:
     """Compute the radius in the XZ plane (ignoring outliers). Three numbers are returned,
     the overall radius, the radius ignoring the floor (only points with Y>0.1) and the radius of the floor (only points with Y<0.1)"""
     pc_np = pc.get_numpy_matrix(onlyGeometry=True)
@@ -228,7 +228,7 @@ def cwipc_compute_radius(pc : cwipc_wrapper, level : float = 0.1) -> Tuple[float
     max_distance = max(floor_max_distance, nonfloor_max_distance)
     return max_distance, nonfloor_max_distance, floor_max_distance
 
-def cwipc_limit_floor_to_radius(pc : cwipc_wrapper, radius : float, level : float=0.1) -> cwipc_wrapper:
+def cwipc_limit_floor_to_radius(pc : cwipc_pointcloud_wrapper, radius : float, level : float=0.1) -> cwipc_pointcloud_wrapper:
     """Return the point cloud with floor points further away from the Y axis than radius removed"""
     pc_np = pc.get_numpy_matrix()
     is_floor_point = pc_np[:,1] < level
@@ -241,14 +241,14 @@ def cwipc_limit_floor_to_radius(pc : cwipc_wrapper, radius : float, level : floa
     new_pc = cwipc_from_numpy_matrix(new_pc_np, pc.timestamp())
     return new_pc
     
-def show_pointcloud(title : str, pc : Union[cwipc_wrapper, open3d.geometry.PointCloud], from000=False):
+def show_pointcloud(title : str, pc : Union[cwipc_pointcloud_wrapper, open3d.geometry.PointCloud], from000=False):
     """Show a point cloud in a window. Allow user to interact with it until q is pressed, at which point this method returns.
     
     The point cloud can be either a cwipc or an opend3.geometry.PointCloud.
 
     The optional from000 argument places the camera at (0, 0, 0).
     """
-    if type(pc) == cwipc_wrapper:
+    if type(pc) == cwipc_pointcloud_wrapper:
         pc_o3d = pc.get_o3d_pointcloud()
         o3d_show_points(title, pc_o3d, from000)
     else:
@@ -295,7 +295,7 @@ def o3d_show_points(title : str, pc : open3d.geometry.PointCloud, from000=False,
     vis.destroy_window()
     return None
 
-def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
+def get_tiles_used(pc : cwipc_pointcloud_wrapper) -> List[int]:
     """Return a list of the tile numbers used in the point cloud"""
     pointarray = pc.get_numpy_array()
     # Extract the relevant fields (X, Y, Z coordinates)
@@ -305,7 +305,7 @@ def get_tiles_used(pc : cwipc_wrapper) -> List[int]:
     rv.sort()
     return rv
 
-def cwipc_transform(pc: cwipc_wrapper, transform : RegistrationTransformation) -> cwipc_wrapper:
+def cwipc_transform(pc: cwipc_pointcloud_wrapper, transform : RegistrationTransformation) -> cwipc_pointcloud_wrapper:
     """Apply an affine transpormation to a point cloud and return the resulting point cloud"""
 
     np_points = pc.get_numpy_matrix()
@@ -328,16 +328,16 @@ class BaseAlgorithm(Algorithm):
     """
 
     def __init__(self):
-        self._source_pointcloud : Optional[cwipc_wrapper] = None
-        self._filtered_source_pointcloud : Optional[cwipc_wrapper] = None
+        self._source_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
+        self._filtered_source_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
         self.source_tilemask : Optional[int] = None
-        self._reference_pointcloud : Optional[cwipc_wrapper] = None
-        self._filtered_reference_pointcloud : Optional[cwipc_wrapper] = None
+        self._reference_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
+        self._filtered_reference_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
         self.reference_tilemask : Optional[int] = None
         self.verbose = False
 
     @override
-    def set_source_pointcloud(self, pc : cwipc_wrapper, tilemask: Optional[int] = None) -> None:
+    def set_source_pointcloud(self, pc : cwipc_pointcloud_wrapper, tilemask: Optional[int] = None) -> None:
         """Set the source point cloud for this algorithm"""
         pre_count = pc.count()
         if pre_count == 0:
@@ -358,7 +358,7 @@ class BaseAlgorithm(Algorithm):
         self.source_tilemask = tilemask
     
     @override
-    def set_reference_pointcloud(self, pc : cwipc_wrapper, tilemask : Optional[int] = None) -> None:
+    def set_reference_pointcloud(self, pc : cwipc_pointcloud_wrapper, tilemask : Optional[int] = None) -> None:
         """Set the reference point cloud for this algorithm"""
         pre_count = pc.count()
         if pre_count == 0:
@@ -378,23 +378,23 @@ class BaseAlgorithm(Algorithm):
         self.reference_tilemask = tilemask
 
     @override
-    def get_source_pointcloud(self) -> cwipc_wrapper:
+    def get_source_pointcloud(self) -> cwipc_pointcloud_wrapper:
         assert self._source_pointcloud
         return self._source_pointcloud
     
     @override
-    def get_filtered_source_pointcloud(self) -> cwipc_wrapper:
+    def get_filtered_source_pointcloud(self) -> cwipc_pointcloud_wrapper:
         if self._filtered_source_pointcloud:
             return self._filtered_source_pointcloud
         return self.get_source_pointcloud()
     
     @override
-    def get_reference_pointcloud(self) -> cwipc_wrapper:
+    def get_reference_pointcloud(self) -> cwipc_pointcloud_wrapper:
         assert self._reference_pointcloud
         return self._reference_pointcloud
     
     @override
-    def get_filtered_reference_pointcloud(self) -> cwipc_wrapper:
+    def get_filtered_reference_pointcloud(self) -> cwipc_pointcloud_wrapper:
         if self._filtered_reference_pointcloud:
             return self._filtered_reference_pointcloud
         return self.get_reference_pointcloud()
@@ -415,11 +415,11 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     def __init__(self):
         self.per_camera_tilenum : List[int] = []
-        self.original_pointcloud : Optional[cwipc_wrapper] = None
+        self.original_pointcloud : Optional[cwipc_pointcloud_wrapper] = None
         self.verbose = False
 
     @override
-    def set_tiled_pointcloud(self, pc : cwipc_wrapper) -> None:
+    def set_tiled_pointcloud(self, pc : cwipc_pointcloud_wrapper) -> None:
         """Add each individual per-camera tile of this pointcloud, to be used during the algorithm run"""
         self.original_pointcloud = pc
         for tilemask in get_tiles_used(pc):
@@ -442,7 +442,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
     def camera_count(self):
         return len(self.per_camera_tilenum)
 
-    def get_pc_for_tilemask(self, tilemask: int) -> cwipc_wrapper:
+    def get_pc_for_tilemask(self, tilemask: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
         assert self.original_pointcloud
         pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
@@ -450,7 +450,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
             raise ValueError(f"CamTilemaskera {tilemask} has no point cloud")
         return pc
         
-    def get_pc_for_camnum(self, camnum: int) -> cwipc_wrapper:
+    def get_pc_for_camnum(self, camnum: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
         assert self.original_pointcloud
         tilemask = self.tilemask_for_camera_index(camnum)

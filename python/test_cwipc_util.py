@@ -69,7 +69,7 @@ class TestApi(unittest.TestCase):
         
     def test_cwipc(self):
         """Can we create and free a cwipc object"""
-        pc = cwipc.cwipc_wrapper()
+        pc = cwipc.cwipc_pointcloud_wrapper()
         pc.free()
         
     def test_cwipc_source(self):
@@ -634,7 +634,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(nItems, 0)
         pc.free()
         
-    def _verify_pointcloud(self, pc : cwipc.cwipc_wrapper, tiled : bool=False):
+    def _verify_pointcloud(self, pc : cwipc.cwipc_pointcloud_wrapper, tiled : bool=False):
         points = pc.get_points()
         self.assertGreater(len(points), 1)
         p0 = points[0].x, points[0].y, points[0].z

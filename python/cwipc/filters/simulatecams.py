@@ -2,7 +2,7 @@ import time
 import numpy.random
 from typing import Union, List, Tuple, Optional, Dict, Sequence, Any
 from .abstract import cwipc_abstract_filter
-from ..util import cwipc_wrapper, cwipc_from_numpy_matrix
+from ..util import cwipc_pointcloud_wrapper, cwipc_from_numpy_matrix
 
 
 
@@ -37,7 +37,7 @@ class SimulatecamsFilter(cwipc_abstract_filter):
         If the filter returns the same point cloud as it received as an argument it will never be freed."""
         self.keep_source = True
         
-    def filter(self, pc : cwipc_wrapper) -> cwipc_wrapper:
+    def filter(self, pc : cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
         self.count += 1
         t1_d = time.time()
         point_matrix = pc.get_numpy_matrix()

@@ -27,8 +27,8 @@ class AnalysisTestCreator:
         self.per_camera_movement = args.move
         self.per_camera_rotate = args.rotate
         self.per_camera_tilt = args.tilt
-        self.input_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.output_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.input_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
+        self.output_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.description : Optional[Dict[str, Any]] = None
         if self.args.descr:
             self.create_default_description()

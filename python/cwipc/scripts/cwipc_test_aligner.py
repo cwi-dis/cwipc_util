@@ -21,8 +21,8 @@ class AlignmentFinder:
         self.plot = args.plot
         self.verbose = args.verbose
         self.correspondence = args.correspondence
-        self.input_pc : Optional[cwipc.cwipc_wrapper] = None
-        self.result_pc : Optional[cwipc.cwipc_wrapper] = None
+        self.input_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
+        self.result_pc : Optional[cwipc.cwipc_pointcloud_wrapper] = None
         self.transformations : List[RegistrationTransformation] = []
         self.cameraconfig : Optional[CameraConfig] = None
         if self.args.cameraconfig:

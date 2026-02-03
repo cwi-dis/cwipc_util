@@ -5,14 +5,14 @@ import threading
 import queue
 from typing import Optional, List, Union
 from .abstract import *
-from ..util import cwipc_join, cwipc_wrapper, cwipc_from_packet
+from ..util import cwipc_join, cwipc_pointcloud_wrapper, cwipc_from_packet
 
 
 class _Synchronizer(threading.Thread, cwipc_source_abstract):
     """A source that combines point clouds gotten from multiple (tiled) sources into one stream."""
     
     QUEUE_WAIT_TIMEOUT=1
-    output_queue : queue.Queue[Optional[cwipc_abstract]]
+    output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
     def __init__(self, reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
         threading.Thread.__init__(self)
@@ -20,7 +20,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         self.reader = reader
         self.sources : List[cwipc_source_abstract] = sources
         self.n_tile = len(self.sources)
-        self.input_buffers : List[Optional[cwipc_abstract]] = [None] * self.n_tile
+        self.input_buffers : List[Optional[cwipc_pointcloud_abstract]] = [None] * self.n_tile
         self.running = False
         self.verbose = verbose
         self.output_queue = queue.Queue(maxsize=6)
@@ -78,7 +78,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                 return False
         return True
         
-    def get(self) -> Optional[cwipc_abstract]:
+    def get(self) -> Optional[cwipc_pointcloud_abstract]:
         if self.eof():
             return None
         pc = self.output_queue.get()
@@ -152,7 +152,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             if desync > 0:
                 self.desync_per_occurrence.append(desync)
             # Now we just need to combine the point clouds, and set a reasonable timestamp and cellsize
-            result_pc : Optional[cwipc_wrapper] = None
+            result_pc : Optional[cwipc_pointcloud_wrapper] = None
             t0 = time.time()
             current_cellsize = min([pc.cellsize() for pc in to_combine])
             must_free_old_result = False

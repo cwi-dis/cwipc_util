@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Union, Any
 
-class cwipc_abstract(ABC):
+class cwipc_pointcloud_abstract(ABC):
     
     @abstractmethod
     def free(self) -> None:
@@ -43,7 +43,7 @@ class cwipc_source_abstract(ABC):
         ...
 
     @abstractmethod
-    def get(self) -> Optional[cwipc_abstract]:
+    def get(self) -> Optional[cwipc_pointcloud_abstract]:
         """Get a cwipc (opaque pointcloud) from this source. Returns None if no more pointcloudes are forthcoming"""
         ...
 
