@@ -936,6 +936,12 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT char cwipc_sink_interact(cwipc_sink* sink, const char* prompt, const char* responses, int32_t millis);
 
+    /** \brief move all metadata from one collection to another
+     * \param src source metadata collection
+     * \param dest destination metadata collection
+     */
+    _CWIPC_UTIL_EXPORT void cwipc_metadata__move(cwipc_metadata*  src, cwipc_metadata* dest);
+    
     /** \brief Returns number of items in the metadata collection (C interface).
      * \param collection the metadata collection
      * \returns Number of metadata items.

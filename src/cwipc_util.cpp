@@ -697,6 +697,10 @@ cwipc_metadata* cwipc_pointcloud_access_metadata(cwipc_pointcloud *pc) {
     return pc->access_metadata();
 }
 
+void cwipc_metadata__move(cwipc_metadata *src, cwipc_metadata* dest) {
+    src->_move(dest);
+}
+
 int cwipc_metadata_count(cwipc_metadata *collection) {
     return collection->count();
 }
