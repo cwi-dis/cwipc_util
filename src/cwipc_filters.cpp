@@ -82,11 +82,6 @@ cwipc_pointcloud* cwipc_downsample_voxelgrid(cwipc_pointcloud *pc, float cellsiz
     cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(cellsize);
 
-    // copy src metadata to dst pointcloud
-    cwipc_metadata* src_ad = pc->access_metadata();
-    cwipc_metadata* dst_ad = rv->access_metadata();
-    src_ad->_move(dst_ad);
-
     return rv;
 }
 
@@ -170,10 +165,6 @@ cwipc_pointcloud* cwipc_downsample(cwipc_pointcloud *pc, float cellsize) {
     cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     // And copy the metadata
     rv->_set_cellsize(cellsize);
-    // And copy src metadata to dst pointcloud
-    cwipc_metadata* src_ad = pc->access_metadata();
-    cwipc_metadata* dst_ad = rv->access_metadata();
-    src_ad->_move(dst_ad);
 
     return rv;
 }
@@ -263,21 +254,11 @@ cwipc_pointcloud* cwipc_remove_outliers(cwipc_pointcloud* pc, int kNeighbors, fl
             cwipc_pointcloud* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
 
-            // copy src metadata to dst pointcloud
-            cwipc_metadata* src_ad = pc->access_metadata();
-            cwipc_metadata* dst_ad = rv->access_metadata();
-            src_ad->_move(dst_ad);
-
             return rv;
         } else {
             dst = cwipc_remove_outliers(pc, kNeighbors, stddevMulThresh);
             cwipc_pointcloud* rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
             rv->_set_cellsize(pc->cellsize());
-
-            // copy src metadata to dst pointcloud
-            cwipc_metadata* src_ad = pc->access_metadata();
-            cwipc_metadata* dst_ad = rv->access_metadata();
-            src_ad->_move(dst_ad);
 
             return rv;
         }
@@ -315,18 +296,6 @@ cwipc_pointcloud* cwipc_tilefilter(cwipc_pointcloud *pc, int tile) {
     cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
 
-#ifdef cwipc_old_move_metadata
-    // For some reason, at some point we thought it would be a good idea to
-    // move the metadata to the new point cloud. It isn't at least not
-    // for tilefilter.
-    // Maybe this was just because the code was copied from some other method, where
-    // it probably is a good idea?
-    //
-    // copy src metadata to dst pointcloud
-    cwipc_metadata* src_ad = pc->access_metadata();
-    cwipc_metadata* dst_ad = rv->access_metadata();
-    src_ad->_move(dst_ad);
-#endif
 
     return rv;
 }
@@ -351,11 +320,6 @@ cwipc_pointcloud* cwipc_tilemap(cwipc_pointcloud *pc, uint8_t map[256]) {
 
     cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
-
-    // copy src metadata to dst pointcloud
-    cwipc_metadata* src_ad = pc->access_metadata();
-    cwipc_metadata* dst_ad = rv->access_metadata();
-    src_ad->_move(dst_ad);
 
     return rv;
 }
@@ -409,11 +373,6 @@ cwipc_pointcloud* cwipc_colormap(cwipc_pointcloud *pc, uint32_t clearBits, uint3
 
     cwipc_pointcloud *rv = cwipc_from_pcl(dst, pc->timestamp(), NULL, CWIPC_API_VERSION);
     rv->_set_cellsize(pc->cellsize());
-
-    // copy src metadata to dst pointcloud
-    cwipc_metadata* src_ad = pc->access_metadata();
-    cwipc_metadata* dst_ad = rv->access_metadata();
-    src_ad->_move(dst_ad);
 
     return rv;
 }
