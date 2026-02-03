@@ -677,7 +677,7 @@ void cwipc_pointcloud__set_timestamp(cwipc_pointcloud *pc, uint64_t timestamp) {
     pc->_set_timestamp(timestamp);
 }
 
-int cwipc_count(cwipc_pointcloud *pc) {
+int cwipc_pointcloud_count(cwipc_pointcloud *pc) {
     return pc->count();
 }
 
