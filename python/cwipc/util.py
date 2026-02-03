@@ -906,11 +906,17 @@ class cwipc_sink_wrapper:
         self._must_be_freed = False
         return rv
         
-    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool) -> bool:
+    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool, force : bool=False) -> bool:
+        """Feed the point cloud to the sink.
+        
+        The point cloud must be detached. If you know what you are doing you can pass
+        the force=True flag to pass a non-detached point cloud."""
         if pc == None:
             cpc = None
         else:
-            cpc = pc.as_cwipc_p() # type: ignore
+            cpc = pc.as_cwipc_p()
+            if pc._must_be_freed and not force:
+                cwipc_log_default_callback(CWIPC_LOG_LEVEL_WARNING, b"Passing non-detached cwipc_pointcloud_wrapper to feed()")
         return cwipc_util_dll_load().cwipc_sink_feed(self.as_cwipc_sink_p(), cpc, clear)
         
     def caption(self, caption : str) -> None:
