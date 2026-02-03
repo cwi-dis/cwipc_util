@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     //
     if (strcmp(argv[2], "-") == 0) {
         // copy-uncompressed in stead of save (for performance testing)
-        size_t nbytes = cwipc_get_uncompressed_size(obj);
+        size_t nbytes = cwipc_pointcloud_get_uncompressed_size(obj);
         struct cwipc_point *points = (struct cwipc_point *)malloc(nbytes);
 
         if (points == NULL) {
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        cwipc_copy_uncompressed(obj, points, nbytes);
+        cwipc_pointcloud_copy_uncompressed(obj, points, nbytes);
         fprintf(stderr, "%s: Skipping save\n", argv[0]);
     } else {
         int status = cwipc_write_debugdump(argv[2], obj, &message);

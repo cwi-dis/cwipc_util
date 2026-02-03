@@ -649,7 +649,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT cwipc_pointcloud* cwipc_from_points(struct cwipc_point* points, size_t size, int npoint, uint64_t timestamp, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Create cwipc pointcloud from external representation.
-     * \param packet Pointer to packet obtained from cwipc_copy_packet
+     * \param packet Pointer to packet obtained from cwipc_pointcloud_copy_packet
      * \param size Size of points in bytes.
      * \param errorMessage Address of a char* where any error message is saved (or NULL).
      * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
@@ -690,7 +690,7 @@ extern "C" {
 
 
     /** \brief Deallocate the pointcloud data (C interface).
-     * \param pc The cwipc object.
+     * \param pc The cwipc_pointcloud object.
      *
      * The internal implementation of the pointcloud data may be refcounted, but
      * an explicit free method must be called to ensure the refcounting does not
@@ -700,44 +700,46 @@ extern "C" {
      * Whoever created the cwipc object in the first place is responsible for
      * calling free, and the correct DLL will be invoked to actually free the data.
      */
-    _CWIPC_UTIL_EXPORT void cwipc_free(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT void cwipc_pointcloud_free(cwipc_pointcloud* pc);
 
     /** \brief Time this pointcloud was captured (C interface).
-     * \param pc The cwipc object.
+     * \param pc The cwipc_pointcloud object.
      * \return Time in milliseconds, since some unspecified origin.
      */
-    _CWIPC_UTIL_EXPORT uint64_t cwipc_timestamp(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT uint64_t cwipc_pointcloud_timestamp(cwipc_pointcloud* pc);
 
     /** \brief Returns the grid cell size at which this pointcloud was created, if known (C interface).
+     * \param pc The cwipc_pointcloud object.
      * \return Either a size (in the same coordinates as x, y and z) or 0 if unknown.
      *
      * If the pointcloud is to be displayed the number returned by this call is a good
      * guess for a pointsize to use to show an obect that doesn't have any holes in it.
      */
-    _CWIPC_UTIL_EXPORT float cwipc_cellsize(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT float cwipc_pointcloud_cellsize(cwipc_pointcloud* pc);
 
     /** \brief Semi-private method to initialize the cellsize (C interface). Not for general use.
      */
-    _CWIPC_UTIL_EXPORT void cwipc__set_cellsize(cwipc_pointcloud* pc, float cellsize);
+    _CWIPC_UTIL_EXPORT void cwipc_pointcloud__set_cellsize(cwipc_pointcloud* pc, float cellsize);
 
     /** \brief Semi-private method to initialize the timestamp. Not for general use.
      */
-    _CWIPC_UTIL_EXPORT void cwipc__set_timestamp(cwipc_pointcloud* pc, uint64_t timestamp);
+    _CWIPC_UTIL_EXPORT void cwipc_pointcloud__set_timestamp(cwipc_pointcloud* pc, uint64_t timestamp);
 
     /** \brief Returns number of points in the pointcloud (C interface).
+     * \param pc The cwipc_pointcloud object.
      * \return The number of points.
      */
-    _CWIPC_UTIL_EXPORT int cwipc_count(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT int cwipc_pointcloud_count(cwipc_pointcloud* pc);
 
     /** \brief Returns size (in bytes) an external representation of this pointcloud needs (C interface).
-    * \param pc The cwipc object.
+    * \param pc The cwipc_pointcloud object.
     * \return The number of bytes needed (or zero in case the format does not match
     *   or no points are available).
     */
-    _CWIPC_UTIL_EXPORT size_t cwipc_get_uncompressed_size(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT size_t cwipc_pointcloud_get_uncompressed_size(cwipc_pointcloud* pc);
 
     /** \brief Get points from pointcloud in external representation format (C interface).
-     * \param pc The cwipc object.
+     * \param pc The cwipc_pointcloud object.
      * \param pointbuf A databuffer pointer.
      * \param size The size of the databuffer (in bytes).
      * \return The number of points.
@@ -748,10 +750,10 @@ extern "C" {
      * implemented in another language like C# or Python and needs a special
      * allocator).
      */
-    _CWIPC_UTIL_EXPORT int cwipc_copy_uncompressed(cwipc_pointcloud* pc, struct cwipc_point* pointbuf, size_t size);
+    _CWIPC_UTIL_EXPORT int cwipc_pointcloud_copy_uncompressed(cwipc_pointcloud* pc, struct cwipc_point* pointbuf, size_t size);
 
     /** \brief Get pointcloud in external representation format (C interface).
-     * \param pc The cwipc object.
+     * \param pc The cwipc_pointcloud object.
      * \param packet A databuffer pointer.
      * \param size The size of the databuffer (in bytes).
      * \return The size of the databuffer
@@ -759,27 +761,27 @@ extern "C" {
      * Call with packet=NULL to obtain packet buffer size. Then allocate a buffer and
      * call with buffer and size to copy the packet data.
      */
-    _CWIPC_UTIL_EXPORT size_t cwipc_copy_packet(cwipc_pointcloud* pc, uint8_t* packet, size_t size);
+    _CWIPC_UTIL_EXPORT size_t cwipc_pointcloud_copy_packet(cwipc_pointcloud* pc, uint8_t* packet, size_t size);
 
     /** \brief Access metadata collection (C interface).
-     * \param pc The cwipc object.
+     * \param pc The cwipc_pointcloud object.
      * \return A reference to the metadata collection
      *
      * Note that this function returns a borrowed reference (and that the collection consists of more
      * borrowed references). AThese references become invalid when free() is called.
      */
-    _CWIPC_UTIL_EXPORT cwipc_metadata* cwipc_access_metadata(cwipc_pointcloud* pc);
+    _CWIPC_UTIL_EXPORT cwipc_metadata* cwipc_pointcloud_access_metadata(cwipc_pointcloud* pc);
 
     /** \brief Start a pointcloud source
      * 
-     * \param src The cwipc_source object.
+     * \param src The cwipc_activesource object.
      * \return True if the source started successfully.
     */
     _CWIPC_UTIL_EXPORT bool cwipc_activesource_start(cwipc_activesource* src);
 
     /** \brief Stop a pointcloud source
      * 
-     * \param src The cwipc_source object.
+     * \param src The cwipc_activesource object.
     */
     _CWIPC_UTIL_EXPORT void cwipc_activesource_stop(cwipc_activesource* src);
     
@@ -815,13 +817,13 @@ extern "C" {
     _CWIPC_UTIL_EXPORT bool cwipc_source_available(cwipc_source* src, bool wait);
 
     /** \brief Request specific metadata to be added to pointclouds (C interface).
-     * \param src The cwipc_source object.
+     * \param src The cwipc_activesource object.
      * \param name Name of the metadata items wanted
      */
     _CWIPC_UTIL_EXPORT void cwipc_activesource_request_metadata(cwipc_activesource* src, const char* name);
 
     /** \brief Returns true is specific metadata has been requested (C interface).
-     * \param src The cwipc_source object.
+     * \param src The cwipc_activesource object.
      * \param name Name of the metadata items
      * \returns True or false
      */
@@ -868,7 +870,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT int cwipc_activesource_maxtile(cwipc_activesource* src);
 
     /** \brief Return information on a tile number (C interface).
-     * \param src The cwipc_source object.
+     * \param src The cwipc_activesource object.
      * \param tilenum The tile on which to obtain information.
      * \param tileinfo A pointer to a structure filled with information on the tile (if non-NULL).
      * \return A boolean that is true if the tile could ever exist.
@@ -878,6 +880,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT bool cwipc_activesource_get_tileinfo(cwipc_activesource* src, int tilenum, struct cwipc_tileinfo* tileinfo);
 
     /** \brief Do an auxiliary operation (C interface).
+     * \param src The cwipc_activesource object.
      * \param op The operation to perform
      * \param inbuf Buffer with parameters to the operation
      * \param insize Size of inbuf
@@ -900,6 +903,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT void cwipc_sink_free(cwipc_sink* sink);
 
     /** \brief Feed a pointcloud to the sink (C interface).
+     * \param sink The cwipc_sink object.
      * \param pc The pointcloud
      * \param clear If true a display window will clear any previous pointclouds
      * \return True if the operation was successful.
@@ -913,6 +917,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT bool cwipc_sink_feed(cwipc_sink* sink, cwipc_pointcloud* pc, bool clear);
 
     /** \brief Set a caption or title on the window (C interface).
+     * \param sink The cwipc_sink object.
      * \param caption The UTF8 caption string.
      * \return True if this sink could present the caption to the user.
      *
@@ -922,6 +927,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT bool cwipc_sink_caption(cwipc_sink* sink, const char* caption);
 
     /** \brief User interaction (C interface).
+     * \param sink The cwipc_sink object.
      * \param prompt A prompt message to show to the user, explaining what the program wants.
      * \param reponses A string with all characters that can be typed by the user.
      * \param millis The number of milliseconds to wait for interaction, 0 for no wait or -1 for forever.

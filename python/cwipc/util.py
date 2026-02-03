@@ -406,35 +406,35 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_write_debugdump.argtypes = [ctypes.c_char_p, cwipc_p, ctypes.POINTER(ctypes.c_char_p)]
     _cwipc_util_dll_reference.cwipc_write_debugdump.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_free.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_free.restype = None
+    _cwipc_util_dll_reference.cwipc_pointcloud_free.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_free.restype = None
     
-    _cwipc_util_dll_reference.cwipc_timestamp.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_timestamp.restype = ctypes.c_ulonglong
+    _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.restype = ctypes.c_ulonglong
     
-    _cwipc_util_dll_reference.cwipc_cellsize.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_cellsize.restype = ctypes.c_float
+    _cwipc_util_dll_reference.cwipc_pointcloud_cellsize.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_cellsize.restype = ctypes.c_float
     
-    _cwipc_util_dll_reference.cwipc__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
-    _cwipc_util_dll_reference.cwipc__set_cellsize.restype = None
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_cellsize.argtypes = [cwipc_p, ctypes.c_float]
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_cellsize.restype = None
     
-    _cwipc_util_dll_reference.cwipc__set_timestamp.argtypes = [cwipc_p, ctypes.c_ulonglong]
-    _cwipc_util_dll_reference.cwipc__set_timestamp.restype = None
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_timestamp.argtypes = [cwipc_p, ctypes.c_ulonglong]
+    _cwipc_util_dll_reference.cwipc_pointcloud__set_timestamp.restype = None
     
-    _cwipc_util_dll_reference.cwipc_count.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_count.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_pointcloud_count.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_count.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_get_uncompressed_size.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_get_uncompressed_size.restype = ctypes.c_size_t
+    _cwipc_util_dll_reference.cwipc_pointcloud_get_uncompressed_size.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_get_uncompressed_size.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
-    _cwipc_util_dll_reference.cwipc_copy_uncompressed.restype = ctypes.c_int
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_uncompressed.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_uncompressed.restype = ctypes.c_int
     
-    _cwipc_util_dll_reference.cwipc_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
-    _cwipc_util_dll_reference.cwipc_copy_packet.restype = ctypes.c_size_t
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_packet.argtypes = [cwipc_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t]
+    _cwipc_util_dll_reference.cwipc_pointcloud_copy_packet.restype = ctypes.c_size_t
     
-    _cwipc_util_dll_reference.cwipc_access_metadata.argtypes = [cwipc_p]
-    _cwipc_util_dll_reference.cwipc_access_metadata.restype = cwipc_metadata_p
+    _cwipc_util_dll_reference.cwipc_pointcloud_access_metadata.argtypes = [cwipc_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud_access_metadata.restype = cwipc_metadata_p
     
     _cwipc_util_dll_reference.cwipc_activesource_start.argtypes = [cwipc_source_p]
     _cwipc_util_dll_reference.cwipc_activesource_start.restype = ctypes.c_bool
@@ -583,35 +583,35 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
     def free(self) -> None:
         """Delete the opaque pointcloud object (by asking the original creator to do so)"""
         if self._cwipc:
-            cwipc_util_dll_load().cwipc_free(self.as_cwipc_p())
+            cwipc_util_dll_load().cwipc_pointcloud_free(self.as_cwipc_p())
         self._cwipc = None
         
     def timestamp(self) -> int:
         """Returns timestamp (microseconds) when this pointcloud was captured (relative to some unspecified origin)"""
-        rv = cwipc_util_dll_load().cwipc_timestamp(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_pointcloud_timestamp(self.as_cwipc_p())
         return rv
         
     def cellsize(self) -> float:
         """Returns the size of the cells this pointcloud represents (0 if unknown)"""
-        rv = cwipc_util_dll_load().cwipc_cellsize(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_pointcloud_cellsize(self.as_cwipc_p())
         return rv
         
     def _set_cellsize(self, cellsize : float) -> None:
         """Internal use only: set the size of the cells this pointcloud represents"""
-        cwipc_util_dll_load().cwipc__set_cellsize(self.as_cwipc_p(), cellsize)
+        cwipc_util_dll_load().cwipc_pointcloud__set_cellsize(self.as_cwipc_p(), cellsize)
         
     def _set_timestamp(self, timestamp : int) -> None:
-        """Internal use only: set the size of the cells this pointcloud represents"""
-        cwipc_util_dll_load().cwipc__set_timestamp(self.as_cwipc_p(), timestamp)
+        """Internal use only: set the timestamp of this pointcloud"""
+        cwipc_util_dll_load().cwipc_pointcloud__set_timestamp(self.as_cwipc_p(), timestamp)
         
     def count(self) -> int:
         """Get the number of points in the pointcloud"""
-        rv = cwipc_util_dll_load().cwipc_count(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_pointcloud_count(self.as_cwipc_p())
         return rv
         
     def get_uncompressed_size(self) -> int:
         """Get the size in bytes of the uncompressed pointcloud data"""
-        rv = cwipc_util_dll_load().cwipc_get_uncompressed_size(self.as_cwipc_p())
+        rv = cwipc_util_dll_load().cwipc_pointcloud_get_uncompressed_size(self.as_cwipc_p())
         return rv
         
     def get_points(self) -> ctypes.Array[cwipc_point]:
@@ -672,29 +672,29 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
         return self._bytes
         
     def access_metadata(self):
-        rv_p = cwipc_util_dll_load().cwipc_access_metadata(self.as_cwipc_p())
+        rv_p = cwipc_util_dll_load().cwipc_pointcloud_access_metadata(self.as_cwipc_p())
         if rv_p:
             return cwipc_metadata(rv_p)
         return None
         
     def _initialize_points_and_bytes(self) -> None:
         assert self._cwipc
-        nBytes : int = cwipc_util_dll_load().cwipc_get_uncompressed_size(self.as_cwipc_p())
+        nBytes : int = cwipc_util_dll_load().cwipc_pointcloud_get_uncompressed_size(self.as_cwipc_p())
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        nPoints = cwipc_util_dll_load().cwipc_copy_uncompressed(self.as_cwipc_p(), bufferArg, nBytes)
+        nPoints = cwipc_util_dll_load().cwipc_pointcloud_copy_uncompressed(self.as_cwipc_p(), bufferArg, nBytes)
         points = cwipc_point_array(count=nPoints, values=buffer)
         self._bytes = buffer
         self._points = points
 
     def get_packet(self) -> bytearray:
         assert self._cwipc
-        nBytes : int = cwipc_util_dll_load().cwipc_copy_packet(self.as_cwipc_p(), None, 0)
+        nBytes : int = cwipc_util_dll_load().cwipc_pointcloud_copy_packet(self.as_cwipc_p(), None, 0)
         buffer = bytearray(nBytes)
         bufferCtypesType = ctypes.c_byte * nBytes
         bufferArg = bufferCtypesType.from_buffer(buffer)
-        rvNBytes = cwipc_util_dll_load().cwipc_copy_packet(self.as_cwipc_p(), bufferArg, nBytes)
+        rvNBytes = cwipc_util_dll_load().cwipc_pointcloud_copy_packet(self.as_cwipc_p(), bufferArg, nBytes)
         assert rvNBytes == nBytes
         return buffer
 

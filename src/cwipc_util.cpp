@@ -657,23 +657,23 @@ cwipc_pointcloud* cwipc_from_packet(uint8_t *packet, size_t size, char **errorMe
     return rv;
 }
 
-void cwipc_free(cwipc_pointcloud *pc) {
+void cwipc_pointcloud_free(cwipc_pointcloud *pc) {
     pc->free();
 }
 
-uint64_t cwipc_timestamp(cwipc_pointcloud *pc) {
+uint64_t cwipc_pointcloud_timestamp(cwipc_pointcloud *pc) {
     return pc->timestamp();
 }
 
-float cwipc_cellsize(cwipc_pointcloud *pc) {
+float cwipc_pointcloud_cellsize(cwipc_pointcloud *pc) {
     return pc->cellsize();
 }
 
-void cwipc__set_cellsize(cwipc_pointcloud *pc, float cellsize) {
+void cwipc_pointcloud__set_cellsize(cwipc_pointcloud *pc, float cellsize) {
     pc->_set_cellsize(cellsize);
 }
 
-void cwipc__set_timestamp(cwipc_pointcloud *pc, uint64_t timestamp) {
+void cwipc_pointcloud__set_timestamp(cwipc_pointcloud *pc, uint64_t timestamp) {
     pc->_set_timestamp(timestamp);
 }
 
@@ -681,19 +681,19 @@ int cwipc_count(cwipc_pointcloud *pc) {
     return pc->count();
 }
 
-size_t cwipc_get_uncompressed_size(cwipc_pointcloud *pc) {
+size_t cwipc_pointcloud_get_uncompressed_size(cwipc_pointcloud *pc) {
     return pc->get_uncompressed_size();
 }
 
-int cwipc_copy_uncompressed(cwipc_pointcloud *pc, struct cwipc_point *points, size_t size) {
+int cwipc_pointcloud_copy_uncompressed(cwipc_pointcloud *pc, struct cwipc_point *points, size_t size) {
     return pc->copy_uncompressed(points, size);
 }
 
-size_t cwipc_copy_packet(cwipc_pointcloud *pc, uint8_t *packet, size_t size) {
+size_t cwipc_pointcloud_copy_packet(cwipc_pointcloud *pc, uint8_t *packet, size_t size) {
     return pc->copy_packet(packet, size);
 }
 
-cwipc_metadata* cwipc_access_metadata(cwipc_pointcloud *pc) {
+cwipc_metadata* cwipc_pointcloud_access_metadata(cwipc_pointcloud *pc) {
     return pc->access_metadata();
 }
 
