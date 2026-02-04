@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (cwipc_dangling_allocations(true)) return 1;
 
     return 0;
 }

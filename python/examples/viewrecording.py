@@ -36,6 +36,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-    if os.getenv('CWIPC_DANGLING_ALLOCATIONS'):
-        cwipc.cwipc_dangling_allocations(True)
+    cwipc.cwipc_dangling_allocations(True)
     

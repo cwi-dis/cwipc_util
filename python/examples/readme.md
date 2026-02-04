@@ -17,9 +17,6 @@ C:/> cwipc_pymodules_install.bat
 The Python package is documented and type-hinted, so if you use an IDE like `vscode` you should get popup hints as you type.
 
 > If you have used cwipc before v8.0 you may remember having to call `free()` yourself. This is no longer the case.
-> But these scripts were very helpful with this feature, if you define an environment variable 
-> `CWIPC_DANGLING_ALLOCATIONS` these scripts will tell you about `cwipc_pointcloud` objects that somehow escaped
-> being freed when no longer in use.
 
 The examples here are pretty minimal: no reasonable command line arguments, and little or no respect for timing.
 

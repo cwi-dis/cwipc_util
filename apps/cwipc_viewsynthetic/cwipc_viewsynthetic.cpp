@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
 
     window->free();
     generator->free();
+    if (cwipc_dangling_allocations(true)) return 1;
 
     return 0;
 }

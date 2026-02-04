@@ -42,6 +42,7 @@ int main(int argc, char** argv) {
 
     pc->free();
     new_pc->free();
+    if (cwipc_dangling_allocations(true)) return 1;
 
     return 0;
 }

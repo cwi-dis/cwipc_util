@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
         std::cerr << argv[0] << ": Cannot save pointcloud to cwipcdump: " << message << std::endl;
         return 1;
     }
+    if (cwipc_dangling_allocations(true)) return 1;
 
     return 0;
 }
