@@ -36,8 +36,6 @@ class DirectionFilter(cwipc_abstract_filter):
         t1_d = time.time()
         self.original_pointcounts.append(pc.count())
         newpc = cwipc_direction_filter(pc, self.direction, self.threshold)
-        if not self.keep_source:
-            pc.free()
         t2_d = time.time()
         self.times.append(t2_d-t1_d)
         self.pointcounts.append(newpc.count())

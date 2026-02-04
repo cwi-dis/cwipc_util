@@ -30,17 +30,13 @@ class TransformFinder:
     def load_source(self, source: str):
         pc = cwipc.cwipc_read(source, 0)
         if self.source_tile:
-            new_pc = cwipc_tilefilter_masked(pc, self.source_tile)
-            pc.free()
-            pc = new_pc
+            pc = cwipc_tilefilter_masked(pc, self.source_tile)
         self.source_pc = pc
 
     def load_target(self, target: str):
         pc = cwipc.cwipc_read(target, 0)
         if self.target_tile:
-            new_pc = cwipc_tilefilter_masked(pc, self.target_tile)
-            pc.free()
-            pc = new_pc
+            pc = cwipc_tilefilter_masked(pc, self.target_tile)
         self.target_pc = pc
 
     def save_output(self, filename: str):
@@ -81,9 +77,6 @@ class TransformFinder:
         colored_target = cwipc.cwipc_colormap(target, 0xFFFFFFFF, 0xAA00FF00)
         combined = cwipc.cwipc_join(colored_source, colored_target)
         cwipc.cwipc_write(filename, combined)
-        colored_source.free()
-        colored_target.free()
-        combined.free()
         
     def analyze_pointclouds(self, label : str, source: cwipc.cwipc_pointcloud_wrapper, target: cwipc.cwipc_pointcloud_wrapper) -> AnalysisResults:
         analyzer = RegistrationAnalyzer()

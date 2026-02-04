@@ -29,8 +29,6 @@ class RandomizeFloorFilter(cwipc_abstract_filter):
         self.count += 1
         t1_d = time.time()
         newpc = cwipc_randomize_floor(pc, self.level)
-        if not self.keep_source:
-            pc.free()
         t2_d = time.time()
         self.times.append(t2_d-t1_d)
         return newpc

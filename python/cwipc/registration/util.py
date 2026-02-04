@@ -174,14 +174,10 @@ def cwipc_downsample_pertile(pc : cwipc_pointcloud_wrapper, cellsize : float) ->
     for tilenum in tiles_used:
         tile_pc = cwipc_tilefilter(pc, tilenum)
         tile_pc_downsampled = cwipc_downsample(tile_pc, cellsize)
-        tile_pc.free()
         if result_pc == None:
             result_pc = tile_pc_downsampled
         else:
-            new_result_pc = cwipc_join(result_pc, tile_pc_downsampled)
-            result_pc.free()
-            tile_pc_downsampled.free()
-            result_pc = new_result_pc
+            result_pc = cwipc_join(result_pc, tile_pc_downsampled)
     assert result_pc
     return result_pc
 
@@ -190,26 +186,17 @@ def cwipc_compute_tile_occupancy(pc : cwipc_pointcloud_wrapper, cellsize : float
     Returns list of (tilenum, pointcount) of a point cloud, optionally after downsampling with cellsize and/or removing the floor.
     The list is sorted by point count, and empty tiles are omitted.
     """
-    must_free = False
     if filterfloor:
         pc = cwipc_floor_filter(pc)
-        must_free = True
     if cellsize != 0:
-        new_pc = cwipc_downsample(pc, cellsize)
-        if must_free:
-            pc.free()
-        pc = new_pc
-        must_free = True
+        pc = cwipc_downsample(pc, cellsize)
     tiles_used = get_tiles_used(pc)
     rv : List[Tuple[int, int]] = []
     for tilenum in tiles_used:
         pc_tile = cwipc_tilefilter(pc, tilenum)
         pointcount = pc_tile.count()
         rv.append((tilenum, pointcount))
-        pc_tile.free()
     rv.sort(key=lambda tp : tp[1], reverse=True)
-    if must_free:
-        pc.free()
     return rv
 
 def cwipc_compute_radius(pc : cwipc_pointcloud_wrapper, level : float = 0.1) -> Tuple[float, float, float]:
@@ -444,6 +431,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     def get_pc_for_tilemask(self, tilemask: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
+        # xxxjackfree we can cache these.
         assert self.original_pointcloud
         pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
         if not pc:
@@ -452,6 +440,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
         
     def get_pc_for_camnum(self, camnum: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
+        # xxxjackfree implement this using get_pc_for_tilemask?
         assert self.original_pointcloud
         tilemask = self.tilemask_for_camera_index(camnum)
         pc = cwipc_tilefilter(self.original_pointcloud, tilemask)

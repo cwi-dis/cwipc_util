@@ -114,7 +114,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
                 else:
                     for i in range(len(packets)):
                         self.sink.feed(packets[i], stream_index=i)
-                pc.free()
+                pc = None
                 self.times_encode.append(t2-t1)
         finally:
             self.stopped = True
@@ -128,8 +128,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
             else:
                 self.input_queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
-            if self.verbose: print(f"encoder: queue full, drop pointcloud")
-            pc.free()
+            if self.verbose: print(f"encoder: queue full")
     
     def _init_encoders(self):
         assert self.octree_bits

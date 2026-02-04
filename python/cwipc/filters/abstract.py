@@ -6,7 +6,6 @@ class cwipc_abstract_filter(ABC):
     @abstractmethod
     def filter(self, pc: cwipc_pointcloud_wrapper) -> cwipc_pointcloud_wrapper:
         """Feed a point cloud to the filter. Returns the resulting point cloud.
-        If the point cloud was changed the original point cloud is free()d.
         """
         ...
 

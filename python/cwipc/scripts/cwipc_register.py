@@ -166,9 +166,7 @@ class Registrator:
         self.cameraconfig = CameraConfig(self.args.cameraconfig)
 
     def __del__(self):
-        if self.capturer != None:
-            self.capturer.free()
-            self.capturer = None
+        self.capturer = None
 
     def prompt(self, message : str):
         print(f"{message}")
@@ -273,10 +271,9 @@ class Registrator:
                 if self.args.guided:
                     print(f"===== The windows will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 new_pc = self.coarse_registration(pc)
-                pc.free()
                 pc = None
             assert new_pc
-            new_pc.free()
+
             new_pc = None
             if not self.dry_run:
                 if self.verbose:
@@ -311,10 +308,9 @@ class Registrator:
                             multicam_aligner_class=cwipc.registration.multicamera.MultiCameraToFloor, 
                             aligner_class=cwipc.registration.fine.RegistrationComputer_ICP_Point2Point,
                             analyzer_class=cwipc.registration.analyze.RegistrationAnalyzer)
-            pc.free()
             pc = None
+
             if new_pc:
-                new_pc.free()
                 new_pc = None
                 if not self.dry_run:
                     self.cameraconfig.save()
@@ -346,10 +342,9 @@ class Registrator:
                 if self.args.guided:
                     print(f"===== The window will now close, the algorithms will run, and after that the windows will reopen.", file=sys.stderr)
                 new_pc = self.fine_registration(pc)
-                pc.free()
                 pc = None
+
                 if new_pc:
-                    new_pc.free()
                     new_pc = None
                     if not self.dry_run:
                         self.cameraconfig.save()
@@ -444,9 +439,7 @@ class Registrator:
             print(f"cwipc_register: selected capturer does not need registration")
             return False
         # Step one: Try to open with an existing cameraconfig.
-        if self.capturer != None:
-            self.capturer.free()
-            self.capturer = None
+        self.capturer = None
         try:
             self.capturer = self.capturerFactory()
         except cwipc.CwipcError:
@@ -462,8 +455,8 @@ class Registrator:
         tmpCapturer = tmpFactory()
         new_config = tmpCapturer.get_config()
         self.cameraconfig.load(new_config)
-        tmpCapturer.free()
         tmpCapturer = None
+
         if not self.dry_run:
             self.cameraconfig.save()
             if self.verbose:
@@ -486,8 +479,7 @@ class Registrator:
                 ok = self.capturer.available(True)
                 if ok:
                     pc = self.capturer.get()
-                    if pc != None:
-                        pc.free()
+                    pc = None
         if self.args.interactive:
             return self.interactive_capture()
         ok = self.capturer.available(True)
@@ -675,7 +667,6 @@ class Registrator:
                 if pc != None:
                     if self.verbose:
                         print(f"cwipc_register: dropped pc with {pc.count()} points")
-                    pc.free()
                     pc= None
 
                     gotframes += 1

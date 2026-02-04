@@ -80,7 +80,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
                 cpc = pc.get_packet()
                 self.sink.feed(cpc)
                 if self.verbose: print(f"passthrough: serialized pointcoud with {pc.count()} points timestamp={pc.timestamp()}")
-                pc.free()
+                pc = None
         finally:
             self.stopped = True
             self.sink.stop()
@@ -93,8 +93,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
             else:
                 self.input_queue.put(pc, timeout=self.QUEUE_FULL_TIMEOUT)
         except queue.Full:
-            if self.verbose: print(f"passthrough: queue full, drop pointcloud")
-            pc.free()
+            if self.verbose: print(f"passthrough: queue full")
 
     def statistics(self):
         self.print1stat('pointcount', self.pointcounts)

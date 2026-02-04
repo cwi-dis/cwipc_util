@@ -39,10 +39,7 @@ def main():
         if result is None:
             result = pc
         else:
-            new_result = cwipc.cwipc_join(result, pc)
-            result.free()
-            pc.free()
-            result = new_result
+            result = cwipc.cwipc_join(result, pc)
         if args.verbose:
             print(f"Joined point cloud, new count: {result.count()}")
     assert result
@@ -53,7 +50,6 @@ def main():
     else:
         print(f"Unknown output file format {args.output}, expected .ply or .cwipc")
         return 1
-    result.free()
     return 0
 
 if __name__ == '__main__':

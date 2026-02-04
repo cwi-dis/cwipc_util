@@ -129,14 +129,14 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
             if self.verbose: print(f"netingest: queue full, drop packet")            
     
     def _encode_pc(self, pc : cwipc.cwipc_pointcloud_wrapper) -> bytes:
+        # xxxjackfree Need to see whether this leaks in the long term
+        # xxxjackfree If not then we want to keep and re-use the encoder.
         encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
         enc = cwipc.codec.cwipc_new_encoder(params=encparams)
         enc.feed(pc)
         gotData = enc.available(True)
         assert gotData
         data = enc.get_bytes()
-        pc.free()
-        enc.free()
         return data
 
     def add_stream(self, tilenum: Optional[int] = None, tiledesc: Optional[cwipc_tileinfo_dict] = None, qualitydesc: Optional[cwipc_quality_description] = None) -> int:

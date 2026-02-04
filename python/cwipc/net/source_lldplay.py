@@ -242,9 +242,9 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         sys.stdout.flush()
         
     def __del__(self):
-        self.free()
+        self.free(force=True)
         
-    def free(self) -> None:
+    def free(self, *, force:bool=False) -> None:
         if self.handle:
             tmp_handle = self.handle
             self.handle = None
@@ -293,6 +293,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         if self.started:
             self.started = False
             self.join()
+        self.free(force=True)
         
     def eof(self) -> bool:
         if self.error_condition:

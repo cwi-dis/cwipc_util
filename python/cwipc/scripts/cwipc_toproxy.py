@@ -38,7 +38,7 @@ class Sender(cwipc_sink_abstract):
             try:
                 pc = self.output_queue.get(timeout=0.033)
                 ok = self.send_pc(pc)
-                pc.free()
+                pc = None
             except queue.Empty:
                 pass
         
@@ -46,7 +46,7 @@ class Sender(cwipc_sink_abstract):
         try:
             self.output_queue.put(pc, timeout=0.5)
         except queue.Full:
-            pc.free()
+            pass
             
     def send_pc(self, pc : cwipc_pointcloud_wrapper) -> None:
         data = pc.get_bytes()

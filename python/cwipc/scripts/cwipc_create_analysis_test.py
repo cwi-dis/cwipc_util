@@ -123,15 +123,9 @@ class AnalysisTestCreator:
             if transform_changed:
                 if self.verbose:
                     print(f"Moving tile {camnum} by {transform}")
-                new_per_tile_pc = cwipc_transform(per_tile_pc, transform)
-                per_tile_pc.free()
-                per_tile_pc = new_per_tile_pc
+                per_tile_pc = cwipc_transform(per_tile_pc, transform)
             per_tile_pcs.append(per_tile_pc)
-        cwipc_joined_pc = per_tile_pcs.pop()
-        while per_tile_pcs:
-            next_pc = per_tile_pcs.pop()
-            cwipc_joined_pc = cwipc.cwipc_join(cwipc_joined_pc, next_pc)
-            next_pc.free()
+        cwipc_joined_pc = cwipc.cwipc_join_multi(per_tile_pcs)
         if self.noise > 0:
             if self.verbose:
                 print(f"Adding noise of {self.noise} meters to the point cloud")

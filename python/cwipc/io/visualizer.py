@@ -137,13 +137,10 @@ q,ESC         Quit
         except queue.Empty:
             return False
         if drop:
-            if pc:
-                pc.free()
+            # xxxjackfree
             pc = None
             return False
         if pc:
-            if self.current_pc and self.current_pc != self.display_pc:
-                self.current_pc.free()
             self.current_pc = pc
             if self.args.timestamps:
                 self._show_timestamps(pc, "timestamps")
@@ -153,17 +150,11 @@ q,ESC         Quit
     def _get_new_display_pc(self) -> None:
         assert self.current_pc
         assert self.current_pc._cwipc
-        if self.display_pc and self.display_pc != self.current_pc:
-            self.display_pc.free()
-            self.display_pc = None
         pc_to_show = self.current_pc
         if self.display_filter:
             pc_to_show = self.display_filter.filter(pc_to_show)
         if self.tilefilter:
-            new_pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
-            if pc_to_show != self.current_pc:
-                pc_to_show.free()
-            pc_to_show = new_pc_to_show
+            pc_to_show = cwipc_tilefilter(pc_to_show, self.tilefilter)
         self.display_pc = pc_to_show
         cellsize = max(self.display_pc.cellsize(), self.point_size_min)
         self.display_pc._set_cellsize(cellsize*pow(2,self.point_size_power))
@@ -189,12 +180,6 @@ q,ESC         Quit
             if got_new_pc or self.recompute_display_pc:
                 self._get_new_display_pc()
             self._draw_pc()
-        if self.current_pc and self.current_pc != self.display_pc:
-            self.current_pc.free()
-            self.current_pc = None
-        if self.display_pc:
-            self.display_pc.free()
-            self.display_pc = None
         self.alive = False
         # Empty queue. First clear nodrop so the producer won't block.
         self.forcedrop = True
@@ -209,8 +194,6 @@ q,ESC         Quit
                 cv2.destroyAllWindows()
             else:
                 cv2.destroyWindow("RGB")
-        if self.visualiser:
-            self.visualiser.free()
         self.visualiser = None
                 
     def feed(self, pc : cwipc_pointcloud_wrapper) -> None:
@@ -220,7 +203,7 @@ q,ESC         Quit
             else:
                 self.input_queue.put(pc, timeout=0.5)
         except queue.Full:
-            pc.free()
+            pass
             
     def start_window(self):
         cwd = os.getcwd()   # Workaround for cwipc_window changing working directory

@@ -115,7 +115,6 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
             o3d_partial_pc = partial_pc.get_o3d_pointcloud()
             self.per_camera_o3d_pointclouds.append(o3d_partial_pc)
             self.per_camera_tilenum.append(t)
-            partial_pc.free()
         self._init_transformations()
         assert len(tilenums) == len(self.per_camera_o3d_pointclouds)
         assert len(tilenums) == len(self.per_camera_tilenum)
@@ -267,15 +266,10 @@ class MultiCameraCoarse(MulticamAlignmentAlgorithm):
         for i in indices_to_join:
             partial_pc = cwipc_tilefilter(self.original_pointcloud, self.per_camera_tilenum[i])
             transformed_partial_pc = cwipc_transform(partial_pc, self.transformations[i])
-            partial_pc.free()
-            partial_pc = None
             if rv is None:
                 rv = transformed_partial_pc
             else:
-                new_rv = cwipc_join(rv, transformed_partial_pc)
-                rv.free()
-                transformed_partial_pc.free()
-                rv = new_rv
+                rv = cwipc_join(rv, transformed_partial_pc)
         assert rv
         return rv
 

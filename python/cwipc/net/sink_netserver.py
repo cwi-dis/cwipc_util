@@ -170,14 +170,14 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         return True           
     
     def _encode_pc(self, pc : cwipc.cwipc_pointcloud_wrapper) -> bytes:
+        # xxxjackfree Need to see whether this leaks in the long term
+        # xxxjackfree If not then we want to keep and re-use the encoder.
         encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
         enc = cwipc.codec.cwipc_new_encoder(params=encparams)
         enc.feed(pc)
         gotData = enc.available(True)
         assert gotData
         data = enc.get_bytes()
-        pc.free()
-        enc.free()
         return data
 
     def statistics(self) -> None:

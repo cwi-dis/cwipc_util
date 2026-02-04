@@ -36,8 +36,6 @@ class RemoveOutliersFilter(cwipc_abstract_filter):
         self.original_pointcounts.append(pc.count())
         t1_o = time.time()
         clean_pc = cwipc_remove_outliers(pc, self.kNeighbours, self.threshold, self.perTile)
-        if not self.keep_source:
-            pc.free()
         pc = clean_pc
         t2_o = time.time()
         self.times.append(t2_o-t1_o)

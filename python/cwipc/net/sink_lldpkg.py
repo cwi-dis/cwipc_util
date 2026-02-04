@@ -115,7 +115,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         self.lldash_log(event="sink_lldpkg_init", version=self.dll.lldpkg_get_version().decode('utf8'))
         
     def __del__(self):
-        self.free()
+        self.free(force=True)
         
     def _onLLDashPackagerError(self, cmsg : bytes, level : int):
         """Callback function passed to vrt_create: preint (or re-raise) lldash_packager errors in Python environment"""
@@ -180,7 +180,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         return baseurl, mpdbasename
         
     def stop(self) -> None:
-        self.free()
+        self.free(force=True)
         
     def set_producer(self, producer : cwipc_producer_abstract) -> None:
         pass
@@ -209,7 +209,7 @@ class _LLDashPackagerSink(cwipc_rawsink_abstract):
         self.streamDescs.append(streamDesc(self.fourcc, tilenum, x, y, z))
         return len(self.streamDescs)-1
 
-    def free(self) -> None:
+    def free(self, *, force:bool=False) -> None:
         if self.handle:
             tmp_handle = self.handle
             self.handle = None

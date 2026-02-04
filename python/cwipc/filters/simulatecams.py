@@ -71,8 +71,6 @@ class SimulatecamsFilter(cwipc_abstract_filter):
 
         new_pc = cwipc_from_numpy_matrix(point_matrix, pc.timestamp())
         new_pc._set_cellsize(pc.cellsize())
-        if not self.keep_source:
-            pc.free()
         pc = new_pc
         t2_d = time.time()
         self.times.append(t2_d-t1_d)

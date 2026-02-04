@@ -75,9 +75,7 @@ class RegistrationComputer(AlignmentAlgorithm, BaseAlgorithm):
     @override
     def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
         part_pc = self.get_result_pointcloud()
-        new_part_pc = cwipc_join(part_pc, self.get_reference_pointcloud())
-        part_pc.free()
-        part_pc = new_part_pc
+        part_pc = cwipc_join(part_pc, self.get_reference_pointcloud())
         return part_pc
 
 class RegistrationComputer_ICP_Point2Point(RegistrationComputer):

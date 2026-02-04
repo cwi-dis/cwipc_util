@@ -2,6 +2,7 @@ import sys
 from abc import ABC, abstractmethod
 import copy
 import math
+import functools
 from typing import List, Optional, Any, Tuple
 try:
     from typing import override
@@ -288,10 +289,6 @@ class BaseMulticamAlignmentAlgorithm(MulticamAlignmentAlgorithm, BaseMulticamAlg
     @override
     def get_result_pointcloud_full(self) -> cwipc_pointcloud_wrapper:
         assert self.original_pointcloud
-        if not self.original_pointcloud_is_new:
-            # Do a deep-copy, so our caller can free the pointcloud it passed to us
-            self.original_pointcloud = cwipc_from_packet(self.original_pointcloud.get_packet())
-            self.original_pointcloud_is_new = True
         return self.original_pointcloud
   
     def _plot(self, title : str, results : List[AnalysisResults]) -> None:
@@ -339,11 +336,8 @@ class MultiCameraOneToAllOthers(BaseMulticamAlignmentAlgorithm):
             aligner.run()
             
             # Remember resultant pointcloud
-            old_pc = self.original_pointcloud
             new_pc = aligner.get_result_pointcloud_full()
-            old_pc.free()
             self.original_pointcloud = new_pc
-            self.original_pointcloud_is_new = True
 
             # Apply new transformation (to the left of the old one)
             old_transform = self.transformations[camnum]
@@ -396,13 +390,8 @@ class MultiCameraToFloor(BaseMulticamAlignmentAlgorithm):
             this_transform = aligner.get_result_transformation()
             new_transform = np.matmul(this_transform, old_transform)
             self.transformations[camnum] = new_transform
-        result = aligned.pop()
-        while aligned:
-            next = aligned.pop()
-            result = cwipc_join(result, next)
-            next.free()
+        result = functools.reduce(lambda pc1, pc2 : cwipc_join(pc1, pc2), aligned)
         self.original_pointcloud = result
-        self.original_pointcloud_is_new = True
 
         ok = self._post_analyse(toReference=self.floor_pointcloud, onlyFloor=True)
         return ok
@@ -460,13 +449,8 @@ class MultiCameraToGroundTruth(BaseMulticamAlignmentAlgorithm):
             this_transform = aligner.get_result_transformation()
             new_transform = np.matmul(this_transform, old_transform)
             self.transformations[camnum] = new_transform
-        result = aligned.pop()
-        while aligned:
-            next = aligned.pop()
-            result = cwipc_join(result, next)
-            next.free()
+        result = functools.reduce(lambda pc1, pc2 : cwipc_join(pc1, pc2), aligned)
         self.original_pointcloud = result
-        self.original_pointcloud_is_new = True
 
         ok = self._post_analyse(toReference=self.groundtruth_pointcloud)
         return ok
@@ -714,10 +698,8 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                     print(f"{self.__class__.__name__}: Step {step}: accepted alignment for camnum={tilemask}")
                 self._done_step(step, tilemask)
                 new_resultant_pc = aligner.get_result_pointcloud_full()
-                self.current_step_target_pointcloud.free()
-                self.current_step_in_pointcloud.free()
+                self.current_step_target_pointcloud = None
                 self.current_step_in_pointcloud = None
-                self.current_step_out_pointcloud.free()
                 self.current_step_out_pointcloud = None
                 self.current_step_target_pointcloud = new_resultant_pc
                 camnum = self.camera_index_for_tilemask(tilemask)
@@ -731,9 +713,7 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
                 need_new_analysis = False
                 if True or self.verbose or self.is_interactive:
                     print(f"{self.__class__.__name__}: Step {step}: failed for camnum={tilemask}")
-                self.current_step_in_pointcloud.free()
                 self.current_step_in_pointcloud = None
-                self.current_step_out_pointcloud.free()
                 self.current_step_out_pointcloud = None
                 # If we have tried everything we give up.
                 if failures_this_step > len(self.remaining_results) + 1:
@@ -750,14 +730,11 @@ class MultiCameraIterative(BaseMulticamAlignmentAlgorithm):
         for tilemask in to_merge:
             tile_pc = self.get_pc_for_tilemask(tilemask)
             new_pc = cwipc_join(self.current_step_target_pointcloud, tile_pc)
-            self.current_step_target_pointcloud.free()
-            tile_pc.free()
             self.current_step_target_pointcloud = new_pc
 
         assert self.current_step_target_pointcloud
         assert self.current_step_target_pointcloud.count() > 0
         self.original_pointcloud = self.current_step_target_pointcloud
-        self.original_pointcloud_is_new = True
         self.current_step_target_pointcloud = None
 
         ok = self._post_analyse()
@@ -789,7 +766,6 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         radius = float(self._ask("Radius for floorfilter (0 for no filtering)", 0.0))
         if radius > 0:
             filtered_pc = cwipc_limit_floor_to_radius(self.current_step_in_pointcloud, radius)
-            # xxxjack should call free() probably
             self.current_step_in_pointcloud = filtered_pc
 
     @override
@@ -815,14 +791,9 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
         colored_target = cwipc_colormap(aligner.get_filtered_reference_pointcloud(), 0xFFFFFFFF, 0x80808080)
         colored_in = cwipc_colormap(self.current_step_in_pointcloud, 0xFFFFFFFF, 0x80AA0000)
         combined = cwipc_join(colored_target, colored_in)
-        colored_target.free()
-        colored_in.free()
         colored_out = cwipc_colormap(self.current_step_out_pointcloud, 0xFFFFFFFF, 0x8000AA00)
         combined2 = cwipc_join(combined, colored_out)
-        combined.free()
-        colored_out.free()
         show_pointcloud("Pre and Post of this step", combined2)
-        combined2.free()
 
     def _plot_alignment(self):
         assert len(self.current_step_results) == 2
@@ -840,7 +811,6 @@ class MultiCameraIterativeInteractive(MultiCameraIterative):
             if tilemask_str == "show":
                 pc_to_show = cwipc_colorized_copy(self.original_pointcloud)
                 show_pointcloud("Captured point cloud", pc_to_show)
-                pc_to_show.free()
             elif tilemask_str == "plot":
                 plotter = Plotter(title="Pre-analysis results")
                 plotter.set_results(self.pre_analysis_results)

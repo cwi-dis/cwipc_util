@@ -86,7 +86,7 @@ class DropWriter(cwipc_sink_abstract):
                         if self.savergb_counter <= 0:
                             self.save_rgb(pc, metadata)
                             self.savergb_counter = self.savergb
-                pc.free()
+                pc = None
                 
             except queue.Empty:
                 pass

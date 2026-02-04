@@ -39,7 +39,6 @@ class _Filesource(cwipc_activesource_abstract):
     def stop(self) -> None:
         self.filenames = []
         if self.single_file_mode_pc:
-            self.single_file_mode_pc.free()
             self.single_file_mode_pc = None
             
     def seek(self, timestamp : int) -> bool:

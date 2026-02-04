@@ -67,7 +67,7 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_source_factory_abstract, Optional[str]]:
+def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_activesource_factory_abstract, Optional[str]]:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
@@ -76,7 +76,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     global kinect
     global orbbec
     name : Optional[str] = None
-    source : cwipc_source_factory_abstract
+    source : cwipc_activesource_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
 
     if args.nodecode:
@@ -88,33 +88,33 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda config="auto": kinect.cwipc_kinect(config) # type: ignore
+            source = lambda config="auto": kinect.cwipc_kinect(config)
         elif args.cameraconfig:
-            source = lambda config=args.cameraconfig: kinect.cwipc_kinect(config) # type: ignore
+            source = lambda config=args.cameraconfig: kinect.cwipc_kinect(config)
         else:
-            source = cast(cwipc_source_factory_abstract, kinect.cwipc_kinect)
+            source = lambda : kinect.cwipc_kinect()
         name = 'kinect'
     elif args.realsense:
         if realsense2 == None:
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda config="auto": realsense2.cwipc_realsense2(config) # type: ignore
+            source = lambda config="auto": realsense2.cwipc_realsense2(config)
         elif args.cameraconfig:
             source = lambda config=args.cameraconfig: realsense2.cwipc_realsense2(config) # type: ignore
         else:
-            source = cast(cwipc_source_factory_abstract, realsense2.cwipc_realsense2)
+            source = lambda : realsense2.cwipc_realsense2()
         name = 'realsense'
     elif args.orbbec:
         if orbbec == None:
             print(f"{sys.argv[0]}: No support for orbbec grabber on this platform")
             sys.exit(-1)
         if autoConfig:
-            source = lambda config="auto": orbbec.cwipc_orbbec(config) # type: ignore
+            source = lambda config="auto": orbbec.cwipc_orbbec(config)
         elif args.cameraconfig:
-            source = lambda config=args.cameraconfig: orbbec.cwipc_orbbec(config) # type: ignore
+            source = lambda config=args.cameraconfig: orbbec.cwipc_orbbec(config)
         else:
-            source = cast(cwipc_source_factory_abstract, orbbec.cwipc_orbbec)
+            source = lambda : orbbec.cwipc_orbbec()
         name = 'orbbec'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
@@ -285,8 +285,7 @@ class SourceServer:
 
     def __del__(self):
         self.stopped = True
-        if self.grabber:
-            self.grabber.free()
+        self.grabber = None
 
     def stop(self) -> None:
         if self.stopped: return
@@ -348,7 +347,7 @@ class SourceServer:
                         continue
                     self.viewer.feed(pc)
                 else:
-                    pc.free()
+                    pc = None
                 self.latency_grab.append(time.time()-pc_timestamp)
             self.times_grab.append(t1-t0)
             if self.count != None:

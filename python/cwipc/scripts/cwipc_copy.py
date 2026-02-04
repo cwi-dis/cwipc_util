@@ -67,7 +67,7 @@ class FileWriter(cwipc_sink_abstract):
                 assert pc
                 self.count = self.count + 1
                 ok = self.save_pc(pc)
-                pc.free()
+                pc = None
                 if not ok:
                     self.error_encountered = True
                     break
@@ -88,7 +88,6 @@ class FileWriter(cwipc_sink_abstract):
         except queue.Full:
             if self.verbose:
                 print(f"writer: dropped pointcloud {pc.timestamp()}")
-            pc.free()
 
     def save_pc(self, pc : cwipc_pointcloud_wrapper) -> bool:
         """Save pointcloud"""

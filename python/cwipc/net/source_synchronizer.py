@@ -39,15 +39,18 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         assert not self.running
         if self.verbose: print('synchronizer: start', flush=True)
         self.running = True
-        for s in self.sources:
-            s.start()
+        # Note: we cannot start the sources ourselves: they are not activesources, they may
+        # be decoders.
+        #for s in self.sources:
+        #    s.start()
         threading.Thread.start(self)
         
     def stop(self) -> None:
         if self.verbose: print('synchronizer: stop', flush=True)
         self.running = False
-        for s in self.sources:
-            s.stop()
+        # See comment in start().
+        # for s in self.sources:
+        #    s.stop()
         try:
             self.output_queue.put(None, block=False)
         except queue.Full:
@@ -99,15 +102,16 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                     latest_timestamp = max(latest_timestamp, ts)
             # Throw away outdated heads
             for i in range(self.n_tile):
-                if self.input_buffers[i] and self.input_buffers[i].timestamp() < earliest_timestamp:
-                    # print(f"synchronizer: free input_buffer[{i}]")
-                    self.input_buffers[i].free()
-                    self.input_buffers[i] = None
+                buf = self.input_buffers[i]
+                if buf:
+                    if buf.timestamp() < earliest_timestamp:
+                        self.input_buffers[i] = None
             # See whether any empty buffer slots can be filled, and see whether any empty ones remain
             any_empty_input_buffers = False
             for i in range(self.n_tile):
                 if self.input_buffers[i] == None:
-                    if self.sources[i].available():
+                    
+                    if self.sources[i].available(False):
                         pc = self.sources[i].get()
                         if not pc:
                             print(f"synchronizer: source {i} returned no point cloud")
@@ -122,7 +126,6 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                             # Unfortunately this partial point cloud is too late
                             too_late = earliest_timestamp - pc.timestamp()
                             if self.verbose: print(f"synchronizer: tile {i}: too late by {too_late}")
-                            pc.free()
                             self.late_per_occurrence.append(too_late)
                             any_empty_input_buffers = True
                     else:
@@ -132,7 +135,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
                 # if self.verbose: print(f"synchronizer: still missing pointclouds")
                 time.sleep(0.001)
                 continue
-            current_timestamps = [pc.timestamp() for pc in self.input_buffers]
+            current_timestamps = [pc.timestamp() for pc in self.input_buffers if pc]
             if self.verbose: print(f"synchronizer: all tiles pc={current_timestamps}")
             current_earliest_timestamp = min(current_timestamps)
             current_latest_timestamp = max(current_timestamps)
@@ -141,7 +144,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             # The alternative is that we always produce a full point cloud, but
             # it may be de-synced (tiles with different timestamps)
             if self.prefer_partial_over_unsynced:
-                to_combine = [pc for pc in self.input_buffers if pc.timestamp() == current_earliest_timestamp]
+                to_combine = [pc for pc in self.input_buffers if pc and pc.timestamp() == current_earliest_timestamp]
                 desync = 0
             else:
                 to_combine = [pc for pc in self.input_buffers]
@@ -154,24 +157,16 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
             # Now we just need to combine the point clouds, and set a reasonable timestamp and cellsize
             result_pc : Optional[cwipc_pointcloud_wrapper] = None
             t0 = time.time()
-            current_cellsize = min([pc.cellsize() for pc in to_combine])
-            must_free_old_result = False
+            current_cellsize = min([pc.cellsize() for pc in to_combine if pc])
             for pc in to_combine:
                 assert pc
+                assert isinstance(pc, cwipc_pointcloud_wrapper)
                 if result_pc == None:
                     result_pc = pc
                 else:
-                    assert(result_pc)
-                    new_result_pc = cwipc_join(result_pc, pc)
-                    if must_free_old_result:
-                        result_pc.free()
-                    must_free_old_result = True
-                    # Don't do this, may be reused later: pc.free()
-                    result_pc = new_result_pc
+                    result_pc = cwipc_join(result_pc, pc)
             t1 = time.time()
             assert result_pc
-            # Sigh... We have to clone so we don't free it next time through the loop
-            result_pc = cwipc_from_packet(result_pc.get_packet())
             result_pc._set_timestamp(current_earliest_timestamp)
             result_pc._set_cellsize(current_cellsize)
             latency = int(time.time()*1000) - current_earliest_timestamp

@@ -30,8 +30,6 @@ class VoxelizeFilter(cwipc_abstract_filter):
         t1_d = time.time()
         self.original_pointcounts.append(pc.count())
         voxelized_pc = cwipc_downsample(pc, self.vsize)
-        if not self.keep_source:
-            pc.free()
         pc = voxelized_pc
         t2_d = time.time()
         self.times.append(t2_d-t1_d)

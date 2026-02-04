@@ -44,8 +44,6 @@ class TransformFilter(cwipc_abstract_filter):
             newpoints.append(p)
         newpc = cwipc_from_points(newpoints, timestamp)
         newpc._set_cellsize(cellsize * self.scale)
-        if not self.keep_source:
-            pc.free()
         t2_d = time.time()
         self.times.append(t2_d-t1_d)
         return newpc
