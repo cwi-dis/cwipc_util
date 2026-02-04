@@ -14,6 +14,7 @@ def main():
         npoints = int(sys.argv[2])
 
     generator = cwipc.cwipc_synthetic(fps, npoints)
+    generator.start()
     sink = cwipc.cwipc_window(sys.argv[0])
 
     ok = True
@@ -21,10 +22,6 @@ def main():
         pc = generator.get()
         assert pc
         ok = sink.feed(pc, True)
-        pc.free()
-
-    generator.free()
-    sink.free()
 
 if __name__ == '__main__':
     main()

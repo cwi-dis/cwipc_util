@@ -11,8 +11,8 @@ def main():
     outdir = sys.argv[2]
 
     generator = cwipc.cwipc_capturer()
-   
-    ok = True
+    generator.start()
+
     for i in range(count):
         if not generator.available(True):
             print("No pointcloud available?")
@@ -20,9 +20,6 @@ def main():
         pc = generator.get()
         assert pc
         cwipc.cwipc_write_debugdump(f"{outdir}/pointcloud-{i}.cwipcdump", pc)
-        pc.free()
-
-    generator.free()
 
 if __name__ == '__main__':
     main()

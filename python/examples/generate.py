@@ -10,15 +10,13 @@ def main():
     directory = sys.argv[2]
 
     generator = cwipc.cwipc_synthetic()
+    generator.start()
 
     for i in range(count):
         pc = generator.get()
         assert pc
         cwipc.cwipc_write(f"{directory}/pointcloud-{i}.ply", pc)
-        pc.free()
-
-    generator.free()
-
+ 
 if __name__ == '__main__':
     main()
     

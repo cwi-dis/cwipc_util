@@ -28,9 +28,6 @@ def main():
     else:
         cwipc.cwipc_write_debugdump(ofn, pc)
 
-    pc.free()
-    decoder.free()
-
    
 if __name__ == '__main__':
     main()

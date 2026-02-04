@@ -32,10 +32,7 @@ def main():
                 pc = cwipc.cwipc_read(fullpath, 0)
             assert pc
             ok = sink.feed(pc, True)
-            pc.free()
-            if not ok: break
 
-    sink.free()
 
 if __name__ == '__main__':
     main()

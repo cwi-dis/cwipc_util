@@ -10,8 +10,6 @@ def main():
 
     cwipc.cwipc_write_debugdump(sys.argv[2], pc)
 
-    pc.free()
-
 if __name__ == '__main__':
     main()
     

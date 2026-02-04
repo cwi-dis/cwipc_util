@@ -11,11 +11,8 @@ def main():
 
     new_pc = cwipc.cwipc_downsample(pc, voxelsize)
 
-    pc.free()
-
     cwipc.cwipc_write(sys.argv[3], new_pc)
 
-    new_pc.free()
 
 if __name__ == '__main__':
     main()

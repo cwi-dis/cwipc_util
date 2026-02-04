@@ -14,6 +14,8 @@ def main():
         config = sys.argv[1]
 
     generator = cwipc.cwipc_capturer(config)
+    generator.start()
+    
     sink = cwipc.cwipc_window(sys.argv[0])
 
     ok = True
@@ -22,14 +24,10 @@ def main():
             pc = generator.get()
             assert pc
             ok = sink.feed(pc, True)
-            pc.free()
         else:
             # If no pointcloud available we still call feed()
             # to allow user interaction
             ok = sink.feed(None, False)
-
-    generator.free()
-    sink.free()
 
 if __name__ == '__main__':
     main()

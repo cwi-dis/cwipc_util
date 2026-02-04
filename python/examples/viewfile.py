@@ -20,11 +20,9 @@ def main():
 
     sink = cwipc.cwipc_window(sys.argv[0])
     sink.feed(pc, True)
-    pc.free()
     ok = True
     while ok:
         ok = sink.feed(None, False)
-    sink.free()
 
 if __name__ == '__main__':
     main()

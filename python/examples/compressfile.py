@@ -18,13 +18,10 @@ def main():
     encoder = cwipc.codec.cwipc_new_encoder(params=dict(octree_bits=7))
 
     encoder.feed(pc)
-    pc.free()
     if not encoder.available(True):
         print("Encoder did not produce compressed point cloud?")
         sys.exit(1)
     data = encoder.get_bytes()
-
-    encoder.free()
 
     with open(ofn, "wb") as fp:
         fp.write(data)
