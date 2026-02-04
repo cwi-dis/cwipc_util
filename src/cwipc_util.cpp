@@ -85,6 +85,11 @@ public:
     }
 };
 
+static std::mutex alloc_dealloc_mutex;
+static int n_cwipc_pointcloud_alloc = 0;
+static int n_cwipc_pointcloud_dealloc = 0;
+static int n_cwipc_uncompressed_pointcloud_alloc = 0;
+static int n_cwipc_uncompressed_pointcloud_dealloc = 0;
 class cwipc_impl : public cwipc_pointcloud {
 protected:
     uint64_t m_timestamp;
@@ -94,7 +99,13 @@ protected:
 
 public:
     cwipc_impl() : m_timestamp(0), m_cellsize(0), m_pc(NULL), m_metadata(NULL) {}
-    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(pc), m_metadata(NULL) {}
+    cwipc_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : m_timestamp(timestamp), m_cellsize(0), m_pc(NULL), m_metadata(NULL)
+    {
+        if (pc) {
+            std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
+            m_pc = pc;
+        }
+    }
 
     ~cwipc_impl() {}
 
@@ -121,13 +132,21 @@ public:
             pc->points.push_back(point);
         }
 
+        std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
         m_pc = pc;
+        n_cwipc_pointcloud_alloc++;
         return npoint;
     }
 
     void free() {
-        m_pc = NULL;
+        {
+            std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
 
+            if (m_pc != NULL) {
+                n_cwipc_pointcloud_dealloc++;
+            }
+            m_pc = NULL;
+        }
         if (m_metadata) {
             delete m_metadata;
         }
@@ -287,9 +306,15 @@ public:
             cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "from_points: could not allocate memory for points, size=" + std::to_string(size));
             return -1;
         }
-
-        m_points_size = size;
-        m_pc = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
+            n_cwipc_uncompressed_pointcloud_alloc++;
+            m_points_size = size;
+            if (m_pc != nullptr) {
+                m_pc = nullptr;
+                n_cwipc_pointcloud_dealloc++;
+            }
+        }
         memcpy(m_points, pointData, size);
 
         return npoint;
@@ -299,10 +324,11 @@ public:
         cwipc_impl::free();
 
         if (m_points) {
+            std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
             ::free(m_points);
+            n_cwipc_uncompressed_pointcloud_dealloc++;
+            m_points = NULL;
         }
-
-        m_points = NULL;
         m_points_size = 0;
     }
 
@@ -356,6 +382,18 @@ const char *cwipc_get_version() {
 #else
     return "unknown";
 #endif
+}
+
+int cwipc_dangling_allocations(bool log) {
+    int n_dangling = n_cwipc_pointcloud_alloc - n_cwipc_pointcloud_dealloc;
+    int n_dangling_uncompressed = n_cwipc_uncompressed_pointcloud_alloc - n_cwipc_uncompressed_pointcloud_dealloc;
+    if (log && n_dangling != 0 || n_dangling_uncompressed != 0) {
+        std::string msg = std::to_string(n_dangling) + " free() mismatch. nAlloc=" + std::to_string(n_cwipc_pointcloud_alloc) + ", nFree=" + std::to_string(n_cwipc_pointcloud_dealloc);
+        _cwipc_log_emit(CWIPC_LOG_LEVEL_WARNING, "cwipc_pointcloud", msg.c_str());
+        msg = std::to_string(n_dangling_uncompressed) + " free() mismatch. nAlloc=" + std::to_string(n_cwipc_uncompressed_pointcloud_alloc) + ", nFree=" + std::to_string(n_cwipc_uncompressed_pointcloud_dealloc);
+        _cwipc_log_emit(CWIPC_LOG_LEVEL_WARNING, "cwipc_pointcloud_uncompressed", msg.c_str());
+    }
+    return std::abs(n_dangling)+std::abs(n_dangling_uncompressed);
 }
 
 cwipc_pointcloud *cwipc_read(const char *filename, uint64_t timestamp, char **errorMessage, uint64_t apiVersion) {

@@ -599,6 +599,11 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT void _cwipc_log_emit(int level, const char* module, const char* message);
 
+    /** \brief Return number of currently allocated pointcloud objects
+     * \param log If memory debugging is enabled it will also emit log messages with information about them.
+     */
+    _CWIPC_UTIL_EXPORT int cwipc_dangling_allocations(bool log);
+
     /** \brief Read pointcloud from .ply file.
      * \param filename The ply file to read.
      * \param timestamp The timestamp to record in the cwipc object.

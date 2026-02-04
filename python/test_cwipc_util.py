@@ -198,6 +198,16 @@ class TestApi(unittest.TestCase):
         self.assertEqual(pc.timestamp(), 1234)
         self._verify_pointcloud(pc)
 
+    def test_cwipc_dangling_allocations(self):
+        """Does the dangling allocation counter work as expected"""
+        old_count = cwipc.cwipc_dangling_allocations(True)
+        pc = cwipc.cwipc_read(PLY_FILENAME, 1234)
+        new_count = cwipc.cwipc_dangling_allocations(True)
+        self.assertEqual(old_count+1, new_count)
+        pc = None
+        newer_count = cwipc.cwipc_dangling_allocations(True)
+        self.assertEqual(old_count, newer_count)
+
     def test_cwipc_read_nonexistent(self):
         """When we read a cwipc from a nonexistent ply file do we get an exception?"""
         with self.assertRaises(cwipc.CwipcError):

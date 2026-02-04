@@ -55,6 +55,7 @@ __all__ = [
     'cwipc_log_configure',
     'cwipc_log_default_callback',
     '_cwipc_log_emit',
+    'cwipc_dangling_allocations',
     'cwipc_read',
     'cwipc_read_debugdump',
     'cwipc_write',
@@ -386,6 +387,9 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
 
     _cwipc_util_dll_reference.cwipc_log_configure.argtypes = [ctypes.c_int, _cwipc_log_callback_t]
     _cwipc_util_dll_reference.cwipc_log_configure.restype = None
+
+    _cwipc_util_dll_reference.cwipc_dangling_allocations.argtypes = [ctypes.c_bool]
+    _cwipc_util_dll_reference.cwipc_dangling_allocations.restype = ctypes.c_int
 
     _cwipc_util_dll_reference._cwipc_log_emit.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
     _cwipc_util_dll_reference._cwipc_log_emit.restype = None
@@ -1099,6 +1103,11 @@ def cwipc_log_default_callback(level : int, message : bytes) -> None:
 def _cwipc_log_emit(level : int, module : str, message : str) -> None:
     """Emit a log message through the cwipc logging system"""
     cwipc_util_dll_load()._cwipc_log_emit(level, module.encode('utf8'), message.encode('utf8'))
+
+def cwipc_dangling_allocations(log : bool) -> int:
+    """Return number of dangling allocations, optionally emitting log messages about them"""
+    rv = cwipc_util_dll_load().cwipc_dangling_allocations(log)
+    return rv
 
 def cwipc_read(filename : str, timestamp : int) -> cwipc_pointcloud_wrapper:
     """Read pointcloud from a .ply file, return as cwipc object. Timestamp must be passsed in too."""
