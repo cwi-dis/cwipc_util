@@ -5,6 +5,7 @@ import warnings
 import os
 import sys
 import logging
+import functools
 if sys.platform == "darwin":
     # Workaround for open3d 0.19 including a faulty libomp.dylib (too old version for some other packages such as libpcl)
     # We load it from the system library path first.
@@ -22,7 +23,7 @@ if sys.platform == "darwin":
 import open3d
 import numpy
 import numpy.typing
-from typing import Optional, List, Type, Any, Union, Dict, Callable
+from typing import Optional, List, Type, Any, Union, Dict, Callable, Iterable
 from .abstract import cwipc_pointcloud_abstract, cwipc_source_abstract, cwipc_activesource_abstract, cwipc_tileinfo_dict
 
 __all__ = [
@@ -75,6 +76,7 @@ __all__ = [
     'cwipc_tilemap',
     'cwipc_colormap',
     'cwipc_join',
+    'cwipc_join_multi',
     'cwipc_crop',
 ]
 
@@ -1288,7 +1290,11 @@ def cwipc_join(pc1 : cwipc_pointcloud_wrapper, pc2 : cwipc_pointcloud_wrapper) -
     """Return a pointcloud that is the union of the two arguments"""
     rv = cwipc_util_dll_load().cwipc_join(pc1.as_cwipc_p(), pc2.as_cwipc_p())
     return cwipc_pointcloud_wrapper(rv)
-  
+
+def cwipc_join_multi(pcs : Iterable[cwipc_pointcloud_wrapper]) -> cwipc_pointcloud_wrapper:
+    rv = functools.reduce(lambda pc1, pc2 : cwipc_join(pc1, pc2), pcs)
+    return rv
+
 def cwipc_proxy(host : str, port : int) -> cwipc_activesource_wrapper:
     """Returns a cwipc_source object that starts a server and receives pointclouds over a socket connection"""
     errorString = ctypes.c_char_p()
