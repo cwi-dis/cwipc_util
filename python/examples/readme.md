@@ -16,7 +16,10 @@ C:/> cwipc_pymodules_install.bat
 
 The Python package is documented and type-hinted, so if you use an IDE like `vscode` you should get popup hints as you type.
 
-> The one surprising thing to note is that **you** are responsible for calling `.free()` on any pointcloud or other object when you are done with it. The reason for this is that the cwipc Python API has been designed to cooperate with the cwipc APIs in other languages, and it is possible to pass the (possibly huge) point cloud objects around between languages without copying. So you, the implementor, have to free the object, _but only if you know you have not passed to object to code in some other language that has taken ownership of that object_.
+> If you have used cwipc before v8.0 you may remember having to call `free()` yourself. This is no longer the case.
+> But these scripts were very helpful with this feature, if you define an environment variable 
+> `CWIPC_DANGLING_ALLOCATIONS` these scripts will tell you about `cwipc_pointcloud` objects that somehow escaped
+> being freed when no longer in use.
 
 The examples here are pretty minimal: no reasonable command line arguments, and little or no respect for timing.
 

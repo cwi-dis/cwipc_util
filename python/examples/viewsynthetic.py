@@ -1,4 +1,5 @@
 import sys
+import os
 import cwipc
 
 def main():
@@ -25,4 +26,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+    if os.getenv('CWIPC_DANGLING_ALLOCATIONS'):
+        cwipc.cwipc_dangling_allocations(True)
     
