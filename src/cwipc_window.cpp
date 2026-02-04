@@ -103,8 +103,8 @@ public:
                     get_skeleton(metadata);
                 }
             }
+            pc->free();
         }
-        pc->free();
         
         m_window->prepare_gl(m_eye_distance*sin(m_eye_angle), m_eye_height, m_eye_distance*cos(m_eye_angle), m_pointsize);
 
