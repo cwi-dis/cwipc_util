@@ -589,7 +589,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT const char *cwipc_get_version();
 
     /** \brief configure logging.
-     * The environment variable CWIPC_LOG_LEVEL can also be used to set the log level.
+     * The environment variable CWIPC_LOGGING can also be used to set the log level.
      * Subsequent calls to this function will override previous settings.
      * Ensure to clear callback before cleanup when calling from other languages.
      * \param level The maximum log level in which we are interested. CWIPC_LOG_LEVEL_NONE keeps log-level as-is.
