@@ -79,3 +79,4 @@ add_test(NAME cwipc_grab
 	)
 cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv_with_cwipc)
 
+add_subdirectory(examples)
