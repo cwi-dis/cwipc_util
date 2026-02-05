@@ -18,7 +18,7 @@ include(CwipcPythonSupport)
 
 cwipc_build_wheel(NAME "cwipc_util" SOURCEDIR ${CMAKE_CURRENT_SOURCE_DIR} WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 file(COPY test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
-
+file(COPY timing_tests.py DESTINATION ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 #
 # Installation.
 #
@@ -26,7 +26,7 @@ file(COPY test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 # Copy the whole Python staging subdirectory to the installation (so all scripts are available for inspection and testing)
 # Also install the wheel into the current system Python.
 
-install(FILES test_cwipc_util.py DESTINATION ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
+install(FILES test_cwipc_util.py timing_tests.py DESTINATION ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
 install(DIRECTORY examples DESTINATION  ${CMAKE_PYWHEELS_INSTALL_DIRECTORY})
 cwipc_install_wheel(NAME "cwipc_util" WHEELDIR ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY})
 
@@ -50,6 +50,12 @@ add_test(NAME cwipc_util_python_tests
 	)
 cwipc_python_test(TEST cwipc_util_python_tests FIXTURES_REQUIRED venv_with_cwipc)
 
+add_test(NAME timing_tests
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_PYWHEELS_OUTPUT_DIRECTORY}/timing_tests.py
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+	)
+cwipc_python_test(TEST timing_tests FIXTURES_REQUIRED venv_with_cwipc)
+
 # Test the various scripts
 
 
@@ -59,13 +65,13 @@ add_test(NAME cwipc_view
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv_with_cwipc)
 
 add_test(NAME cwipc_register
-	COMMAND ${Python3_BINDIR}/cwipc_register --help
+	COMMAND ${Python3_BINDIR}/cwipc_register --version
 	)
 cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv_with_cwipc)
 set_tests_properties(cwipc_register PROPERTIES RUN_SERIAL TRUE)
 
 add_test(NAME cwipc_forward
-	COMMAND ${Python3_BINDIR}/cwipc_forward --help
+	COMMAND ${Python3_BINDIR}/cwipc_forward --version
 	)
 cwipc_python_test(TEST cwipc_forward FIXTURES_REQUIRED venv_with_cwipc)
 
