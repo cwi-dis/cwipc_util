@@ -198,7 +198,7 @@ public:
      * For internal use only: returns a new cwipc_pointcloud that shares the underlying (refcounted) data.
      */
     virtual cwipc_pointcloud *_shallowcopy() = 0;
-    
+
     /** \brief Time this pointcloud was captured.
      * \return Time in milliseconds, since some unspecified origin.
      */
@@ -467,7 +467,8 @@ public:
      * user some interaction commands to inspect it.
      *
      * Note that if the sink needs to keep the pointcloud data it will make a
-     * copy, so after feed() returns the caller can safely call pc.free().
+     * copy (or shallow copy), so after feed() returns the caller still owns
+     * the original point cloud and can reuse it or call free().
      */
     virtual bool feed(cwipc_pointcloud* pc, bool clear) = 0;
 
