@@ -415,6 +415,9 @@ def cwipc_util_dll_load(libname : Optional[str]=None) -> ctypes.CDLL:
     _cwipc_util_dll_reference.cwipc_pointcloud_free.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_free.restype = None
     
+    _cwipc_util_dll_reference.cwipc_pointcloud__shallowcopy.argtypes = [cwipc_pointcloud_p]
+    _cwipc_util_dll_reference.cwipc_pointcloud__shallowcopy.restype = cwipc_pointcloud_p
+    
     _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.argtypes = [cwipc_pointcloud_p]
     _cwipc_util_dll_reference.cwipc_pointcloud_timestamp.restype = ctypes.c_ulonglong
     
@@ -616,6 +619,12 @@ class cwipc_pointcloud_wrapper(cwipc_pointcloud_abstract):
         self._must_be_freed = False
         return rv
     
+    def clone(self) -> 'cwipc_pointcloud_wrapper':
+        """Make a clone (shallow copy) of this point cloud object"""
+        clone_p = cwipc_util_dll_load().cwipc_pointcloud__shallowcopy(self.as_cwipc_p())
+        rv = type(self)(clone_p)
+        return rv
+
     def timestamp(self) -> int:
         """Returns timestamp (microseconds) when this pointcloud was captured (relative to some unspecified origin)"""
         rv = cwipc_util_dll_load().cwipc_pointcloud_timestamp(self.as_cwipc_p())

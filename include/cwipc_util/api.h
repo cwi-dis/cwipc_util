@@ -713,6 +713,13 @@ extern "C" {
      */
     _CWIPC_UTIL_EXPORT void cwipc_pointcloud_free(cwipc_pointcloud* pc);
 
+    /** \brief Create a shallow copy of a pointcloud object.
+     * \param pc The cwipc_pointcloud object.
+     * \return The new cwipc_pointcloud object.
+     * The shallow copy shares the underlying (refcounted) point data storage.
+     */
+    _CWIPC_UTIL_EXPORT cwipc_pointcloud *cwipc_pointcloud__shallowcopy(cwipc_pointcloud* pc);
+    
     /** \brief Time this pointcloud was captured (C interface).
      * \param pc The cwipc_pointcloud object.
      * \return Time in milliseconds, since some unspecified origin.

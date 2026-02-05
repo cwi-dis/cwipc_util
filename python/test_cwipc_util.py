@@ -208,6 +208,20 @@ class TestApi(unittest.TestCase):
         newer_count = cwipc.cwipc_dangling_allocations(True)
         self.assertEqual(old_count, newer_count)
 
+    def test_cwipc_clone(self):
+        """Does cloning a point cloud work"""
+        old_count = cwipc.cwipc_dangling_allocations(False)
+        pc = cwipc.cwipc_read(PLY_FILENAME, 1234)
+        new_pc = pc.clone()
+        int_count = cwipc.cwipc_dangling_allocations(False)
+        self.assertEqual(old_count+2, int_count)
+        self.assertEqual(pc.count(), new_pc.count())
+        self.assertEqual(pc.timestamp(), new_pc.timestamp())
+        pc = None
+        new_pc = None
+        new_count = cwipc.cwipc_dangling_allocations(False)
+        self.assertEqual(old_count, new_count)
+
     def test_cwipc_read_nonexistent(self):
         """When we read a cwipc from a nonexistent ply file do we get an exception?"""
         with self.assertRaises(cwipc.CwipcError):

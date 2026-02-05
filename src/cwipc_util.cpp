@@ -713,6 +713,10 @@ void cwipc_pointcloud_free(cwipc_pointcloud *pc) {
     pc->free();
 }
 
+cwipc_pointcloud *cwipc_pointcloud__shallowcopy(cwipc_pointcloud* pc) {
+    return pc->_shallowcopy();
+}
+
 uint64_t cwipc_pointcloud_timestamp(cwipc_pointcloud *pc) {
     return pc->timestamp();
 }
