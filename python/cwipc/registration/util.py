@@ -6,7 +6,7 @@ except ImportError:
     from typing_extensions import override
 from ..abstract import *
 from .abstract import *
-from .. import cwipc_pointcloud_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_from_packet, cwipc_downsample, cwipc_join
+from .. import cwipc_pointcloud_wrapper, cwipc_from_points, cwipc_from_numpy_array, cwipc_from_numpy_matrix, cwipc_tilefilter, cwipc_downsample, cwipc_join
 import open3d
 import open3d.visualization
 import numpy as np

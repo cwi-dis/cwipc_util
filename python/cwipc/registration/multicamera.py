@@ -12,7 +12,7 @@ import numpy as np
 import numpy.linalg
 import scipy.spatial
 from matplotlib import pyplot as plt
-from cwipc import cwipc_pointcloud_wrapper, cwipc_from_packet, cwipc_from_numpy_matrix, cwipc_join, CwipcError
+from cwipc import cwipc_pointcloud_wrapper, cwipc_from_numpy_matrix, cwipc_join, CwipcError
 
 from cwipc.registration.abstract import RegistrationTransformation
 from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter, cwipc_downsample, cwipc_write, cwipc_colormap

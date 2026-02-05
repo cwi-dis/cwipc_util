@@ -57,14 +57,13 @@ class _Filesource(cwipc_activesource_abstract):
     def get(self) -> Optional[cwipc.cwipc_pointcloud_wrapper]:
         if not self.filenames:
             if self.single_file_mode_pc:
-                return cwipc.cwipc_from_packet(self.single_file_mode_pc.get_packet())
+                return self.single_file_mode_pc.clone()
             return None
         fn = self.filenames.pop(0)
         if self.loop: self.filenames.append(fn)
         rv = self._get(fn)
         if self.single_file_mode and rv:
-            # xxxjack we miss a clone operation on cwipc_pointcloud_wrapper.
-            self.single_file_mode_pc = cwipc.cwipc_from_packet(rv.get_packet())
+            self.single_file_mode_pc = rv.clone()
         if time.time() < self.earliest_return:
             time.sleep(self.earliest_return - time.time())
         self.earliest_return = time.time() + self.delta_t

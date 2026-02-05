@@ -1,7 +1,7 @@
 import time
 from typing import Union, List, Tuple
 from .abstract import cwipc_abstract_filter
-from ..util import cwipc_pointcloud_wrapper, cwipc_from_points
+from ..util import cwipc_pointcloud_wrapper
 from ..registration.util import cwipc_randomize_floor
 
 class RandomizeFloorFilter(cwipc_abstract_filter):

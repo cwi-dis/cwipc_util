@@ -1,7 +1,7 @@
 import time
 from typing import Union, List
 from .abstract import cwipc_abstract_filter
-from ..util import cwipc_pointcloud_wrapper, cwipc_from_points
+from ..util import cwipc_pointcloud_wrapper
 from ..registration.util import transformation_frompython, cwipc_transform
 
 class Transform44Filter(cwipc_abstract_filter):

@@ -5,7 +5,7 @@ import threading
 import queue
 from typing import Optional, List, Union
 from .abstract import *
-from ..util import cwipc_join, cwipc_pointcloud_wrapper, cwipc_from_packet
+from ..util import cwipc_join, cwipc_pointcloud_wrapper
 
 
 class _Synchronizer(threading.Thread, cwipc_source_abstract):

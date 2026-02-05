@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.spatial
 import open3d
-from .. import cwipc_pointcloud_wrapper, cwipc_tilefilter, cwipc_from_points, cwipc_join
+from .. import cwipc_pointcloud_wrapper, cwipc_join
 from ..util import cwipc_point_numpy_matrix_value_type
 from .abstract import *
 from .util import transformation_identity, BaseAlgorithm, cwipc_transform, algdoc
