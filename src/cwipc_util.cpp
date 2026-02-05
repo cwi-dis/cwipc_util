@@ -105,6 +105,7 @@ public:
         if (pc) {
             std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
             m_pc = pc;
+            n_cwipc_pointcloud_alloc++;
         }
     }
 
