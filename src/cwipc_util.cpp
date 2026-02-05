@@ -111,6 +111,12 @@ public:
 
     ~cwipc_impl() {}
 
+    cwipc_pointcloud *_shallowcopy() override {
+        auto rv = new cwipc_impl(m_pc, m_timestamp);
+        rv->_set_cellsize(m_cellsize);
+        return rv;
+    }
+
     int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp) {
         if (npoint * sizeof(struct cwipc_point) != size) {
             return -1;
@@ -140,7 +146,7 @@ public:
         return npoint;
     }
 
-    void free() {
+    void free() override {
         {
             std::lock_guard<std::mutex> lock(alloc_dealloc_mutex);
 
@@ -156,15 +162,15 @@ public:
         m_metadata = NULL;
     }
 
-    uint64_t timestamp() {
+    uint64_t timestamp() override {
         return m_timestamp;
     }
 
-    float cellsize() {
+    float cellsize() override {
         return m_cellsize;
     }
 
-    void _set_cellsize(float cellsize) {
+    void _set_cellsize(float cellsize) override {
         if (cellsize < 0 && m_pc) {
             // Guess cellsize by traversing over adjacent points
             // util we find 2 sets with minimum distance.
@@ -197,19 +203,19 @@ public:
         m_cellsize = cellsize;
     }
 
-    void _set_timestamp(uint64_t timestamp) {
+    void _set_timestamp(uint64_t timestamp) override {
         m_timestamp = timestamp;
     }
 
-    int count() {
+    int count() override {
         return m_pc->size();
     }
 
-    size_t get_uncompressed_size() {
+    size_t get_uncompressed_size() override {
         return m_pc->size() * sizeof(struct cwipc_point);
     }
 
-    int copy_uncompressed(struct cwipc_point *pointData, size_t size) {
+    int copy_uncompressed(struct cwipc_point *pointData, size_t size) override {
         if (size < m_pc->size() * sizeof(struct cwipc_point)) {
             cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "copy_uncompressed: buffer too small");
             return -1;
@@ -231,7 +237,7 @@ public:
         return npoint;
     }
 
-    size_t copy_packet(uint8_t *packet, size_t size) {
+    size_t copy_packet(uint8_t *packet, size_t size) override {
         size_t dataSize = get_uncompressed_size();
         size_t sizeNeeded = sizeof(struct cwipc_cwipcdump_header) + dataSize;
 
@@ -264,11 +270,11 @@ public:
         return sizeNeeded;
     }
 
-    cwipc_pcl_pointcloud access_pcl_pointcloud() {
+    cwipc_pcl_pointcloud access_pcl_pointcloud() override {
         return m_pc;
     }
 
-    cwipc_metadata *access_metadata() {
+    cwipc_metadata *access_metadata() override {
         if (m_metadata == NULL) {
             m_metadata = new cwipc_metadata_impl();
         }
@@ -294,6 +300,12 @@ public:
     cwipc_uncompressed_impl(cwipc_pcl_pointcloud pc, uint64_t timestamp) : cwipc_impl(pc, timestamp), m_points(NULL), m_points_size(0) {}
 
     ~cwipc_uncompressed_impl() {}
+
+    cwipc_pointcloud* _shallowcopy() override {
+        // Ensure the m_pc is initialized
+        (void)access_pcl_pointcloud();
+        return cwipc_impl::_shallowcopy();
+    }
 
     int from_points(struct cwipc_point *pointData, size_t size, int npoint, uint64_t timestamp) {
         if (npoint * sizeof(struct cwipc_point) != size) {

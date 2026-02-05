@@ -194,6 +194,11 @@ public:
      */
     virtual void free() = 0;
 
+    /** \brief Create a shallow copy of this point cloud
+     * For internal use only: returns a new cwipc_pointcloud that shares the underlying (refcounted) data.
+     */
+    virtual cwipc_pointcloud *_shallowcopy() = 0;
+    
     /** \brief Time this pointcloud was captured.
      * \return Time in milliseconds, since some unspecified origin.
      */
