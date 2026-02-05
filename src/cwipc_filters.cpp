@@ -35,6 +35,7 @@ cwipc_pointcloud* cwipc_downsample_voxelgrid(cwipc_pointcloud *pc, float cellsiz
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_downsample_voxelgrid", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -96,6 +97,7 @@ cwipc_pointcloud* cwipc_downsample(cwipc_pointcloud *pc, float cellsize) {
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_downsample", "pcl_pointcloud is NULL");
         return NULL;
     }
     float oldcellsize = pc->cellsize();
@@ -184,6 +186,7 @@ cwipc_pcl_pointcloud cwipc_remove_outliers(cwipc_pointcloud* pc, int kNeighbors,
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_remove_outliers", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -224,6 +227,7 @@ cwipc_pointcloud* cwipc_remove_outliers(cwipc_pointcloud* pc, int kNeighbors, fl
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_remove_outliers", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -282,6 +286,7 @@ cwipc_pointcloud* cwipc_tilefilter(cwipc_pointcloud *pc, int tile) {
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_tilefilter", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -308,6 +313,7 @@ cwipc_pointcloud* cwipc_tilemap(cwipc_pointcloud *pc, uint8_t map[256]) {
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_tilemap", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -332,6 +338,7 @@ cwipc_pointcloud* cwipc_crop(cwipc_pointcloud *pc, float bbox[6]) {
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_crop", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -360,6 +367,7 @@ cwipc_pointcloud* cwipc_colormap(cwipc_pointcloud *pc, uint32_t clearBits, uint3
     cwipc_pcl_pointcloud src = pc->access_pcl_pointcloud();
 
     if (src == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_colormap", "pcl_pointcloud is NULL");
         return NULL;
     }
 
@@ -386,6 +394,7 @@ cwipc_pointcloud* cwipc_join(cwipc_pointcloud *pc1, cwipc_pointcloud *pc2) {
     cwipc_pcl_pointcloud src2 = pc2->access_pcl_pointcloud();
 
     if (src1 == NULL || src2 == NULL) {
+        cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_join", "some pcl_pointcloud is NULL");
         return NULL;
     }
 
