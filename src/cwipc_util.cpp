@@ -3,6 +3,7 @@
 #include <inttypes.h>
 
 #include <chrono>
+#include <mutex>
 
 #include <pcl/point_cloud.h>
 #include <pcl/io/ply_io.h>
