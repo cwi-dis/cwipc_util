@@ -68,7 +68,7 @@ add_test(NAME cwipc_register
 	COMMAND ${Python3_BINDIR}/cwipc_register --version
 	)
 cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv_with_cwipc)
-set_tests_properties(cwipc_register PROPERTIES RUN_SERIAL TRUE)
+set_tests_properties(cwipc_register PROPERTIES RESOURCE_LOCK realsense_api_lock orbbec_api_lock kinect_api_lock)
 
 add_test(NAME cwipc_forward
 	COMMAND ${Python3_BINDIR}/cwipc_forward --version
