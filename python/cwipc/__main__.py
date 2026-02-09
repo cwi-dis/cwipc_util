@@ -98,7 +98,7 @@ def main():
         sys.exit(run_python())
     try:
         mod = __import__(f'cwipc.scripts.cwipc_{command}', fromlist=[''])
-    except ImportError:
+    except ModuleNotFoundError:
         print(f"Unknown command '{command}'. Use -h for help.")
         sys.exit(1)
     sys.argv[0] = sys.argv[0] + ' ' + command
