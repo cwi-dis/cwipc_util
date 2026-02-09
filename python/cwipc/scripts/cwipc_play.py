@@ -56,11 +56,11 @@ def main():
     #
     # Create source
     #
-    sourceFactory, source_name = cwipc_genericsource_factory(args)
+    sourceFactory = activesource_factory_from_args(args)
     source = sourceFactory()
     visualizer = Visualizer(args=args)
 
-    sourceServer = SourceServer(source, visualizer, args, source_name=source_name)
+    sourceServer = SourceServer(source, visualizer, args)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_play.SourceServer")
     if visualizer:
         visualizer.set_producer(sourceThread)

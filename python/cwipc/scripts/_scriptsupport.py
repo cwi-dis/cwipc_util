@@ -7,6 +7,8 @@ import traceback
 import warnings
 from typing import cast, Union, List, Callable
 
+from cwipc.abstract import cwipc_tileinfo_dict
+
 from .. import cwipc_check_module,cwipc_pointcloud_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
 from ..net import source_netclient
 from ..net import source_decoder
@@ -20,7 +22,7 @@ __all__ = [
     "SetupStackDumper",
     "BaseArgumentParser",
     "ArgumentParser",
-    "cwipc_genericsource_factory",
+    "activesource_factory_from_args",
     "SourceServer",
     "beginOfRun",
     "endOfRun"
@@ -40,12 +42,82 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=False) -> tuple[cwipc_activesource_factory_abstract, Optional[str]]:
+class pipeline_activesource(cwipc_activesource_abstract):
+    """A wrapper around an active raw source feeding into a decoder.
+    Produces the output of the decoder, but control commands are forwarded to the active reader.
+    """
+    def __init__(self, reader : cwipc_activerawsource_abstract, decoder : cwipc_source_abstract):
+        self.__reader = reader
+        self.__decoder = decoder
+
+    def start(self) -> bool:
+        return self.__reader.start()
+    
+    def stop(self) -> None:
+        self.__reader.stop()
+
+    def free(self) -> None:
+        if self.__decoder:
+            self.__decoder.free()
+
+    def eof(self) -> bool:
+        if not self.__decoder:
+            return True
+        return self.__decoder.eof()
+
+    def available(self, wait: bool) -> bool:
+        if not self.__decoder:
+            return False
+        return self.__decoder.available(wait)
+
+    def get(self) -> source_netclient.cwipc_pointcloud_abstract | None:
+        if not self.__decoder:
+            return None
+        return self.__decoder.get() 
+
+    def statistics(self) -> None:
+        pass
+
+    def reload_config(self, config: str | bytes | None) -> None:
+        raise NotImplementedError
+
+    def get_config(self) -> bytes:
+        raise NotImplementedError
+
+    def seek(self, timestamp: int) -> bool:
+        raise NotImplementedError
+
+    def request_metadata(self, name: str) -> None:
+        raise NotImplementedError
+
+    def is_metadata_requested(self, name: str) -> bool:
+        raise NotImplementedError
+
+    def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
+        raise NotImplementedError
+
+    def maxtile(self) -> int:
+        raise NotImplementedError
+
+    def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
+        raise NotImplementedError
+
+
+class pipelined_activesource_factory:
+    def __init__(self, reader_factory : cwipc_activerawsource_factory_abstract, decoder_factory : cwipc_decoder_factory_abstract):
+        self.reader_factory = reader_factory
+        self.decoder_factory = decoder_factory
+
+    def __call__(self) -> cwipc_activesource_abstract:
+        reader = self.reader_factory()
+        decoder = self.decoder_factory(reader)
+        return pipeline_activesource(reader, decoder)
+
+def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=False) -> cwipc_activesource_factory_abstract:
     """Create a cwipc_source based on command line arguments.
     Could be synthetic, realsense, kinect, proxy, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
-    name : Optional[str] = None
     source : cwipc_activesource_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
 
@@ -64,7 +136,6 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda config=args.cameraconfig: kinect.cwipc_kinect(config)
         else:
             source = lambda : kinect.cwipc_kinect()
-        name = 'kinect'
     elif args.realsense:
         if not cwipc_check_module("realsense2"):
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
@@ -76,7 +147,6 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda config=args.cameraconfig: realsense2.cwipc_realsense2(config) # type: ignore
         else:
             source = lambda : realsense2.cwipc_realsense2()
-        name = 'realsense'
     elif args.orbbec:
         if not cwipc_check_module("orbbec"):
             print(f"{sys.argv[0]}: No support for orbbec grabber on this platform")
@@ -88,13 +158,10 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda config=args.cameraconfig: orbbec.cwipc_orbbec(config)
         else:
             source = lambda : orbbec.cwipc_orbbec()
-        name = 'orbbec'
     elif args.synthetic:
         source = lambda : cwipc_synthetic(fps=args.fps, npoints=args.npoints)
-        name = None
     elif args.proxy:
         source = lambda : cwipc_proxy('', args.proxy)
-        name = None
     elif args.playback:
         if not os.path.isdir(args.playback):
             filename = args.playback
@@ -103,7 +170,6 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 print(f'{sys.argv[0]}: {filename}: unknown playback file type')
                 sys.exit(-1)
             source = lambda : playback.cwipc_playback([filename], ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
-            name = 'playback'
         else:
             dirname = args.playback
             playback_type = _guess_playback_type(os.listdir(dirname))
@@ -111,24 +177,17 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
                 print(f'{sys.argv[0]}: {dirname}: should contain only one of .ply, .cwipcdump or .cwicpc files')
                 sys.exit(-1)
             source = lambda : playback.cwipc_playback(dirname, ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
-            name = 'playback'
     elif args.netclient:
-        source = lambda : (
-            decoder_factory(
-                source_netclient.cwipc_source_netclient(
-                    args.netclient,
-                    verbose=(args.verbose > 1)
-                    ),
-                verbose=(args.verbose > 1)
-                )
-            )
-        name = None
+        source = pipelined_activesource_factory(
+            lambda : source_netclient.cwipc_source_netclient(args.netclient,verbose = (args.verbose > 1)),
+            lambda rdr : decoder_factory(rdr, verbose = (args.verbose > 1))
+        )
     elif args.mt_netclient:
         s_args = args.mt_netclient.split(':')
         n_tile = int(s_args[2])
         n_qual = int(s_args[3])
         netclient = f"{s_args[0]}:{s_args[1]}"
-        def source_mt_netclient(netclient=netclient, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
+        def source_mt_netclient(netclient=netclient, n_tile=n_tile, n_qual=n_qual) -> cwipc_activesource_abstract:
             rdr = source_netclient.cwipc_multisource_netclient(
                 netclient,
                 n_tile,
@@ -144,21 +203,16 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         source = source_mt_netclient
 
     elif args.lldplay:
-        source = lambda : (
-            decoder_factory(
-                source_lldplay.cwipc_source_lldplay(
-                    args.lldplay, 
-                    verbose=(args.verbose > 1)
-                    ),
-                verbose=(args.verbose > 1)
-                )
-            )
-        name = None
+        source = pipelined_activesource_factory(
+            lambda : source_lldplay.cwipc_source_lldplay(args.lldplay, verbose = args.verbose > 1),
+            lambda rdr : decoder_factory(rdr, verbose = (args.verbose > 1))
+        )
+
     elif args.mt_lldplay:
         url = args.mt_lldplay
         n_tile = 0
         n_qual = 0
-        def source_mt_lldplay(url=url, n_tile=n_tile, n_qual=n_qual) -> cwipc_source_abstract:
+        def source_mt_lldplay(url=url, n_tile=n_tile, n_qual=n_qual) -> cwipc_activesource_abstract:
             rdr = source_lldplay.cwipc_multisource_lldplay(
                 url,
                 verbose = (args.verbose > 1)
@@ -187,9 +241,7 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda : cwipc_capturer(args.cameraconfig)
         else:
             source = cast(cwipc_activesource_factory_abstract, cwipc_capturer)
-        name = 'auto'
-        _ = source
-    return source, name
+    return source
 
 def _guess_playback_type(filenames : List[str]) -> Optional[str]:
     has_ply = False
@@ -216,7 +268,7 @@ class SourceServer:
     
     pc_filters : List[filters.cwipc_abstract_filter]
 
-    def __init__(self, grabber : cwipc_source_abstract, viewer, args : argparse.Namespace, source_name : Optional[str]=None):
+    def __init__(self, grabber : cwipc_activesource_abstract, viewer, args : argparse.Namespace):
         self.grabber = grabber
         self.verbose = args.verbose
         self.count = args.count
@@ -230,7 +282,6 @@ class SourceServer:
         self.stopped = True
         self.lastGrabTime = None
         self.fps = None
-        self.source_name = source_name
         self.grabber.start()
         self.stopped = False
         self.pc_filters = []
@@ -246,7 +297,8 @@ class SourceServer:
     def stop(self) -> None:
         if self.stopped: return
         if self.verbose: print("grab: stopping", flush=True)
-        self.grabber.stop()
+        if self.grabber:
+            self.grabber.stop()
         self.stopped = True
         
     def grab_pc(self) -> Optional[cwipc_pointcloud_wrapper]:
@@ -272,6 +324,7 @@ class SourceServer:
         return cast(cwipc_pointcloud_wrapper, pc)
         
     def run(self) -> None:
+        assert self.grabber
         if self.inpoint:
             result = self.grabber.seek(self.inpoint)
             if result:
@@ -316,7 +369,8 @@ class SourceServer:
         self.print1stat('capture_duration', self.times_grab)
         self.print1stat('capture_pointcount', self.pointcounts_grab, isInt=True)
         self.print1stat('capture_latency', self.latency_grab)
-        self.grabber.statistics()
+        if self.grabber:
+            self.grabber.statistics()
         for filter in self.pc_filters:
             filter.statistics()
         

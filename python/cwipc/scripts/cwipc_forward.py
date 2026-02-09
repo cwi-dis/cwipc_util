@@ -40,7 +40,7 @@ def main():
     #
     # Create source
     #
-    sourceFactory, source_name = cwipc_genericsource_factory(args)
+    sourceFactory = activesource_factory_from_args(args)
     source = sourceFactory()
     #
     # Check how many streams we need
@@ -111,7 +111,7 @@ def main():
     if args.octree_bits or args.jpeg_quality or tiledescriptions:
         forwarder.set_encoder_params(octree_bits=args.octree_bits, jpeg_quality=args.jpeg_quality, tiles=tiledescriptions) # type: ignore
 
-    sourceServer = SourceServer(source, forwarder, args, source_name=source_name)
+    sourceServer = SourceServer(source, forwarder, args)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_forward.SourceServer")
     if forwarder:
         forwarder.set_producer(sourceThread)

@@ -162,7 +162,7 @@ class _LLDSingleTileSource(cwipc_rawsource_abstract):
         self.multisource.statistics()
 
 
-class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
+class _LLDashPlayoutSource(threading.Thread, cwipc_activerawmultisource_abstract):
     # xxxjack need to check that these are still needed...
     # If no data is available from the sub this is how long we sleep before trying again:
     SUB_WAIT_TIME=0.01
@@ -472,7 +472,7 @@ class _LLDashPlayoutSource(threading.Thread, cwipc_rawmultisource_abstract):
         return
 
         
-def cwipc_source_lldplay(address : str, verbose : bool=False) -> cwipc_rawsource_abstract:
+def cwipc_source_lldplay(address : str, verbose : bool=False) -> cwipc_activerawsource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from a DASH stream using MotionSpell lldash"""
     _lldplay_dll()
     msrc = _LLDashPlayoutSource(address, verbose=verbose)
@@ -486,7 +486,7 @@ def cwipc_source_lldplay(address : str, verbose : bool=False) -> cwipc_rawsource
     return src
 
         
-def cwipc_multisource_lldplay(address : str, verbose : bool=False) -> cwipc_rawmultisource_abstract:
+def cwipc_multisource_lldplay(address : str, verbose : bool=False) -> cwipc_activerawmultisource_abstract:
     """Return multisource that reads tiled streams using multiple netclients"""
     msrc = _LLDashPlayoutSource(address, verbose=verbose)
     msrc.start()

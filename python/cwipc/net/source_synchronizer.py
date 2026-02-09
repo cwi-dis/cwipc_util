@@ -4,17 +4,19 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union
+
+from cwipc.abstract import cwipc_tileinfo_dict
 from .abstract import *
 from ..util import cwipc_join, cwipc_pointcloud_wrapper
 
 
-class _Synchronizer(threading.Thread, cwipc_source_abstract):
+class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
     """A source that combines point clouds gotten from multiple (tiled) sources into one stream."""
     
     QUEUE_WAIT_TIMEOUT=1
     output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
-    def __init__(self, reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
+    def __init__(self, reader : cwipc_activerawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetDecoder'
         self.reader = reader
@@ -39,10 +41,11 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         assert not self.running
         if self.verbose: print('synchronizer: start', flush=True)
         self.running = True
-        # Note: we cannot start the sources ourselves: they are not activesources, they may
+        # Note: we don't start the sources ourselves: they are not activesources, they may
         # be decoders.
         #for s in self.sources:
         #    s.start()
+        self.reader.start()
         threading.Thread.start(self)
         
     def stop(self) -> None:
@@ -51,6 +54,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
         # See comment in start().
         # for s in self.sources:
         #    s.stop()
+        self.reader.stop()
         try:
             self.output_queue.put(None, block=False)
         except queue.Full:
@@ -215,7 +219,7 @@ class _Synchronizer(threading.Thread, cwipc_source_abstract):
 class _MQSynchronizer(_Synchronizer):
     """A source that combines point clouds gotten from multiple multi-quality sources into one stream."""
     
-    def __init__(self, reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
+    def __init__(self, reader : cwipc_activerawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False):
         super().__init__(reader, sources, verbose=verbose)
         self.description : cwipc_multistream_description = []
         self.current_quality : int = 0
@@ -229,8 +233,27 @@ class _MQSynchronizer(_Synchronizer):
         for tIdx in range(len(self.sources)):
             self.reader.select_tile_quality(tIdx, self.current_quality)
         return f"quality {self.current_quality} of {nQualities}"
+
+    def reload_config(self, config: str | bytes | None) -> None:
+        raise NotImplementedError
+
+    def get_config(self) -> bytes:
+        raise NotImplementedError
+
+    def seek(self, timestamp: int) -> bool:
+        raise NotImplementedError
+
+    def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
+        raise NotImplementedError
+
+    def maxtile(self) -> int:
+        raise NotImplementedError
+
+    def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
+        raise NotImplementedError
+
         
-def cwipc_source_synchronizer(reader : cwipc_rawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_source_abstract:
+def cwipc_source_synchronizer(reader : cwipc_activerawmultisource_abstract, sources : List[cwipc_source_abstract], verbose : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that combines and synchronizes pointclouds from multiple sources"""
     rv = _MQSynchronizer(reader, sources, verbose=verbose)
     return rv

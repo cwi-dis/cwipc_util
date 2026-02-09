@@ -113,7 +113,6 @@ class Registrator:
     def __init__(self, args : argparse.Namespace):
         self.progname = sys.argv[0]
         self.capturerFactory : Optional[cwipc_activesource_factory_abstract] = None
-        self.capturerName = None
         self.capturer = None
         self.args = args
         self.verbose = self.args.verbose
@@ -188,7 +187,7 @@ class Registrator:
                 return False
             self.args.nodrop = True
         self.args.nodecode = True
-        self.capturerFactory, self.capturerName = cwipc_genericsource_factory(self.args)
+        self.capturerFactory = activesource_factory_from_args(self.args)
         #
         # Now we really start
         #
@@ -435,9 +434,6 @@ class Registrator:
     def open_capturer(self) -> bool:
         assert self.capturerFactory
         # xxxjack this will eventually fail for generic capturer
-        if not self.capturerName:
-            print(f"cwipc_register: selected capturer does not need registration")
-            return False
         # Step one: Try to open with an existing cameraconfig.
         self.capturer = None
         try:
@@ -451,7 +447,7 @@ class Registrator:
     
     def create_cameraconfig(self) -> None:
         """Attempt to open a capturer without cameraconfig file. Then save the empty cameraconfig."""
-        tmpFactory, _ = cwipc_genericsource_factory(self.args, autoConfig=True)
+        tmpFactory = activesource_factory_from_args(self.args, autoConfig=True)
         tmpCapturer = tmpFactory()
         new_config = tmpCapturer.get_config()
         self.cameraconfig.load(new_config)
@@ -492,7 +488,8 @@ class Registrator:
     def interactive_capture(self) -> cwipc.cwipc_pointcloud_wrapper:
         visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args, title="cwipc_register")
         visualizer.reload_cameraconfig_callback = self._reload_cameraconfig_from_file
-        sourceServer = SourceServer(cast(cwipc_source_abstract, self.capturer), visualizer, self.args)
+        assert self.capturer
+        sourceServer = SourceServer(self.capturer, visualizer, self.args)
         sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
         visualizer.set_producer(sourceThread)
         visualizer.set_source(cast(cwipc_source_abstract, self.capturer))

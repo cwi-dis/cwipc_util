@@ -4,6 +4,7 @@ import socket
 import threading
 import cwipc
 import struct
+import queue
 from typing import Optional, Union, List, Tuple
 
 from cwipc.net.abstract import vrt_fourcc_type
@@ -21,7 +22,7 @@ def VRT_4CC(code):
     rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
     return rv
 
-class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
+class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
     
     QUEUE_WAIT_TIMEOUT=1
     
@@ -192,7 +193,7 @@ class _NetClientSource(threading.Thread, cwipc_rawsource_abstract):
             fmtstring = 'netclient: {}: port={}, count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, self.port, count, avgValue, minValue, maxValue))
     
-class _NetClientMultiSource(cwipc_rawmultisource_abstract):
+class _NetClientMultiSource(cwipc_activerawmultisource_abstract):
 
     def __init__(self, address : str, nTile : int, nQuality : int, verbose : bool):
         self.verbose = verbose
@@ -211,6 +212,17 @@ class _NetClientMultiSource(cwipc_rawmultisource_abstract):
             src = _NetClientSource((host, self.allPorts[tIdx][0]), verbose=verbose)
             self.allSources.append(src)
 
+    def start(self) -> bool:
+        rv : bool = True
+        for src in self.allSources:
+            ok = src.start()
+            rv = rv or ok
+        return rv
+
+    def stop(self) -> None:
+        for src in self.allSources:
+            src.start()
+    
     def get_tile_count(self) -> int:
         return len(self.allSources)
     
@@ -227,12 +239,14 @@ class _NetClientMultiSource(cwipc_rawmultisource_abstract):
         port = self.allPorts[tileIdx][qualityIdx]
         src.switchport(port)
 
-def cwipc_source_netclient(address : str, verbose : bool=False) -> cwipc_rawsource_abstract:
+
+
+def cwipc_source_netclient(address : str, verbose : bool=False) -> cwipc_activerawsource_abstract:
     """Return cwipc_source-like object that reads individual compressed pointclouds from a TCP-based server specified as host:port"""
     source = _NetClientSource(address, verbose=verbose)
     return source
         
-def cwipc_multisource_netclient(address : str, nTile : int, nQuality : int, verbose : bool=False) -> cwipc_rawmultisource_abstract:
+def cwipc_multisource_netclient(address : str, nTile : int, nQuality : int, verbose : bool=False) -> cwipc_activerawmultisource_abstract:
     """Return multisource that reads tiled streams using multiple netclients"""
     source = _NetClientMultiSource(address, nTile, nQuality, verbose=verbose)
     return source

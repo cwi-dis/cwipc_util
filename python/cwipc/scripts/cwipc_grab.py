@@ -219,7 +219,7 @@ def main():
     #
     # Create source
     #
-    sourceFactory, source_name = cwipc_genericsource_factory(args)
+    sourceFactory = activesource_factory_from_args(args)
     source = sourceFactory()
     #
     # Determine which output formats we want, set output filename pattern
@@ -270,7 +270,7 @@ def main():
             k, v = sparam.split('=')
             params[k] = eval(v)
         writer.setup_encoder(params)
-    sourceServer = SourceServer(source, writer, args, source_name=source_name)
+    sourceServer = SourceServer(source, writer, args)
     sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_grab.SourceServer")
     writer.set_producer(sourceThread)
 

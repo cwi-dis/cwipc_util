@@ -19,9 +19,6 @@ def VRT_4CC(code : vrt_fourcc_type) -> int:
     rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
     return rv
 
-cwipc_source_factory_abstract = Callable[[], cwipc_source_abstract]
-cwipc_activesource_factory_abstract = Callable[[], cwipc_activesource_abstract]
-
 class cwipc_rawsource_abstract(ABC):
     """A source that produces a stream of raw data blocks (as bytes).
 
@@ -37,16 +34,6 @@ class cwipc_rawsource_abstract(ABC):
     @abstractmethod
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         """Set the expected 4CC for this stream. """
-        ...
-
-    @abstractmethod
-    def start(self) -> None:
-        """Start the source. This will start the receiver or reader."""
-        ...
-
-    @abstractmethod
-    def stop(self) -> None:
-        """Stop the source."""
         ...
 
     @abstractmethod
@@ -72,18 +59,42 @@ class cwipc_rawsource_abstract(ABC):
         """Print statistics."""
         ...
 
+class cwipc_activerawsource_abstract(cwipc_rawsource_abstract):
+    """An active source of raw data blocks.
+    Subclass of cwipc_rawsource_abstract that adds start and stop methods.
+    """
+    @abstractmethod
+    def start(self) -> bool:
+        """Start the source. This will start the receiver or reader."""
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
+        """Stop the source."""
+        ...
+
 # We don't know what describes a stream (and we don't care). But we do know that the
 # object used to describe all tiles, all qualities is first indexed by tile number, then by
 # quality index.
 cwipc_multistream_description = List[List[Any]]
 
-class cwipc_rawmultisource_abstract(ABC):
+class cwipc_activerawmultisource_abstract(ABC):
     """A source that produces multiple streams of raw data blocks (as bytes).
 
     It is a container for multiple cwipc_rawsource_abstract.
 
     An example would be a network protocol receiver for tiled streams.
     """
+
+    @abstractmethod
+    def start(self) -> bool:
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
+        ...
+
+    # xxxjack do we want seek()? eof()?
 
     @abstractmethod
     def get_tile_count(self) -> int:
@@ -184,3 +195,10 @@ class cwipc_sink_abstract(ABC):
     def statistics(self) -> None:
         """Print statistics."""
         ...
+
+
+# Type declarations for the factories of the various sources
+cwipc_source_factory_abstract = Callable[[], cwipc_source_abstract]
+cwipc_activesource_factory_abstract = Callable[[], cwipc_activesource_abstract]
+cwipc_activerawsource_factory_abstract = Callable[[], cwipc_activerawsource_abstract]
+cwipc_decoder_factory_abstract = Callable[[cwipc_activerawsource_abstract], cwipc_source_abstract]
