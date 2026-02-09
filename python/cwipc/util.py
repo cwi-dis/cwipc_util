@@ -923,7 +923,7 @@ class cwipc_sink_wrapper:
         self._must_be_freed = False
         return rv
         
-    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool, *) -> bool:
+    def feed(self, pc : Optional[cwipc_pointcloud_wrapper], clear : bool) -> bool:
         """Feed the point cloud to the sink.
         """
         if pc == None:
