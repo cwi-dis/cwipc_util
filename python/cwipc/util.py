@@ -1112,6 +1112,8 @@ def cwipc_check_module(name : str) -> bool:
     probe_func = getattr(mod, 'cwipc_get_version_module')
     try:
         _ = probe_func()
+    except RuntimeError:
+        return False
     except AttributeError:
         return False
     return True
