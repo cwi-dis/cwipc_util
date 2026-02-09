@@ -7,7 +7,7 @@ import traceback
 import warnings
 from typing import cast, Union, List, Callable
 
-from .. import cwipc_pointcloud_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
+from .. import cwipc_check_module,cwipc_pointcloud_wrapper, playback, cwipc_get_version, cwipc_proxy, cwipc_synthetic, cwipc_capturer, CWIPC_LOG_LEVEL_NONE, CWIPC_LOG_LEVEL_ERROR, CWIPC_LOG_LEVEL_WARNING, CWIPC_LOG_LEVEL_TRACE, CWIPC_LOG_LEVEL_DEBUG, cwipc_log_configure, cwipc_log_default_callback
 from ..net import source_netclient
 from ..net import source_decoder
 from ..net import source_passthrough
@@ -15,33 +15,6 @@ from ..net import source_lldplay
 from ..net import source_synchronizer
 from ..net.abstract import *
 from .. import filters
-
-try:
-    from .. import realsense2
-except ModuleNotFoundError:
-    realsense2 = None
-except ImportError:
-    realsense2 = None
-try:
-    from .. import kinect
-except ModuleNotFoundError:
-    kinect = None
-except ImportError:
-    kinect = None
-try:
-    from .. import orbbec
-except ModuleNotFoundError:
-    orbbec = None
-except ImportError:
-    orbbec = None
-
-if False:
-    # Convoluted code warning: adding ../python directory to path so we can import subsource
-    _sourcedir = os.path.dirname(__file__)
-    _sourcedir = os.path.realpath(_sourcedir)
-    _pardir = os.path.dirname(_sourcedir)
-    _pythondir = os.path.join(_pardir, 'python')
-    sys.path.append(_pythondir)
 
 __all__ = [ 
     "SetupStackDumper",
@@ -72,9 +45,6 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     Could be synthetic, realsense, kinect, proxy, ...
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
-    global realsense2
-    global kinect
-    global orbbec
     name : Optional[str] = None
     source : cwipc_activesource_factory_abstract
     decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
@@ -84,9 +54,10 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
     else:
         decoder_factory = source_decoder.cwipc_source_decoder
     if args.kinect:
-        if kinect == None:
+        if not cwipc_check_module("kinect"):
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
             sys.exit(-1)
+        from .. import kinect
         if autoConfig:
             source = lambda config="auto": kinect.cwipc_kinect(config)
         elif args.cameraconfig:
@@ -95,9 +66,10 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda : kinect.cwipc_kinect()
         name = 'kinect'
     elif args.realsense:
-        if realsense2 == None:
+        if not cwipc_check_module("realsense2"):
             print(f"{sys.argv[0]}: No support for realsense grabber on this platform")
             sys.exit(-1)
+        from .. import realsense2
         if autoConfig:
             source = lambda config="auto": realsense2.cwipc_realsense2(config)
         elif args.cameraconfig:
@@ -106,9 +78,10 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
             source = lambda : realsense2.cwipc_realsense2()
         name = 'realsense'
     elif args.orbbec:
-        if orbbec == None:
+        if not cwipc_check_module("orbbec"):
             print(f"{sys.argv[0]}: No support for orbbec grabber on this platform")
             sys.exit(-1)
+        from .. import orbbec
         if autoConfig:
             source = lambda config="auto": orbbec.cwipc_orbbec(config)
         elif args.cameraconfig:
@@ -204,33 +177,16 @@ def cwipc_genericsource_factory(args : argparse.Namespace, autoConfig : bool=Fal
         # First we need to ensure all capturer DLLs are loaded (so they register themselves
         # with the generic capturer)
         #
-        if realsense2:
-            try:
-                realsense2.cwipc_realsense2_dll_load()
-            except RuntimeError:
-                # realsense2 support could not be loaded.
-                warnings.warn("realsense2 support disabled: could not load")
-                kinect = None
-        if kinect:
-            try:
-                kinect.cwipc_kinect_dll_load()
-            except RuntimeError:
-                # Kinect support could not be loaded.
-                warnings.warn("kinect support disabled: could not load")
-                kinect = None
-        if orbbec:
-            try:
-                orbbec.cwipc_orbbec_dll_load()
-            except RuntimeError:
-                # Orbbec support could not be loaded.
-                warnings.warn("orbbec support disabled: could not load")
-                orbbec = None
+        _ = cwipc_check_module("kinect")
+        _ = cwipc_check_module("orbbec")
+        _ = cwipc_check_module("realsense2")
+
         if autoConfig:
             source = lambda : cwipc_capturer("auto")
         elif args.cameraconfig:
             source = lambda : cwipc_capturer(args.cameraconfig)
         else:
-            source = cast(cwipc_source_factory_abstract, cwipc_capturer)
+            source = cast(cwipc_activesource_factory_abstract, cwipc_capturer)
         name = 'auto'
         _ = source
     return source, name
