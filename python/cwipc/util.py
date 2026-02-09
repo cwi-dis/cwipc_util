@@ -6,6 +6,7 @@ import os
 import sys
 import logging
 import functools
+import importlib
 if sys.platform == "darwin":
     # Workaround for open3d 0.19 including a faulty libomp.dylib (too old version for some other packages such as libpcl)
     # We load it from the system library path first.
@@ -52,6 +53,7 @@ __all__ = [
     'cwipc_point_packetheader',
     
     'cwipc_get_version',
+    'cwipc_check_module',
     'cwipc_log_configure',
     'cwipc_log_default_callback',
     '_cwipc_log_emit',
@@ -1095,6 +1097,24 @@ def cwipc_get_version() -> str:
     except ImportError:
         pass
     return version
+
+def cwipc_check_module(name : str) -> bool:
+    """Checks whether a specific cwipc extension module is available.
+    
+    As a side-effect this will also initialize the module, ensuring it can be used (for auto-capturerers).
+    """
+    modname : str = f'_cwipc_{name}'
+    try:
+        mod = importlib.import_module(modname)
+    except ImportError:
+        return False
+    # Note no try/except: if this fails it is a programmer error.
+    probe_func = getattr(mod, 'cwipc_get_version_module')
+    try:
+        _ = probe_func()
+    except AttributeError:
+        return False
+    return True
 
 def cwipc_log_configure(level : int, callback: Optional[cwipc_log_callback_type]=None) -> None:
     """Configure logging level and optional callback function"""
