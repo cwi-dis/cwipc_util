@@ -208,14 +208,26 @@ public:
     }
 
     int count() override {
+        if (m_pc == nullptr) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "count: NULL pointcloud");
+            return 0;
+        }
         return m_pc->size();
     }
 
     size_t get_uncompressed_size() override {
+        if (m_pc == nullptr) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "get_uncompressed_size: NULL pointcloud");
+            return 0;
+        }
         return m_pc->size() * sizeof(struct cwipc_point);
     }
 
     int copy_uncompressed(struct cwipc_point *pointData, size_t size) override {
+        if (m_pc == nullptr) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "copy_uncompressed: NULL pointcloud");
+            return 0;
+        }
         if (size < m_pc->size() * sizeof(struct cwipc_point)) {
             cwipc_log(CWIPC_LOG_LEVEL_ERROR, "cwipc_util", "copy_uncompressed: buffer too small");
             return -1;
@@ -238,6 +250,10 @@ public:
     }
 
     size_t copy_packet(uint8_t *packet, size_t size) override {
+        if (m_pc == nullptr) {
+            cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "copy_packet: NULL pointcloud");
+            return 0;
+        }
         size_t dataSize = get_uncompressed_size();
         size_t sizeNeeded = sizeof(struct cwipc_cwipcdump_header) + dataSize;
 
