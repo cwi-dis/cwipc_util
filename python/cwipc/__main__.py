@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import time
 from typing import List, Tuple
 import pkgutil
 from . import scripts, cwipc_get_version
@@ -53,6 +54,7 @@ def help():
     print("  version              - show cwipc version", file=sys.stderr)
     print("  check                - check if cwipc is correctly installed, or fix installation", file=sys.stderr)
     print("  python               - run python that has cwipc package installed", file=sys.stderr)
+    print("  parallel             - run multiple commands in parallel (for testing)", file=sys.stderr)
     print("\nUse 'cwipc <command> -h' for help on a specific command.", file=sys.stderr)
     print("See http://github.com/cwi-dis/cwipc for more information.", file=sys.stderr)
 
@@ -80,11 +82,39 @@ def run_check() -> int:
             print("Could not find cwipc_check executable", file=sys.stderr)
             return 1
         mydir = parent
+        return 0
     
-def run_python() -> None:
+def run_python() -> int:
     execv(sys.executable, [sys.executable] + sys.argv[2:])
     assert 0, "execv failed"
 
+def run_parallel() -> int:
+    cmd = sys.argv[0]
+    args = sys.argv[2:]
+    try:
+        sep_loc = args.index('--')
+    except ValueError:
+        print("Usage: parallel cmd [arg ...] -- cmd [arg ...]", file=sys.stderr)
+        return 1
+    args1 = args[:sep_loc]
+    args2 = args[sep_loc+1:]
+    cmd1 = [cmd] + args1
+    cmd2 = [cmd] + args2
+    proc1 = subprocess.Popen(cmd1)
+    print(f"parallel: started 1: {' '.join(cmd1)}", file=sys.stderr)
+    time.sleep(1)
+    proc2 = subprocess.Popen(cmd2)
+    print(f"parallel: started 2: {' '.join(cmd2)}", file=sys.stderr)
+    sts1 = proc1.wait()
+    print(f"parallel: 1: exited with status {sts1}", file=sys.stderr)
+    sts2 = proc2.wait()
+    print(f"parallel: 2: exited with status {sts2}", file=sys.stderr)
+    if sts1 < 0: return sts1
+    if sts2 < 0: return sts2
+    if sts1 > 0: return sts1
+    if sts2 > 0: return sts2
+    return 0
+    
 def main():
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help', 'help'):
         help()
@@ -96,6 +126,8 @@ def main():
         sys.exit(run_check())
     if command == "python":
         sys.exit(run_python())
+    if command == "parallel":
+        sys.exit(run_parallel())
     try:
         mod = __import__(f'cwipc.scripts.cwipc_{command}', fromlist=[''])
     except ModuleNotFoundError:
