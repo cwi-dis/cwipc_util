@@ -94,25 +94,45 @@ def run_parallel() -> int:
     try:
         sep_loc = args.index('--')
     except ValueError:
-        print("Usage: parallel cmd [arg ...] -- cmd [arg ...]", file=sys.stderr)
+        print("Usage: parallel cmd [arg ...] -- cmd [arg ...] [-- cmd [arg ...]]", file=sys.stderr)
         return 1
     args1 = args[:sep_loc]
     args2 = args[sep_loc+1:]
+    try:
+        sep_loc = args2.index('--')
+        args3 = args2[sep_loc+1:]
+        args2 = args2[:sep_loc]
+    except ValueError:
+        args3 = None
     cmd1 = [cmd] + args1
-    cmd2 = [cmd] + args2
     proc1 = subprocess.Popen(cmd1)
     print(f"parallel: started 1: {' '.join(cmd1)}", file=sys.stderr)
+
     time.sleep(1)
+    cmd2 = [cmd] + args2
     proc2 = subprocess.Popen(cmd2)
     print(f"parallel: started 2: {' '.join(cmd2)}", file=sys.stderr)
+    if args3:
+        cmd3 = [cmd] + args3
+        proc3 = subprocess.Popen(cmd3)
+        print(f"parallel: started 3: {' '.join(cmd3)}", file=sys.stderr)
+    else:
+        proc3 = None
     sts1 = proc1.wait()
     print(f"parallel: 1: exited with status {sts1}", file=sys.stderr)
     sts2 = proc2.wait()
     print(f"parallel: 2: exited with status {sts2}", file=sys.stderr)
+    if proc3:
+        sts3 = proc3.wait()
+        print(f"parallel: 3: exited with status {sts3}", file=sys.stderr)
+    else:
+        sts3 = 0
     if sts1 < 0: return sts1
     if sts2 < 0: return sts2
+    if sts3 < 0: return sts3
     if sts1 > 0: return sts1
     if sts2 > 0: return sts2
+    if sts3 > 0: return sts3
     return 0
     
 def main():
