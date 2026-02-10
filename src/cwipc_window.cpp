@@ -83,6 +83,10 @@ public:
         }
 
         if (pc) {
+            if (pc->access_pcl_pointcloud() == nullptr) {
+                cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "cwipc_window.feed: NULL pointcloud");
+                return false;
+            }
             size_t bufferSize = pc->get_uncompressed_size();
             cwipc_point *newBuffer = (cwipc_point *)realloc(m_points, m_npoints*sizeof(cwipc_point)+bufferSize);
 
@@ -103,7 +107,6 @@ public:
                     get_skeleton(metadata);
                 }
             }
-            pc->free();
         }
         
         m_window->prepare_gl(m_eye_distance*sin(m_eye_angle), m_eye_height, m_eye_distance*cos(m_eye_angle), m_pointsize);
