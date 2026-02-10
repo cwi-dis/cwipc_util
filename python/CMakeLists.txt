@@ -61,7 +61,7 @@ cwipc_python_test(TEST timing_tests FIXTURES_REQUIRED venv_with_cwipc)
 # Some can be tested in isolation
 
 add_test(NAME cwipc_view
-	COMMAND ${Python3_BINDIR}/cwipc view --nodisplay --synthetic --count 10
+	COMMAND ${Python3_BINDIR}/cwipc view --nodisplay --synthetic --count 100
 	)
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv_with_cwipc)
 
@@ -77,11 +77,17 @@ add_test(NAME cwipc_parallel
 cwipc_python_test(TEST cwipc_parallel FIXTURES_REQUIRED venv_with_cwipc)
 set_tests_properties(cwipc_parallel PROPERTIES RESOURCE_LOCK parallel_test)
 
-add_test(NAME cwipc_pipeline_forward_to_view
-	COMMAND ${Python3_BINDIR}/cwipc parallel forward --synthetic --count 10 --nodrop -- view --netclient :4303 --nodisplay
+add_test(NAME pipeline_forward_to_view
+	COMMAND ${Python3_BINDIR}/cwipc parallel forward --synthetic --count 100 --nodrop -- view --netclient :4303 --nodisplay
 )
-cwipc_python_test(TEST cwipc_pipeline_forward_to_view FIXTURES_REQUIRED venv_with_cwipc)
-set_tests_properties(cwipc_pipeline_forward_to_view PROPERTIES RESOURCE_LOCK parallel_test)
+cwipc_python_test(TEST pipeline_forward_to_view FIXTURES_REQUIRED venv_with_cwipc)
+set_tests_properties(pipeline_forward_to_view PROPERTIES RESOURCE_LOCK parallel_test)
+
+add_test(NAME pipeline_forward_to_netserver_to_view
+	COMMAND ${Python3_BINDIR}/cwipc parallel netserver --oneshot -- view --netclient :4303 --nodisplay -- forward --synthetic --forward :4304 --nodrop --count 100
+)
+cwipc_python_test(TEST pipeline_forward_to_netserver_to_view FIXTURES_REQUIRED venv_with_cwipc)
+set_tests_properties(pipeline_forward_to_netserver_to_view PROPERTIES RESOURCE_LOCK parallel_test)
 
 # Some cannot really be tested currently, let's at least import them
 
