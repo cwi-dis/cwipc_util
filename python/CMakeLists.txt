@@ -58,31 +58,47 @@ cwipc_python_test(TEST timing_tests FIXTURES_REQUIRED venv_with_cwipc)
 
 # Test the various scripts
 
+# Some can be tested in isolation
 
 add_test(NAME cwipc_view
-	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 10
+	COMMAND ${Python3_BINDIR}/cwipc view --nodisplay --synthetic --count 10
 	)
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv_with_cwipc)
 
+add_test(NAME cwipc_grab
+	COMMAND ${Python3_BINDIR}/cwipc grab --synthetic --count 2 .
+	)
+cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv_with_cwipc)
+
+# Some can be tested in parallel
+add_test(NAME cwipc_parallel
+	COMMAND ${Python3_BINDIR}/cwipc parallel version -- version
+)
+cwipc_python_test(TEST cwipc_parallel FIXTURES_REQUIRED venv_with_cwipc)
+set_tests_properties(cwipc_parallel PROPERTIES RESOURCE_LOCK parallel_test)
+
+add_test(NAME cwipc_pipeline_forward_to_view
+	COMMAND ${Python3_BINDIR}/cwipc parallel forward --synthetic --count 10 --nodrop -- view --netclient :4303 --nodisplay
+)
+cwipc_python_test(TEST cwipc_pipeline_forward_to_view FIXTURES_REQUIRED venv_with_cwipc)
+set_tests_properties(cwipc_pipeline_forward_to_view PROPERTIES RESOURCE_LOCK parallel_test)
+
+# Some cannot really be tested currently, let's at least import them
+
 add_test(NAME cwipc_register
-	COMMAND ${Python3_BINDIR}/cwipc_register --version
+	COMMAND ${Python3_BINDIR}/cwipc register --version
 	)
 cwipc_python_test(TEST cwipc_register FIXTURES_REQUIRED venv_with_cwipc)
 set_tests_properties(cwipc_register PROPERTIES RESOURCE_LOCK realsense_api_lock orbbec_api_lock kinect_api_lock)
 
 add_test(NAME cwipc_forward
-	COMMAND ${Python3_BINDIR}/cwipc_forward --version
+	COMMAND ${Python3_BINDIR}/cwipc forward --version
 	)
 cwipc_python_test(TEST cwipc_forward FIXTURES_REQUIRED venv_with_cwipc)
 
 add_test(NAME cwipc_toproxy
-	COMMAND ${Python3_BINDIR}/cwipc_toproxy --help
+	COMMAND ${Python3_BINDIR}/cwipc toproxy --help
 	)
 cwipc_python_test(TEST cwipc_toproxy FIXTURES_REQUIRED venv_with_cwipc)
-
-add_test(NAME cwipc_grab
-	COMMAND ${Python3_BINDIR}/cwipc_grab --synthetic --count 2 .
-	)
-cwipc_python_test(TEST cwipc_grab FIXTURES_REQUIRED venv_with_cwipc)
 
 add_subdirectory(examples)
