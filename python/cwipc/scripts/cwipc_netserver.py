@@ -133,6 +133,10 @@ class IngestHandler(socketserver.BaseRequestHandler):
         for forwarder in forward_server.handlers:
             forwarder.stop()
 
+        # And terminate if requested
+        if server.oneshot:
+            server.shutdown()
+
     def receiver_forward(self, header : bytes, payload : bytes):
         server : IngestServer = cast(IngestServer, self.server)
         forward_server = server.forwardServer
@@ -190,13 +194,15 @@ class IngestHandler(socketserver.BaseRequestHandler):
             if len(next) == 0 or datalen == 0:
                 return rv
 
-class IngestServer(socketserver.TCPServer):
+class IngestServer(socketserver.ThreadingMixIn,socketserver.TCPServer):
     verbose : bool
+    oneshot : bool
     handlers : List[IngestHandler]
     forwardServer: ForwardServer
 
     def __init__(self, forwardServer : ForwardServer, *args : Any, **kwargs : Any):
         self.verbose = False
+        self.oneshot = False
         self.forwardServer = forwardServer
         self.handlers = []
         socketserver.TCPServer.__init__(self, *args, **kwargs)
@@ -215,6 +221,10 @@ def main():
     parser.add_argument(
         "--ingestport", action="store", type=int, default=4304,
         help="The ingestion port to serve on (default: 4304)."
+    )
+    parser.add_argument(
+        "--oneshot", action="store_true",
+        help="Exit after the first ingestion connection is closed"
     )
     parser.add_argument(
         "--host", action="store", default="",
@@ -248,6 +258,7 @@ def main():
             forward_thread.start()
             with IngestServer(forward_server, (args.host, args.ingestport), IngestHandler) as ingest_server:
                 ingest_server.verbose = args.verbose
+                ingest_server.oneshot = args.oneshot
                 if True:
                     print(
                         f"{sys.argv[0]}: ingester serving on {ingest_server.server_address}",
