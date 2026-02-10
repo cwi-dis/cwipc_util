@@ -3,8 +3,10 @@ import os
 import socket
 import threading
 import queue
-from typing import Optional, List, Union
-from .abstract import cwipc_source_abstract, cwipc_pointcloud_abstract, cwipc_rawsource_abstract
+from typing import Optional, List, Union, Any
+
+from cwipc.abstract import cwipc_tileinfo_dict
+from .abstract import cwipc_activesource_abstract, cwipc_pointcloud_abstract, cwipc_activerawsource_abstract
 
 try:
     from .. import codec
@@ -12,13 +14,13 @@ except ModuleNotFoundError:
     codec = None
 FOURCC = "cwi1"
 
-class _NetDecoder(threading.Thread, cwipc_source_abstract):
+class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
     """A source that decodes pointclouds gotten from a rawsource."""
     
     QUEUE_WAIT_TIMEOUT=1
     output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
-    def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
+    def __init__(self, source : cwipc_activerawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetDecoder'
         self.source = source
@@ -121,8 +123,27 @@ class _NetDecoder(threading.Thread, cwipc_source_abstract):
 
     def is_metadata_requested(self, name: str) -> bool:
         return False
+
+    def reload_config(self, config: str | bytes | None) -> None:
+        raise NotImplementedError
+
+    def get_config(self) -> bytes:
+        raise NotImplementedError
+
+    def seek(self, timestamp: int) -> bool:
+        raise NotImplementedError
+
+    def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
+        raise NotImplementedError
+
+    def maxtile(self) -> int:
+        raise NotImplementedError
+
+    def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
+        raise NotImplementedError
+
     
-def cwipc_source_decoder(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
+def cwipc_source_decoder(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""
     if codec == None:
         raise RuntimeError("netdecoder requires cwipc.codec which is not available")

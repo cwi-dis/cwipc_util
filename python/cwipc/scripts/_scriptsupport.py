@@ -42,7 +42,7 @@ def SetupStackDumper() -> None:
     if hasattr(signal, 'SIGQUIT'):
         signal.signal(signal.SIGQUIT, _dump_app_stacks)
 
-class pipeline_activesource(cwipc_activesource_abstract):
+class _usused_pipeline_activesource(cwipc_activesource_abstract):
     """A wrapper around an active raw source feeding into a decoder.
     Produces the output of the decoder, but control commands are forwarded to the active reader.
     """
@@ -104,14 +104,14 @@ class pipeline_activesource(cwipc_activesource_abstract):
 
 
 class pipelined_activesource_factory:
-    def __init__(self, reader_factory : cwipc_activerawsource_factory_abstract, decoder_factory : cwipc_decoder_factory_abstract):
+    def __init__(self, reader_factory : cwipc_activerawsource_factory_abstract, decoder_factory : cwipc_activedecoder_factory_abstract):
         self.reader_factory = reader_factory
         self.decoder_factory = decoder_factory
 
     def __call__(self) -> cwipc_activesource_abstract:
         reader = self.reader_factory()
         decoder = self.decoder_factory(reader)
-        return pipeline_activesource(reader, decoder)
+        return decoder
 
 def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=False) -> cwipc_activesource_factory_abstract:
     """Create a cwipc_source based on command line arguments.
@@ -119,7 +119,7 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
     source : cwipc_activesource_factory_abstract
-    decoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
+    decoder_factory : Callable[[cwipc_activerawsource_abstract], cwipc_activesource_abstract]
 
     if args.nodecode:
         decoder_factory = source_passthrough.cwipc_source_passthrough

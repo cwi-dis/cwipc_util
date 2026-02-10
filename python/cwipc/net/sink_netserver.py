@@ -128,10 +128,10 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
                         try:
                             peerName = connSocket.getpeername()
                             connSocket.sendall(packet)
-                        except (socket.error, ConnectionError):
+                        except (socket.error, ConnectionError) as err:
                             conn_socket_error.append(connSocket)
                             if self.verbose:
-                                print(f"netserver: error on send to {peerName}")
+                                print(f"netserver: error on send to {peerName}: {err}")
                     t2 = time.time()
                     if self.verbose:
                         print(f"netserver: transmitted {len(hdr+data)} bytes on {len(self.conn_sockets)} connections")

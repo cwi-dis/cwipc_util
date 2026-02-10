@@ -201,4 +201,4 @@ class cwipc_sink_abstract(ABC):
 cwipc_source_factory_abstract = Callable[[], cwipc_source_abstract]
 cwipc_activesource_factory_abstract = Callable[[], cwipc_activesource_abstract]
 cwipc_activerawsource_factory_abstract = Callable[[], cwipc_activerawsource_abstract]
-cwipc_decoder_factory_abstract = Callable[[cwipc_activerawsource_abstract], cwipc_source_abstract]
+cwipc_activedecoder_factory_abstract = Callable[[cwipc_activerawsource_abstract], cwipc_activesource_abstract]

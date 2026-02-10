@@ -60,7 +60,7 @@ cwipc_python_test(TEST timing_tests FIXTURES_REQUIRED venv_with_cwipc)
 
 
 add_test(NAME cwipc_view
-	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 2
+	COMMAND ${Python3_BINDIR}/cwipc_view --nodisplay --synthetic --count 10
 	)
 cwipc_python_test(TEST cwipc_view FIXTURES_REQUIRED venv_with_cwipc)
 

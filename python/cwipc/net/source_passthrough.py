@@ -4,8 +4,10 @@ import socket
 import threading
 import queue
 import cwipc
-from typing import Optional, Union, List
-from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract, cwipc_pointcloud_abstract
+from typing import Optional, Union, List, Any
+
+from cwipc.abstract import cwipc_tileinfo_dict
+from .abstract import cwipc_activerawsource_abstract, cwipc_activesource_abstract, cwipc_pointcloud_abstract
 
 try:
     import cwipc.codec
@@ -13,14 +15,14 @@ except ModuleNotFoundError:
     cwipc.codec = None
 FOURCC = "cwi0"
 
-class _NetPassthrough(threading.Thread, cwipc_source_abstract):
+class _NetPassthrough(threading.Thread, cwipc_activesource_abstract):
     
     QUEUE_WAIT_TIMEOUT=1
     
-    source : cwipc_rawsource_abstract
+    source : cwipc_activerawsource_abstract
     output_queue : queue.Queue[Optional[cwipc_pointcloud_abstract]]
 
-    def __init__(self, source : cwipc_rawsource_abstract, verbose : bool=False):
+    def __init__(self, source : cwipc_activerawsource_abstract, verbose : bool=False):
         threading.Thread.__init__(self)
         self.name = 'cwipc_util._NetPassthrough'
         self.source = source
@@ -105,8 +107,27 @@ class _NetPassthrough(threading.Thread, cwipc_source_abstract):
 
     def is_metadata_requested(self, name: str) -> bool:
         return False
+
+    def reload_config(self, config: str | bytes | None) -> None:
+        raise NotImplementedError
+
+    def get_config(self) -> bytes:
+        raise NotImplementedError
+
+    def seek(self, timestamp: int) -> bool:
+        raise NotImplementedError
+
+    def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
+        raise NotImplementedError
+
+    def maxtile(self) -> int:
+        raise NotImplementedError
+
+    def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
+        raise NotImplementedError
+
     
-def cwipc_source_passthrough(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
+def cwipc_source_passthrough(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from a rawsource and returns them"""
     rv = _NetPassthrough(source, verbose=verbose)
     return rv
