@@ -221,7 +221,7 @@ class _NetClientMultiSource(cwipc_activerawmultisource_abstract):
 
     def stop(self) -> None:
         for src in self.allSources:
-            src.start()
+            src.stop()
     
     def get_tile_count(self) -> int:
         return len(self.allSources)

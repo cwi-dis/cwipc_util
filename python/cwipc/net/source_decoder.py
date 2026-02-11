@@ -3,10 +3,10 @@ import os
 import socket
 import threading
 import queue
-from typing import Optional, List, Union, Any
+from typing import Optional, List, Union, Any, cast
 
 from cwipc.abstract import cwipc_tileinfo_dict
-from .abstract import cwipc_activesource_abstract, cwipc_pointcloud_abstract, cwipc_activerawsource_abstract
+from .abstract import cwipc_activesource_abstract, cwipc_source_abstract, cwipc_rawsource_abstract, cwipc_activerawsource_abstract, cwipc_pointcloud_abstract
 
 try:
     from .. import codec
@@ -143,10 +143,18 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         raise NotImplementedError
 
     
-def cwipc_source_decoder(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
+def cwipc_activesource_decoder(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""
     if codec == None:
         raise RuntimeError("netdecoder requires cwipc.codec which is not available")
     rv = _NetDecoder(source, verbose=verbose)
+    return rv
+        
+    
+def cwipc_source_decoder(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
+    """Return cwipc_source-like object that reads compressed pointclouds from another source and decompresses them"""
+    if codec == None:
+        raise RuntimeError("netdecoder requires cwipc.codec which is not available")
+    rv = _NetDecoder(cast(cwipc_activerawsource_abstract, source), verbose=verbose)
     return rv
         

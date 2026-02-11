@@ -4,10 +4,10 @@ import socket
 import threading
 import queue
 import cwipc
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Any, cast
 
 from cwipc.abstract import cwipc_tileinfo_dict
-from .abstract import cwipc_activerawsource_abstract, cwipc_activesource_abstract, cwipc_pointcloud_abstract
+from .abstract import cwipc_rawsource_abstract, cwipc_source_abstract,cwipc_activerawsource_abstract, cwipc_activesource_abstract, cwipc_pointcloud_abstract
 
 try:
     import cwipc.codec
@@ -127,8 +127,13 @@ class _NetPassthrough(threading.Thread, cwipc_activesource_abstract):
         raise NotImplementedError
 
     
-def cwipc_source_passthrough(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
+def cwipc_activesource_passthrough(source : cwipc_activerawsource_abstract, verbose : bool=False) -> cwipc_activesource_abstract:
     """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from a rawsource and returns them"""
     rv = _NetPassthrough(source, verbose=verbose)
     return rv
-        
+
+def cwipc_source_passthrough(source : cwipc_rawsource_abstract, verbose : bool=False) -> cwipc_source_abstract:
+    """Return cwipc_source-like object that reads serialized (uncompressed) pointclouds from a rawsource and returns them"""
+    # The following cast _should_ be safe, because the unimplemented methods _should_ never be called.
+    rv = _NetPassthrough(cast(cwipc_activerawsource_abstract, source), verbose=verbose)
+    return rv

@@ -119,12 +119,15 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
     Returns cwipc_source object and name commonly used in cameraconfig.xml.
     """
     source : cwipc_activesource_factory_abstract
-    decoder_factory : Callable[[cwipc_activerawsource_abstract], cwipc_activesource_abstract]
+    activedecoder_factory : Callable[[cwipc_activerawsource_abstract], cwipc_activesource_abstract]
+    passivedecoder_factory : Callable[[cwipc_rawsource_abstract], cwipc_source_abstract]
 
     if args.nodecode:
-        decoder_factory = source_passthrough.cwipc_source_passthrough
+        activedecoder_factory = source_passthrough.cwipc_activesource_passthrough
+        passivedecoder_factory = source_passthrough.cwipc_source_passthrough
     else:
-        decoder_factory = source_decoder.cwipc_source_decoder
+        activedecoder_factory = source_decoder.cwipc_activesource_decoder
+        passivedecoder_factory = source_decoder.cwipc_source_decoder
     if args.kinect:
         if not cwipc_check_module("kinect"):
             print(f"{sys.argv[0]}: No support for Kinect grabber on this platform")
@@ -180,7 +183,7 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
     elif args.netclient:
         source = pipelined_activesource_factory(
             lambda : source_netclient.cwipc_source_netclient(args.netclient,verbose = (args.verbose > 1)),
-            lambda rdr : decoder_factory(rdr, verbose = (args.verbose > 1))
+            lambda rdr : activedecoder_factory(rdr, verbose = (args.verbose > 1))
         )
     elif args.mt_netclient:
         s_args = args.mt_netclient.split(':')
@@ -196,7 +199,7 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
             )
             decoders : List[cwipc_source_abstract] = []
             for i in range(n_tile):
-                dcdr = decoder_factory(rdr.get_tile_source(i))
+                dcdr = passivedecoder_factory(rdr.get_tile_source(i))
                 decoders.append(dcdr)
             syncer = source_synchronizer.cwipc_source_synchronizer(rdr, decoders, verbose=(args.verbose > 1))
             return syncer
@@ -205,7 +208,7 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
     elif args.lldplay:
         source = pipelined_activesource_factory(
             lambda : source_lldplay.cwipc_source_lldplay(args.lldplay, verbose = args.verbose > 1),
-            lambda rdr : decoder_factory(rdr, verbose = (args.verbose > 1))
+            lambda rdr : activedecoder_factory(rdr, verbose = (args.verbose > 1))
         )
 
     elif args.mt_lldplay:
@@ -220,7 +223,7 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
             n_tile = rdr.get_tile_count()
             decoders : List[cwipc_source_abstract] = []
             for i in range(n_tile):
-                dcdr = decoder_factory(rdr.get_tile_source(i))
+                dcdr = passivedecoder_factory(rdr.get_tile_source(i))
                 decoders.append(dcdr)
             syncer = source_synchronizer.cwipc_source_synchronizer(rdr, decoders, verbose=(args.verbose > 1))
             return syncer
