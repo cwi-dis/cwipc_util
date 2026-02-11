@@ -91,7 +91,9 @@ class ForwardServer(socketserver.ThreadingTCPServer):
     def __init__(self, *args : Any, **kwargs : Any):
         self.verbose = False
         self.handlers = []
+        self.allow_reuse_address = True
         socketserver.ThreadingTCPServer.__init__(self, *args, **kwargs)
+        self.allow_reuse_address = True
 
 
 class IngestHandler(socketserver.BaseRequestHandler):
@@ -205,7 +207,9 @@ class IngestServer(socketserver.ThreadingMixIn,socketserver.TCPServer):
         self.oneshot = False
         self.forwardServer = forwardServer
         self.handlers = []
+        self.allow_reuse_address = True
         socketserver.TCPServer.__init__(self, *args, **kwargs)
+        self.allow_reuse_address = True
 
 def main():
     global verbose
