@@ -47,7 +47,13 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         if self.verbose:
             print(f"netserver: listen on :{self.port}")
         self.conn_sockets = []
-    
+        self.encoder = self._init_encoder()
+
+    def _init_encoder(self) -> cwipc.codec.cwipc_encoder_wrapper:
+        encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
+        enc = cwipc.codec.cwipc_new_encoder(params=encparams)
+        return enc
+      
     def start(self) -> None:
         threading.Thread.start(self)
         self.started = True
@@ -65,6 +71,9 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
             self.input_queue.put(None)
         if self.started:
             self.join()
+        if self.encoder:
+            self.encoder.free()
+            self.encoder = None
         
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         self.fourcc = fourcc
@@ -170,10 +179,8 @@ class _Sink_NetServer(threading.Thread, cwipc_rawsink_abstract):
         return True           
     
     def _encode_pc(self, pc : cwipc.cwipc_pointcloud_wrapper) -> bytes:
-        # xxxjackfree Need to see whether this leaks in the long term
-        # xxxjackfree If not then we want to keep and re-use the encoder.
-        encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, 9, 85, 16, 0, 0)
-        enc = cwipc.codec.cwipc_new_encoder(params=encparams)
+        enc = self.encoder
+        assert enc
         enc.feed(pc)
         gotData = enc.available(True)
         assert gotData
