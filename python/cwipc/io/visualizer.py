@@ -137,7 +137,6 @@ q,ESC         Quit
         except queue.Empty:
             return False
         if drop:
-            # xxxjackfree
             pc = None
             return False
         if pc:

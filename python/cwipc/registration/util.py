@@ -431,7 +431,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
 
     def get_pc_for_tilemask(self, tilemask: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
-        # xxxjackfree we can cache these.
+        # xxxjack we can cache these.
         assert self.original_pointcloud
         pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
         if not pc:
@@ -440,7 +440,7 @@ class BaseMulticamAlgorithm(MulticamAlgorithm):
         
     def get_pc_for_camnum(self, camnum: int) -> cwipc_pointcloud_wrapper:
         """Get the pointcloud for a given camera number"""
-        # xxxjackfree implement this using get_pc_for_tilemask?
+        # xxxjack implement this using get_pc_for_tilemask?
         assert self.original_pointcloud
         tilemask = self.tilemask_for_camera_index(camnum)
         pc = cwipc_tilefilter(self.original_pointcloud, tilemask)
