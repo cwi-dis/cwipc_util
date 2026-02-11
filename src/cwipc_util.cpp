@@ -251,6 +251,9 @@ public:
 
     size_t copy_packet(uint8_t *packet, size_t size) override {
         if (m_pc == nullptr) {
+            (void)access_pcl_pointcloud();
+        }
+        if (m_pc == nullptr) {
             cwipc_log(CWIPC_LOG_LEVEL_WARNING, "cwipc_util", "copy_packet: NULL pointcloud");
             return 0;
         }
