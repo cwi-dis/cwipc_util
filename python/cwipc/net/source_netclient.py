@@ -6,26 +6,27 @@ import cwipc
 import struct
 import queue
 from typing import Optional, Union, List, Tuple
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 
-from cwipc.net.abstract import vrt_fourcc_type
+from cwipc.net.abstract import VRT_4CC
 from cwipc.net import peek_queue
 from .abstract import *
 
-def VRT_4CC(code):
-    """Convert anything reasonable (bytes, string, int) to 4cc integer"""
-    if isinstance(code, int):
-        return code
-    if not isinstance(code, bytes):
-        assert isinstance(code, str)
-        code = code.encode('ascii')
-    assert len(code) == 4
-    rv = (code[0]<<24) | (code[1]<<16) | (code[2]<<8) | (code[3])
-    return rv
 
 class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
     
     QUEUE_WAIT_TIMEOUT=1
-    
+    hostname : str
+    port : int
+    switch_to_port : Optional[int]
+    running : bool
+    verbose : bool
+    _conn_refused : bool
+    output_queue : peek_queue.PeekQueue[Optional[bytes]]
+    fourcc_int : Optional[int]
     
     def __init__(self, address : str | Tuple[str, int], verbose=False):
         threading.Thread.__init__(self)
@@ -41,7 +42,7 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
         port = int(port)
         self.hostname = hostname
         self.port = port
-        self.switch_to_port : Optional[int] = None
+        self.switch_to_port = None
         self.running = False
         self._conn_refused = False
         self.verbose = verbose
@@ -49,26 +50,26 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
         self.times_receive = []
         self.sizes_receive = []
         self.bandwidths_receive = []
-        self.fourcc : Optional[vrt_fourcc_type] = None
+        self.fourcc_int = None
         
-    def free(self):
-        pass
-
     def switchport(self, port : int) -> None:
         if port != self.port:
             self.switch_to_port = port
             if self.verbose: print(f'netclient: will switch to port {port}')
 
-    def set_fourcc(self, fourcc: vrt_fourcc_type) -> None:
-        self.fourcc = fourcc
+    def set_fourcc(self, fourcc: int|str|bytes) -> None:
+        self.fourcc_int = VRT_4CC(fourcc)
         
-    def start(self):
+    @override
+    def start(self) -> bool:
         assert not self.running
         if self.verbose: print('netclient: start')
         self.running = True
         threading.Thread.start(self)
+        return True
         
-    def stop(self):
+    @override
+    def stop(self) -> None:
         if self.verbose: print('netclient: stop')
         self.running = False
         try:
@@ -77,12 +78,14 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
             pass
         self.join()
         
-    def eof(self):
+    @override
+    def eof(self) -> bool:
         if self._conn_refused:
             return True
         return self.output_queue.empty() and self._conn_refused
     
-    def available(self, wait=False):
+    @override
+    def available(self, wait=False) -> bool:
         if not self.output_queue.empty():
             return True
         if not wait or self._conn_refused:
@@ -94,7 +97,8 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
         except peek_queue.Empty:
             return False
         
-    def get(self):
+    @override
+    def get(self) -> Optional[bytes]:
         if self.eof():
             return None
         packet = self.output_queue.get()
@@ -139,8 +143,8 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
                 break
             assert len(hdr) == 16
             h_fourcc, h_length, h_timestamp = struct.unpack("=LLQ", hdr)
-            if self.fourcc != None:
-                assert VRT_4CC(self.fourcc) == h_fourcc
+            if self.fourcc_int != None:
+                assert self.fourcc_int == h_fourcc
             data = s.recv(h_length, socket.MSG_WAITALL)
             if len(data) == 0:
                 if self.verbose: print(f'netclient: eof, disconnect from {s.getpeername()}')
@@ -174,6 +178,7 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
             pass
         if self.verbose: print(f"netclient: {self.port}: thread exiting")
 
+    @override
     def statistics(self):
         self.print1stat('receive_duration', self.times_receive)
         self.print1stat('packetsize', self.sizes_receive, isInt=True)
@@ -212,6 +217,7 @@ class _NetClientMultiSource(cwipc_activerawmultisource_abstract):
             src = _NetClientSource((host, self.allPorts[tIdx][0]), verbose=verbose)
             self.allSources.append(src)
 
+    @override
     def start(self) -> bool:
         rv : bool = True
         for src in self.allSources:
@@ -219,19 +225,24 @@ class _NetClientMultiSource(cwipc_activerawmultisource_abstract):
             rv = rv or ok
         return rv
 
+    @override
     def stop(self) -> None:
         for src in self.allSources:
             src.stop()
     
+    @override
     def get_tile_count(self) -> int:
         return len(self.allSources)
     
+    @override
     def get_description(self) -> cwipc_multistream_description:
         return self.allPorts
 
+    @override
     def get_tile_source(self, tileIdx : int) -> cwipc_rawsource_abstract:
         return self.allSources[tileIdx]
 
+    @override
     def select_tile_quality(self, tileIdx : int, qualityIdx : int) -> None:
         if self.verbose:
             print(f'netclient multisource: select tile {tileIdx} quality {qualityIdx}')

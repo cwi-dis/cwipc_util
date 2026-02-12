@@ -4,6 +4,10 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union, Any, cast
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 
 from cwipc.abstract import cwipc_tileinfo_dict
 from .abstract import cwipc_activesource_abstract, cwipc_source_abstract, cwipc_rawsource_abstract, cwipc_activerawsource_abstract, cwipc_pointcloud_abstract
@@ -32,17 +36,20 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         self.streamNumber = None
         self.decomp = None
         
+    @override
     def free(self) -> None:
         pass
         
-    def start(self) -> None:
+    @override
+    def start(self) -> bool:
         assert not self.running
         if self.verbose: print('netdecoder: start', flush=True)
         self.running = True
         threading.Thread.start(self)
         didStart = self.source.start()
-        assert didStart
+        return didStart
         
+    @override
     def stop(self) -> None:
         if self.verbose: print('netdecoder: stop', flush=True)
         self.running = False
@@ -53,9 +60,11 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
             pass
         self.join()
         
+    @override
     def eof(self) -> bool:
         return not self.running or self.output_queue.empty() and self.source.eof()
     
+    @override
     def available(self, wait : bool=False) -> bool:
         # xxxjack if wait==True should get and put
         if not self.running:
@@ -64,6 +73,7 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
             return True
         return self.source.available(wait)
         
+    @override
     def get(self) -> Optional[cwipc_pointcloud_abstract]:
         if self.eof():
             return None
@@ -100,6 +110,7 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         pc = self.decomp.get()
         return pc
 
+    @override
     def statistics(self) -> None:
         self.print1stat('decodetime', self.times_decode)
         if hasattr(self.source, 'statistics'):
@@ -119,27 +130,35 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
             fmtstring = 'netdecoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
+    @override
     def request_metadata(self, name: str) -> None:
         assert False
 
+    @override
     def is_metadata_requested(self, name: str) -> bool:
         return False
 
+    @override
     def reload_config(self, config: str | bytes | None) -> None:
         raise NotImplementedError
 
+    @override
     def get_config(self) -> bytes:
         raise NotImplementedError
 
+    @override
     def seek(self, timestamp: int) -> bool:
         raise NotImplementedError
 
+    @override
     def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
         raise NotImplementedError
 
+    @override
     def maxtile(self) -> int:
         raise NotImplementedError
 
+    @override
     def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
         raise NotImplementedError
 

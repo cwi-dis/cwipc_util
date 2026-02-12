@@ -4,6 +4,10 @@ import socket
 import threading
 import queue
 from typing import Optional, List, Union
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 
 from cwipc.abstract import cwipc_tileinfo_dict
 from .abstract import *
@@ -33,11 +37,12 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
         self.desync_per_occurrence = []
         self.missing_per_occurrence = []
 
-        
+    @override
     def free(self) -> None:
         pass
         
-    def start(self) -> None:
+    @override
+    def start(self) -> bool:
         assert not self.running
         if self.verbose: print('synchronizer: start', flush=True)
         self.running = True
@@ -45,9 +50,13 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
         # be decoders.
         #for s in self.sources:
         #    s.start()
-        self.reader.start()
+        ok = self.reader.start()
+        if not ok:
+            return False
         threading.Thread.start(self)
-        
+        return True
+    
+    @override
     def stop(self) -> None:
         if self.verbose: print('synchronizer: stop', flush=True)
         self.running = False
@@ -61,6 +70,7 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
             pass
         self.join()
         
+    @override
     def eof(self) -> bool:
         if not self.running:
             return True
@@ -74,6 +84,7 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
                 return True
         return False
     
+    @override
     def available(self, wait : bool=False) -> bool:
         # xxxjack if wait==True should get and put
         if not self.running:
@@ -85,6 +96,7 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
                 return False
         return True
         
+    @override
     def get(self) -> Optional[cwipc_pointcloud_abstract]:
         if self.eof():
             return None
@@ -186,6 +198,7 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
         except queue.Full:
             pass
 
+    @override
     def statistics(self) -> None:
         self.print1stat('combine_time', self.combine_times)
         self.print1stat('late', self.late_per_occurrence)
@@ -210,9 +223,11 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
             fmtstring = 'netdecoder: {}: count={}, average={:.3f}, min={:.3f}, max={:.3f}'
         print(fmtstring.format(name, count, avgValue, minValue, maxValue))
 
+    @override
     def request_metadata(self, name: str) -> None:
         assert False
 
+    @override
     def is_metadata_requested(self, name: str) -> bool:
         return False
     
@@ -234,21 +249,27 @@ class _MQSynchronizer(_Synchronizer):
             self.reader.select_tile_quality(tIdx, self.current_quality)
         return f"quality {self.current_quality} of {nQualities}"
 
+    @override
     def reload_config(self, config: str | bytes | None) -> None:
         raise NotImplementedError
 
+    @override
     def get_config(self) -> bytes:
         raise NotImplementedError
 
+    @override
     def seek(self, timestamp: int) -> bool:
         raise NotImplementedError
 
+    @override
     def auxiliary_operation(self, op: str, inbuf: bytes, outbuf: bytearray) -> bool:
         raise NotImplementedError
 
+    @override
     def maxtile(self) -> int:
         raise NotImplementedError
 
+    @override
     def get_tileinfo_dict(self, tilenum: int) -> dict[str, Any]:
         raise NotImplementedError
 
