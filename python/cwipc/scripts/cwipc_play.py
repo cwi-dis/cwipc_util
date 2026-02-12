@@ -16,10 +16,11 @@ def main():
     SetupStackDumper()
     assert __doc__ is not None
     parser = BaseArgumentParser(description=__doc__.strip(), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--paused", action="store_true", help="Start paused (not needed for single point clouds)")
     parser.add_argument("--filter", action="append", metavar="FILTERDESC", help="After capture apply a filter to each point cloud. Multiple filters are applied in order.")
     parser.add_argument("--help_filters", action="store_true", help="List available filters and exit")
     parser.add_argument("--help_commands", action="store_true", help="List interactive commands and exit")
-    parser.add_argument("input", help="Point cloud (ply, cwipcdump) or directory of those")
+    parser.add_argument("input", help="Point cloud (ply, cwipcdump) or directory of those, or raw recording directory or cameraconfig.json")
     args = parser.parse_args()
     if args.help_commands:
         help_commands()
@@ -45,7 +46,7 @@ def main():
     args.inpoint = None
     args.outpoint = None
     args.retimestamp = None
-    args.nodrop = None
+    args.nodrop = True
     args.rgb = None
     args.rgb_full = None
     args.rgb_cw = None

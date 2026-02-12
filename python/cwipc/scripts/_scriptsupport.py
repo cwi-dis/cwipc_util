@@ -175,11 +175,20 @@ def activesource_factory_from_args(args : argparse.Namespace, autoConfig : bool=
             source = lambda : playback.cwipc_playback([filename], ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
         else:
             dirname = args.playback
-            playback_type = _guess_playback_type(os.listdir(dirname))
-            if not playback_type:
-                print(f'{sys.argv[0]}: {dirname}: should contain only one of .ply, .cwipcdump or .cwicpc files')
-                sys.exit(-1)
-            source = lambda : playback.cwipc_playback(dirname, ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
+            # Could be a raw recording directory (with a cameraconfig.json) or a directory with pointclouds
+            configfile = os.path.join(dirname, 'cameraconfig.json')
+            if os.path.exists(configfile):
+                _ = cwipc_check_module("kinect")
+                _ = cwipc_check_module("orbbec")
+                _ = cwipc_check_module("realsense2")
+
+                source = lambda : cwipc_capturer(configfile)
+            else:
+                playback_type = _guess_playback_type(os.listdir(dirname))
+                if not playback_type:
+                    print(f'{sys.argv[0]}: {dirname}: should contain only one of .ply, .cwipcdump or .cwicpc files')
+                    sys.exit(-1)
+                source = lambda : playback.cwipc_playback(dirname, ext=playback_type, fps=args.fps, loop=args.loop, inpoint=args.inpoint, outpoint=args.outpoint, retimestamp=args.retimestamp)
     elif args.netclient:
         source = pipelined_activesource_factory(
             lambda : source_netclient.cwipc_source_netclient(args.netclient,verbose = (args.verbose > 1)),
