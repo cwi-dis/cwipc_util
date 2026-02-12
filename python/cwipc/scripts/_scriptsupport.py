@@ -335,8 +335,12 @@ class SourceServer:
             else:
                 print(f'grab: Error: seek to timestamp {self.inpoint} failed', flush=True)
                 sys.exit(-1)
-                
-        if self.verbose: print('grab: started', flush=True)
+        ok = self.grabber.start()
+        if not ok:
+            print("grab: failed to start() grabber", flush=True)
+            self.stopped = True
+        else:
+            if self.verbose: print('grab: started', flush=True)
         while not self.stopped and not self.grabber.eof():
             t0 = time.time()
             pc = self.grab_pc()
