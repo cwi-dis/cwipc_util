@@ -443,7 +443,8 @@ class Registrator:
         self.capturer.request_metadata("rgb")
         self.capturer.request_metadata("depth")
         self.capturer.request_metadata("timestamps")
-        return True
+        ok = self.capturer.start()
+        return ok
     
     def create_cameraconfig(self) -> None:
         """Attempt to open a capturer without cameraconfig file. Then save the empty cameraconfig."""
