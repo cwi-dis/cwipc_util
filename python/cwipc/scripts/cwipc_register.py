@@ -450,7 +450,10 @@ class Registrator:
         """Attempt to open a capturer without cameraconfig file. Then save the empty cameraconfig."""
         tmpFactory = activesource_factory_from_args(self.args, autoConfig=True)
         tmpCapturer = tmpFactory()
+        tmpCapturer.start()
         new_config = tmpCapturer.get_config()
+        if not new_config or new_config == b"{}":
+            raise RuntimeError("Cannot get cameraconfig")
         self.cameraconfig.load(new_config)
         tmpCapturer = None
 
