@@ -40,7 +40,8 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         if self.verbose: print('netdecoder: start', flush=True)
         self.running = True
         threading.Thread.start(self)
-        self.source.start()
+        didStart = self.source.start()
+        assert didStart
         
     def stop(self) -> None:
         if self.verbose: print('netdecoder: stop', flush=True)

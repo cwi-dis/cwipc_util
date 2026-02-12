@@ -308,7 +308,8 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic(self):
         """Can we create a synthetic pointcloud?"""
         pcs = cwipc.cwipc_synthetic()
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         self.assertTrue(pcs.available(True))
         self.assertFalse(pcs.eof())
         pc = pcs.get()
@@ -320,7 +321,8 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic_available_false(self):
         """Does the synthetic reader implement available(False) correctly?"""
         pcs = cwipc.cwipc_synthetic(5)
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         self.assertTrue(pcs.available(True))
         pc = pcs.get()
         self.assertFalse(pcs.available(False))
@@ -343,7 +345,8 @@ class TestApi(unittest.TestCase):
         pcs.request_metadata("test-angle")
         wantTestAngle = pcs.is_metadata_requested("test-angle")
         self.assertTrue(wantTestAngle)
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         pc = pcs.get()
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
@@ -363,7 +366,8 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic_nonexistent_auxiliary_operation(self):
         """If we request a nonexistent auxiliary operation on a cwipc_source do we get an error?"""
         pcs = cwipc.cwipc_synthetic()
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         inbuf = bytes()
         outbuf = bytearray(4)
         wantUnknown = pcs.auxiliary_operation("nonexistent-auxop", inbuf, outbuf)
@@ -373,7 +377,8 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic_auxiliary_operation(self):
         """Can we request an auxiliary operation on a cwipc_source"""
         pcs = cwipc.cwipc_synthetic()
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         angle = 42.0
         inbuf = struct.pack("f", angle)
         outbuf = bytearray(struct.pack("f", 0))
@@ -386,7 +391,8 @@ class TestApi(unittest.TestCase):
     def test_cwipc_synthetic_args(self):
         """Can we create a synthetic pointcloud with fps and npoints arguments?"""
         pcs = cwipc.cwipc_synthetic(10, 1000)
-        pcs.start()
+        didStart = pcs.start()
+        self.assertTrue(didStart)
         self.assertTrue(pcs.available(True))
         # not always true: self.assertTrue(pcs.available(False))
         self.assertFalse(pcs.eof())
@@ -422,7 +428,8 @@ class TestApi(unittest.TestCase):
     def test_tilefilter(self):
         """Check that the tilefilter returns the same number of points if not filtering, and correct number if filtering"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
@@ -445,7 +452,8 @@ class TestApi(unittest.TestCase):
     def test_join(self):
         """Check that joining two pointclouds results in a pointcloud with the correct number of points"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_1 = gen.get()
         self.assertIsNotNone(pc_1)
         assert pc_1 # Only to keep linters happy
@@ -458,7 +466,8 @@ class TestApi(unittest.TestCase):
     def test_tilemap(self):
         """Check that tilemap keeps the correct numer of points in the mapped tiles"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
@@ -480,7 +489,8 @@ class TestApi(unittest.TestCase):
     def test_colormap(self):
         """Check that colormap keeps all points but gives them the new color"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc = gen.get()
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
@@ -498,7 +508,8 @@ class TestApi(unittest.TestCase):
     def test_crop(self):
         """Check that splitting a pointcloud into two using cropping gives the right number of points"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc = gen.get()
         self.assertIsNotNone(pc)
         assert pc # Only to keep linters happy
@@ -517,7 +528,8 @@ class TestApi(unittest.TestCase):
     def test_remove_outliers(self):
         """Chech that remove_outliers returns less points than the original pc, but still > 0 points."""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
@@ -531,7 +543,8 @@ class TestApi(unittest.TestCase):
     def test_downsample(self):
         """Check that the downsampler returns at most the same number of points and eventually returns less than 8"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
@@ -553,7 +566,8 @@ class TestApi(unittest.TestCase):
     def test_downsample_voxelgrid(self):
         """Check that the voxelgrid downsampler returns at most the same number of points and eventually returns less than 8"""
         gen = cwipc.cwipc_synthetic()
-        gen.start()
+        didStart = gen.start()
+        self.assertTrue(didStart)
         pc_orig = gen.get()
         self.assertIsNotNone(pc_orig)
         assert pc_orig # Only to keep linters happy
@@ -581,7 +595,8 @@ class TestApi(unittest.TestCase):
         
     def test_playback_file(self):
         src = cwipc.playback.cwipc_playback([PLY_FILENAME], loop=False)
-        src.start()
+        didStart = src.start()
+        self.assertTrue(didStart)
         self.assertFalse(src.eof())
         pc = src.get()
         self.assertIsNotNone(pc)

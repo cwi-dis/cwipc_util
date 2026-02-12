@@ -42,7 +42,8 @@ class TimingTest:
         start_time = self._time()
         count = 0
         gen = cwipc.cwipc_synthetic(0, GENERATE_POINTCOUNT)
-        gen.start()
+        didStart = gen.start()
+        assert didStart
         while True:
             self.pc = None
             available = gen.available(True)
