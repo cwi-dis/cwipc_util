@@ -282,16 +282,19 @@ class SourceServer:
         self.times_grab : List[float] = []
         self.pointcounts_grab : List[int] = []
         self.latency_grab : List[float] = []
-        self.stopped = True
         self.lastGrabTime = None
         self.fps = None
-        self.grabber.start()
         self.stopped = False
         self.pc_filters = []
         if args.filter:
             for fdesc in args.filter:
                 filter = filters.factory(fdesc)
                 self.pc_filters.append(filter)
+        ok = self.grabber.start()
+        if not ok:
+            print("grab: failed to start() grabber", flush=True)
+            self.grabber = None
+            self.stopped = True
 
     def __del__(self):
         self.stopped = True
@@ -335,7 +338,7 @@ class SourceServer:
             else:
                 print(f'grab: Error: seek to timestamp {self.inpoint} failed', flush=True)
                 sys.exit(-1)
-        ok = self.grabber.start()
+        ok = True # xxxjack was: self.grabber.start()
         if not ok:
             print("grab: failed to start() grabber", flush=True)
             self.stopped = True
