@@ -132,6 +132,7 @@ protected:
     inline void _log(cwipc_log_level level, std::string message) {
         cwipc_log(level, CLASSNAME, message);
     }
+public:
     inline void _log_error(std::string message) {
         cwipc_log(CWIPC_LOG_LEVEL_ERROR, CLASSNAME, message);
     }
