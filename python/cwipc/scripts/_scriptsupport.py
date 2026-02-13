@@ -323,9 +323,13 @@ class SourceServer:
                 time.sleep(nextGrabTime - time.time())
         if not self.grabber:
             return None
+        if self.grabber.eof():
+            return None
         if not self.grabber.available(True):
+            if self.grabber.eof():
+                return None
             print('grab: no pointcloud available')
-            time.sleep(0.001)
+            time.sleep(0.1)
             return None
         if not self.grabber:
             return None
