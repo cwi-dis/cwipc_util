@@ -116,7 +116,7 @@ int check() {
 
 int install() {
 #ifdef WIN32
-    std::string script = "\"" + libExecDir + "\\cwipc\\scripts\\install-3rdparty-full-win1064-asadmin.ps1" + "\"";
+    std::string script = "\"" + libExecDir + "\\cwipc\\scripts\\install-3rdparty-full-windows-asadmin.ps1" + "\"";
 
     std::string cmd = "powershell -ExecutionPolicy Bypass -File " + script;
     std::cerr << progName << ": execute command: " << cmd << std::endl;
