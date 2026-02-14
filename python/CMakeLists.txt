@@ -38,7 +38,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	install(PROGRAMS cwipc_pymodules_install.ps1 DESTINATION bin)
 endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	install(PROGRAMS cwipc_osx_clearquarantine.sh DESTINATION bin)
+	install(PROGRAMS cwipc_macos_clearquarantine.sh DESTINATION bin)
 endif()
 install(PROGRAMS cwipc_tunnelproxy.sh DESTINATION bin)
 
