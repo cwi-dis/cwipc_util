@@ -363,8 +363,15 @@ class Registrator:
 
     def _reload_cameraconfig_to_capturer(self) -> None:
         assert self.capturer
-        print(f"cwipc_register: reload {self.cameraconfig.filename} to capturer")
-        self.capturer.reload_config(self.cameraconfig.filename)
+        if True:
+            print(f"cwipc_register: reload {self.cameraconfig.filename} by closing and reopening capturer")
+            self.capturer = None
+            time.sleep(1)
+            ok = self.open_capturer()
+            assert ok
+        else:
+            print(f"cwipc_register: reload {self.cameraconfig.filename} to capturer")
+            self.capturer.reload_config(self.cameraconfig.filename)
 
     def initialize_recording(self) -> bool:
         if os.path.exists(self.args.cameraconfig):
@@ -660,7 +667,7 @@ class Registrator:
         # Capture some frames (so we know get_config() will have obtained all parameters).
         # Get initial cameraconfig and save it
         gotframes = 0
-        while gotframes < 3:
+        while gotframes < 1:
             ok = capturer.available(True)
             if ok:
                 pc = capturer.get()
