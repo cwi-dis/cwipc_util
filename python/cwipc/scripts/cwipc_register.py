@@ -493,7 +493,7 @@ class Registrator:
         visualizer = RegistrationVisualizer(self.args.verbose, nodrop=True, args=self.args, title="cwipc_register")
         visualizer.reload_cameraconfig_callback = self._reload_cameraconfig_from_file
         assert self.capturer
-        sourceServer = SourceServer(self.capturer, visualizer, self.args, start=False)
+        sourceServer = SourceServer(self.capturer, visualizer, self.args, owns_grabber=False)
         sourceThread = threading.Thread(target=sourceServer.run, args=(), name="cwipc_view.SourceServer")
         visualizer.set_producer(sourceThread)
         visualizer.set_source(cast(cwipc_source_abstract, self.capturer))
@@ -501,7 +501,6 @@ class Registrator:
         visualizer.run()
         captured_pc = visualizer.captured_pc
         sourceServer.stop()
-        sourceServer.grabber = None # type: ignore
         sourceThread.join()
         del visualizer
         del sourceServer
