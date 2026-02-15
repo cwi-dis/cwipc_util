@@ -280,7 +280,7 @@ class SourceServer:
     
     pc_filters : List[filters.cwipc_abstract_filter]
 
-    def __init__(self, grabber : cwipc_activesource_abstract, viewer, args : argparse.Namespace):
+    def __init__(self, grabber : cwipc_activesource_abstract, viewer, args : argparse.Namespace, start : bool = True):
         self.grabber = grabber
         self.verbose = args.verbose
         self.count = args.count
@@ -299,11 +299,12 @@ class SourceServer:
             for fdesc in args.filter:
                 filter = filters.factory(fdesc)
                 self.pc_filters.append(filter)
-        ok = self.grabber.start()
-        if not ok:
-            print("grab: failed to start() grabber", flush=True)
-            self.grabber = None
-            self.stopped = True
+        if start:
+            ok = self.grabber.start()
+            if not ok:
+                print("grab: failed to start() grabber", flush=True)
+                self.grabber = None
+                self.stopped = True
 
     def __del__(self):
         self.stopped = True
