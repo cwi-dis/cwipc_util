@@ -234,7 +234,7 @@ q,ESC         Quit
         if self.display_pc:
             if self.args.verbose:
                 if not self.paused:
-                    print(f'display: showing pointcloud timestamp={self.display_pc.timestamp()} cellsize={self.display_pc.cellsize()} latency={time.time() - self.display_pc.timestamp()/1000.0:.3f}')
+                    print(f'display: showing pointcloud timestamp={self.display_pc.timestamp()} cellsize={self.display_pc.cellsize()} latency={time.time() - self.display_pc.timestamp()/1000000.0:.3f}')
             ok = self.visualiser.feed(self.display_pc, True)
             if not ok: 
                 print('display: window.feed() returned False')
