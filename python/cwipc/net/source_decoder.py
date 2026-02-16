@@ -33,6 +33,7 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         self.verbose = verbose
         self.output_queue = queue.Queue(maxsize=2)
         self.times_decode = []
+        self.pointcounts = []
         self.streamNumber = None
         self.decomp = None
         
@@ -99,7 +100,9 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
             t2 = time.time()
             self.times_decode.append(t2-t1)
             self.output_queue.put(pc)
-            if self.verbose: print(f'netdecoder: decoded pointcloud with {pc.count()} points, qlen={self.output_queue.qsize()}', flush=True)
+            pointcount = pc.count()
+            self.pointcounts.append(pointcount)
+            if self.verbose: print(f'netdecoder: decoded pointcloud with {pointcount} points, qlen={self.output_queue.qsize()}', flush=True)
         if self.verbose: print(f"netdecoder: thread exiting", flush=True)
         self.running = False
 
@@ -115,7 +118,8 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
 
     @override
     def statistics(self) -> None:
-        self.print1stat('decodetime', self.times_decode)
+        self.print1stat('decode_time', self.times_decode)
+        self.print1stat('decode_count', self.pointcounts, isInt=True)
         if hasattr(self.source, 'statistics'):
             self.source.statistics()
         

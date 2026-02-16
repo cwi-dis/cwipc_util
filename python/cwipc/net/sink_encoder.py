@@ -18,6 +18,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
     sink : cwipc_rawsink_abstract
     input_queue : queue.Queue[Optional[cwipc.cwipc_pointcloud_wrapper]]
     pointcounts : List[int]
+    packetsizes : List[int]
     tiledescriptions : List[cwipc.cwipc_tileinfo_dict]
     encoder_group : Optional[cwipc.codec.cwipc_encodergroup_wrapper]
     encoders : List[cwipc.codec.cwipc_encoder_wrapper]
@@ -38,6 +39,8 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.started = False
         self.times_encode = []
         self.pointcounts = []
+        self.packetsizes = []
+        self.pointcounts_pertile = []
         self.encoder_group = None
         self.encoders = []
         
@@ -106,6 +109,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
                     got_data = self.encoders[i].available(True)
                     assert got_data
                     cpc = self.encoders[i].get_bytes()
+                    self.packetsizes.append(len(cpc))
                     packets.append(cpc)
                 t2 = time.time()
                 if self.verbose:
@@ -161,7 +165,9 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
 
     def statistics(self):
         self.print1stat('encode_duration', self.times_encode)
-        self.print1stat('pointcount', self.pointcounts)
+        self.print1stat('encode_count', self.pointcounts, isInt=True)
+        self.print1stat('packetsize', self.packetsizes, isInt=True)
+
         if hasattr(self.sink, 'statistics'):
             self.sink.statistics()
         
