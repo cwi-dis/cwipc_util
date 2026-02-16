@@ -109,6 +109,7 @@ class _Synchronizer(threading.Thread, cwipc_activesource_abstract):
         latest_timestamp = 0
         while self.running:
             if self._any_source_eof():
+                if self.verbose: print(f"synchronizer: end of file")
                 break
             any_work_done = False
             # Compute the earliest timestamp (which is the latest of the currently available buffer heads)

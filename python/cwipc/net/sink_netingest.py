@@ -66,9 +66,7 @@ class _Sink_NetIngest(threading.Thread, cwipc_rawsink_abstract):
             self.input_queue.put(None)
         if self.started:
             self.join()
-        if self.encoder:
-            self.encoder.free()
-            self.encoder = None
+        self.encoder = None
         
     def set_fourcc(self, fourcc : vrt_fourcc_type) -> None:
         self.fourcc = fourcc

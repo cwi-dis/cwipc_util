@@ -121,7 +121,7 @@ class _NetClientSource(threading.Thread, cwipc_activerawsource_abstract):
                 try:
                     other = s.connect((self.hostname, self.port))
                 except ConnectionRefusedError:
-                    if self.verbose: print(f"netclient: {self.port}: connection refused")
+                    if self.verbose: print(f"netclient: connection refused by {self.hostname}:{self.port}")
                     self._conn_refused = True
                     break
                 except socket.error as err:

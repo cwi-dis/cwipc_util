@@ -41,13 +41,16 @@ class _NetDecoder(threading.Thread, cwipc_activesource_abstract):
         pass
         
     @override
-    def start(self) -> bool:
+    def start(self, startsource : bool = True) -> bool:
         assert not self.running
         if self.verbose: print('netdecoder: start', flush=True)
         self.running = True
         threading.Thread.start(self)
-        didStart = self.source.start()
-        return didStart
+        if startsource:
+            didStart = self.source.start()
+            return didStart
+        else:
+            return True
         
     @override
     def stop(self) -> None:
@@ -176,5 +179,8 @@ def cwipc_source_decoder(source : cwipc_rawsource_abstract, verbose : bool=False
     if codec == None:
         raise RuntimeError("netdecoder requires cwipc.codec which is not available")
     rv = _NetDecoder(cast(cwipc_activerawsource_abstract, source), verbose=verbose)
+    ok = rv.start(startsource=False)
+    if not ok:
+        print(f"netdecoder: could not start decoder")
     return rv
         

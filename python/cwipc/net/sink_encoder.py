@@ -108,6 +108,8 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
                     cpc = self.encoders[i].get_bytes()
                     packets.append(cpc)
                 t2 = time.time()
+                if self.verbose:
+                    print(f"encoder: encoded {len(self.encoders)} times in {t2-t1:.3f}")
                 
                 if len(packets) == 1:
                     self.sink.feed(packets[0])

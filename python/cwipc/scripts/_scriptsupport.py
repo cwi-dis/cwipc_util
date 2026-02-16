@@ -57,8 +57,7 @@ class _usused_pipeline_activesource(cwipc_activesource_abstract):
         self.__reader.stop()
 
     def free(self) -> None:
-        if self.__decoder:
-            self.__decoder.free()
+        self.__decoder = None
 
     def eof(self) -> bool:
         if not self.__decoder:
