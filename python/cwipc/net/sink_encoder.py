@@ -148,7 +148,7 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         for tileIdx in range(len(self.tiledescriptions)):
             for octree_bits in self.octree_bits:
                 for jpeg_quality in self.jpeg_quality:
-                    srctile = tileIdx # Was, erronuously: self.tiledescriptions[tile].get('ncamera', tile)
+                    srctile = self.tiledescriptions[tileIdx].get("cameraMask", 0)
                     if self.verbose:
                         print(f"encoder: {len(self.encoders)}: tile={srctile}, octree_bits={octree_bits}, jpeg_quality={jpeg_quality}")
                     encparams = cwipc.codec.cwipc_encoder_params(False, 1, 1.0, octree_bits, jpeg_quality, 16, srctile, voxelsize)
