@@ -83,6 +83,12 @@ add_test(NAME pipeline_forward_to_view
 cwipc_python_test(TEST pipeline_forward_to_view FIXTURES_REQUIRED venv_with_cwipc)
 set_tests_properties(pipeline_forward_to_view PROPERTIES RESOURCE_LOCK parallel_test)
 
+add_test(NAME pipeline_forward_to_view_passthrough
+	COMMAND ${Python3_BINDIR}/cwipc parallel forward --synthetic --npoints 10000 --count 100 --nodrop --noencode -- view --netclient localhost:4303 --nodisplay --nodecode
+)
+cwipc_python_test(TEST pipeline_forward_to_view_passthrough FIXTURES_REQUIRED venv_with_cwipc)
+set_tests_properties(pipeline_forward_to_view_passthrough PROPERTIES RESOURCE_LOCK parallel_test)
+
 add_test(NAME pipeline_forward_to_view_tiled
 	COMMAND ${Python3_BINDIR}/cwipc parallel forward --synthetic --count 100 --nodrop -- view --netclient localhost:4303 --nodisplay
 )
