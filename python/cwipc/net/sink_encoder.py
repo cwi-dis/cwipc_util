@@ -40,7 +40,6 @@ class _Sink_Encoder(threading.Thread, cwipc_sink_abstract):
         self.times_encode = []
         self.pointcounts = []
         self.packetsizes = []
-        self.pointcounts_pertile = []
         self.encoder_group = None
         self.encoders = []
         

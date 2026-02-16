@@ -33,7 +33,9 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
         self.stopped = False
         self.started = False
         self.pointcounts = []
-         
+        self.packetsizes = []
+        self.pointcounts_pertile = []
+                 
     def set_encoder_params(self, tiles : List[cwipc.cwipc_tileinfo_dict], octree_bits : int|List[int]|None = None, jpeg_quality : int|List[int]|None = None) -> None:
         if tiles == None: tiles = [{}]
         if len(tiles) > 1:
@@ -78,6 +80,7 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
                     continue
                 self.pointcounts.append(pc.count())
                 cpc = pc.get_packet()
+                self.packetsizes.append(len(cpc))
                 self.sink.feed(cpc)
                 if self.verbose: print(f"passthrough: serialized pointcoud with {pc.count()} points timestamp={pc.timestamp()}")
                 pc = None
@@ -96,7 +99,8 @@ class _Sink_Passthrough(threading.Thread, cwipc_sink_abstract):
             if self.verbose: print(f"passthrough: queue full")
 
     def statistics(self):
-        self.print1stat('pointcount', self.pointcounts)
+        self.print1stat('encode_count', self.pointcounts, isInt=True)
+        self.print1stat('packetsize', self.packetsizes, isInt=True)
         if hasattr(self.sink, 'statistics'):
             self.sink.statistics()
         
