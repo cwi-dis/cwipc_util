@@ -1,6 +1,13 @@
 #ifndef _cwipc_util_api_h_
 #define _cwipc_util_api_h_
 
+// @file api.h
+// @brief Main header for cwipc API, including both C and C++ interfaces.
+//
+// This header is intended to be the only header needed to use the cwipc API, and it includes both C and C++ interfaces. The C++ interface is more fully featured and is the natural choice when writing native applications, but the C interface is also available for use from other languages (such as Python and C#) and for use in C applications. 
+// The C++ interface is in the form of abstract classes, and the C interface is in the form of opaque pointers to these classes. The C++ interface is more direct and allows for more features, while the C interface is more limited but can be used from other languages and from C applications.
+//
+// 
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -483,7 +490,7 @@ public:
 
     /** \brief User interaction.
      * \param prompt A prompt message to show to the user, explaining what the program wants.
-     * \param reponses A string with all characters that can be typed by the user.
+     * \param responses A string with all characters that can be typed by the user.
      * \param millis The number of milliseconds to wait for interaction, 0 for no wait or -1 for forever.
      * \return The character typed by the user, or '\0' if this sink does not support user interaction.
      */
