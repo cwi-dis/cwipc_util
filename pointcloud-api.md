@@ -1,14 +1,11 @@
 # CWI Pointcloud object
 
-The CWI pointcloud object is intended as an abstract object representing a pointcloud.
+The `cwipc_pointcloud` object is intended as an abstract object representing a pointcloud.
 
-It is used by the following libraries:
+It is implemented in the `cwipc_util` library, together with some auxiliary obects to obtain
+point cloud objects, compress them, etc.
 
-- [cwipc_util](https://github.com/cwi-dis/cwipc_util), this library.
-- [cwipc_codec](https://github.com/cwi-dis/cwi_codec_lib), the pointcloud compression library.
-- [cwipc_realsense2](https://github.com/cwi-dis/VRTogether-capture), the realsense2 capture library.
-
-The library can be used from C and C++. In the latter case it will expose a virtual object API, in the former case an opaque object is passsed as the first argument to many functions. Interfaces for Python and C# are also available, and mimick the C++ interface.
+The library can be used from C and C++. In the latter case it will expose a virtual object API, in the former case an opaque object is passed as the first argument to many functions. Interfaces for Python and C# are also available, and mimick the C++ interface.
 
 In case the library is used from C++ it can also export a PCL (Point Cloud Library) API, which allows access to the underlying PCL implementations of the pointclouds.
 
@@ -37,7 +34,7 @@ The header file is fully documented in Doxygen, but here is the quick breakdown:
 
 - Call `free()` when you no longer need to access this pointcloud. Failure to call `free()` may lead to memory leaks. Accessing PCL pointcloud data after calling `free()` may lead to crashes.
 - Call `timestamp()` to get a (microsecond) timestamp indicating when the pointcloud was captured.
-- Call `get_uncompressed_size(CWIPC_POINT_VERSION)` to see how many bytes the pointcloud data needs. Allocate a buffer of the correct size. Then call `copy_uncompressed()` to copy the point data into the buffer.
+- Call `get_uncompressed_size()` to see how many bytes the pointcloud data needs. Allocate a buffer of the correct size. Then call `copy_uncompressed()` to copy the point data into the buffer.
 
 The `cwipc_point` structure is the external representation of a point (and a pointcloud external representation is simly an array of points). Here is the point structure:
 
@@ -74,20 +71,18 @@ The C interface is contained in the same header as the C++ interface:
 #include "cwipc_util/api.h"
 ```
 
-The C functions are have the same neames as the C++ methods above, but with `cwipc_` prepended.
+The C functions are have the same names as the C++ methods above, but with `cwipc_pointcloud_` prepended.
 
-These functions take a `cwipc *` first argument, and the rest of their arguments are the same as for their C++ counterparts.
+These functions take a `cwipc_pointcloud *` first argument, and the rest of their arguments are the same as for their C++ counterparts.
 
 ## Utility function interface
 
 Again fully documented in Doxygen, but there are functions to read and write PLY files, convert external representation to cwipc pointclouds and convert PCL pointclouds to cwipc pointclouds.
 
-## Debug/test function interface
-
-There are functions to dump external represnetations to files (and read them back).
-
-
 ## Historic reasons for design of API for pointclouds
+
+> NOTE: the following section is no longer factually correct, but it is the original design document
+> written around 2019. We keep it around because it provides insight into the design ideas for cwipc.
 
 We need APIs for capturing compressing and decompressing pointclouds, and while we're at it we might as well add APIs for reading and writing them to files.
 
