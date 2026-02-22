@@ -954,7 +954,7 @@ extern "C" {
     /** \brief User interaction (C interface).
      * \param sink The cwipc_sink object.
      * \param prompt A prompt message to show to the user, explaining what the program wants.
-     * \param reponses A string with all characters that can be typed by the user.
+     * \param responses A string with all characters that can be typed by the user.
      * \param millis The number of milliseconds to wait for interaction, 0 for no wait or -1 for forever.
      * \return The character typed by the user, or '\0' if the user did not type anything,
      * or if this sink does not support user interaction.
@@ -1033,7 +1033,7 @@ extern "C" {
     _CWIPC_UTIL_EXPORT cwipc_activesource* cwipc_capturer(const char *configFilename, char** errorMessage, uint64_t apiVersion);
 
     /** \brief Display a window to show pointclouds.
-     * \param Title The title string, to be shown in the title bar of the window.
+     * \param title The title string, to be shown in the title bar of the window.
      * \param errorMessage Address of a char* where any error message is saved (or NULL).
      * \param apiVersion Pass in CWIPC_API_VERSION to ensure dll compatibility.
      *
@@ -1118,7 +1118,7 @@ extern "C" {
 
     /** \brief Combine two pointclouds
      * \param pc1 A source pointcloud.
-     * \param pc1 Another source pointcloud.
+     * \param pc2 Another source pointcloud.
      * \return a new pointcloud
      *
      * Returns a new pointcloud that contains all points in both sources.
