@@ -1,4 +1,4 @@
-# CWI Pointcloud object
+# cwipc C and C++ API
 
 ## cwipc_pointcloud
 

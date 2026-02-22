@@ -1,6 +1,7 @@
 build
 build-*
 doc/html
+doc/xml
 doc/latex
 __pycache__
 *.pyc
