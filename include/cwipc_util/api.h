@@ -165,10 +165,12 @@ typedef void (*cwipc_log_callback_t)(int level, const char* message);
 
 class cwipc_metadata;
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef _CWIPC_PCL_POINTCLOUD_DEFINED
 typedef void* cwipc_pcl_pointcloud;
 #define _CWIPC_PCL_POINTCLOUD_PLACEHOLDER_DEFINED
 #endif //_CWIPC_PCL_POINTCLOUD_DEFINED
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 /** \brief Abstract interface to a single pointcloud.
  *
