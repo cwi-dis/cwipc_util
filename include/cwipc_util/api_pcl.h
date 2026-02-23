@@ -1,6 +1,12 @@
 #ifndef _cwipc_util_api_pcl_h_
 #define _cwipc_util_api_pcl_h_
 
+/** \file cwipc_util/api_pcl.h
+ * PCL-specific extensions for the cwipc API (C++ only).
+ *
+ * This header is intended to be included before api.h if you want access to PCL-specific functionality.
+ */
+
 #ifndef __cplusplus
 #error "api_pcl.h requires C++"
 #endif
