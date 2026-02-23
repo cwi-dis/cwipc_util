@@ -1,8 +1,5 @@
 build
 build-*
-doxygen/html
-doxygen/xml
-doxygen/latex
 __pycache__
 *.pyc
 venv
