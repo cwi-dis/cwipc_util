@@ -108,7 +108,7 @@ def run_parallel() -> int:
     proc1 = subprocess.Popen(cmd1)
     print(f"parallel: started 1: {' '.join(cmd1)}", file=sys.stderr)
 
-    time.sleep(1)
+    time.sleep(10)
     cmd2 = [cmd] + args2
     proc2 = subprocess.Popen(cmd2)
     print(f"parallel: started 2: {' '.join(cmd2)}", file=sys.stderr)
