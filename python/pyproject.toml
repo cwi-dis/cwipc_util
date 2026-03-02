@@ -13,11 +13,11 @@ authors=[
 dynamic = ["version"]
 requires-python = ">= 3.12"
 dependencies = [
-    "numpy ~= 2.2", 
+    "numpy ~= 2.4", 
     "open3d ~= 0.19", 
-    "pillow ~= 11.3", 
-    "opencv-python ~= 4.12", 
-    "scipy ~= 1.16", 
+    "pillow ~= 12.1", 
+    "opencv-python ~= 4.13", 
+    "scipy ~= 1.17", 
     "matplotlib ~= 3.10",
     "debugpy ~= 1.8"
 ]
