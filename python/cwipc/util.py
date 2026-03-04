@@ -235,11 +235,11 @@ class CwipcError(RuntimeError):
 _cwipc_util_dll_reference = None
 
 class cwipc_pointcloud_p(ctypes.c_void_p):
-    """ctypes-compatible native pointer to a cwipc object"""
+    """ctypes-compatible native pointer to a @ref cwipc_pointcloud object"""
     pass
     
 class cwipc_source_p(ctypes.c_void_p):
-    """ctypes-compatible native pointer to a cwipc_source object"""
+    """ctypes-compatible native pointer to a @ref cwipc_source object"""
     pass
 
 class cwipc_activesource_p(cwipc_source_p):
