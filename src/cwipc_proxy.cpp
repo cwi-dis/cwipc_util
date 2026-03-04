@@ -7,16 +7,6 @@
 #include <inttypes.h>
 
 #ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#define closesocket(x) close(x)
-#endif
-
-#ifdef WIN32
 #define _CWIPC_UTIL_EXPORT __declspec(dllexport)
 #else
 #define _CWIPC_UTIL_EXPORT
@@ -25,6 +15,17 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 #include "cwipc_util/internal/logging.hpp"
+
+
+#ifdef WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#define closesocket(x) close(x)
+#endif
 
 #ifdef _WIN32
 #include <Windows.h>
