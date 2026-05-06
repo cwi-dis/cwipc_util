@@ -4,7 +4,9 @@
 #include "cwipc_util/api_pcl.h"
 #include "cwipc_util/api.h"
 #include "cwipc_util/internal/logging.hpp"
+#include <string>
 #include <thread>
+#include <type_traits>
 
 #define CWIPC_DEBUG
 #define CWIPC_DEBUG_THREAD
@@ -33,6 +35,7 @@ using json = nlohmann::json;
 #define _CWIPC_CONFIG_JSON_GET(jsonobj, name, config, attr) if (jsonobj.contains(#name)) jsonobj.at(#name).get_to(config.attr)
 #define _CWIPC_CONFIG_JSON_PUT(jsonobj, name, config, attr) jsonobj[#name] = config.attr
 
+
 /** Base class for per-camera configuration
  * 
  * Stores attributes common to all camera types, plus methods to serialize and deserialize.
@@ -46,6 +49,14 @@ struct CwipcBaseCameraConfig {
     pcl::shared_ptr<Eigen::Affine3d> trafo; //!< Transformation matrix from camera coorindates to world coordinates
     cwipc_vector cameraposition = { 0,0,0 };//!< Position of this camera in real world coordinates
 
+public:
+    /*
+     todo: implementation of these should be in the .cpp file but is required here because there cameras use templating.
+
+    virtual void _from_json(const json& json_data);
+    virtual void _to_json(json& json_data, bool for_recording = false) const;
+    */
+
     virtual void _from_json(const json& json_data) {
         json_data.at("type").get_to(type);
         if (json_data.contains("serial")) {
@@ -56,7 +67,8 @@ struct CwipcBaseCameraConfig {
         }
         if (json_data.contains("filename")) {
             json_data.at("filename").get_to(filename);
-        } else if (json_data.contains("playback_filename")) {
+        }
+        else if (json_data.contains("playback_filename")) {
             // backwards compatibility
             json_data.at("playback_filename").get_to(filename);
         }
@@ -69,15 +81,16 @@ struct CwipcBaseCameraConfig {
                     (*trafo)(x, y) = trafo_json[x][y];
                 }
             }
-        } else {
+        }
+        else {
             trafo->setIdentity();
         }
         cameraposition.x = -(*trafo)(0, 3);
         cameraposition.y = -(*trafo)(1, 3);
         cameraposition.z = -(*trafo)(2, 3);
-    };
+    }
 
-    virtual void _to_json(json& json_data, bool for_recording=false) {
+    virtual void _to_json(json& json_data, bool for_recording) const {
         json_data["type"] = type;
         json_data["serial"] = serial;
         json_data["disabled"] = disabled;
@@ -97,8 +110,10 @@ struct CwipcBaseCameraConfig {
             {(*trafo)(2, 0), (*trafo)(2, 1), (*trafo)(2, 2), (*trafo)(2, 3)},
             {(*trafo)(3, 0), (*trafo)(3, 1), (*trafo)(3, 2), (*trafo)(3, 3)}
         };
-    };
+    }
+
 };
+
 
 /** Base class for capture configuration
  * 
@@ -107,52 +122,31 @@ struct CwipcBaseCameraConfig {
 struct CwipcBaseCaptureConfig {
     std::string type;
 
-    virtual std::string to_string(bool for_recording=false) = 0;
+public:
+    virtual std::string to_string(bool for_recording=false) const = 0;
+
     virtual bool from_string(const char* buffer, std::string typeWanted) = 0;
     virtual bool from_file(const char* filename, std::string typeWanted) = 0;
+
+    /*
+     todo: implementation of these should be in the .cpp file but is required here because there cameras use templating.
+
+    virtual void _from_json(const json& json_data);
+    virtual void _to_json(json& json_data, bool for_recording = false) const;
+     */
+
     virtual void _from_json(const json& json_data) {
         json_data.at("type").get_to(type);
     }
-    virtual void _to_json(json& json_data, bool for_recording=false) {
+
+    virtual void _to_json(json& json_data, bool for_recording = false) const {
         json_data["type"] = type;
         json_data["version"] = 5;
     }
+
 };
 
-/** Base class for both capturer and camera.
- * 
- * Only handles logging.
- */
-class CwipcLoggingBase {
-protected:
-    std::string CLASSNAME;  //!< For error, warning and debug messages only
-    CwipcLoggingBase(std::string _CLASSNAME)
-    : CLASSNAME(_CLASSNAME)
-    {}
-    inline void _log(cwipc_log_level level, std::string message) {
-        cwipc_log(level, CLASSNAME, message);
-    }
-public:
-    inline void _log_error(std::string message) {
-        cwipc_log(CWIPC_LOG_LEVEL_ERROR, CLASSNAME, message);
-    }
-    inline void _log_warning(std::string message) {
-        cwipc_log(CWIPC_LOG_LEVEL_WARNING, CLASSNAME, message);
-    }
-    inline void _log_trace(std::string message) {
-        cwipc_log(CWIPC_LOG_LEVEL_TRACE, CLASSNAME, message);
-    }
-    inline void _log_debug(std::string message) {
-#ifdef CWIPC_DEBUG
-        cwipc_log(CWIPC_LOG_LEVEL_DEBUG, CLASSNAME, message);
-#endif
-    }
-    inline void _log_debug_thread(std::string message) {
-#ifdef CWIPC_DEBUG_THREAD
-        cwipc_log(CWIPC_LOG_LEVEL_DEBUG, CLASSNAME + " (thread)", message);
-#endif
-    }
-};
+
 /** Base class for camera 
  * 
 */
@@ -308,7 +302,9 @@ public:
     /// Stop capturing.
     virtual void stop() = 0;
     /// Get complete current configuration as JSON string.
-    virtual std::string config_get() = 0;
+    virtual std::string config_get() const = 0;
+    /// Get a specific camera configuration.
+    virtual CwipcBaseCameraConfig const* get_camera_config(size_t index) const = 0;
     /// Request specific metadata to be added to pointclouds.
     virtual void request_metadata(bool rgb, bool depth, bool timestamps, bool skeleton) = 0;
 
@@ -361,6 +357,7 @@ protected:
     
 };
 
+
 /** Template base class for capturer implementations
  * 
  * Two template parameters:
@@ -373,11 +370,13 @@ protected:
 
 template<class GrabberClass, class CameraConfigClass>
 class cwipc_capturer_impl_base : public cwipc_activesource {
-protected:
-    GrabberClass *m_grabber; 
+    // Ensure that the GrabberClass is a CwipcBaseCapture type
+    static_assert(std::is_base_of<CwipcBaseCapture, GrabberClass>::value, "GrabberClass must be based on CwipcBaseCapture");
+    // Ensure that the CameraConfigClass is a CwipcBaseCameraConfig type
+    static_assert(std::is_base_of<CwipcBaseCameraConfig, CameraConfigClass>::value, "CameraConfigClass must be based on CwipcBaseCameraConfig");
+
 public:
-    cwipc_capturer_impl_base(const char* configFilename) 
-    : m_grabber(GrabberClass::factory())
+    cwipc_capturer_impl_base(const char* configFilename) : m_grabber(GrabberClass::factory())
     {
         m_grabber->config_reload(configFilename);
     }
@@ -454,7 +453,7 @@ public:
             return 0;
         }
 
-        int nCamera = m_grabber->configuration.all_camera_configs.size();
+        int nCamera = m_grabber->get_camera_count();
         if (nCamera <= 1) {
             // Using a single camera or no camera.
             return nCamera;
@@ -468,7 +467,7 @@ public:
             return false;
         }
 
-        int nCamera = m_grabber->configuration.all_camera_configs.size();
+        int nCamera = m_grabber->get_camera_count();
 
         if (nCamera == 0) { // No camera
             return false;
@@ -487,20 +486,26 @@ public:
             }
             return true;
         }
-        CameraConfigClass &cameraConfig = m_grabber->configuration.all_camera_configs[tilenum-1];
-        if (tileinfo) {
-            tileinfo->normal = cameraConfig.cameraposition; // Use the camera position as the normal
-            tileinfo->cameraName = (char *)cameraConfig.serial.c_str();
+
+        CwipcBaseCameraConfig const* cameraConfig = m_grabber->get_camera_config(tilenum - 1);
+        if (tileinfo && cameraConfig) {
+            tileinfo->normal = cameraConfig->cameraposition; // Use the camera position as the normal
+            tileinfo->cameraName = (char *)cameraConfig->serial.c_str();
             tileinfo->ncamera = 1; // Only one camera contributes to this
             tileinfo->cameraMask = (uint8_t)1 << (tilenum-1); // Only this camera contributes
         }
+
         return true;
     }
     
     virtual void request_metadata(const std::string &name) override = 0;
     virtual bool auxiliary_operation(const std::string op, const void* inbuf, size_t insize, void* outbuf, size_t outsize) override = 0;
     virtual bool seek(uint64_t timestamp) override = 0;
+
+protected:
+    GrabberClass* m_grabber{ nullptr };
 };
+
 
 /** Capturer registration.
  * Capturer implementations should register themselves by calling
@@ -514,4 +519,5 @@ typedef cwipc_activesource* _cwipc_func_capturer_factory(const char *configFilen
 extern "C" {
     _CWIPC_UTIL_EXPORT int _cwipc_register_capturer(const char* name, _cwipc_functype_count_devices* countFunc, _cwipc_func_capturer_factory* factoryFunc);
 }
+
 #endif // _cwipc_util_capturers_hpp_

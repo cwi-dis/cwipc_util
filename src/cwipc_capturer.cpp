@@ -22,11 +22,16 @@ using json = nlohmann::json;
 
 struct capturer {
     std::string name;
-    _cwipc_functype_count_devices* countFunc;
-    _cwipc_func_capturer_factory* factoryFunc;
+    _cwipc_functype_count_devices* countFunc{ nullptr };
+    _cwipc_func_capturer_factory* factoryFunc{ nullptr };
 };
 
 std::vector<struct capturer> all_capturers;
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Capturer Creation
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cwipc_activesource *cwipc_capturer(const char *configFilename, char **errorMessage, uint64_t apiVersion) {
     if (apiVersion < CWIPC_API_VERSION_OLD || apiVersion > CWIPC_API_VERSION) {
@@ -148,6 +153,10 @@ cwipc_activesource *cwipc_capturer(const char *configFilename, char **errorMessa
 
     return nullptr;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Capturer Register
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 int _cwipc_register_capturer(const char *name, _cwipc_functype_count_devices *countFunc, _cwipc_func_capturer_factory *factoryFunc) {
     struct capturer new_capturer;
