@@ -730,6 +730,7 @@ cwipc_pointcloud* cwipc_from_packet(uint8_t *packet, size_t size, char **errorMe
 
 void cwipc_pointcloud_free(cwipc_pointcloud *pc) {
     pc->free();
+    delete pc;
 }
 
 cwipc_pointcloud *cwipc_pointcloud__shallowcopy(cwipc_pointcloud* pc) {
