@@ -1,4 +1,8 @@
-# CWI Pointcloud utility library
+# WARNING. This repository is outdated.
+
+This `cwipc_util` repository has been merged into the <https://github.com/cwi-dis/cwipc> repository as of August 2026.
+
+## CWI Pointcloud utility library
 
 This repository is a utility library for using `cwipc` objects to represent pointclouds. It is part of the `cwipc` suite, <https://github.com/cwi-dis/cwipc>, and should generally be installed or built as part of that suite. 
 
